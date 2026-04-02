@@ -30,7 +30,11 @@ export default class Environment
     {
         this.sunLight = new THREE.DirectionalLight('#ffffff', 2.5)
         this.sunLight.castShadow = true
-        this.sunLight.shadow.camera.far = 20
+        this.sunLight.shadow.camera.far = 60
+        this.sunLight.shadow.camera.left = -28
+        this.sunLight.shadow.camera.right = 28
+        this.sunLight.shadow.camera.top = 28
+        this.sunLight.shadow.camera.bottom = -28
         this.sunLight.shadow.mapSize.set(1024, 1024)
         this.sunLight.shadow.normalBias = 0.05
         this.sunLight.position.set(3, 5, -2)

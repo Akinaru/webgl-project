@@ -68,6 +68,9 @@ export default class Experience
         this.sizes.off(EventEnum.RESIZE)
         this.time.off(EventEnum.TICK)
 
+        this.world.destroy?.()
+        this.camera.destroy?.()
+
         this.sizes.destroy()
         this.time.destroy()
 
@@ -92,7 +95,6 @@ export default class Experience
             }
         })
 
-        this.camera.controls.dispose()
         this.renderer.instance.dispose()
 
         if(this.debug.active)
