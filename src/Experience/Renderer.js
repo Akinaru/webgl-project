@@ -9,10 +9,10 @@ export default class Renderer
         this.experience = new Experience()
         this.canvas = this.experience.canvas
         this.sizes = this.experience.sizes
-        this.scene = this.experience.scene
         this.camera = this.experience.camera
 
         this.setInstance()
+        this.setScene(this.experience.scene)
 
         this.sizes.on(`${EventEnum.RESIZE}.renderer`, () =>
         {
@@ -41,8 +41,18 @@ export default class Renderer
         this.instance.setPixelRatio(this.sizes.pixelRatio)
     }
 
+    setScene(scene)
+    {
+        this.scene = scene
+    }
+
     update()
     {
+        if(!this.scene)
+        {
+            return
+        }
+
         this.instance.render(this.scene, this.camera.instance)
     }
 

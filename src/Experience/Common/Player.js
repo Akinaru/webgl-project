@@ -8,7 +8,10 @@ export default class Player
 {
     constructor({
         groundHeight = 0,
-        boundaryRadius = 36
+        boundaryRadius = 36,
+        spawnPosition = null,
+        spawnYaw = 0,
+        spawnPitch = 0
     } = {})
     {
         this.experience = new Experience()
@@ -31,20 +34,41 @@ export default class Player
         }
 
         this.input = new InputController()
-        this.position = new THREE.Vector3(0, this.groundHeight + this.settings.height, 6)
+        this.position = this.createSpawnPosition(spawnPosition)
         this.velocity = new THREE.Vector3()
         this.moveDirection = new THREE.Vector3()
         this.forwardDirection = new THREE.Vector3()
         this.rightDirection = new THREE.Vector3()
 
-        this.yaw = 0
-        this.pitch = 0
+        this.yaw = spawnYaw
+        this.pitch = spawnPitch
         this.isOnGround = true
         this.wasJumpPressed = false
         this.isPointerLocked = false
 
         this.setCamera()
         this.setPointerLock()
+    }
+
+    createSpawnPosition(spawnPosition)
+    {
+        const defaultY = this.groundHeight + this.settings.height
+
+        if(spawnPosition instanceof THREE.Vector3)
+        {
+            return spawnPosition.clone()
+        }
+
+        if(spawnPosition && typeof spawnPosition === 'object')
+        {
+            return new THREE.Vector3(
+                spawnPosition.x ?? 0,
+                spawnPosition.y ?? defaultY,
+                spawnPosition.z ?? 6
+            )
+        }
+
+        return new THREE.Vector3(0, defaultY, 6)
     }
 
     setCamera()

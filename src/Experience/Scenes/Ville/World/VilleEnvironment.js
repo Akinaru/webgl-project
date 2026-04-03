@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import Experience from '../Experience.js'
+import Experience from '../../../Experience.js'
 
-export default class Environment
+export default class VilleEnvironment
 {
     constructor()
     {
@@ -12,7 +12,7 @@ export default class Environment
 
         if(this.debug.active)
         {
-            this.debugFolder = this.debug.ui.addFolder('environment')
+            this.debugFolder = this.debug.ui.addFolder('villeEnvironment')
         }
 
         this.setAmbientLight()
@@ -87,5 +87,23 @@ export default class Environment
                 .step(0.001)
                 .onChange(this.environmentMap.updateMaterials)
         }
+    }
+
+    destroy()
+    {
+        if(this.ambientLight)
+        {
+            this.scene.remove(this.ambientLight)
+            this.ambientLight = null
+        }
+
+        if(this.sunLight)
+        {
+            this.scene.remove(this.sunLight)
+            this.sunLight = null
+        }
+
+        this.scene.environment = null
+        this.debugFolder?.destroy?.()
     }
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import Experience from '../Experience.js'
+import Experience from '../../../Experience.js'
 
-export default class Floor
+export default class VilleFloor
 {
     constructor()
     {
@@ -61,5 +61,17 @@ export default class Floor
         this.mesh.position.y = 0
         this.mesh.receiveShadow = true
         this.scene.add(this.mesh)
+    }
+
+    destroy()
+    {
+        if(this.mesh)
+        {
+            this.scene.remove(this.mesh)
+            this.mesh = null
+        }
+
+        this.geometry?.dispose()
+        this.material?.dispose()
     }
 }

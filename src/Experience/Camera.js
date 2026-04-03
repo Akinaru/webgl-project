@@ -8,7 +8,6 @@ export default class Camera
     {
         this.experience = new Experience()
         this.sizes = this.experience.sizes
-        this.scene = this.experience.scene
 
         this.setInstance()
 
@@ -21,7 +20,6 @@ export default class Camera
     setInstance()
     {
         this.instance = new THREE.PerspectiveCamera(70, this.sizes.width / this.sizes.height, 0.1, 150)
-        this.scene.add(this.instance)
     }
 
     resize()
