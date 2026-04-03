@@ -39,21 +39,10 @@ export default class Experience
         this.renderer = new Renderer()
         this.world = new World()
 
-        this.sizes.on(EventEnum.RESIZE, () =>
-        {
-            this.resize()
-        })
-
-        this.time.on(EventEnum.TICK, () =>
+        this.time.on(`${EventEnum.TICK}.experience`, () =>
         {
             this.update()
         })
-    }
-
-    resize()
-    {
-        this.camera.resize()
-        this.renderer.resize()
     }
 
     update()
@@ -65,11 +54,11 @@ export default class Experience
 
     destroy()
     {
-        this.sizes.off(EventEnum.RESIZE)
-        this.time.off(EventEnum.TICK)
+        this.time.off(`${EventEnum.TICK}.experience`)
 
         this.world.destroy?.()
         this.camera.destroy?.()
+        this.renderer.destroy?.()
 
         this.sizes.destroy()
         this.time.destroy()

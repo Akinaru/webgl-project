@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import Experience from './Experience.js'
+import EventEnum from './Enum/EventEnum.js'
 
 export default class Camera
 {
@@ -10,6 +11,11 @@ export default class Camera
         this.scene = this.experience.scene
 
         this.setInstance()
+
+        this.sizes.on(`${EventEnum.RESIZE}.camera`, () =>
+        {
+            this.resize()
+        })
     }
 
     setInstance()
@@ -31,6 +37,6 @@ export default class Camera
 
     destroy()
     {
-        // Pas de controle externe a detruire ici.
+        this.sizes.off(`${EventEnum.RESIZE}.camera`)
     }
 }
