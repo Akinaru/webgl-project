@@ -3,6 +3,7 @@ import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Player.js'
 import MapEnvironment from './MapEnvironment.js'
 import MapModel from './MapModel.js'
+import MapCollisionDebug from './MapCollisionDebug.js'
 
 let mapWorldInstanceIndex = 0
 
@@ -14,15 +15,16 @@ export default class MapWorld
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.mapWorld${mapWorldInstanceIndex++}`
 
+        if(this.resources.isReady)
+        {
+            this.setUp()
+            return
+        }
+
         this.resources.on(this.readyEventName, () =>
         {
             this.setUp()
         })
-
-        if(this.resources.isReady)
-        {
-            this.setUp()
-        }
     }
 
     setUp()
@@ -38,14 +40,22 @@ export default class MapWorld
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: 120,
-            spawnPosition: { x: 0, y: 2, z: 12 },
+            collisionBoxes: [],
+            collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+            groundMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+            spawnPosition: { x: -2.2, y: 7, z: 0.9 },
             spawnYaw: Math.PI
+        })
+        this.collisionDebug = new MapCollisionDebug({
+            player: this.player,
+            mapModel: this.mapModel
         })
     }
 
     update(delta = this.experience.time.delta)
     {
         this.player?.update(delta)
+        this.collisionDebug?.update?.()
     }
 
     destroy()
@@ -62,6 +72,12 @@ export default class MapWorld
         {
             this.mapModel.destroy?.()
             this.mapModel = null
+        }
+
+        if(this.collisionDebug)
+        {
+            this.collisionDebug.destroy?.()
+            this.collisionDebug = null
         }
 
         if(this.environment)
