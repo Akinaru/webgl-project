@@ -67,12 +67,12 @@ export default class SceneManager
 
     setDebug()
     {
-        if(!this.debug.active)
+        if(!this.debug.isDebugEnabled)
         {
             return
         }
 
-        this.debugFolder = this.debug.ui.addFolder('scenes')
+        this.debugFolder = this.debug.addFolder('🎬 Scenes', { expanded: false })
         const debugActions = {
             goVille: () =>
             {
@@ -84,8 +84,20 @@ export default class SceneManager
             }
         }
 
-        this.debugFolder.add(debugActions, 'goVille')
-        this.debugFolder.add(debugActions, 'goComplexe')
+        this.debug.addButtons(this.debugFolder, {
+            label: 'switch',
+            columns: 2,
+            buttons: [
+                {
+                    label: 'Ville',
+                    onClick: debugActions.goVille
+                },
+                {
+                    label: 'Complexe',
+                    onClick: debugActions.goComplexe
+                }
+            ]
+        })
 
         this.setDebugStats()
     }
@@ -100,25 +112,42 @@ export default class SceneManager
             isReady: false,
             children: 0,
             meshes: 0,
-            lights: 0,
-            drawCalls: 0,
-            triangles: 0,
-            geometries: 0,
-            textures: 0
+            lights: 0
         }
 
-        this.debugStatsFolder = this.debugFolder.addFolder('stats')
-        this.debugStatsFolder.add(this.debugStats, 'scene').listen()
-        this.debugStatsFolder.add(this.debugStats, 'loaded').listen()
-        this.debugStatsFolder.add(this.debugStats, 'total').listen()
-        this.debugStatsFolder.add(this.debugStats, 'isReady').listen()
-        this.debugStatsFolder.add(this.debugStats, 'children').listen()
-        this.debugStatsFolder.add(this.debugStats, 'meshes').listen()
-        this.debugStatsFolder.add(this.debugStats, 'lights').listen()
-        this.debugStatsFolder.add(this.debugStats, 'drawCalls').listen()
-        this.debugStatsFolder.add(this.debugStats, 'triangles').listen()
-        this.debugStatsFolder.add(this.debugStats, 'geometries').listen()
-        this.debugStatsFolder.add(this.debugStats, 'textures').listen()
+        this.debugStatsFolder = this.debug.addFolder('stats', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'scene', {
+            label: 'scene',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'loaded', {
+            label: 'loaded',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'total', {
+            label: 'total',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'isReady', {
+            label: 'isReady',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'children', {
+            label: 'children',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'meshes', {
+            label: 'meshes',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'lights', {
+            label: 'lights',
+            readonly: true
+        }, 'auto')
     }
 
     updateDebugStats()
@@ -137,8 +166,6 @@ export default class SceneManager
 
         const scene = this.currentScene?.instance || this.experience.scene
         const resources = this.experience.resources
-        const info = this.renderer.instance.info
-
         let meshes = 0
         let lights = 0
         if(scene)
@@ -163,10 +190,6 @@ export default class SceneManager
         this.debugStats.children = scene ? scene.children.length : 0
         this.debugStats.meshes = meshes
         this.debugStats.lights = lights
-        this.debugStats.drawCalls = info.render.calls
-        this.debugStats.triangles = info.render.triangles
-        this.debugStats.geometries = info.memory.geometries
-        this.debugStats.textures = info.memory.textures
     }
 
     setHudHint(hint)
@@ -191,8 +214,8 @@ export default class SceneManager
         this.currentScene?.destroy?.()
         this.currentScene = null
         this.currentKey = null
-        this.debugStatsFolder?.destroy?.()
+        this.debugStatsFolder?.dispose?.()
         this.debugStats = null
-        this.debugFolder?.destroy?.()
+        this.debugFolder?.dispose?.()
     }
 }

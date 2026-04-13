@@ -9,12 +9,6 @@ export default class VilleFox
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.time = this.experience.time
-        this.debug = this.experience.debug
-
-        if(this.debug.active)
-        {
-            this.debugFolder = this.debug.ui.addFolder('villeFox')
-        }
 
         this.resource = this.resources.items.foxModel
 
@@ -69,18 +63,6 @@ export default class VilleFox
             this.animation.actions.current = newAction
         }
 
-        if(this.debug.active)
-        {
-            const debugObject = {
-                playIdle: () => this.animation.play('idle'),
-                playWalking: () => this.animation.play('walking'),
-                playRunning: () => this.animation.play('running')
-            }
-
-            this.debugFolder.add(debugObject, 'playIdle')
-            this.debugFolder.add(debugObject, 'playWalking')
-            this.debugFolder.add(debugObject, 'playRunning')
-        }
     }
 
     setFallback()
@@ -133,7 +115,5 @@ export default class VilleFox
             this.fallback.material.dispose()
             this.fallback = null
         }
-
-        this.debugFolder?.destroy?.()
     }
 }

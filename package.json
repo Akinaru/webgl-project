@@ -9,8 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "lil-gui": "^0.20.0",
-    "three": "^0.180.0"
+    "@tweakpane/plugin-camerakit": "^0.3.0",
+    "@tweakpane/plugin-essentials": "^0.2.1",
+    "three": "^0.180.0",
+    "threejs-inspector": "^0.0.69",
+    "tweakpane": "^4.0.5"
   },
   "devDependencies": {
     "vite": "^8.0.3"

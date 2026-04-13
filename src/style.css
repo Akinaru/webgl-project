@@ -3,6 +3,24 @@
     font-family: "Space Grotesk", "Segoe UI", sans-serif;
     color: #f6f6f6;
     background: radial-gradient(circle at 15% 20%, #253048 0%, #0e121b 50%, #07090d 100%);
+    --tp-base-background-color: hsla(218, 32%, 8%, 0.88);
+    --tp-base-shadow-color: hsla(0, 0%, 0%, 0.35);
+    --tp-button-background-color: hsla(214, 24%, 25%, 1);
+    --tp-button-background-color-hover: hsla(214, 24%, 34%, 1);
+    --tp-button-background-color-active: hsla(214, 24%, 42%, 1);
+    --tp-button-foreground-color: hsla(0, 0%, 100%, 1);
+    --tp-container-background-color: hsla(214, 20%, 20%, 0.8);
+    --tp-container-background-color-active: hsla(214, 24%, 32%, 1);
+    --tp-container-background-color-focus: hsla(214, 24%, 32%, 1);
+    --tp-container-background-color-hover: hsla(214, 24%, 28%, 1);
+    --tp-container-foreground-color: hsla(0, 0%, 100%, 0.92);
+    --tp-groove-foreground-color: hsla(204, 85%, 68%, 0.86);
+    --tp-input-background-color: hsla(214, 18%, 15%, 1);
+    --tp-input-background-color-active: hsla(214, 22%, 26%, 1);
+    --tp-input-background-color-focus: hsla(214, 22%, 24%, 1);
+    --tp-input-background-color-hover: hsla(214, 22%, 20%, 1);
+    --tp-input-foreground-color: hsla(0, 0%, 100%, 0.95);
+    --tp-label-foreground-color: hsla(0, 0%, 100%, 0.72);
 }
 
 *
@@ -83,4 +101,9 @@ body.is-pointer-locked .hud__hint
 body.is-pointer-locked .hud__crosshair
 {
     opacity: 1;
+}
+
+.tp-dfwv
+{
+    overscroll-behavior: contain;
 }

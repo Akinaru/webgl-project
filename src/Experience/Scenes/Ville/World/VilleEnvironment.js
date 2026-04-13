@@ -8,12 +8,6 @@ export default class VilleEnvironment
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
-        this.debug = this.experience.debug
-
-        if(this.debug.active)
-        {
-            this.debugFolder = this.debug.ui.addFolder('villeEnvironment')
-        }
 
         this.setAmbientLight()
         this.setSunLight()
@@ -40,14 +34,6 @@ export default class VilleEnvironment
         this.sunLight.position.set(3, 5, -2)
 
         this.scene.add(this.sunLight)
-
-        if(this.debug.active)
-        {
-            this.debugFolder.add(this.sunLight, 'intensity').name('sunIntensity').min(0).max(10).step(0.001)
-            this.debugFolder.add(this.sunLight.position, 'x').name('sunX').min(-10).max(10).step(0.001)
-            this.debugFolder.add(this.sunLight.position, 'y').name('sunY').min(-10).max(10).step(0.001)
-            this.debugFolder.add(this.sunLight.position, 'z').name('sunZ').min(-10).max(10).step(0.001)
-        }
     }
 
     setEnvironmentMap()
@@ -76,17 +62,6 @@ export default class VilleEnvironment
         }
 
         this.environmentMap.updateMaterials()
-
-        if(this.debug.active)
-        {
-            this.debugFolder
-                .add(this.environmentMap, 'intensity')
-                .name('envMapIntensity')
-                .min(0)
-                .max(4)
-                .step(0.001)
-                .onChange(this.environmentMap.updateMaterials)
-        }
     }
 
     destroy()
@@ -104,6 +79,5 @@ export default class VilleEnvironment
         }
 
         this.scene.environment = null
-        this.debugFolder?.destroy?.()
     }
 }

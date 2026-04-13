@@ -50,6 +50,7 @@ export default class Experience
         this.sceneManager.update(this.time.delta)
         this.camera.update()
         this.renderer.update()
+        this.debug.update()
     }
 
     destroy()
@@ -65,9 +66,6 @@ export default class Experience
 
         this.renderer.instance.dispose()
 
-        if(this.debug.active)
-        {
-            this.debug.ui.destroy()
-        }
+        this.debug.destroy()
     }
 }

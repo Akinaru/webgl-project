@@ -9,9 +9,9 @@ export default class ComplexeEnvironment
         this.scene = this.experience.scene
         this.debug = this.experience.debug
 
-        if(this.debug.active)
+        if(this.debug.isDebugEnabled)
         {
-            this.debugFolder = this.debug.ui.addFolder('complexeEnvironment')
+            this.debugFolder = this.debug.addFolder('🌙 Complexe Environment')
         }
 
         this.setFog()
@@ -40,12 +40,12 @@ export default class ComplexeEnvironment
         this.mainLight.shadow.camera.bottom = -30
         this.scene.add(this.mainLight)
 
-        if(this.debug.active)
+        if(this.debug.isDebugEnabled)
         {
-            this.debugFolder.add(this.mainLight, 'intensity').name('mainIntensity').min(0).max(6).step(0.001)
-            this.debugFolder.add(this.mainLight.position, 'x').name('mainX').min(-20).max(20).step(0.001)
-            this.debugFolder.add(this.mainLight.position, 'y').name('mainY').min(-20).max(20).step(0.001)
-            this.debugFolder.add(this.mainLight.position, 'z').name('mainZ').min(-20).max(20).step(0.001)
+            this.debug.addBinding(this.debugFolder, this.mainLight, 'intensity', { label: 'mainIntensity', min: 0, max: 6, step: 0.001 })
+            this.debug.addBinding(this.debugFolder, this.mainLight.position, 'x', { label: 'mainX', min: -20, max: 20, step: 0.001 })
+            this.debug.addBinding(this.debugFolder, this.mainLight.position, 'y', { label: 'mainY', min: -20, max: 20, step: 0.001 })
+            this.debug.addBinding(this.debugFolder, this.mainLight.position, 'z', { label: 'mainZ', min: -20, max: 20, step: 0.001 })
         }
     }
 
@@ -65,6 +65,6 @@ export default class ComplexeEnvironment
 
         this.scene.fog = null
         this.scene.background = null
-        this.debugFolder?.destroy?.()
+        this.debugFolder?.dispose?.()
     }
 }
