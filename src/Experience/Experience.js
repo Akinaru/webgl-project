@@ -8,6 +8,8 @@ import Resources from './Utils/Resources.js'
 import sources from './sources.js'
 import EventEnum from './Enum/EventEnum.js'
 import SceneManager from './Scenes/SceneManager.js'
+import MetierManager from './Metiers/MetierManager.js'
+import MetierEnum from './Enum/MetierEnum.js'
 
 let instance = null
 
@@ -31,6 +33,8 @@ export default class Experience
         this.canvas = canvas
 
         this.debug = new Debug()
+        this.metierEnum = MetierEnum
+        this.metierManager = new MetierManager()
         this.sizes = new Sizes()
         this.time = new Time()
         this.scene = new THREE.Scene()
@@ -58,6 +62,7 @@ export default class Experience
         this.time.off(`${EventEnum.TICK}.experience`)
 
         this.sceneManager.destroy?.()
+        this.metierManager.destroy?.()
         this.camera.destroy?.()
         this.renderer.destroy?.()
 
