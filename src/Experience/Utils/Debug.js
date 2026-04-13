@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { Pane } from 'tweakpane'
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials'
 import * as CamerakitPlugin from '@tweakpane/plugin-camerakit'
+import packageInfo from '../../../package.json'
 
 const HASH_TOKEN_SEPARATOR = /[,+|]/g
 
@@ -60,7 +61,7 @@ export default class Debug
     setUI()
     {
         this.ui = new Pane({
-            title: '🛠 Debug',
+            title: `🛠 Debug v${packageInfo.version}`,
             expanded: true
         })
 
