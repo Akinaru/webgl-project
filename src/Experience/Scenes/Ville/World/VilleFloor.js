@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import Experience from '../Experience.js'
+import Experience from '../../../Experience.js'
 
-export default class Floor
+export default class VilleFloor
 {
     constructor()
     {
@@ -17,7 +17,7 @@ export default class Floor
 
     setGeometry()
     {
-        this.geometry = new THREE.CircleGeometry(5, 64)
+        this.geometry = new THREE.PlaneGeometry(90, 90, 8, 8)
     }
 
     setTextures()
@@ -30,14 +30,14 @@ export default class Floor
         if(this.textures.color)
         {
             this.textures.color.colorSpace = THREE.SRGBColorSpace
-            this.textures.color.repeat.set(1.5, 1.5)
+            this.textures.color.repeat.set(18, 18)
             this.textures.color.wrapS = THREE.RepeatWrapping
             this.textures.color.wrapT = THREE.RepeatWrapping
         }
 
         if(this.textures.normal)
         {
-            this.textures.normal.repeat.set(1.5, 1.5)
+            this.textures.normal.repeat.set(18, 18)
             this.textures.normal.wrapS = THREE.RepeatWrapping
             this.textures.normal.wrapT = THREE.RepeatWrapping
         }
@@ -58,8 +58,20 @@ export default class Floor
     {
         this.mesh = new THREE.Mesh(this.geometry, this.material)
         this.mesh.rotation.x = -Math.PI * 0.5
-        this.mesh.position.y = -0.6
+        this.mesh.position.y = 0
         this.mesh.receiveShadow = true
         this.scene.add(this.mesh)
+    }
+
+    destroy()
+    {
+        if(this.mesh)
+        {
+            this.scene.remove(this.mesh)
+            this.mesh = null
+        }
+
+        this.geometry?.dispose()
+        this.material?.dispose()
     }
 }

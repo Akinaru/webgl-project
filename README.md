@@ -4,9 +4,10 @@ Exemple concret d'architecture modulaire:
 
 - `Experience` (classe centrale + singleton)
 - `Utils` (`Sizes`, `Time`, `EventEmitter`, `Resources`, `Debug`)
-- `Camera`
+- `Camera` (camera pure, pilotee par le joueur)
 - `Renderer`
-- `World` (`Floor`, `Fox`, `Environment`)
+- `World` (`Player`, `Floor`, `Fox`, `Environment`)
+- `InputController` (gestion clavier centralisee)
 
 ## Lancer le projet
 
@@ -22,6 +23,14 @@ Ajoute `#debug` a l'URL pour afficher `lil-gui`.
 Exemple:
 
 `http://localhost:5173/#debug`
+
+## Controles FPS
+
+- Clique dans le canvas pour entrer en mode premiere personne (pointer lock).
+- `ZQSD` ou `WASD` pour se deplacer.
+- `Shift` pour sprinter.
+- `Space` pour sauter.
+- `Esc` pour sortir du mode FPS.
 
 ## Ajouter les assets du tuto
 

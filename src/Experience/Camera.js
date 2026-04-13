@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import Experience from './Experience.js'
+import EventEnum from './Enum/EventEnum.js'
 
 export default class Camera
 {
@@ -8,24 +8,18 @@ export default class Camera
     {
         this.experience = new Experience()
         this.sizes = this.experience.sizes
-        this.scene = this.experience.scene
-        this.canvas = this.experience.canvas
 
         this.setInstance()
-        this.setControls()
+
+        this.sizes.on(`${EventEnum.RESIZE}.camera`, () =>
+        {
+            this.resize()
+        })
     }
 
     setInstance()
     {
-        this.instance = new THREE.PerspectiveCamera(35, this.sizes.width / this.sizes.height, 0.1, 100)
-        this.instance.position.set(6, 4, 8)
-        this.scene.add(this.instance)
-    }
-
-    setControls()
-    {
-        this.controls = new OrbitControls(this.instance, this.canvas)
-        this.controls.enableDamping = true
+        this.instance = new THREE.PerspectiveCamera(70, this.sizes.width / this.sizes.height, 0.1, 150)
     }
 
     resize()
@@ -36,6 +30,11 @@ export default class Camera
 
     update()
     {
-        this.controls.update()
+        // La camera est pilotee par la classe Player en vue FPS.
+    }
+
+    destroy()
+    {
+        this.sizes.off(`${EventEnum.RESIZE}.camera`)
     }
 }

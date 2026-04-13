@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import Experience from '../Experience.js'
+import Experience from '../../../Experience.js'
 
-export default class Fox
+export default class VilleFox
 {
     constructor()
     {
@@ -13,7 +13,7 @@ export default class Fox
 
         if(this.debug.active)
         {
-            this.debugFolder = this.debug.ui.addFolder('fox')
+            this.debugFolder = this.debug.ui.addFolder('villeFox')
         }
 
         this.resource = this.resources.items.foxModel
@@ -111,5 +111,29 @@ export default class Fox
             this.fallback.rotation.x += this.time.delta * 0.0004
             this.fallback.rotation.y += this.time.delta * 0.0007
         }
+    }
+
+    destroy()
+    {
+        if(this.animation?.mixer)
+        {
+            this.animation.mixer.stopAllAction()
+        }
+
+        if(this.model)
+        {
+            this.scene.remove(this.model)
+            this.model = null
+        }
+
+        if(this.fallback)
+        {
+            this.scene.remove(this.fallback)
+            this.fallback.geometry.dispose()
+            this.fallback.material.dispose()
+            this.fallback = null
+        }
+
+        this.debugFolder?.destroy?.()
     }
 }
