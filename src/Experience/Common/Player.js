@@ -135,6 +135,11 @@ export default class Player
 
     update(delta)
     {
+        if(this.experience.dialogueManager?.isRunning?.())
+        {
+            return
+        }
+
         const deltaSeconds = Math.min(delta, 50) * 0.001
 
         this.updateMoveDirection()
