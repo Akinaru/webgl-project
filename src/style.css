@@ -107,3 +107,101 @@ body.is-pointer-locked .hud__crosshair
 {
     overscroll-behavior: contain;
 }
+
+.dialogue
+{
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0.9rem;
+    z-index: 25;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.dialogue.is-visible
+{
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.dialogue__panel
+{
+    width: min(92vw, 940px);
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 16px;
+    background: linear-gradient(170deg, rgba(8, 12, 18, 0.9) 0%, rgba(9, 17, 25, 0.88) 100%);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(7px);
+    pointer-events: auto;
+}
+
+.dialogue__speaker
+{
+    margin-bottom: 0.35rem;
+    color: rgba(170, 214, 255, 0.96);
+    font-weight: 700;
+    font-size: 0.93rem;
+    letter-spacing: 0.03em;
+}
+
+.dialogue__text
+{
+    margin-bottom: 0.55rem;
+    color: rgba(245, 247, 250, 0.96);
+    font-size: 0.97rem;
+    line-height: 1.45;
+}
+
+.dialogue__choices
+{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+}
+
+.dialogue__choice
+{
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    border: 1px solid rgba(128, 180, 240, 0.5);
+    border-radius: 11px;
+    padding: 0.5rem 0.6rem;
+    background: rgba(21, 42, 62, 0.58);
+    color: rgba(245, 247, 250, 0.95);
+    cursor: pointer;
+    transition: background 130ms ease, border-color 130ms ease, transform 130ms ease;
+}
+
+.dialogue__choice:hover
+{
+    background: rgba(33, 66, 96, 0.76);
+    border-color: rgba(173, 218, 255, 0.8);
+    transform: translateY(-1px);
+}
+
+.dialogue__choice-index
+{
+    color: rgba(168, 220, 255, 0.92);
+    font-weight: 700;
+}
+
+.dialogue__hint
+{
+    margin-top: 0.55rem;
+    color: rgba(197, 210, 225, 0.72);
+    font-size: 0.78rem;
+}
+
+body.is-dialogue-open .hud__crosshair
+{
+    opacity: 0;
+}
