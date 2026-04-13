@@ -1,8 +1,8 @@
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Player.js'
+import Bloom from '../../../Common/Bloom.js'
 import VilleFloor from './VilleFloor.js'
-import Bloom from './Bloom.js'
 import VilleEnvironment from './VilleEnvironment.js'
 
 let villeWorldInstanceIndex = 0

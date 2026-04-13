@@ -9,6 +9,9 @@ export default class Player
     constructor({
         groundHeight = 0,
         boundaryRadius = 36,
+        collisionBoxes = [],
+        collisionMeshes = [],
+        groundMeshes = [],
         spawnPosition = null,
         spawnYaw = 0,
         spawnPitch = 0
@@ -20,9 +23,16 @@ export default class Player
 
         this.groundHeight = groundHeight
         this.boundaryRadius = boundaryRadius
+        this.collisionBoxes = Array.isArray(collisionBoxes) ? collisionBoxes : []
+        this.collisionMeshes = Array.isArray(collisionMeshes) ? collisionMeshes : []
+        this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
+            ? groundMeshes
+            : this.collisionMeshes
 
         this.settings = {
             height: 1.65,
+            radius: 0.35,
+            stepHeight: 0.65,
             walkSpeed: 4.2,
             sprintSpeed: 7,
             acceleration: 18,
@@ -39,6 +49,18 @@ export default class Player
         this.moveDirection = new THREE.Vector3()
         this.forwardDirection = new THREE.Vector3()
         this.rightDirection = new THREE.Vector3()
+        this.previousPosition = this.position.clone()
+        this.collisionRaycaster = new THREE.Raycaster()
+        this.collisionDirection = new THREE.Vector3()
+        this.raycastOrigin = new THREE.Vector3()
+        this.worldNormal = new THREE.Vector3()
+        this.collisionDebugState = {
+            hit: false,
+            rays: [],
+            hitPoint: null,
+            hitNormal: null
+        }
+        this.groundRaycaster = new THREE.Raycaster()
 
         this.yaw = spawnYaw
         this.pitch = spawnPitch
@@ -178,19 +200,11 @@ export default class Player
 
     updatePosition(deltaSeconds)
     {
+        this.previousPosition.copy(this.position)
         this.position.addScaledVector(this.velocity, deltaSeconds)
 
-        const minY = this.groundHeight + this.settings.height
-        if(this.position.y <= minY)
-        {
-            this.position.y = minY
-            this.velocity.y = 0
-            this.isOnGround = true
-        }
-        else
-        {
-            this.isOnGround = false
-        }
+        this.resolveCollisions()
+        this.resolveGroundCollision()
 
         const horizontalDistance = Math.hypot(this.position.x, this.position.z)
         if(horizontalDistance > this.boundaryRadius)
@@ -201,6 +215,248 @@ export default class Player
             this.velocity.x = 0
             this.velocity.z = 0
         }
+    }
+
+    resolveGroundCollision()
+    {
+        const fallbackGroundY = this.groundHeight + this.settings.height
+        let resolvedGroundY = fallbackGroundY
+
+        if(this.groundMeshes.length > 0)
+        {
+            const rayOrigin = new THREE.Vector3(this.position.x, this.position.y + 2, this.position.z)
+            this.groundRaycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0))
+            this.groundRaycaster.near = 0
+            this.groundRaycaster.far = 20
+
+            const hits = this.groundRaycaster.intersectObjects(this.groundMeshes, false)
+            for(const hit of hits)
+            {
+                if(!hit.face)
+                {
+                    continue
+                }
+
+                this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                if(this.worldNormal.y < 0.45)
+                {
+                    continue
+                }
+
+                const candidateGroundY = hit.point.y + this.settings.height
+                const stepDelta = candidateGroundY - this.position.y
+
+                if(stepDelta <= this.settings.stepHeight || this.position.y <= candidateGroundY + 0.08)
+                {
+                    resolvedGroundY = Math.max(resolvedGroundY, candidateGroundY)
+                }
+                break
+            }
+        }
+
+        if(this.position.y <= resolvedGroundY + 0.08)
+        {
+            this.position.y = resolvedGroundY
+            this.velocity.y = 0
+            this.isOnGround = true
+            return
+        }
+
+        this.isOnGround = false
+    }
+
+    resolveCollisions()
+    {
+        this.resolveMeshCollisions()
+
+        if(this.collisionBoxes.length === 0)
+        {
+            return
+        }
+
+        const radius = this.settings.radius
+        const radiusSq = radius * radius
+        const feetY = this.position.y - this.settings.height + 0.05
+        const headY = this.position.y - 0.1
+
+        for(let iteration = 0; iteration < 3; iteration++)
+        {
+            let hasCollision = false
+
+            for(const box of this.collisionBoxes)
+            {
+                if(!box)
+                {
+                    continue
+                }
+
+                if(box.max.y <= feetY || box.min.y >= headY)
+                {
+                    continue
+                }
+
+                const closestX = THREE.MathUtils.clamp(this.position.x, box.min.x, box.max.x)
+                const closestZ = THREE.MathUtils.clamp(this.position.z, box.min.z, box.max.z)
+
+                let dx = this.position.x - closestX
+                let dz = this.position.z - closestZ
+                let distanceSq = (dx * dx) + (dz * dz)
+
+                if(distanceSq >= radiusSq)
+                {
+                    continue
+                }
+
+                hasCollision = true
+
+                if(distanceSq < 1e-8)
+                {
+                    const distanceToMinX = Math.abs(this.position.x - box.min.x)
+                    const distanceToMaxX = Math.abs(box.max.x - this.position.x)
+                    const distanceToMinZ = Math.abs(this.position.z - box.min.z)
+                    const distanceToMaxZ = Math.abs(box.max.z - this.position.z)
+
+                    const minDistance = Math.min(distanceToMinX, distanceToMaxX, distanceToMinZ, distanceToMaxZ)
+
+                    if(minDistance === distanceToMinX)
+                    {
+                        dx = -1
+                        dz = 0
+                    }
+                    else if(minDistance === distanceToMaxX)
+                    {
+                        dx = 1
+                        dz = 0
+                    }
+                    else if(minDistance === distanceToMinZ)
+                    {
+                        dx = 0
+                        dz = -1
+                    }
+                    else
+                    {
+                        dx = 0
+                        dz = 1
+                    }
+
+                    distanceSq = 1
+                }
+
+                const distance = Math.sqrt(distanceSq)
+                const normalX = dx / distance
+                const normalZ = dz / distance
+                const penetration = radius - distance
+
+                this.position.x += normalX * penetration
+                this.position.z += normalZ * penetration
+
+                const projectedVelocity = (this.velocity.x * normalX) + (this.velocity.z * normalZ)
+                if(projectedVelocity < 0)
+                {
+                    this.velocity.x -= projectedVelocity * normalX
+                    this.velocity.z -= projectedVelocity * normalZ
+                }
+            }
+
+            if(!hasCollision)
+            {
+                break
+            }
+        }
+    }
+
+    resolveMeshCollisions()
+    {
+        const debugState = {
+            hit: false,
+            rays: [],
+            hitPoint: null,
+            hitNormal: null
+        }
+
+        if(this.collisionMeshes.length === 0)
+        {
+            this.collisionDebugState = debugState
+            return
+        }
+
+        this.collisionDirection
+            .set(
+                this.position.x - this.previousPosition.x,
+                0,
+                this.position.z - this.previousPosition.z
+            )
+
+        const travelDistance = this.collisionDirection.length()
+        if(travelDistance < 1e-5)
+        {
+            return
+        }
+
+        this.collisionDirection.multiplyScalar(1 / travelDistance)
+        const raycastFar = travelDistance + this.settings.radius
+        const feetY = this.position.y - this.settings.height
+        const sampleHeights = [feetY + 0.35, feetY + 0.9, this.position.y - 0.2]
+
+        let hasHit = false
+
+        for(const sampleY of sampleHeights)
+        {
+            this.raycastOrigin.set(this.previousPosition.x, sampleY, this.previousPosition.z)
+            const rayEnd = this.raycastOrigin.clone().addScaledVector(this.collisionDirection, raycastFar)
+            debugState.rays.push({
+                origin: this.raycastOrigin.clone(),
+                end: rayEnd
+            })
+
+            this.collisionRaycaster.set(this.raycastOrigin, this.collisionDirection)
+            this.collisionRaycaster.near = 0
+            this.collisionRaycaster.far = raycastFar
+
+            const hits = this.collisionRaycaster.intersectObjects(this.collisionMeshes, false)
+            for(const hit of hits)
+            {
+                if(!hit.face)
+                {
+                    continue
+                }
+
+                this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                // Ignore floor-like slopes so bridges/fountain tops don't behave like walls.
+                if(this.worldNormal.y > 0.25)
+                {
+                    continue
+                }
+
+                hasHit = true
+                debugState.hit = true
+                debugState.hitPoint = hit.point.clone()
+                debugState.hitNormal = this.worldNormal.clone()
+                break
+            }
+
+            if(hasHit)
+            {
+                break
+            }
+        }
+
+        if(!hasHit)
+        {
+            this.collisionDebugState = debugState
+            return
+        }
+
+        this.position.x = this.previousPosition.x
+        this.position.z = this.previousPosition.z
+        this.velocity.x = 0
+        this.velocity.z = 0
+        this.collisionDebugState = debugState
+    }
+
+    getCollisionDebugState()
+    {
+        return this.collisionDebugState
     }
 
     updateCameraTransform()
