@@ -1,6 +1,7 @@
 const SceneEnum = Object.freeze({
     VILLE: 'ville',
-    COMPLEXE: 'complexe'
+    COMPLEXE: 'complexe',
+    MAP: 'map'
 })
 
 export default SceneEnum
