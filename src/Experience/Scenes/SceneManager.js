@@ -21,7 +21,7 @@ export default class SceneManager
         this.register(SceneEnum.MAP, () => new MapScene())
 
         this.setDebug()
-        this.switchTo(SceneEnum.VILLE)
+        this.switchTo(SceneEnum.MAP)
     }
 
     register(key, factory)

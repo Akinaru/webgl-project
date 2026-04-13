@@ -1,5 +1,6 @@
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
+import Bloom from '../../../Common/Bloom.js'
 import Player from '../../../Common/Player.js'
 import MapEnvironment from './MapEnvironment.js'
 import MapModel from './MapModel.js'
@@ -46,6 +47,21 @@ export default class MapWorld
             spawnPosition: { x: -2.2, y: 7, z: 0.9 },
             spawnYaw: Math.PI
         })
+        this.bloom = new Bloom({
+            motion: {
+                center: { x: 2.5, y: 2.0, z: 2.5 },
+                radius: 0
+            },
+            follow: {
+                target: this.player,
+                minDistance: 3,
+                maxDistance: 7,
+                preferredDistance: 4.5,
+                heightOffset: 0.9,
+                speed: 3.8,
+                groundMeshes: this.mapModel.getCollisionMeshes?.() ?? []
+            }
+        })
         this.collisionDebug = new MapCollisionDebug({
             player: this.player,
             mapModel: this.mapModel
@@ -54,6 +70,7 @@ export default class MapWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.bloom?.update?.()
         this.player?.update(delta)
         this.collisionDebug?.update?.()
     }
@@ -72,6 +89,12 @@ export default class MapWorld
         {
             this.mapModel.destroy?.()
             this.mapModel = null
+        }
+
+        if(this.bloom)
+        {
+            this.bloom.destroy?.()
+            this.bloom = null
         }
 
         if(this.collisionDebug)
