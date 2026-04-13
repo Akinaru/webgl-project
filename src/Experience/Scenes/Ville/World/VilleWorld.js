@@ -2,7 +2,7 @@ import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Player.js'
 import VilleFloor from './VilleFloor.js'
-import VilleFox from './VilleFox.js'
+import Bloom from './Bloom.js'
 import VilleEnvironment from './VilleEnvironment.js'
 
 let villeWorldInstanceIndex = 0
@@ -35,7 +35,7 @@ export default class VilleWorld
         this.isSetUp = true
 
         this.floor = new VilleFloor()
-        this.fox = new VilleFox()
+        this.bloom = new Bloom()
         this.environment = new VilleEnvironment()
         this.player = new Player({
             groundHeight: 0,
@@ -52,9 +52,9 @@ export default class VilleWorld
             this.player.update(delta)
         }
 
-        if(this.fox)
+        if(this.bloom)
         {
-            this.fox.update()
+            this.bloom.update()
         }
     }
 
@@ -74,10 +74,10 @@ export default class VilleWorld
             this.floor = null
         }
 
-        if(this.fox)
+        if(this.bloom)
         {
-            this.fox.destroy?.()
-            this.fox = null
+            this.bloom.destroy?.()
+            this.bloom = null
         }
 
         if(this.environment)
