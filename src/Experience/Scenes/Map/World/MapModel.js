@@ -175,6 +175,93 @@ export default class MapModel
         return this.collisionMeshes ?? []
     }
 
+    getBloomGroundMeshes()
+    {
+        const meshes = this.collisionMeshes ?? []
+        return meshes.filter((mesh) => this.isBloomWalkableSurface(mesh))
+    }
+
+    getBloomAvoidZones()
+    {
+        if(!this.model)
+        {
+            return []
+        }
+
+        const zones = []
+        const bounds = new THREE.Box3()
+        const center = new THREE.Vector3()
+        const size = new THREE.Vector3()
+
+        this.model.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const isWater = this.hasNameInHierarchy(child, ['water', 'eau'])
+            const isFountain = this.hasNameInHierarchy(child, ['fontaine', 'fountain'])
+            if(!isWater && !isFountain)
+            {
+                return
+            }
+
+            bounds.setFromObject(child)
+            bounds.getCenter(center)
+            bounds.getSize(size)
+
+            const radius = (Math.max(size.x, size.z) * 0.5) + (isFountain ? 0.9 : 0.7)
+            zones.push({
+                x: center.x,
+                z: center.z,
+                radius
+            })
+        })
+
+        return zones
+    }
+
+    isForbiddenBloomSurface(object)
+    {
+        return this.hasNameInHierarchy(object, ['water', 'eau', 'fontaine', 'fountain'])
+    }
+
+    isBloomWalkableSurface(object)
+    {
+        const isBridge = this.hasNameInHierarchy(object, ['pont', 'bridge'])
+        if(isBridge)
+        {
+            return true
+        }
+
+        const inRelief = this.hasNameInHierarchy(object, ['relief'])
+        if(!inRelief)
+        {
+            return false
+        }
+
+        return true
+    }
+
+    hasNameInHierarchy(object, tokens = [])
+    {
+        let current = object
+        while(current)
+        {
+            const name = (current.name || '').toLowerCase()
+            for(const token of tokens)
+            {
+                if(name.includes(token))
+                {
+                    return true
+                }
+            }
+            current = current.parent
+        }
+        return false
+    }
+
     removeStaleMapRoots()
     {
         const staleRoots = []

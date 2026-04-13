@@ -36,6 +36,7 @@ export default class Bloom
             heightOffset: follow.heightOffset ?? 0.8,
             speed: follow.speed ?? 4.2,
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
+            avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
             enabled: Boolean(follow.target || follow.getTargetPosition)
         }
         this.followDirection = new THREE.Vector3(1, 0, 0)
@@ -233,6 +234,8 @@ export default class Bloom
                 .addScaledVector(this.direction, -desiredDistance)
         }
 
+        this.applyAvoidZones(this.followDesiredPosition, current)
+
         const fallbackGroundY = current.y - this.baseY
         const groundY = this.resolveGroundYAt(
             this.followDesiredPosition.x,
@@ -243,6 +246,7 @@ export default class Bloom
 
         const interpolation = 1 - Math.exp(-this.follow.speed * deltaSeconds)
         current.lerp(this.followDesiredPosition, interpolation)
+        this.applyAvoidZones(current, current)
 
         this.direction
             .set(
@@ -256,6 +260,56 @@ export default class Bloom
             this.direction.normalize()
             const heading = Math.atan2(this.direction.x, this.direction.z)
             this.model.rotation.set(0, this.baseYaw + heading, 0)
+        }
+    }
+
+    applyAvoidZones(position, currentPosition)
+    {
+        const zones = this.follow.avoidZones
+        if(!Array.isArray(zones) || zones.length === 0)
+        {
+            return
+        }
+
+        for(const zone of zones)
+        {
+            const radius = Math.max(0, zone.radius ?? 0)
+            if(radius === 0)
+            {
+                continue
+            }
+
+            let dx = position.x - zone.x
+            let dz = position.z - zone.z
+            let distance = Math.hypot(dx, dz)
+
+            if(distance >= radius)
+            {
+                continue
+            }
+
+            if(distance < 1e-5)
+            {
+                dx = currentPosition.x - zone.x
+                dz = currentPosition.z - zone.z
+                distance = Math.hypot(dx, dz)
+            }
+
+            if(distance < 1e-5)
+            {
+                dx = this.followDirection.x
+                dz = this.followDirection.z
+                distance = Math.hypot(dx, dz)
+            }
+
+            if(distance < 1e-5)
+            {
+                continue
+            }
+
+            const invDistance = 1 / distance
+            position.x = zone.x + (dx * invDistance * radius)
+            position.z = zone.z + (dz * invDistance * radius)
         }
     }
 

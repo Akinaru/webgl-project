@@ -59,7 +59,8 @@ export default class MapWorld
                 preferredDistance: 4.5,
                 heightOffset: 0.9,
                 speed: 3.8,
-                groundMeshes: this.mapModel.getCollisionMeshes?.() ?? []
+                groundMeshes: this.mapModel.getBloomGroundMeshes?.() ?? [],
+                avoidZones: this.mapModel.getBloomAvoidZones?.() ?? []
             }
         })
         this.collisionDebug = new MapCollisionDebug({
