@@ -38,6 +38,10 @@ export default class Player
             acceleration: 18,
             gravity: 24,
             jumpSpeed: 8.4,
+            headBobAmplitude: 0.035,
+            headBobFrequency: 1.7,
+            headBobSmoothing: 12,
+            headBobRollAmplitude: 0.006,
             lookSensitivity: 0.0022,
             minPitch: -Math.PI * 0.49,
             maxPitch: Math.PI * 0.49
@@ -61,6 +65,8 @@ export default class Player
             hitNormal: null
         }
         this.groundRaycaster = new THREE.Raycaster()
+        this.headBobPhase = 0
+        this.headBobOffset = 0
 
         this.yaw = spawnYaw
         this.pitch = spawnPitch
@@ -145,7 +151,7 @@ export default class Player
         this.updateMoveDirection()
         this.updateVelocity(deltaSeconds)
         this.updatePosition(deltaSeconds)
-        this.updateCameraTransform()
+        this.updateCameraTransform(deltaSeconds)
     }
 
     updateMoveDirection()
@@ -459,10 +465,29 @@ export default class Player
         return this.collisionDebugState
     }
 
-    updateCameraTransform()
+    updateCameraTransform(deltaSeconds)
     {
+        const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z)
+        const normalizedSpeed = THREE.MathUtils.clamp(horizontalSpeed / this.settings.walkSpeed, 0, 1.4)
+        const shouldBob = this.isOnGround && normalizedSpeed > 0.08 && this.isPointerLocked
+
+        let targetBobOffset = 0
+        if(shouldBob)
+        {
+            this.headBobPhase += deltaSeconds * Math.PI * 2 * this.settings.headBobFrequency * normalizedSpeed
+            targetBobOffset = Math.sin(this.headBobPhase) * this.settings.headBobAmplitude * normalizedSpeed
+        }
+
+        const bobLerp = 1 - Math.exp(-this.settings.headBobSmoothing * deltaSeconds)
+        this.headBobOffset = THREE.MathUtils.lerp(this.headBobOffset, targetBobOffset, bobLerp)
+
+        const rollOffset = shouldBob
+            ? Math.sin(this.headBobPhase + (Math.PI * 0.5)) * this.settings.headBobRollAmplitude * normalizedSpeed
+            : 0
+
         this.camera.position.copy(this.position)
-        this.camera.rotation.set(this.pitch, this.yaw, 0)
+        this.camera.position.y += this.headBobOffset
+        this.camera.rotation.set(this.pitch, this.yaw, rollOffset)
     }
 
     destroy()
