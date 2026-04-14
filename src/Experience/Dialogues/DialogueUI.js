@@ -9,6 +9,7 @@ export default class DialogueUI
         this.experience = new Experience()
         this.visible = false
         this.anchorWorldPosition = new THREE.Vector3()
+        this.anchorWorldForIndicator = new THREE.Vector3()
         this.anchorScreenPosition = new THREE.Vector2()
         this.anchorOffset = new THREE.Vector3(0, 1.15, 0)
         this.anchorNodeName = '__bloomRoot'
@@ -22,6 +23,9 @@ export default class DialogueUI
         this.choiceCursorMode = false
         this.cursorVisible = false
         this.virtualCursorPosition = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
+        this.cameraForward = new THREE.Vector3()
+        this.cameraToTarget = new THREE.Vector3()
+        this.lastIndicatorSide = 1
 
         this.setElements()
         this.setEvents()
@@ -60,6 +64,10 @@ export default class DialogueUI
         this.cursor = document.createElement('span')
         this.cursor.className = 'dialogue__cursor'
         document.body.appendChild(this.cursor)
+
+        this.turnIndicator = document.createElement('span')
+        this.turnIndicator.className = 'dialogue__turn-indicator'
+        document.body.appendChild(this.turnIndicator)
 
         document.body.appendChild(this.root)
         this.hide()
@@ -303,6 +311,7 @@ export default class DialogueUI
         this.visible = false
         this.root.classList.remove('is-visible')
         this.root.classList.remove('is-offscreen')
+        this.hideTurnIndicator()
         document.body.classList.remove('is-dialogue-open')
         this.setChoiceCursorMode(false)
         this.stopAnchorLoop()
@@ -463,6 +472,7 @@ export default class DialogueUI
         if(!this.anchorObject)
         {
             this.root.classList.add('is-offscreen')
+            this.hideTurnIndicator()
             return
         }
 
@@ -476,6 +486,7 @@ export default class DialogueUI
         this.anchorObject.getWorldPosition(this.anchorWorldPosition)
         this.anchorOffset.y = THREE.MathUtils.clamp(this.anchorHeightWorld * 0.58, 0.55, 2.4)
         this.anchorWorldPosition.add(this.anchorOffset)
+        this.anchorWorldForIndicator.copy(this.anchorWorldPosition)
         this.anchorWorldPosition.project(camera)
 
         const ndcX = this.anchorWorldPosition.x
@@ -486,10 +497,12 @@ export default class DialogueUI
         if(outOfView)
         {
             this.root.classList.add('is-offscreen')
+            this.showTurnIndicator(camera)
             return
         }
 
         this.root.classList.remove('is-offscreen')
+        this.hideTurnIndicator()
         this.anchorScreenPosition.set(
             (ndcX * 0.5 + 0.5) * window.innerWidth,
             (-ndcY * 0.5 + 0.5) * window.innerHeight
@@ -497,6 +510,56 @@ export default class DialogueUI
 
         this.root.style.left = `${this.anchorScreenPosition.x}px`
         this.root.style.top = `${this.anchorScreenPosition.y}px`
+    }
+
+    showTurnIndicator(camera)
+    {
+        const width = window.innerWidth
+        const height = window.innerHeight
+        const paddingX = 56
+        const side = this.getIndicatorSide(camera)
+        const x = side > 0 ? (width - paddingX) : paddingX
+        const y = height * 0.5
+        const rotation = side > 0 ? (Math.PI * 0.5) : (-Math.PI * 0.5)
+
+        this.turnIndicator.style.left = `${x}px`
+        this.turnIndicator.style.top = `${y}px`
+        this.turnIndicator.style.setProperty('--turn-rotation', `${rotation}rad`)
+        this.turnIndicator.classList.add('is-visible')
+    }
+
+    getIndicatorSide(camera)
+    {
+        camera.getWorldDirection(this.cameraForward)
+        this.cameraForward.y = 0
+        if(this.cameraForward.lengthSq() > 1e-8)
+        {
+            this.cameraForward.normalize()
+        }
+
+        this.cameraToTarget.copy(this.anchorWorldForIndicator).sub(camera.position)
+        this.cameraToTarget.y = 0
+
+        if(this.cameraToTarget.lengthSq() <= 1e-8 || this.cameraForward.lengthSq() <= 1e-8)
+        {
+            return this.lastIndicatorSide
+        }
+
+        this.cameraToTarget.normalize()
+        const crossY = this.cameraForward.z * this.cameraToTarget.x - this.cameraForward.x * this.cameraToTarget.z
+
+        if(Math.abs(crossY) < 1e-4)
+        {
+            return this.lastIndicatorSide
+        }
+
+        this.lastIndicatorSide = crossY < 0 ? 1 : -1
+        return this.lastIndicatorSide
+    }
+
+    hideTurnIndicator()
+    {
+        this.turnIndicator.classList.remove('is-visible')
     }
 
     measureAnchorHeight()
@@ -524,6 +587,7 @@ export default class DialogueUI
         this.stopAnchorLoop()
         this.setChoiceCursorMode(false)
         this.cursor.remove()
+        this.turnIndicator.remove()
         this.root.remove()
     }
 }
