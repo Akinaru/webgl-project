@@ -10,10 +10,15 @@ export default class DialogueUI
         this.visible = false
         this.anchorWorldPosition = new THREE.Vector3()
         this.anchorScreenPosition = new THREE.Vector2()
-        this.anchorOffset = new THREE.Vector3(0, 1.8, 0)
+        this.anchorOffset = new THREE.Vector3(0, 1.15, 0)
         this.anchorNodeName = '__bloomRoot'
         this.anchorObject = null
         this.anchorRaf = null
+        this.anchorBounds = new THREE.Box3()
+        this.anchorBoundsSize = new THREE.Vector3()
+        this.anchorHeightWorld = 1.6
+        this.lastAnchorMeasureAt = 0
+        this.anchorMeasureIntervalMs = 250
 
         this.setElements()
         this.setEvents()
@@ -246,7 +251,15 @@ export default class DialogueUI
             return
         }
 
+        const now = performance.now()
+        if((now - this.lastAnchorMeasureAt) >= this.anchorMeasureIntervalMs)
+        {
+            this.measureAnchorHeight()
+            this.lastAnchorMeasureAt = now
+        }
+
         this.anchorObject.getWorldPosition(this.anchorWorldPosition)
+        this.anchorOffset.y = THREE.MathUtils.clamp(this.anchorHeightWorld * 0.58, 0.55, 2.4)
         this.anchorWorldPosition.add(this.anchorOffset)
         this.anchorWorldPosition.project(camera)
 
@@ -269,6 +282,18 @@ export default class DialogueUI
 
         this.root.style.left = `${this.anchorScreenPosition.x}px`
         this.root.style.top = `${this.anchorScreenPosition.y}px`
+    }
+
+    measureAnchorHeight()
+    {
+        this.anchorBounds.setFromObject(this.anchorObject)
+        if(this.anchorBounds.isEmpty())
+        {
+            return
+        }
+
+        this.anchorBounds.getSize(this.anchorBoundsSize)
+        this.anchorHeightWorld = Math.max(this.anchorBoundsSize.y, 0.1)
     }
 
     destroy()
