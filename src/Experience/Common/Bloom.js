@@ -18,7 +18,7 @@ export default class Bloom
         this.tmpQuaternion = new THREE.Quaternion()
         this.direction = new THREE.Vector3()
         this.scaleState = {
-            visualScale: 1
+            visualScale: 0.4
         }
 
         this.motion = {
@@ -67,6 +67,7 @@ export default class Bloom
     setModel()
     {
         this.model = this.resource.scene.clone(true)
+        this.model.name = '__bloomRoot'
 
         const bounds = new THREE.Box3().setFromObject(this.model)
         const size = bounds.getSize(new THREE.Vector3())
@@ -130,6 +131,7 @@ export default class Bloom
             })
         )
 
+        this.fallback.name = '__bloomRoot'
         this.fallback.position.y = 0.2
         this.fallback.castShadow = true
         this.scene.add(this.fallback)

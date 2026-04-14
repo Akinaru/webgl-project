@@ -1,4 +1,5 @@
 import Experience from '../Experience.js'
+import * as THREE from 'three'
 
 export default class DialogueUI
 {
@@ -7,6 +8,12 @@ export default class DialogueUI
         this.dialogueManager = dialogueManager
         this.experience = new Experience()
         this.visible = false
+        this.anchorWorldPosition = new THREE.Vector3()
+        this.anchorScreenPosition = new THREE.Vector2()
+        this.anchorOffset = new THREE.Vector3(0, 1.8, 0)
+        this.anchorNodeName = '__bloomRoot'
+        this.anchorObject = null
+        this.anchorRaf = null
 
         this.setElements()
         this.setEvents()
@@ -37,6 +44,10 @@ export default class DialogueUI
         this.hint = document.createElement('p')
         this.hint.className = 'dialogue__hint'
         this.panel.appendChild(this.hint)
+
+        this.tail = document.createElement('span')
+        this.tail.className = 'dialogue__tail'
+        this.panel.appendChild(this.tail)
 
         document.body.appendChild(this.root)
         this.hide()
@@ -169,6 +180,7 @@ export default class DialogueUI
         this.visible = true
         this.root.classList.add('is-visible')
         document.body.classList.add('is-dialogue-open')
+        this.startAnchorLoop()
     }
 
     hide()
@@ -180,12 +192,89 @@ export default class DialogueUI
 
         this.visible = false
         this.root.classList.remove('is-visible')
+        this.root.classList.remove('is-offscreen')
         document.body.classList.remove('is-dialogue-open')
+        this.stopAnchorLoop()
+    }
+
+    startAnchorLoop()
+    {
+        if(this.anchorRaf)
+        {
+            return
+        }
+
+        const tick = () =>
+        {
+            this.anchorRaf = window.requestAnimationFrame(tick)
+            this.updateAnchorPosition()
+        }
+
+        this.anchorRaf = window.requestAnimationFrame(tick)
+        this.updateAnchorPosition()
+    }
+
+    stopAnchorLoop()
+    {
+        if(!this.anchorRaf)
+        {
+            return
+        }
+
+        window.cancelAnimationFrame(this.anchorRaf)
+        this.anchorRaf = null
+    }
+
+    updateAnchorPosition()
+    {
+        if(!this.visible)
+        {
+            return
+        }
+
+        const camera = this.experience.camera?.instance
+        const scene = this.experience.scene
+        if(!camera || !scene)
+        {
+            return
+        }
+
+        this.anchorObject = this.anchorObject?.parent ? this.anchorObject : scene.getObjectByName(this.anchorNodeName)
+        if(!this.anchorObject)
+        {
+            this.root.classList.add('is-offscreen')
+            return
+        }
+
+        this.anchorObject.getWorldPosition(this.anchorWorldPosition)
+        this.anchorWorldPosition.add(this.anchorOffset)
+        this.anchorWorldPosition.project(camera)
+
+        const ndcX = this.anchorWorldPosition.x
+        const ndcY = this.anchorWorldPosition.y
+        const ndcZ = this.anchorWorldPosition.z
+        const outOfView = ndcZ < -1 || ndcZ > 1 || Math.abs(ndcX) > 1.2 || Math.abs(ndcY) > 1.2
+
+        if(outOfView)
+        {
+            this.root.classList.add('is-offscreen')
+            return
+        }
+
+        this.root.classList.remove('is-offscreen')
+        this.anchorScreenPosition.set(
+            (ndcX * 0.5 + 0.5) * window.innerWidth,
+            (-ndcY * 0.5 + 0.5) * window.innerHeight
+        )
+
+        this.root.style.left = `${this.anchorScreenPosition.x}px`
+        this.root.style.top = `${this.anchorScreenPosition.y}px`
     }
 
     destroy()
     {
         window.removeEventListener('keydown', this.onWindowKeyDown)
+        this.stopAnchorLoop()
         this.root.remove()
     }
 }
