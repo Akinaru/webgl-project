@@ -7,6 +7,28 @@
   </head>
   <body>
     <canvas class="webgl"></canvas>
+    <div class="boot" id="bootScreen">
+      <div class="boot__home" id="bootHome">
+        <h1 class="boot__title">BLOOM</h1>
+        <div class="boot__actions">
+          <button class="boot__btn" id="btnStartWithAudio" type="button">Lancer le jeu</button>
+          <button class="boot__btn boot__btn--ghost" id="btnStartMuted" type="button">Lancer le jeu sans son</button>
+        </div>
+      </div>
+
+      <div class="boot__loading" id="bootLoading" aria-live="polite">
+        <span class="boot__loading-label">Chargement</span>
+        <span class="boot__loading-value" id="bootLoadingValue">0%</span>
+        <div class="boot__loading-bar">
+          <span class="boot__loading-fill" id="bootLoadingFill"></span>
+        </div>
+      </div>
+
+      <div class="boot__eye" id="bootEye" aria-hidden="true">
+        <div class="boot__eyelid boot__eyelid--top"></div>
+        <div class="boot__eyelid boot__eyelid--bottom"></div>
+      </div>
+    </div>
     <div class="hud">
       <p class="hud__hint">Clique dans la scene puis utilise ZQSD/WASD pour te deplacer, SHIFT pour sprinter, SPACE pour sauter, ESC pour sortir.</p>
       <div class="hud__crosshair" aria-hidden="true"></div>

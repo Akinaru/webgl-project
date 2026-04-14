@@ -11,6 +11,7 @@ import SceneManager from './Scenes/SceneManager.js'
 import MetierManager from './Metiers/MetierManager.js'
 import MetierEnum from './Enum/MetierEnum.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
+import Menu from './Menu/Menu.js'
 
 let instance = null
 
@@ -44,6 +45,19 @@ export default class Experience
         this.camera = new Camera()
         this.renderer = new Renderer()
         this.sceneManager = new SceneManager()
+        this.menu = new Menu(this)
+        this.hasStartedIntroDialogue = false
+
+        this.menu.start().then(() =>
+        {
+            if(this.hasStartedIntroDialogue)
+            {
+                return
+            }
+
+            this.hasStartedIntroDialogue = true
+            this.dialogueManager?.startByKey?.('bloom.intro')
+        })
 
         this.time.on(`${EventEnum.TICK}.experience`, () =>
         {
@@ -66,6 +80,7 @@ export default class Experience
         this.sceneManager.destroy?.()
         this.metierManager.destroy?.()
         this.dialogueManager.destroy?.()
+        this.menu?.destroy?.()
         this.camera.destroy?.()
         this.renderer.destroy?.()
 
