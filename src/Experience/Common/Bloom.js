@@ -12,10 +12,14 @@ export default class Bloom
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.time = this.experience.time
+        this.debug = this.experience.debug
 
         this.resource = this.resources.items.bloomModel
         this.tmpQuaternion = new THREE.Quaternion()
         this.direction = new THREE.Vector3()
+        this.scaleState = {
+            visualScale: 1
+        }
 
         this.motion = {
             center: motion.center instanceof THREE.Vector3
@@ -56,6 +60,8 @@ export default class Bloom
         {
             this.setFallback()
         }
+
+        this.setDebug()
     }
 
     setModel()
@@ -65,10 +71,10 @@ export default class Bloom
         const bounds = new THREE.Box3().setFromObject(this.model)
         const size = bounds.getSize(new THREE.Vector3())
         const targetHeight = 1.7
-        const scale = size.y > 0 ? targetHeight / size.y : 1
+        this.baseScale = size.y > 0 ? targetHeight / size.y : 1
+        this.unscaledBaseY = -bounds.min.y
 
-        this.model.scale.setScalar(scale)
-        this.baseY = -bounds.min.y * scale
+        this.applyVisualScale()
         this.baseYaw = this.model.rotation.y + Math.PI
         this.model.position.y = this.baseY
 
@@ -127,6 +133,44 @@ export default class Bloom
         this.fallback.position.y = 0.2
         this.fallback.castShadow = true
         this.scene.add(this.fallback)
+        this.applyVisualScale()
+    }
+
+    applyVisualScale()
+    {
+        const multiplier = Math.max(0.15, this.scaleState.visualScale)
+
+        if(this.model)
+        {
+            const scale = this.baseScale * multiplier
+            this.model.scale.setScalar(scale)
+            this.baseY = this.unscaledBaseY * scale
+            return
+        }
+
+        if(this.fallback)
+        {
+            this.fallback.scale.setScalar(multiplier)
+        }
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('💧 Bloom', { expanded: false })
+        this.debug.addBinding(this.debugFolder, this.scaleState, 'visualScale', {
+            label: 'size',
+            min: 0.15,
+            max: 2.5,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.applyVisualScale()
+        })
     }
 
     update()
@@ -361,6 +405,8 @@ export default class Bloom
 
     destroy()
     {
+        this.debugFolder?.dispose?.()
+
         if(this.model)
         {
             for(const armPart of this.armNodes)
