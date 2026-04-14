@@ -272,6 +272,7 @@
       .graph-wrap {
         position: relative;
         min-height: 0;
+        overflow: hidden;
       }
       #graph {
         position: absolute;
@@ -281,6 +282,113 @@
           linear-gradient(90deg, rgba(0,0,0,0.055) 1px, transparent 1px),
           linear-gradient(180deg, #fff, #f7f7f7);
         background-size: 24px 24px, 24px 24px, cover;
+      }
+      .graph-wrap.link-pending #graph {
+        cursor: copy;
+      }
+      .canvas-headup {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 3;
+        display: grid;
+        gap: 8px;
+        max-width: min(520px, calc(100% - 24px));
+        pointer-events: none;
+      }
+      .canvas-guide {
+        border: 1px solid #d7d7d7;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.92);
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        color: #303030;
+        backdrop-filter: blur(6px);
+      }
+      .bottom-dock {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        z-index: 4;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid #252525;
+        border-radius: 16px;
+        background: rgba(17, 17, 17, 0.94);
+        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.2);
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: calc(100% - 20px);
+      }
+      .dock-group {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 6px;
+        padding: 0 2px;
+      }
+      .dock-group + .dock-group {
+        border-left: 1px solid rgba(255, 255, 255, 0.18);
+        padding-left: 10px;
+      }
+      .btn.dock-btn {
+        flex: 0 0 auto;
+        border-radius: 10px;
+        min-height: 34px;
+        font-size: 0.76rem;
+        padding: 6px 10px;
+        white-space: nowrap;
+      }
+      .btn.dock-btn:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+      }
+      .quick-palette {
+        position: absolute;
+        z-index: 5;
+        min-width: 218px;
+        display: none;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 13px;
+        border: 1px solid #333;
+        background: rgba(22, 22, 22, 0.97);
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+      }
+      .quick-palette.visible {
+        display: grid;
+      }
+      .quick-palette__title {
+        font-size: 0.73rem;
+        color: #ddd;
+        margin-bottom: 2px;
+      }
+      .quick-palette .btn {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .node-hover-tooltip {
+        position: absolute;
+        z-index: 6;
+        display: none;
+        max-width: min(420px, calc(100% - 24px));
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #2e2e2e;
+        background: rgba(18, 18, 18, 0.96);
+        color: #f4f4f4;
+        font-size: 0.76rem;
+        line-height: 1.35;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        pointer-events: none;
+        white-space: pre-wrap;
+      }
+      .node-hover-tooltip.visible {
+        display: block;
       }
       .node-card {
         border: 1px solid #3a3a3a;
@@ -516,6 +624,76 @@
         font-size: 0.72rem;
         color: #666;
       }
+      .app-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
+        padding: 16px;
+      }
+      .app-modal.visible {
+        display: flex;
+      }
+      .app-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        border: 0;
+        background: rgba(0, 0, 0, 0.42);
+        cursor: pointer;
+      }
+      .app-modal__dialog {
+        position: relative;
+        z-index: 1;
+        width: min(540px, calc(100vw - 32px));
+        border-radius: 16px;
+        border: 1px solid #1a1a1a;
+        background: #fff;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+        padding: 14px;
+      }
+      .app-modal__title {
+        margin: 0;
+        font-size: 0.94rem;
+      }
+      .app-modal__message {
+        margin: 8px 0 0;
+        font-size: 0.84rem;
+        color: #333;
+      }
+      .app-modal__input-wrap {
+        margin-top: 12px;
+      }
+      .app-modal__input-wrap label {
+        display: block;
+        font-size: 0.74rem;
+        color: #666;
+        margin-bottom: 6px;
+      }
+      .app-modal__input {
+        width: 100%;
+        border: 1px solid #3b3b3b;
+        border-radius: 10px;
+        padding: 8px;
+        font: inherit;
+        color: #111;
+        background: #fff;
+      }
+      .app-modal__input:focus {
+        outline: none;
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+      }
+      .app-modal__actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .app-modal__actions .btn {
+        min-width: 112px;
+      }
       @media (max-width: 1300px) {
         .layout { grid-template-columns: 280px 1fr; }
         .layout.right-open { grid-template-columns: 280px 1fr 340px; }
@@ -541,6 +719,15 @@
         .panel,
         .panel.right { border: 0; border-top: 1px solid var(--line); max-height: 38vh; }
         .graph-wrap { min-height: 44vh; }
+        .bottom-dock {
+          width: calc(100% - 20px);
+          justify-content: flex-start;
+          left: 10px;
+          transform: none;
+        }
+        .node-hover-tooltip {
+          max-width: calc(100% - 20px);
+        }
       }
     </style>
   </head>
@@ -561,22 +748,16 @@
             <div class="menu-actions">
               <button class="btn tone-blue" id="btnLoadDefault">Charger dialogues du projet</button>
               <button class="btn tone-blue" id="btnImport">Importer fichier JSON / KSPN</button>
+              <button class="btn tone-slate" id="btnRestoreLocal">Ouvrir sauvegarde locale</button>
+              <button class="btn tone-slate" id="btnCloseFile">Fermer fichier courant</button>
+              <button class="btn tone-red" id="btnClearLocal">Effacer sauvegarde locale</button>
               <button class="btn tone-green" id="btnExport">Exporter fichier JSON</button>
             </div>
+            <div class="menu-note" id="fileSourceText">Source active: aucune</div>
           </section>
 
           <section class="section">
-            <h2>Graphe</h2>
-            <div class="menu-actions">
-              <button class="btn tone-amber" id="btnAutoLayout">Reorganiser automatiquement</button>
-              <button class="btn tone-slate" id="btnLinkMode">Mode liaison: OFF</button>
-            </div>
-            <div class="menu-note">Double-clique dans la zone centrale pour creer un bloc.</div>
-            <div class="menu-note">Mode liaison ON: clique un bloc source, puis un bloc cible pour creer un fil.</div>
-            <div class="kpi-row" style="margin-top: 8px;">
-              <span class="kpi">Blocs: <strong id="kpiNodes">0</strong></span>
-              <span class="kpi">Liens: <strong id="kpiEdges">0</strong></span>
-            </div>
+            <h2>Canvas</h2>
           </section>
 
           <section class="section">
@@ -593,17 +774,63 @@
           </section>
         </aside>
 
-        <section class="graph-wrap">
+        <section class="graph-wrap" id="graphWrap">
           <div id="graph"></div>
+          <div class="canvas-headup">
+            <div class="kpi-row">
+              <span class="kpi">Blocs: <strong id="kpiNodes">0</strong></span>
+              <span class="kpi">Liens: <strong id="kpiEdges">0</strong></span>
+            </div>
+            <div class="canvas-guide" id="canvasGuide">Double-clique dans le canvas pour ajouter un bloc.</div>
+          </div>
+          <div class="quick-palette" id="quickPalette" aria-hidden="true">
+            <div class="quick-palette__title">Ajouter un bloc ici</div>
+            <button class="btn dock-btn tone-blue" data-add-type="line"></button>
+            <button class="btn dock-btn tone-red" data-add-type="choice"></button>
+            <button class="btn dock-btn tone-amber" data-add-type="branch"></button>
+            <button class="btn dock-btn tone-green" data-add-type="action"></button>
+            <button class="btn dock-btn tone-slate" data-add-type="end"></button>
+          </div>
+          <div class="node-hover-tooltip" id="nodeHoverTooltip" aria-hidden="true"></div>
+          <div class="bottom-dock" id="bottomDock">
+            <div class="dock-group">
+              <button class="btn dock-btn tone-blue" id="dockAddLine"></button>
+              <button class="btn dock-btn tone-red" id="dockAddChoice"></button>
+              <button class="btn dock-btn tone-amber" id="dockAddBranch"></button>
+              <button class="btn dock-btn tone-green" id="dockAddAction"></button>
+              <button class="btn dock-btn tone-slate" id="dockAddEnd"></button>
+            </div>
+            <div class="dock-group">
+              <button class="btn dock-btn tone-slate" id="dockStartLink"></button>
+              <button class="btn dock-btn tone-amber" id="dockAutoLayout"></button>
+              <button class="btn dock-btn tone-slate" id="dockFitView"></button>
+            </div>
+          </div>
         </section>
 
         <aside class="panel right">
           <section class="section" id="nodeInspectorSection">
-            <h2>Edition du bloc</h2>
+            <h2>Bloc</h2>
             <div class="empty">Selectionne un bloc dans le graphe.</div>
           </section>
         </aside>
       </main>
+    </div>
+
+    <div class="app-modal" id="appModalRoot" aria-hidden="true">
+      <button class="app-modal__backdrop" id="appModalBackdrop" type="button" aria-label="Fermer"></button>
+      <section class="app-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+        <h3 class="app-modal__title" id="appModalTitle">Confirmation</h3>
+        <p class="app-modal__message" id="appModalMessage"></p>
+        <div class="app-modal__input-wrap" id="appModalInputWrap" hidden>
+          <label for="appModalInput" id="appModalInputLabel">Valeur</label>
+          <input class="app-modal__input" id="appModalInput" type="text" />
+        </div>
+        <div class="app-modal__actions">
+          <button class="btn secondary" id="appModalCancel" type="button">Annuler</button>
+          <button class="btn tone-red" id="appModalConfirm" type="button">Confirmer</button>
+        </div>
+      </section>
     </div>
 
     <script src="https://unpkg.com/vis-data@7.1.9/peer/umd/vis-data.min.js"></script>
@@ -625,6 +852,14 @@
         end: 'Fin de dialogue'
       }
 
+      const NODE_TYPE_UI = {
+        line: { label: 'Texte', icon: 'text', tone: 'blue' },
+        choice: { label: 'Choix', icon: 'choice', tone: 'red' },
+        branch: { label: 'Branchement', icon: 'branch', tone: 'amber' },
+        action: { label: 'Actions', icon: 'action', tone: 'green' },
+        end: { label: 'Fin', icon: 'end', tone: 'slate' }
+      }
+
       const BUTTON_TONE_CLASSES = ['tone-blue', 'tone-green', 'tone-amber', 'tone-red', 'tone-slate']
 
       const ICON_MAP = {
@@ -644,6 +879,8 @@
         branch: '<path d="M8 2v12"></path><path d="M8 8l-4 4"></path><path d="M8 8l4 4"></path>',
         action: '<path d="M8 2l1.9 4.2L14 7l-3 2.9L11.8 14 8 11.8 4.2 14 5 9.9 2 7l4.1-.8z"></path>',
         end: '<circle cx="8" cy="8" r="5.5"></circle><path d="M5.5 8l1.6 1.6L10.5 6.2"></path>',
+        close: '<path d="M3 3l10 10M13 3L3 13"></path>',
+        focus: '<path d="M2 6V2h4"></path><path d="M10 2h4v4"></path><path d="M14 10v4h-4"></path><path d="M6 14H2v-4"></path><circle cx="8" cy="8" r="2.2"></circle>',
         block: '<rect x="2.5" y="3.5" width="11" height="9"></rect>'
       }
 
@@ -673,6 +910,14 @@
         { value: 'BOTANISTE', label: 'Botaniste' }
       ]
 
+      const LOCAL_SESSION_STORAGE_KEY = 'dialogue-editor.session.v1'
+      const PROJECT_DIALOGUES_CANDIDATE_PATHS = [
+        './src/Experience/Dialogues/dialogues.export.json',
+        './src/Experience/Dialogues/dialogues.json',
+        './dialogues.export.json',
+        './dialogues.json'
+      ]
+
       function iconSvg(name) {
         const paths = ICON_MAP[name] || ICON_MAP.block
         return `<svg class="ico" viewBox="0 0 16 16" aria-hidden="true">${paths}</svg>`
@@ -695,17 +940,24 @@
       const state = {
         dialogues: {},
         layouts: {},
+        file: {
+          sourceLabel: 'Aucune source'
+        },
         ui: {
           leftPanelOpen: true,
           rightPanelVisible: false,
-          linkMode: false,
           linkSourceId: null,
-          showAdvancedInspector: false
+          quickPaletteCanvasPos: null,
+          inspectorDetailsOpen: {}
         }
       }
 
       let currentDialogueKey = null
       let selectedNodeId = null
+      const inspectorObjectKeys = new WeakMap()
+      let inspectorObjectKeyCounter = 1
+      let lastPersistedSessionSnapshot = ''
+      let localSessionPersistInterval = null
 
       const nodesDS = new vis.DataSet()
       const edgesDS = new vis.DataSet()
@@ -716,17 +968,40 @@
         dialogueMetaSection: document.getElementById('dialogueMetaSection'),
         nodeInspectorSection: document.getElementById('nodeInspectorSection'),
         layoutRoot: document.getElementById('layoutRoot'),
+        graphWrap: document.getElementById('graphWrap'),
         statusText: document.getElementById('statusText'),
+        canvasGuide: document.getElementById('canvasGuide'),
+        quickPalette: document.getElementById('quickPalette'),
+        nodeHoverTooltip: document.getElementById('nodeHoverTooltip'),
         kpiNodes: document.getElementById('kpiNodes'),
         kpiEdges: document.getElementById('kpiEdges'),
         btnLoadDefault: document.getElementById('btnLoadDefault'),
         btnImport: document.getElementById('btnImport'),
+        btnRestoreLocal: document.getElementById('btnRestoreLocal'),
+        btnCloseFile: document.getElementById('btnCloseFile'),
+        btnClearLocal: document.getElementById('btnClearLocal'),
         btnNewDialogue: document.getElementById('btnNewDialogue'),
         btnToggleLeft: document.getElementById('btnToggleLeft'),
-        btnAutoLayout: document.getElementById('btnAutoLayout'),
-        btnLinkMode: document.getElementById('btnLinkMode'),
+        dockAddLine: document.getElementById('dockAddLine'),
+        dockAddChoice: document.getElementById('dockAddChoice'),
+        dockAddBranch: document.getElementById('dockAddBranch'),
+        dockAddAction: document.getElementById('dockAddAction'),
+        dockAddEnd: document.getElementById('dockAddEnd'),
+        dockStartLink: document.getElementById('dockStartLink'),
+        dockAutoLayout: document.getElementById('dockAutoLayout'),
+        dockFitView: document.getElementById('dockFitView'),
         btnExport: document.getElementById('btnExport'),
-        fileInput: document.getElementById('fileInput')
+        fileInput: document.getElementById('fileInput'),
+        fileSourceText: document.getElementById('fileSourceText'),
+        appModalRoot: document.getElementById('appModalRoot'),
+        appModalBackdrop: document.getElementById('appModalBackdrop'),
+        appModalTitle: document.getElementById('appModalTitle'),
+        appModalMessage: document.getElementById('appModalMessage'),
+        appModalInputWrap: document.getElementById('appModalInputWrap'),
+        appModalInputLabel: document.getElementById('appModalInputLabel'),
+        appModalInput: document.getElementById('appModalInput'),
+        appModalCancel: document.getElementById('appModalCancel'),
+        appModalConfirm: document.getElementById('appModalConfirm')
       }
 
       function setStatus(message, type = 'normal') {
@@ -736,6 +1011,287 @@
 
       function deepClone(value) {
         return JSON.parse(JSON.stringify(value))
+      }
+
+      function hasDialoguesLoaded() {
+        return Object.keys(state.dialogues).length > 0
+      }
+
+      function hasLocalSessionSaved() {
+        try {
+          return Boolean(window.localStorage.getItem(LOCAL_SESSION_STORAGE_KEY))
+        } catch(error) {
+          return false
+        }
+      }
+
+      function updateFileControlsState() {
+        const hasLocal = hasLocalSessionSaved()
+        refs.btnRestoreLocal.disabled = !hasLocal
+        refs.btnClearLocal.disabled = !hasLocal
+        refs.btnCloseFile.disabled = !hasDialoguesLoaded()
+      }
+
+      function setActiveSourceLabel(label = 'Aucune source') {
+        state.file.sourceLabel = label
+        if(refs.fileSourceText) {
+          refs.fileSourceText.textContent = `Source active: ${label}`
+        }
+        updateFileControlsState()
+      }
+
+      function serializeLocalSessionPayload() {
+        return JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          sourceLabel: state.file.sourceLabel,
+          dialogues: deepClone(state.dialogues),
+          layouts: deepClone(state.layouts)
+        })
+      }
+
+      function persistLocalSession({ force = false } = {}) {
+        if(!hasDialoguesLoaded()) {
+          return false
+        }
+
+        try {
+          const payload = serializeLocalSessionPayload()
+          if(!force && payload === lastPersistedSessionSnapshot) {
+            return false
+          }
+          window.localStorage.setItem(LOCAL_SESSION_STORAGE_KEY, payload)
+          lastPersistedSessionSnapshot = payload
+          updateFileControlsState()
+          return true
+        } catch(error) {
+          return false
+        }
+      }
+
+      function clearLocalSession({ silent = false } = {}) {
+        try {
+          window.localStorage.removeItem(LOCAL_SESSION_STORAGE_KEY)
+          lastPersistedSessionSnapshot = ''
+          updateFileControlsState()
+          if(!silent) {
+            setStatus('Sauvegarde locale effacee.', 'ok')
+          }
+          return true
+        } catch(error) {
+          if(!silent) {
+            setStatus(`Impossible d effacer la sauvegarde locale (${error.message}).`, 'warn')
+          }
+          return false
+        }
+      }
+
+      function resetEditorPanelsAndGraph() {
+        currentDialogueKey = null
+        selectedNodeId = null
+        clearLinkArming()
+        hideQuickPalette()
+        state.ui.rightPanelVisible = false
+        updateLayoutVisibility()
+        renderDialogueList()
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+        updateFileControlsState()
+      }
+
+      function applyDialoguesState(dialoguesMap, {
+        layouts = null,
+        sourceLabel = 'Aucune source',
+        persist = true
+      } = {}) {
+        state.dialogues = normalizeData(dialoguesMap)
+        if(layouts && typeof layouts === 'object') {
+          state.layouts = deepClone(layouts)
+          Object.keys(state.dialogues).forEach((key) => {
+            if(!state.layouts[key]) {
+              state.layouts[key] = buildAutoLayout(state.dialogues[key])
+            }
+          })
+        } else {
+          buildLayoutsForAllDialogues()
+        }
+
+        setActiveSourceLabel(sourceLabel)
+        resetEditorPanelsAndGraph()
+
+        if(persist) {
+          persistLocalSession({ force: true })
+        }
+      }
+
+      function loadLocalSessionIntoEditor({ silent = false } = {}) {
+        let parsed
+
+        try {
+          const raw = window.localStorage.getItem(LOCAL_SESSION_STORAGE_KEY)
+          if(!raw) {
+            return false
+          }
+          parsed = JSON.parse(raw)
+        } catch(error) {
+          if(!silent) {
+            setStatus(`Sauvegarde locale invalide (${error.message}).`, 'warn')
+          }
+          return false
+        }
+
+        const savedDialogues = parsed?.dialogues
+        if(!savedDialogues || typeof savedDialogues !== 'object') {
+          if(!silent) {
+            setStatus('Sauvegarde locale vide.', 'warn')
+          }
+          return false
+        }
+
+        applyDialoguesState(savedDialogues, {
+          layouts: parsed?.layouts,
+          sourceLabel: parsed?.sourceLabel || 'Sauvegarde locale',
+          persist: false
+        })
+
+        lastPersistedSessionSnapshot = JSON.stringify(parsed)
+        updateFileControlsState()
+        if(!silent) {
+          setStatus('Sauvegarde locale chargee.', 'ok')
+        }
+        return true
+      }
+
+      function startLocalSessionAutoPersist() {
+        if(localSessionPersistInterval) {
+          return
+        }
+
+        localSessionPersistInterval = window.setInterval(() => {
+          persistLocalSession()
+        }, 1500)
+
+        window.addEventListener('beforeunload', () => {
+          persistLocalSession({ force: true })
+        })
+      }
+
+      const modalState = {
+        resolver: null,
+        lastFocusedElement: null
+      }
+
+      function isModalVisible() {
+        return refs.appModalRoot.classList.contains('visible')
+      }
+
+      function closeAppModal({ confirmed = false } = {}) {
+        const resolver = modalState.resolver
+        const value = refs.appModalInput.value
+
+        modalState.resolver = null
+        refs.appModalRoot.classList.remove('visible')
+        refs.appModalRoot.setAttribute('aria-hidden', 'true')
+        refs.appModalInputWrap.hidden = true
+        refs.appModalInput.value = ''
+        document.body.style.overflow = ''
+
+        if(modalState.lastFocusedElement && typeof modalState.lastFocusedElement.focus === 'function') {
+          modalState.lastFocusedElement.focus()
+        }
+
+        if(resolver) {
+          resolver({ confirmed, value })
+        }
+      }
+
+      function openAppModal({
+        title = 'Confirmation',
+        message = '',
+        confirmLabel = 'Confirmer',
+        cancelLabel = 'Annuler',
+        tone = 'red',
+        input = null
+      } = {}) {
+        if(modalState.resolver) {
+          modalState.resolver({ confirmed: false, value: '' })
+          modalState.resolver = null
+        }
+
+        return new Promise((resolve) => {
+          modalState.lastFocusedElement = document.activeElement
+          modalState.resolver = resolve
+
+          refs.appModalTitle.textContent = title
+          refs.appModalMessage.textContent = message
+          refs.appModalCancel.textContent = cancelLabel
+          refs.appModalConfirm.textContent = confirmLabel
+
+          BUTTON_TONE_CLASSES.forEach((className) => refs.appModalConfirm.classList.remove(className))
+          refs.appModalConfirm.classList.add(`tone-${tone}`)
+
+          if(input) {
+            refs.appModalInputWrap.hidden = false
+            refs.appModalInputLabel.textContent = input.label || 'Valeur'
+            refs.appModalInput.value = input.value || ''
+            refs.appModalInput.placeholder = input.placeholder || ''
+          } else {
+            refs.appModalInputWrap.hidden = true
+            refs.appModalInputLabel.textContent = 'Valeur'
+            refs.appModalInput.value = ''
+            refs.appModalInput.placeholder = ''
+          }
+
+          refs.appModalRoot.classList.add('visible')
+          refs.appModalRoot.setAttribute('aria-hidden', 'false')
+          document.body.style.overflow = 'hidden'
+
+          requestAnimationFrame(() => {
+            if(input) {
+              refs.appModalInput.focus()
+              refs.appModalInput.select()
+            } else {
+              refs.appModalConfirm.focus()
+            }
+          })
+        })
+      }
+
+      async function showConfirmModal({
+        title = 'Confirmation',
+        message = '',
+        confirmLabel = 'Confirmer',
+        cancelLabel = 'Annuler',
+        tone = 'red'
+      } = {}) {
+        const result = await openAppModal({ title, message, confirmLabel, cancelLabel, tone })
+        return result.confirmed
+      }
+
+      async function showPromptModal({
+        title = 'Saisie',
+        message = '',
+        confirmLabel = 'Valider',
+        cancelLabel = 'Annuler',
+        tone = 'blue',
+        inputLabel = 'Valeur',
+        inputValue = '',
+        inputPlaceholder = ''
+      } = {}) {
+        const result = await openAppModal({
+          title,
+          message,
+          confirmLabel,
+          cancelLabel,
+          tone,
+          input: {
+            label: inputLabel,
+            value: inputValue,
+            placeholder: inputPlaceholder
+          }
+        })
+        return result.confirmed ? result.value : null
       }
 
       function updateLayoutVisibility() {
@@ -748,21 +1304,165 @@
         refs.btnToggleLeft.innerHTML = iconSvg(state.ui.leftPanelOpen ? 'menuClose' : 'menuOpen')
       }
 
-      function updateGraphControlState() {
-        setButtonVisual(refs.btnLinkMode, {
-          label: state.ui.linkMode ? 'Mode liaison: ON' : 'Mode liaison: OFF',
+      function hasSelectedNode() {
+        const dialogue = currentDialogue()
+        return Boolean(dialogue && selectedNodeId && dialogue.nodes[selectedNodeId])
+      }
+
+      function updateCanvasGuide() {
+        if(!currentDialogueKey) {
+          refs.canvasGuide.textContent = 'Selectionne un dialogue pour commencer.'
+          return
+        }
+        if(state.ui.linkSourceId) {
+          refs.canvasGuide.textContent = `Liaison active depuis ${state.ui.linkSourceId}. Clique un bloc cible.`
+          return
+        }
+        refs.canvasGuide.textContent = 'Canvas actif.'
+      }
+
+      function updateDockState() {
+        const linkActive = Boolean(state.ui.linkSourceId)
+        const hasDialogue = Boolean(currentDialogueKey)
+
+        setButtonVisual(refs.dockStartLink, {
+          label: linkActive ? `Lier: ${state.ui.linkSourceId}` : 'Lier depuis la selection',
           icon: 'link',
-          tone: state.ui.linkMode ? 'amber' : 'slate'
+          tone: linkActive ? 'amber' : 'slate'
         })
-        refs.btnLinkMode.classList.toggle('active', state.ui.linkMode)
+
+        refs.dockStartLink.classList.toggle('active', linkActive)
+        refs.dockStartLink.disabled = !linkActive && !hasSelectedNode()
+        refs.dockAddLine.disabled = !hasDialogue
+        refs.dockAddChoice.disabled = !hasDialogue
+        refs.dockAddBranch.disabled = !hasDialogue
+        refs.dockAddAction.disabled = !hasDialogue
+        refs.dockAddEnd.disabled = !hasDialogue
+        refs.dockAutoLayout.disabled = !hasDialogue
+        refs.dockFitView.disabled = nodesDS.length === 0
+        refs.graphWrap.classList.toggle('link-pending', linkActive)
+        updateCanvasGuide()
+      }
+
+      function hideQuickPalette() {
+        state.ui.quickPaletteCanvasPos = null
+        refs.quickPalette.classList.remove('visible')
+        refs.quickPalette.setAttribute('aria-hidden', 'true')
+      }
+
+      function showQuickPalette(canvasPos) {
+        if(!currentDialogueKey) {
+          setStatus('Selectionne un dialogue avant d ajouter des blocs.', 'warn')
+          return
+        }
+        if(!canvasPos || !network) {
+          return
+        }
+
+        state.ui.quickPaletteCanvasPos = { x: canvasPos.x, y: canvasPos.y }
+        const domPos = network.canvasToDOM(canvasPos)
+        const wrapBounds = refs.graphWrap.getBoundingClientRect()
+
+        refs.quickPalette.classList.add('visible')
+        refs.quickPalette.setAttribute('aria-hidden', 'false')
+
+        const paletteRect = refs.quickPalette.getBoundingClientRect()
+        const maxX = wrapBounds.width - paletteRect.width - 10
+        const maxY = wrapBounds.height - paletteRect.height - 10
+        const left = Math.max(10, Math.min(domPos.x + 12, maxX))
+        const top = Math.max(10, Math.min(domPos.y - 10, maxY))
+        refs.quickPalette.style.left = `${left}px`
+        refs.quickPalette.style.top = `${top}px`
+      }
+
+      function hideNodeHoverTooltip() {
+        refs.nodeHoverTooltip.classList.remove('visible')
+        refs.nodeHoverTooltip.setAttribute('aria-hidden', 'true')
+        refs.nodeHoverTooltip.textContent = ''
+      }
+
+      function getNodeTooltipPreview(node) {
+        const text = typeof node?.text === 'string' ? node.text.trim() : ''
+        if(!text) {
+          return ''
+        }
+        const normalized = text.replace(/\s+/g, ' ').trim()
+        if(normalized.length <= 260) {
+          return normalized
+        }
+        return `${normalized.slice(0, 259)}…`
+      }
+
+      function showNodeHoverTooltip(nodeId) {
+        if(!network || !nodeId) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const dialogue = currentDialogue()
+        const node = dialogue?.nodes?.[nodeId]
+        const preview = getNodeTooltipPreview(node)
+        if(!preview) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const canvasPos = network.getPositions([nodeId])?.[nodeId]
+        if(!canvasPos) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const domPos = network.canvasToDOM(canvasPos)
+        const tooltip = refs.nodeHoverTooltip
+        tooltip.textContent = preview
+        tooltip.classList.add('visible')
+        tooltip.setAttribute('aria-hidden', 'false')
+        tooltip.style.left = '0px'
+        tooltip.style.top = '0px'
+
+        const wrapRect = refs.graphWrap.getBoundingClientRect()
+        const tipRect = tooltip.getBoundingClientRect()
+
+        const leftMin = 8
+        const topMin = 8
+        const leftMax = Math.max(leftMin, wrapRect.width - tipRect.width - 8)
+        const topMax = Math.max(topMin, wrapRect.height - tipRect.height - 8)
+
+        const left = Math.max(leftMin, Math.min(domPos.x - tipRect.width / 2, leftMax))
+        const top = Math.max(topMin, Math.min(domPos.y - tipRect.height - 18, topMax))
+
+        tooltip.style.left = `${left}px`
+        tooltip.style.top = `${top}px`
       }
 
       function decorateStaticButtons() {
         setButtonVisual(refs.btnLoadDefault, { label: 'Charger dialogues du projet', icon: 'folder', tone: 'blue' })
         setButtonVisual(refs.btnImport, { label: 'Importer fichier JSON / KSPN', icon: 'upload', tone: 'blue' })
+        setButtonVisual(refs.btnRestoreLocal, { label: 'Ouvrir sauvegarde locale', icon: 'folder', tone: 'slate' })
+        setButtonVisual(refs.btnCloseFile, { label: 'Fermer fichier courant', icon: 'close', tone: 'slate' })
+        setButtonVisual(refs.btnClearLocal, { label: 'Effacer sauvegarde locale', icon: 'trash', tone: 'red' })
         setButtonVisual(refs.btnExport, { label: 'Exporter fichier JSON', icon: 'download', tone: 'green' })
-        setButtonVisual(refs.btnAutoLayout, { label: 'Reorganiser automatiquement', icon: 'layout', tone: 'amber' })
         setButtonVisual(refs.btnNewDialogue, { label: 'Nouveau dialogue', icon: 'dialogue', tone: 'blue' })
+
+        setButtonVisual(refs.dockAddLine, NODE_TYPE_UI.line)
+        setButtonVisual(refs.dockAddChoice, NODE_TYPE_UI.choice)
+        setButtonVisual(refs.dockAddBranch, NODE_TYPE_UI.branch)
+        setButtonVisual(refs.dockAddAction, NODE_TYPE_UI.action)
+        setButtonVisual(refs.dockAddEnd, NODE_TYPE_UI.end)
+        setButtonVisual(refs.dockStartLink, { label: 'Lier depuis la selection', icon: 'link', tone: 'slate' })
+        setButtonVisual(refs.dockAutoLayout, { label: 'Auto layout', icon: 'layout', tone: 'amber' })
+        setButtonVisual(refs.dockFitView, { label: 'Cadrer', icon: 'focus', tone: 'slate' })
+
+        refs.quickPalette.querySelectorAll('[data-add-type]').forEach((button) => {
+          const type = button.dataset.addType
+          const ui = NODE_TYPE_UI[type]
+          if(ui) {
+            setButtonVisual(button, ui)
+          }
+        })
+
+        updateFileControlsState()
       }
 
       function createNode(type = 'line') {
@@ -1045,7 +1745,8 @@
         }
         currentDialogueKey = key
         selectedNodeId = null
-        state.ui.linkSourceId = null
+        clearLinkArming()
+        hideQuickPalette()
         state.ui.rightPanelVisible = true
         updateLayoutVisibility()
         renderDialogueList()
@@ -1072,7 +1773,8 @@
 
         currentDialogueKey = null
         selectedNodeId = null
-        state.ui.linkSourceId = null
+        clearLinkArming()
+        hideQuickPalette()
         state.ui.rightPanelVisible = false
         updateLayoutVisibility()
         renderDialogueList()
@@ -1202,12 +1904,16 @@
       }
 
       function deleteCurrentNode() {
+        deleteNodeById(selectedNodeId)
+      }
+
+      function deleteNodeById(nodeId) {
         const dialogue = currentDialogue()
-        if(!dialogue || !selectedNodeId || !dialogue.nodes[selectedNodeId]) {
+        if(!dialogue || !nodeId || !dialogue.nodes[nodeId]) {
           return
         }
 
-        const removedId = selectedNodeId
+        const removedId = nodeId
         delete dialogue.nodes[removedId]
         delete currentLayout()[removedId]
         removeNodeReferences(dialogue, removedId)
@@ -1216,26 +1922,46 @@
           dialogue.startNode = Object.keys(dialogue.nodes)[0] || ''
         }
 
-        selectedNodeId = null
+        if(state.ui.linkSourceId === removedId) {
+          clearLinkArming()
+        }
+
+        if(selectedNodeId === removedId) {
+          selectedNodeId = null
+        }
         renderDialogueMeta()
         renderNodeInspector()
         syncGraphFromDialogue()
         setStatus(`Bloc supprime: ${removedId}`, 'ok')
       }
 
-      function addNode(type = 'line') {
+      function getViewportCenter() {
+        if(!network) {
+          return { x: 0, y: 0 }
+        }
+        const center = network.getViewPosition()
+        return { x: center.x, y: center.y }
+      }
+
+      function addNode(type = 'line', { canvasPos = null } = {}) {
         const dialogue = currentDialogue()
         if(!dialogue) {
+          setStatus('Selectionne un dialogue avant d ajouter un bloc.', 'warn')
           return
         }
 
         const nodeId = uniqueNodeId(type)
         dialogue.nodes[nodeId] = createNode(type)
         const layout = currentLayout()
-        const anchor = selectedNodeId && layout[selectedNodeId] ? layout[selectedNodeId] : { x: 0, y: 0 }
+        const anchor = canvasPos
+          ? { x: canvasPos.x, y: canvasPos.y }
+          : (selectedNodeId && layout[selectedNodeId]
+              ? { x: layout[selectedNodeId].x + 290, y: layout[selectedNodeId].y + 120 }
+              : getViewportCenter())
+
         layout[nodeId] = {
-          x: anchor.x + 300,
-          y: anchor.y + 150
+          x: anchor.x,
+          y: anchor.y
         }
 
         if(!dialogue.startNode) {
@@ -1243,10 +1969,30 @@
         }
 
         selectedNodeId = nodeId
+        state.ui.rightPanelVisible = true
+        hideQuickPalette()
+        updateLayoutVisibility()
         renderDialogueMeta()
         renderNodeInspector()
         syncGraphFromDialogue()
         setStatus(`Bloc ajoute: ${nodeId}`, 'ok')
+      }
+
+      function clearLinkArming() {
+        state.ui.linkSourceId = null
+        updateDockState()
+      }
+
+      function armLinkFromSelection() {
+        const dialogue = currentDialogue()
+        if(!dialogue || !selectedNodeId || !dialogue.nodes[selectedNodeId]) {
+          setStatus('Selectionne un bloc pour demarrer une liaison.', 'warn')
+          return
+        }
+        state.ui.linkSourceId = selectedNodeId
+        hideQuickPalette()
+        updateDockState()
+        setStatus(`Liaison active depuis ${selectedNodeId}. Clique un bloc cible.`, 'ok')
       }
 
       function connectNodes(fromId, toId) {
@@ -1814,6 +2560,38 @@
         return section
       }
 
+      function getInspectorObjectKey(object, prefix = 'item') {
+        if(!object || typeof object !== 'object') {
+          return `${prefix}.none`
+        }
+        if(!inspectorObjectKeys.has(object)) {
+          inspectorObjectKeys.set(object, `${prefix}.${inspectorObjectKeyCounter++}`)
+        }
+        return inspectorObjectKeys.get(object)
+      }
+
+      function inspectorDetailsStateKey(localKey) {
+        return `${currentDialogueKey || 'none'}::${selectedNodeId || 'none'}::${localKey}`
+      }
+
+      function createPersistentDetails(localKey, { className = 'item', defaultOpen = false } = {}) {
+        const details = document.createElement('details')
+        details.className = className
+
+        const key = inspectorDetailsStateKey(localKey)
+        if(state.ui.inspectorDetailsOpen[key] === undefined) {
+          details.open = defaultOpen
+        } else {
+          details.open = Boolean(state.ui.inspectorDetailsOpen[key])
+        }
+
+        details.addEventListener('toggle', () => {
+          state.ui.inspectorDetailsOpen[key] = details.open
+        })
+
+        return details
+      }
+
       function previewText(value, maxLength = 40) {
         const text = String(value ?? '').trim()
         if(text === '') {
@@ -1920,41 +2698,6 @@
           help: 'Ce bloc sera lu en premier quand le dialogue est lance.'
         }))
 
-        const actionRow = document.createElement('div')
-        actionRow.className = 'row-actions'
-
-        const addLine = document.createElement('button')
-        addLine.className = 'btn tiny tone-blue'
-        setButtonVisual(addLine, { label: 'Bloc texte', icon: 'text', tone: 'blue' })
-        addLine.addEventListener('click', () => addNode('line'))
-        actionRow.appendChild(addLine)
-
-        const addChoice = document.createElement('button')
-        addChoice.className = 'btn tiny tone-red'
-        setButtonVisual(addChoice, { label: 'Bloc choix', icon: 'choice', tone: 'red' })
-        addChoice.addEventListener('click', () => addNode('choice'))
-        actionRow.appendChild(addChoice)
-
-        const addBranch = document.createElement('button')
-        addBranch.className = 'btn tiny tone-amber'
-        setButtonVisual(addBranch, { label: 'Bloc branchement', icon: 'branch', tone: 'amber' })
-        addBranch.addEventListener('click', () => addNode('branch'))
-        actionRow.appendChild(addBranch)
-
-        const addAction = document.createElement('button')
-        addAction.className = 'btn tiny tone-green'
-        setButtonVisual(addAction, { label: 'Bloc actions', icon: 'action', tone: 'green' })
-        addAction.addEventListener('click', () => addNode('action'))
-        actionRow.appendChild(addAction)
-
-        const addEnd = document.createElement('button')
-        addEnd.className = 'btn tiny tone-slate'
-        setButtonVisual(addEnd, { label: 'Bloc fin', icon: 'end', tone: 'slate' })
-        addEnd.addEventListener('click', () => addNode('end'))
-        actionRow.appendChild(addEnd)
-
-        root.appendChild(actionRow)
-
         const dangerRow = document.createElement('div')
         dangerRow.className = 'row-actions'
         dangerRow.style.marginTop = '8px'
@@ -1962,15 +2705,23 @@
         const deleteDialogue = document.createElement('button')
         deleteDialogue.className = 'btn tiny tone-red'
         setButtonVisual(deleteDialogue, { label: 'Supprimer dialogue', icon: 'trash', tone: 'red' })
-        deleteDialogue.addEventListener('click', () => {
-          if(!confirm(`Supprimer ${currentDialogueKey} ?`)) {
+        deleteDialogue.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Supprimer ce dialogue',
+            message: `Le dialogue ${currentDialogueKey} sera supprime de l editeur.`,
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(!confirmed) {
             return
           }
           delete state.dialogues[currentDialogueKey]
           delete state.layouts[currentDialogueKey]
           currentDialogueKey = null
           selectedNodeId = null
-          state.ui.linkSourceId = null
+          clearLinkArming()
+          hideQuickPalette()
           state.ui.rightPanelVisible = false
           updateLayoutVisibility()
           renderDialogueList()
@@ -1985,42 +2736,30 @@
       function renderNodeInspector() {
         const dialogue = currentDialogue()
         const root = refs.nodeInspectorSection
-        root.innerHTML = '<h2>Edition du bloc</h2>'
+        root.innerHTML = ''
+
+        const heading = document.createElement('h2')
+        heading.textContent = selectedNodeId || 'Bloc'
+        root.appendChild(heading)
 
         if(!dialogue || !selectedNodeId || !dialogue.nodes[selectedNodeId]) {
           const empty = document.createElement('div')
           empty.className = 'empty'
           empty.textContent = 'Selectionne un bloc dans le graphe.'
           root.appendChild(empty)
+          updateDockState()
           return
         }
 
         const node = dialogue.nodes[selectedNodeId]
+        const inspectorNodeId = selectedNodeId
         const inspectorHead = document.createElement('div')
         inspectorHead.className = 'inspector-head'
         const infoPill = document.createElement('div')
         infoPill.className = 'pill'
-        infoPill.textContent = `${NODE_TYPE_LABELS[node.type] || node.type} - ${selectedNodeId}`
+        infoPill.textContent = NODE_TYPE_LABELS[node.type] || node.type
         inspectorHead.appendChild(infoPill)
-
-        const advancedToggle = document.createElement('button')
-        advancedToggle.className = 'btn tiny tone-slate'
-        setButtonVisual(advancedToggle, {
-          label: state.ui.showAdvancedInspector ? 'Champs avances: ON' : 'Champs avances: OFF',
-          icon: 'block',
-          tone: 'slate'
-        })
-        advancedToggle.addEventListener('click', () => {
-          state.ui.showAdvancedInspector = !state.ui.showAdvancedInspector
-          renderNodeInspector()
-        })
-        inspectorHead.appendChild(advancedToggle)
         root.appendChild(inspectorHead)
-
-        const guide = document.createElement('div')
-        guide.className = 'editor-guide'
-        guide.textContent = 'Edition rapide: contenu -> sortie -> options.'
-        root.appendChild(guide)
 
         const typeSelect = document.createElement('select')
         ;['line', 'choice', 'branch', 'action', 'end'].forEach((type) => {
@@ -2048,24 +2787,22 @@
           help: 'Definit ce que fait ce bloc.'
         }))
 
-        if(state.ui.showAdvancedInspector) {
-          const idInput = document.createElement('input')
-          idInput.value = selectedNodeId
-          idInput.addEventListener('blur', () => {
-            const ok = renameNode(selectedNodeId, idInput.value)
-            if(ok) {
-              renderDialogueList()
-              renderDialogueMeta()
-              renderNodeInspector()
-              syncGraphFromDialogue()
-            }
-          })
-          root.appendChild(createField({
-            label: 'Nom technique unique du bloc',
-            element: idInput,
-            help: 'Option avancee. Utilise un nom court et unique.'
-          }))
-        }
+        const idInput = document.createElement('input')
+        idInput.value = selectedNodeId
+        idInput.addEventListener('blur', () => {
+          const ok = renameNode(selectedNodeId, idInput.value)
+          if(ok) {
+            renderDialogueList()
+            renderDialogueMeta()
+            renderNodeInspector()
+            syncGraphFromDialogue()
+          }
+        })
+        root.appendChild(createField({
+          label: 'Nom technique unique du bloc',
+          element: idInput,
+          help: 'Utilise un nom court et unique.'
+        }))
 
         if(node.type === 'line') {
           renderLineEditor(root, node)
@@ -2082,15 +2819,25 @@
         const dangerRow = document.createElement('div')
         dangerRow.className = 'row-actions'
         const deleteNodeBtn = document.createElement('button')
+        deleteNodeBtn.type = 'button'
         deleteNodeBtn.className = 'btn tiny tone-red'
         setButtonVisual(deleteNodeBtn, { label: 'Supprimer bloc', icon: 'trash', tone: 'red' })
-        deleteNodeBtn.addEventListener('click', () => {
-          if(confirm(`Supprimer le bloc ${selectedNodeId} ?`)) {
-            deleteCurrentNode()
+        deleteNodeBtn.addEventListener('click', async (event) => {
+          event.preventDefault()
+          const confirmed = await showConfirmModal({
+            title: 'Supprimer ce bloc',
+            message: `Le bloc ${inspectorNodeId} sera supprime, et ses references seront nettoyees.`,
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(confirmed) {
+            deleteNodeById(inspectorNodeId)
           }
         })
         dangerRow.appendChild(deleteNodeBtn)
         root.appendChild(dangerRow)
+        updateDockState()
       }
 
       function renderLineEditor(root, node) {
@@ -2225,8 +2972,11 @@
             choice.id = `choice_${index + 1}`
           }
 
-          const item = document.createElement('details')
-          item.className = 'item'
+          const choiceKey = getInspectorObjectKey(choice, 'choice')
+          const item = createPersistentDetails(`choice.item.${choiceKey}`, {
+            className: 'item',
+            defaultOpen: index === 0
+          })
           const summary = document.createElement('summary')
           const nextLabel = choice.next && currentDialogue()?.nodes?.[choice.next] ? choice.next : 'non defini'
           summary.innerHTML = `
@@ -2256,25 +3006,24 @@
             element: next
           }))
 
-          const advancedDetails = document.createElement('details')
-          advancedDetails.className = 'plain'
+          const advancedDetails = createPersistentDetails(`choice.advanced.${choiceKey}`, {
+            className: 'plain'
+          })
           const advancedSummary = document.createElement('summary')
           advancedSummary.textContent = 'Options avancees'
           advancedDetails.appendChild(advancedSummary)
 
-          if(state.ui.showAdvancedInspector) {
-            const id = document.createElement('input')
-            id.className = 'control'
-            id.value = choice.id
-            id.addEventListener('input', () => {
-              choice.id = id.value
-              syncGraphFromDialogue()
-            })
-            advancedDetails.appendChild(createField({
-              label: 'Identifiant technique de la reponse',
-              element: id
-            }))
-          }
+          const id = document.createElement('input')
+          id.className = 'control'
+          id.value = choice.id
+          id.addEventListener('input', () => {
+            choice.id = id.value
+            syncGraphFromDialogue()
+          })
+          advancedDetails.appendChild(createField({
+            label: 'Identifiant technique de la reponse',
+            element: id
+          }))
 
           appendConditionListEditor(advancedDetails, {
             title: 'Conditions',
@@ -2342,8 +3091,11 @@
         }
 
         node.branches.forEach((branch, index) => {
-          const item = document.createElement('details')
-          item.className = 'item'
+          const branchKey = getInspectorObjectKey(branch, 'branch')
+          const item = createPersistentDetails(`branch.item.${branchKey}`, {
+            className: 'item',
+            defaultOpen: index === 0
+          })
           const summary = document.createElement('summary')
           const nextLabel = branch.next && currentDialogue()?.nodes?.[branch.next] ? branch.next : 'non defini'
           summary.innerHTML = `
@@ -2471,10 +3223,13 @@
         const dialogue = currentDialogue()
         nodesDS.clear()
         edgesDS.clear()
+        hideNodeHoverTooltip()
 
         if(!dialogue) {
           refs.kpiNodes.textContent = '0'
           refs.kpiEdges.textContent = '0'
+          hideQuickPalette()
+          clearLinkArming()
           return
         }
 
@@ -2579,6 +3334,8 @@
         if(selectedNodeId && dialogue.nodes[selectedNodeId]) {
           network.selectNodes([selectedNodeId])
         }
+
+        updateDockState()
       }
 
       function exportJson() {
@@ -2597,23 +3354,25 @@
         setStatus('Export JSON termine.', 'ok')
       }
 
-      async function loadDefaultFile() {
-        try {
-          const candidatePaths = [
-            './dialogues.json',
-            './src/Experience/Dialogues/dialogues.json'
-          ]
+      async function fetchJsonNoCache(path) {
+        const url = `${path}${path.includes('?') ? '&' : '?'}_ts=${Date.now()}`
+        const response = await fetch(url, { cache: 'no-store' })
+        if(!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        return response.json()
+      }
 
+      async function loadDefaultFile({ silent = false } = {}) {
+        try {
           let json = null
           let lastError = null
+          let loadedPath = null
 
-          for(const path of candidatePaths) {
+          for(const path of PROJECT_DIALOGUES_CANDIDATE_PATHS) {
             try {
-              const response = await fetch(path)
-              if(!response.ok) {
-                throw new Error(`HTTP ${response.status}`)
-              }
-              json = await response.json()
+              json = await fetchJsonNoCache(path)
+              loadedPath = path
               break
             } catch(error) {
               lastError = error
@@ -2624,20 +3383,19 @@
             throw lastError || new Error('Fichier introuvable')
           }
 
-          state.dialogues = normalizeData(json)
-          buildLayoutsForAllDialogues()
-          currentDialogueKey = null
-          selectedNodeId = null
-          state.ui.linkSourceId = null
-          state.ui.rightPanelVisible = false
-          updateLayoutVisibility()
-          renderDialogueList()
-          renderDialogueMeta()
-          renderNodeInspector()
-          syncGraphFromDialogue()
-          setStatus('Dialogues projet charges.', 'ok')
+          applyDialoguesState(json, {
+            sourceLabel: `Projet (${loadedPath || 'fichier'})`
+          })
+
+          if(!silent) {
+            setStatus(`Dialogues projet charges depuis ${loadedPath}.`, 'ok')
+          }
+          return true
         } catch(error) {
-          setStatus(`Impossible de charger le fichier projet (${error.message}).`, 'warn')
+          if(!silent) {
+            setStatus(`Impossible de charger le fichier projet (${error.message}).`, 'warn')
+          }
+          return false
         }
       }
 
@@ -2646,17 +3404,9 @@
         reader.onload = () => {
           try {
             const parsed = JSON.parse(String(reader.result || '{}'))
-            state.dialogues = normalizeData(parsed)
-            buildLayoutsForAllDialogues()
-            currentDialogueKey = null
-            selectedNodeId = null
-            state.ui.linkSourceId = null
-            state.ui.rightPanelVisible = false
-            updateLayoutVisibility()
-            renderDialogueList()
-            renderDialogueMeta()
-            renderNodeInspector()
-            syncGraphFromDialogue()
+            applyDialoguesState(parsed, {
+              sourceLabel: `Import (${file.name})`
+            })
             setStatus(`Import reussi: ${file.name}`, 'ok')
           } catch(error) {
             setStatus(`Import invalide (${error.message})`, 'warn')
@@ -2689,52 +3439,65 @@
         )
 
         network.on('click', (params) => {
-          if(state.ui.linkMode) {
-            if(params.nodes.length === 0) {
-              state.ui.linkSourceId = null
-              setStatus('Mode liaison: selection source annulee.', 'warn')
+          hideNodeHoverTooltip()
+          const clickedNodeId = params.nodes[0]
+          const rawEvent = params.event?.srcEvent
+          const shouldArmByAlt = Boolean(rawEvent?.altKey)
+
+          if(clickedNodeId) {
+            hideQuickPalette()
+
+            if(state.ui.linkSourceId) {
+              if(state.ui.linkSourceId === clickedNodeId) {
+                setStatus('Choisis un bloc cible different du bloc source.', 'warn')
+                return
+              }
+
+              const sourceId = state.ui.linkSourceId
+              clearLinkArming()
+
+              if(connectNodes(sourceId, clickedNodeId)) {
+                selectedNodeId = sourceId
+                renderNodeInspector()
+                syncGraphFromDialogue()
+              }
               return
             }
 
-            const clickedNodeId = params.nodes[0]
-            if(!state.ui.linkSourceId) {
+            if(shouldArmByAlt) {
               state.ui.linkSourceId = clickedNodeId
               selectedNodeId = clickedNodeId
               renderNodeInspector()
-              setStatus(`Mode liaison: source ${clickedNodeId} selectionnee. Clique un bloc cible.`, 'ok')
+              updateDockState()
+              setStatus(`Source de liaison definie: ${clickedNodeId}. Clique ensuite un bloc cible.`, 'ok')
               return
             }
 
-            if(state.ui.linkSourceId === clickedNodeId) {
-              setStatus('Mode liaison: choisis un bloc cible different.', 'warn')
-              return
-            }
-
-            const sourceId = state.ui.linkSourceId
-            const targetId = clickedNodeId
-            state.ui.linkSourceId = null
-
-            if(connectNodes(sourceId, targetId)) {
-              selectedNodeId = sourceId
-              renderNodeInspector()
-              syncGraphFromDialogue()
-            }
-            return
-          }
-
-          if(params.nodes.length > 0) {
-            selectedNodeId = params.nodes[0]
+            selectedNodeId = clickedNodeId
             renderNodeInspector()
             return
           }
 
+          if(state.ui.linkSourceId) {
+            clearLinkArming()
+            setStatus('Liaison annulee.', 'warn')
+          }
+
           selectedNodeId = null
+          hideQuickPalette()
           renderNodeInspector()
         })
 
         network.on('doubleClick', (params) => {
-          if(params.nodes.length === 0 && currentDialogueKey) {
-            addNode('line')
+          hideNodeHoverTooltip()
+          if(params.nodes.length > 0) {
+            selectedNodeId = params.nodes[0]
+            hideQuickPalette()
+            renderNodeInspector()
+            return
+          }
+          if(currentDialogueKey) {
+            showQuickPalette(params.pointer?.canvas || getViewportCenter())
           }
         })
 
@@ -2754,9 +3517,35 @@
             }
           })
         })
+
+        network.on('hoverNode', (params) => {
+          showNodeHoverTooltip(params.node)
+        })
+
+        network.on('blurNode', () => {
+          hideNodeHoverTooltip()
+        })
+
+        network.on('dragStart', () => {
+          hideNodeHoverTooltip()
+        })
+
+        network.on('zoom', () => {
+          hideNodeHoverTooltip()
+        })
       }
 
       function setupEvents() {
+        refs.appModalBackdrop.addEventListener('click', () => closeAppModal({ confirmed: false }))
+        refs.appModalCancel.addEventListener('click', () => closeAppModal({ confirmed: false }))
+        refs.appModalConfirm.addEventListener('click', () => closeAppModal({ confirmed: true }))
+        refs.appModalInput.addEventListener('keydown', (event) => {
+          if(event.key === 'Enter') {
+            event.preventDefault()
+            closeAppModal({ confirmed: true })
+          }
+        })
+
         refs.btnLoadDefault.addEventListener('click', loadDefaultFile)
 
         refs.btnImport.addEventListener('click', () => refs.fileInput.click())
@@ -2768,8 +3557,69 @@
           refs.fileInput.value = ''
         })
 
-        refs.btnNewDialogue.addEventListener('click', () => {
-          createDialogue(prompt('Nom interne du dialogue', 'bloom.new') || 'dialogue.new')
+        refs.btnRestoreLocal.addEventListener('click', () => {
+          const ok = loadLocalSessionIntoEditor()
+          if(!ok) {
+            setStatus('Aucune sauvegarde locale disponible.', 'warn')
+          }
+        })
+
+        refs.btnCloseFile.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Fermer le fichier courant',
+            message: 'Le contenu sera retire de l editeur. La sauvegarde locale est conservee.',
+            confirmLabel: 'Fermer',
+            cancelLabel: 'Annuler',
+            tone: 'slate'
+          })
+          if(!confirmed) {
+            return
+          }
+
+          state.dialogues = {}
+          state.layouts = {}
+          setActiveSourceLabel('Aucune source')
+          resetEditorPanelsAndGraph()
+          setStatus('Fichier ferme. Tu peux reouvrir le projet ou une sauvegarde locale.', 'ok')
+        })
+
+        refs.btnClearLocal.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Effacer la sauvegarde locale',
+            message: 'Cette action supprime la reprise automatique au prochain chargement.',
+            confirmLabel: 'Effacer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(!confirmed) {
+            return
+          }
+          clearLocalSession()
+        })
+
+        refs.btnNewDialogue.addEventListener('click', async () => {
+          const key = await showPromptModal({
+            title: 'Nouveau dialogue',
+            message: 'Renseigne une cle interne unique (ex: bloom.new).',
+            confirmLabel: 'Creer',
+            cancelLabel: 'Annuler',
+            tone: 'blue',
+            inputLabel: 'Cle du dialogue',
+            inputValue: 'bloom.new',
+            inputPlaceholder: 'ex: bloom.new'
+          })
+
+          if(key === null) {
+            return
+          }
+
+          const normalized = key.trim()
+          if(!normalized) {
+            setStatus('Creation annulee: cle vide.', 'warn')
+            return
+          }
+
+          createDialogue(normalized)
         })
 
         refs.btnToggleLeft.addEventListener('click', () => {
@@ -2777,34 +3627,114 @@
           updateLayoutVisibility()
         })
 
-        refs.btnLinkMode.addEventListener('click', () => {
-          state.ui.linkMode = !state.ui.linkMode
-          state.ui.linkSourceId = null
-          updateGraphControlState()
-          setStatus(
-            state.ui.linkMode
-              ? 'Mode liaison active. Clique un bloc source puis un bloc cible.'
-              : 'Mode liaison desactive.',
-            'ok'
-          )
-        })
-
         refs.btnExport.addEventListener('click', exportJson)
 
-        refs.btnAutoLayout.addEventListener('click', () => {
+        refs.dockAddLine.addEventListener('click', () => addNode('line'))
+        refs.dockAddChoice.addEventListener('click', () => addNode('choice'))
+        refs.dockAddBranch.addEventListener('click', () => addNode('branch'))
+        refs.dockAddAction.addEventListener('click', () => addNode('action'))
+        refs.dockAddEnd.addEventListener('click', () => addNode('end'))
+
+        refs.quickPalette.querySelectorAll('[data-add-type]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const type = button.dataset.addType
+            addNode(type, { canvasPos: state.ui.quickPaletteCanvasPos || getViewportCenter() })
+          })
+        })
+
+        refs.dockStartLink.addEventListener('click', () => {
+          if(state.ui.linkSourceId) {
+            clearLinkArming()
+            setStatus('Liaison annulee.', 'warn')
+            return
+          }
+          armLinkFromSelection()
+        })
+
+        refs.dockAutoLayout.addEventListener('click', () => {
           autoLayoutCurrentDialogue({ fit: true })
           setStatus('Reorganisation automatique appliquee.', 'ok')
         })
+
+        refs.dockFitView.addEventListener('click', () => {
+          network.fit({ animation: { duration: 280, easingFunction: 'easeInOutQuad' } })
+          setStatus('Canvas recadre.', 'ok')
+        })
+
+        document.addEventListener('keydown', (event) => {
+          if(isModalVisible()) {
+            if(event.key === 'Escape') {
+              event.preventDefault()
+              closeAppModal({ confirmed: false })
+            }
+            return
+          }
+
+          const activeTag = document.activeElement?.tagName || ''
+          const inTextField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || Boolean(document.activeElement?.isContentEditable)
+
+          if(event.key === 'Escape') {
+            hideQuickPalette()
+            if(state.ui.linkSourceId) {
+              clearLinkArming()
+              setStatus('Liaison annulee.', 'warn')
+            }
+            return
+          }
+
+          if(inTextField) {
+            return
+          }
+
+          if(event.key.toLowerCase() === 'l') {
+            event.preventDefault()
+            if(state.ui.linkSourceId) {
+              clearLinkArming()
+              setStatus('Liaison annulee.', 'warn')
+            } else {
+              armLinkFromSelection()
+            }
+          }
+
+          if(event.key.toLowerCase() === 'n') {
+            event.preventDefault()
+            showQuickPalette(getViewportCenter())
+          }
+        })
+
+        document.addEventListener('pointerdown', (event) => {
+          if(!refs.quickPalette.classList.contains('visible')) {
+            return
+          }
+          if(refs.quickPalette.contains(event.target)) {
+            return
+          }
+          hideQuickPalette()
+        })
       }
 
-      function bootstrap() {
+      async function bootstrap() {
         setupNetwork()
         setupEvents()
         decorateStaticButtons()
-        createDialogue('bloom.intro', { select: false })
+        setActiveSourceLabel('Aucune source')
+        startLocalSessionAutoPersist()
+
+        const restoredLocalSession = loadLocalSessionIntoEditor({ silent: true })
+        if(restoredLocalSession) {
+          setStatus('Sauvegarde locale restauree automatiquement.', 'ok')
+          return
+        }
+
+        const loadedFromProject = await loadDefaultFile({ silent: true })
+        if(loadedFromProject) {
+          setStatus('Dialogues projet charges.', 'ok')
+          return
+        }
+
         updateLayoutVisibility()
-        updateGraphControlState()
-        setStatus('Outil pret. Importe ton fichier puis edite les blocs.', 'ok')
+        updateDockState()
+        setStatus('Outil pret. Charge un fichier projet ou importe un JSON.', 'ok')
       }
 
       bootstrap()

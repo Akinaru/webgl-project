@@ -332,25 +332,41 @@ export default class DialogueManager extends EventEmitter
             readonly: true
         }, 'auto')
 
-        this.debug.addButtons(this.debugFolder, {
-            label: 'demo',
-            columns: 2,
-            buttons: [
+        this.debug.addButton(this.debugFolder, {
+            title: 'Stop Current Dialogue',
+            onClick: () =>
+            {
+                this.queue.length = 0
+                this.skip()
+            }
+        })
+
+        this.debugDialogueFolder = this.debug.addFolder('🧪 Trigger Dialogue', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        const dialogueKeys = this.repository
+            .getAllKeys()
+            .sort((a, b) => a.localeCompare(b))
+
+        dialogueKeys.forEach((dialogueKey) =>
+        {
+            this.debug.addButton(this.debugDialogueFolder, {
+                title: dialogueKey,
+                onClick: () =>
                 {
-                    label: 'Intro',
-                    onClick: () =>
+                    if(this.isRunning())
                     {
-                        this.startByKey('bloom.intro')
+                        this.skip()
                     }
-                },
-                {
-                    label: 'Followup',
-                    onClick: () =>
-                    {
-                        this.startByKey('bloom.followup')
-                    }
+
+                    this.setFlag(`dialogue.once.${dialogueKey}`, false)
+                    this.startByKey(dialogueKey, {
+                        fromDebug: true
+                    })
                 }
-            ]
+            })
         })
 
         this.debug.addButton(this.debugFolder, {
