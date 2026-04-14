@@ -317,7 +317,7 @@ export default class DialogueManager extends EventEmitter
             return
         }
 
-        this.debugFolder = this.debug.addFolder('💬 Dialogue', { expanded: true })
+        this.debugFolder = this.debug.addFolder('💬 Dialogue', { expanded: false })
         this.debugState = {
             running: false,
             key: 'none'

@@ -20,6 +20,7 @@ export default class Player
         this.experience = new Experience()
         this.camera = this.experience.camera.instance
         this.canvas = this.experience.canvas
+        this.debug = this.experience.debug
 
         this.groundHeight = groundHeight
         this.boundaryRadius = boundaryRadius
@@ -30,9 +31,9 @@ export default class Player
             : this.collisionMeshes
 
         this.settings = {
-            height: 1.65,
-            radius: 0.35,
-            stepHeight: 0.65,
+            height: 1.45,
+            radius: 0.3,
+            stepHeight: 0.58,
             walkSpeed: 4.2,
             sprintSpeed: 7,
             acceleration: 18,
@@ -76,6 +77,7 @@ export default class Player
 
         this.setCamera()
         this.setPointerLock()
+        this.setDebug()
     }
 
     createSpawnPosition(spawnPosition)
@@ -137,6 +139,59 @@ export default class Player
         this.canvas.addEventListener('click', this.onCanvasClick)
         document.addEventListener('pointerlockchange', this.onPointerLockChange)
         document.addEventListener('mousemove', this.onMouseMove)
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('🕹 Player', { expanded: true })
+        this.debug.addBinding(this.debugFolder, this.settings, 'height', {
+            label: 'height',
+            min: 1.1,
+            max: 2.2,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'radius', {
+            label: 'radius',
+            min: 0.2,
+            max: 0.6,
+            step: 0.005
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'stepHeight', {
+            label: 'stepHeight',
+            min: 0.2,
+            max: 1.2,
+            step: 0.01
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'headBobAmplitude', {
+            label: 'bobAmp',
+            min: 0,
+            max: 0.08,
+            step: 0.001
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'headBobFrequency', {
+            label: 'bobFreq',
+            min: 0.4,
+            max: 4,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'headBobSmoothing', {
+            label: 'bobSmooth',
+            min: 1,
+            max: 30,
+            step: 0.1
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'headBobRollAmplitude', {
+            label: 'bobRoll',
+            min: 0,
+            max: 0.03,
+            step: 0.0005
+        })
     }
 
     update(delta)
@@ -503,5 +558,6 @@ export default class Player
         }
 
         document.body.classList.remove('is-pointer-locked')
+        this.debugFolder?.dispose?.()
     }
 }

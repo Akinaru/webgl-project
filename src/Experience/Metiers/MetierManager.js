@@ -150,7 +150,7 @@ export default class MetierManager extends EventEmitter
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🧪 Metiers', { expanded: true })
+        this.debugFolder = this.debug.addFolder('🧪 Metiers', { expanded: false })
         this.debugValues = this.getValues()
         for(const config of METIER_CONFIGS)
         {

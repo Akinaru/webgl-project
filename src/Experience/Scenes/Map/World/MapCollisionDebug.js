@@ -107,7 +107,7 @@ export default class MapCollisionDebug
 
     setDebugUI()
     {
-        this.folder = this.debug.addFolder('🧱 Map Collision Debug', { expanded: false })
+        this.folder = this.debug.addFolder('🧱 Map Collision Debug', { expanded: true })
         this.debug.addBinding(this.folder, this.state, 'showCollisionBoxes', { label: 'boxes' })
         this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'rays' })
         this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'player' })

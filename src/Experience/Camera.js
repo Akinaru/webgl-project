@@ -31,7 +31,7 @@ export default class Camera
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🎥 Camera', { expanded: true })
+        this.debugFolder = this.debug.addFolder('🎥 Camera', { expanded: false })
 
         this.debug.addBinding(this.debugFolder, this.instance, 'fov', {
             label: 'fov',
