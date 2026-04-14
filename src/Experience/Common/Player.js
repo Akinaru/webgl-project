@@ -162,19 +162,19 @@ export default class Player
         this.debugFolder = this.debug.addFolder('🕹 Player', { expanded: true })
         this.debug.addBinding(this.debugFolder, this.settings, 'height', {
             label: 'height',
-            min: 1.1,
+            min: 0.7,
             max: 2.2,
             step: 0.01
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'radius', {
             label: 'radius',
-            min: 0.2,
+            min: 0.1,
             max: 0.6,
             step: 0.005
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'stepHeight', {
             label: 'stepHeight',
-            min: 0.2,
+            min: 0.05,
             max: 1.2,
             step: 0.01
         })
