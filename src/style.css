@@ -190,6 +190,28 @@ body.is-pointer-locked .hud__crosshair
     background: rgba(223, 244, 255, 0.98);
     border-color: rgba(56, 145, 206, 0.72);
     transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(30, 98, 142, 0.18);
+}
+
+.dialogue__choice--hover
+{
+    background: rgba(223, 244, 255, 0.98);
+    border-color: rgba(56, 145, 206, 0.72);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(30, 98, 142, 0.18);
+}
+
+.dialogue__choice:focus-visible
+{
+    outline: 2px solid rgba(34, 137, 203, 0.9);
+    outline-offset: 2px;
+    border-color: rgba(34, 137, 203, 0.9);
+}
+
+.dialogue__choice:active
+{
+    transform: translateY(0);
+    background: rgba(205, 236, 252, 0.98);
 }
 
 .dialogue__choice-index
@@ -221,4 +243,39 @@ body.is-pointer-locked .hud__crosshair
 body.is-dialogue-open .hud__crosshair
 {
     opacity: 0;
+}
+
+body.is-dialogue-cursor,
+body.is-dialogue-cursor *
+{
+    cursor: none !important;
+}
+
+.dialogue__cursor
+{
+    position: fixed;
+    left: -100px;
+    top: -100px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(44, 140, 201, 0.95);
+    background: transparent;
+    transform: translate(-50%, -50%) scale(1);
+    pointer-events: none;
+    z-index: 40;
+    opacity: 0;
+    transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+.dialogue__cursor.is-visible
+{
+    opacity: 1;
+}
+
+.dialogue__cursor.is-over-choice
+{
+    transform: translate(-50%, -50%) scale(0.72);
+    background: rgba(53, 151, 215, 0.85);
+    border-color: rgba(28, 103, 154, 0.98);
 }
