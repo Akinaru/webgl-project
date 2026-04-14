@@ -43,6 +43,9 @@ export default class Player
             headBobFrequency: 1.7,
             headBobSmoothing: 12,
             headBobRollAmplitude: 0.006,
+            cameraSmoothEnabled: true,
+            cameraPositionSmooth: 20,
+            cameraRotationSmooth: 26,
             lookSensitivity: 0.0022,
             minPitch: -Math.PI * 0.49,
             maxPitch: Math.PI * 0.49
@@ -68,6 +71,10 @@ export default class Player
         this.groundRaycaster = new THREE.Raycaster()
         this.headBobPhase = 0
         this.headBobOffset = 0
+        this.cameraSmoothPosition = this.position.clone()
+        this.cameraSmoothYaw = 0
+        this.cameraSmoothPitch = 0
+        this.cameraSmoothRoll = 0
 
         this.yaw = spawnYaw
         this.pitch = spawnPitch
@@ -106,6 +113,10 @@ export default class Player
         this.camera.rotation.order = 'YXZ'
         this.camera.position.copy(this.position)
         this.camera.rotation.set(this.pitch, this.yaw, 0)
+        this.cameraSmoothPosition.copy(this.position)
+        this.cameraSmoothYaw = this.yaw
+        this.cameraSmoothPitch = this.pitch
+        this.cameraSmoothRoll = 0
     }
 
     setPointerLock()
@@ -191,6 +202,22 @@ export default class Player
             min: 0,
             max: 0.03,
             step: 0.0005
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'cameraSmoothEnabled', {
+            label: 'camSmooth'
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'cameraPositionSmooth', {
+            label: 'camPosSmooth',
+            min: 1,
+            max: 60,
+            step: 0.1
+        })
+        this.debug.addBinding(this.debugFolder, this.settings, 'cameraRotationSmooth', {
+            label: 'camRotSmooth',
+            min: 1,
+            max: 80,
+            step: 0.1
         })
     }
 
@@ -540,9 +567,38 @@ export default class Player
             ? Math.sin(this.headBobPhase + (Math.PI * 0.5)) * this.settings.headBobRollAmplitude * normalizedSpeed
             : 0
 
-        this.camera.position.copy(this.position)
-        this.camera.position.y += this.headBobOffset
-        this.camera.rotation.set(this.pitch, this.yaw, rollOffset)
+        const targetCameraPosition = new THREE.Vector3(
+            this.position.x,
+            this.position.y + this.headBobOffset,
+            this.position.z
+        )
+
+        if(this.settings.cameraSmoothEnabled)
+        {
+            const positionLerp = 1 - Math.exp(-this.settings.cameraPositionSmooth * deltaSeconds)
+            const rotationLerp = 1 - Math.exp(-this.settings.cameraRotationSmooth * deltaSeconds)
+
+            this.cameraSmoothPosition.lerp(targetCameraPosition, positionLerp)
+            this.cameraSmoothYaw = this.interpolateAngle(this.cameraSmoothYaw, this.yaw, rotationLerp)
+            this.cameraSmoothPitch = THREE.MathUtils.lerp(this.cameraSmoothPitch, this.pitch, rotationLerp)
+            this.cameraSmoothRoll = THREE.MathUtils.lerp(this.cameraSmoothRoll, rollOffset, rotationLerp)
+        }
+        else
+        {
+            this.cameraSmoothPosition.copy(targetCameraPosition)
+            this.cameraSmoothYaw = this.yaw
+            this.cameraSmoothPitch = this.pitch
+            this.cameraSmoothRoll = rollOffset
+        }
+
+        this.camera.position.copy(this.cameraSmoothPosition)
+        this.camera.rotation.set(this.cameraSmoothPitch, this.cameraSmoothYaw, this.cameraSmoothRoll)
+    }
+
+    interpolateAngle(current, target, interpolation)
+    {
+        const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current))
+        return current + (delta * interpolation)
     }
 
     destroy()
