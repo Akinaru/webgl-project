@@ -18,10 +18,10 @@ export default class MapCollisionDebug
         }
 
         this.state = {
-            showCollisionBoxes: true,
-            showRays: true,
-            showPlayerCollider: true,
-            showHit: true
+            showCollisionBoxes: false,
+            showRays: false,
+            showPlayerCollider: false,
+            showHit: false
         }
 
         this.group = new THREE.Group()

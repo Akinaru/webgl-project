@@ -8,4 +8,5 @@ if(!canvas)
     throw new Error('Canvas ".webgl" introuvable dans index.html')
 }
 
-new Experience(canvas)
+const experience = new Experience(canvas)
+experience.dialogueManager?.startByKey?.('bloom.intro')
