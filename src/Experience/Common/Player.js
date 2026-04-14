@@ -3,6 +3,7 @@ import Experience from '../Experience.js'
 import InputController from '../Utils/InputController.js'
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0)
+const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
 
 export default class Player
 {
@@ -318,6 +319,11 @@ export default class Player
             const hits = this.groundRaycaster.intersectObjects(this.groundMeshes, false)
             for(const hit of hits)
             {
+                if(this.isGroundIgnoredMesh(hit.object))
+                {
+                    continue
+                }
+
                 if(!hit.face)
                 {
                     continue
@@ -332,10 +338,14 @@ export default class Player
                 const candidateGroundY = hit.point.y + this.settings.height
                 const stepDelta = candidateGroundY - this.position.y
 
-                if(stepDelta <= this.settings.stepHeight || this.position.y <= candidateGroundY + 0.08)
+                // Reject "ground" that is too high (e.g. roofs/balconies near walls),
+                // then keep scanning lower intersections.
+                if(stepDelta > this.settings.stepHeight)
                 {
-                    resolvedGroundY = Math.max(resolvedGroundY, candidateGroundY)
+                    continue
                 }
+
+                resolvedGroundY = Math.max(resolvedGroundY, candidateGroundY)
                 break
             }
         }
@@ -349,6 +359,31 @@ export default class Player
         }
 
         this.isOnGround = false
+    }
+
+    isGroundIgnoredMesh(object)
+    {
+        return this.hasNameInHierarchy(object, GROUND_IGNORED_TOKENS)
+    }
+
+    hasNameInHierarchy(object, tokens = [])
+    {
+        let current = object
+
+        while(current)
+        {
+            const name = (current.name || '').toLowerCase()
+            for(const token of tokens)
+            {
+                if(name.includes(token))
+                {
+                    return true
+                }
+            }
+            current = current.parent
+        }
+
+        return false
     }
 
     resolveCollisions()
