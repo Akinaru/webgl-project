@@ -79,7 +79,6 @@ export default class Player
         this.yaw = spawnYaw
         this.pitch = spawnPitch
         this.isOnGround = true
-        this.wasJumpPressed = false
         this.isPointerLocked = false
 
         this.setCamera()
@@ -276,12 +275,11 @@ export default class Player
         this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, targetVelocity.z, interpolation)
 
         const jumpPressed = this.input.isPressed('Space')
-        if(movementEnabled && this.isOnGround && jumpPressed && !this.wasJumpPressed)
+        if(movementEnabled && this.isOnGround && jumpPressed)
         {
             this.velocity.y = this.settings.jumpSpeed
             this.isOnGround = false
         }
-        this.wasJumpPressed = jumpPressed
 
         this.velocity.y -= this.settings.gravity * deltaSeconds
     }
