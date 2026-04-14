@@ -140,15 +140,17 @@ export default class DialogueUI
                 return
             }
 
-            this.cursorVisible = true
-            this.cursor.classList.add('is-visible')
+            this.updateCursorHoverState()
         }
 
         this.onPanelMouseLeave = () =>
         {
-            this.cursorVisible = false
-            this.cursor.classList.remove('is-visible')
-            this.cursor.classList.remove('is-over-choice')
+            if(!this.choiceCursorMode)
+            {
+                return
+            }
+
+            this.updateCursorHoverState()
         }
 
         this.onChoicesMouseOver = (event) =>
@@ -512,6 +514,11 @@ export default class DialogueUI
 
         this.root.style.left = `${this.anchorScreenPosition.x}px`
         this.root.style.top = `${this.anchorScreenPosition.y}px`
+
+        if(this.choiceCursorMode)
+        {
+            this.updateCursorHoverState()
+        }
     }
 
     showTurnIndicator(camera, { ndcX = 0, ndcY = 0 } = {})
