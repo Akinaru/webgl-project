@@ -222,6 +222,158 @@ export default class MapModel
         return zones
     }
 
+    getBridgeTeleportZone({ preferredBridge = 'cloneur_4' } = {})
+    {
+        if(!this.model)
+        {
+            return null
+        }
+
+        const bounds = new THREE.Box3()
+        const center = new THREE.Vector3()
+        const size = new THREE.Vector3()
+        const cloneurCandidates = []
+        const cloneurSeen = new Set()
+        const bridgeCandidates = []
+        const preferredNormalized = String(preferredBridge || '').toLowerCase()
+        const preferredCloneurIndex = this.parseCloneurIndex(preferredNormalized)
+        let bestZone = null
+        let bestScore = -Infinity
+
+        this.model.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const isBridge = this.hasNameInHierarchy(child, ['pont', 'bridge'])
+            if(!isBridge)
+            {
+                return
+            }
+
+            bounds.setFromObject(child)
+            bounds.getCenter(center)
+            bounds.getSize(size)
+
+            const candidate = {
+                x: center.x,
+                y: bounds.max.y + 0.08,
+                z: center.z,
+                radius: Math.max(1.2, Math.min(2.6, Math.max(size.x, size.z) * 0.22)),
+                score: size.x * size.z,
+                child
+            }
+            bridgeCandidates.push(candidate)
+
+            const cloneurRoot = this.findAncestorByTokens(child, ['cloneur'])
+            if(!cloneurRoot || cloneurSeen.has(cloneurRoot.uuid))
+            {
+                return
+            }
+
+            cloneurSeen.add(cloneurRoot.uuid)
+            bounds.setFromObject(cloneurRoot)
+            bounds.getCenter(center)
+            bounds.getSize(size)
+            cloneurCandidates.push({
+                x: center.x,
+                y: bounds.max.y + 0.08,
+                z: center.z,
+                radius: Math.max(1.2, Math.min(2.8, Math.max(size.x, size.z) * 0.2))
+            })
+        })
+
+        if(cloneurCandidates.length > 0)
+        {
+            cloneurCandidates.sort((a, b) =>
+            {
+                if(a.z !== b.z)
+                {
+                    return a.z - b.z
+                }
+                return a.x - b.x
+            })
+        }
+
+        if(preferredCloneurIndex !== null && cloneurCandidates.length >= preferredCloneurIndex)
+        {
+            return cloneurCandidates[preferredCloneurIndex - 1]
+        }
+
+        for(const candidate of bridgeCandidates)
+        {
+            if(this.hasNameInHierarchy(candidate.child, [preferredNormalized]))
+            {
+                bestZone = {
+                    x: candidate.x,
+                    y: candidate.y,
+                    z: candidate.z,
+                    radius: candidate.radius
+                }
+                break
+            }
+        }
+
+        if(bestZone)
+        {
+            return bestZone
+        }
+
+        for(const candidate of bridgeCandidates)
+        {
+            if(candidate.score > bestScore)
+            {
+                bestScore = candidate.score
+                bestZone = {
+                    x: candidate.x,
+                    y: candidate.y,
+                    z: candidate.z,
+                    radius: candidate.radius
+                }
+            }
+        }
+
+        return bestZone
+    }
+
+    parseCloneurIndex(name)
+    {
+        const match = name.match(/cloneur[_\s.-]?(\d+)/i)
+        if(!match)
+        {
+            return null
+        }
+
+        const parsed = Number(match[1])
+        if(!Number.isFinite(parsed) || parsed < 1)
+        {
+            return null
+        }
+
+        return Math.floor(parsed)
+    }
+
+    findAncestorByTokens(object, tokens = [])
+    {
+        let current = object
+        while(current)
+        {
+            const name = (current.name || '').toLowerCase()
+            for(const token of tokens)
+            {
+                if(name.includes(token))
+                {
+                    return current
+                }
+            }
+            current = current.parent
+        }
+
+        return null
+    }
+
     isForbiddenBloomSurface(object)
     {
         return this.hasNameInHierarchy(object, ['water', 'eau', 'fontaine', 'fountain'])

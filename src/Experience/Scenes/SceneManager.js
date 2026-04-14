@@ -3,6 +3,7 @@ import SceneEnum from '../Enum/SceneEnum.js'
 import VilleScene from './Ville/VilleScene.js'
 import ComplexeScene from './Complexe/ComplexeScene.js'
 import MapScene from './Map/MapScene.js'
+import Scene1Scene from './Scene1/Scene1Scene.js'
 
 export default class SceneManager
 {
@@ -19,6 +20,7 @@ export default class SceneManager
         this.register(SceneEnum.VILLE, () => new VilleScene())
         this.register(SceneEnum.COMPLEXE, () => new ComplexeScene())
         this.register(SceneEnum.MAP, () => new MapScene())
+        this.register(SceneEnum.SCENE1, () => new Scene1Scene())
 
         this.setDebug()
         this.switchTo(SceneEnum.MAP)
@@ -87,12 +89,16 @@ export default class SceneManager
             goMap: () =>
             {
                 this.switchTo(SceneEnum.MAP)
+            },
+            goScene1: () =>
+            {
+                this.switchTo(SceneEnum.SCENE1)
             }
         }
 
         this.debug.addButtons(this.debugFolder, {
             label: 'switch',
-            columns: 3,
+            columns: 4,
             buttons: [
                 {
                     label: 'Ville',
@@ -105,6 +111,10 @@ export default class SceneManager
                 {
                     label: 'Map',
                     onClick: debugActions.goMap
+                },
+                {
+                    label: 'Scene1',
+                    onClick: debugActions.goScene1
                 }
             ]
         })
