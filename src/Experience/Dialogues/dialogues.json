@@ -213,53 +213,53 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Bonus inventeur: +1 botaniste pour l equilibre.",
+          "next": "end",
           "actions": [
             {
               "type": "addMetier",
               "metier": "BOTANISTE",
               "amount": 1
             }
-          ],
-          "next": "end"
+          ]
         },
         "bonus_meneur": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Bonus meneur: +1 travailleur pour concretiser.",
+          "next": "end",
           "actions": [
             {
               "type": "addMetier",
               "metier": "TRAVAILLEUR",
               "amount": 1
             }
-          ],
-          "next": "end"
+          ]
         },
         "bonus_travailleur": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Bonus travailleur: +1 meneur pour la coordination.",
+          "next": "end",
           "actions": [
             {
               "type": "addMetier",
               "metier": "MENEUR",
               "amount": 1
             }
-          ],
-          "next": "end"
+          ]
         },
         "bonus_botaniste": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Bonus botaniste: +1 inventeur pour optimiser le vivant.",
+          "next": "end",
           "actions": [
             {
               "type": "addMetier",
               "metier": "INVENTEUR",
               "amount": 1
             }
-          ],
-          "next": "end"
+          ]
         },
         "bonus_default": {
           "type": "line",
@@ -335,7 +335,93 @@
           "next": "fend"
         },
         "fend": {
-          "type": "end"
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "bloom.test": {
+      "key": "bloom.test",
+      "once": false,
+      "startNode": "debut",
+      "nodes": {
+        "debut": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Salut a toi pour ce test de dialogue",
+          "next": "choice_1",
+          "actions": []
+        },
+        "choice_1": {
+          "type": "choice",
+          "speaker": "Bloom",
+          "text": "2+1 ?",
+          "choices": [
+            {
+              "id": "choice_1",
+              "text": "1",
+              "next": "line_1",
+              "conditions": [],
+              "actions": []
+            },
+            {
+              "id": "choice_2",
+              "text": "2",
+              "next": "line_2",
+              "conditions": [],
+              "actions": []
+            },
+            {
+              "id": "choice_3",
+              "text": "3",
+              "next": "line_3",
+              "conditions": [],
+              "actions": []
+            }
+          ]
+        },
+        "line_1": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "1, c'est faux !",
+          "next": "fin2",
+          "actions": []
+        },
+        "line_2": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "2, c'est faux !",
+          "next": "fin2",
+          "actions": []
+        },
+        "line_3": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "3, c'es juste !!!!",
+          "next": "fin2",
+          "actions": []
+        },
+        "end_1": {
+          "type": "end",
+          "actions": []
+        },
+        "fin2": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "bon merci pour ta réponse",
+          "next": "action_1",
+          "actions": []
+        },
+        "action_1": {
+          "type": "action",
+          "run": [
+            {
+              "type": "setFlag",
+              "key": "test.action",
+              "value": true
+            }
+          ],
+          "next": "end_1"
         }
       }
     }
