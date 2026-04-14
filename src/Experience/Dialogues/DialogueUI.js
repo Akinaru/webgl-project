@@ -24,8 +24,10 @@ export default class DialogueUI
         this.cursorVisible = false
         this.virtualCursorPosition = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
         this.cameraForward = new THREE.Vector3()
+        this.cameraLookDirection = new THREE.Vector3()
         this.cameraToTarget = new THREE.Vector3()
         this.lastIndicatorSide = 1
+        this.lastIndicatorY = window.innerHeight * 0.5
 
         this.setElements()
         this.setEvents()
@@ -492,12 +494,12 @@ export default class DialogueUI
         const ndcX = this.anchorWorldPosition.x
         const ndcY = this.anchorWorldPosition.y
         const ndcZ = this.anchorWorldPosition.z
-        const outOfView = ndcZ < -1 || ndcZ > 1 || Math.abs(ndcX) > 1.2 || Math.abs(ndcY) > 1.2
+        const outOfView = ndcZ < -1 || ndcZ > 1 || Math.abs(ndcX) > 1.08 || Math.abs(ndcY) > 1.02
 
         if(outOfView)
         {
             this.root.classList.add('is-offscreen')
-            this.showTurnIndicator(camera)
+            this.showTurnIndicator(camera, { ndcX, ndcY, ndcZ })
             return
         }
 
@@ -512,20 +514,62 @@ export default class DialogueUI
         this.root.style.top = `${this.anchorScreenPosition.y}px`
     }
 
-    showTurnIndicator(camera)
+    showTurnIndicator(camera, { ndcX = 0, ndcY = 0 } = {})
     {
         const width = window.innerWidth
         const height = window.innerHeight
         const paddingX = 56
-        const side = this.getIndicatorSide(camera)
-        const x = side > 0 ? (width - paddingX) : paddingX
-        const y = height * 0.5
-        const rotation = side > 0 ? (Math.PI * 0.5) : (-Math.PI * 0.5)
+        const paddingY = 56
+        let x = width * 0.5
+        let y = height * 0.5
+        let rotation = 0
+
+        const isVerticalEdge = Math.abs(ndcY) > Math.max(Math.abs(ndcX) * 0.95, 0.72)
+
+        if(isVerticalEdge)
+        {
+            if(ndcY > 0)
+            {
+                y = paddingY
+                rotation = 0
+            }
+            else
+            {
+                y = height - paddingY
+                rotation = Math.PI
+            }
+
+            x = THREE.MathUtils.clamp((ndcX * 0.5 + 0.5) * width, paddingX, width - paddingX)
+            this.lastIndicatorY = y
+        }
+        else
+        {
+            const side = this.getIndicatorSide(camera)
+            x = side > 0 ? (width - paddingX) : paddingX
+            const targetY = this.getIndicatorVerticalPosition(camera, height)
+            y = THREE.MathUtils.lerp(this.lastIndicatorY, targetY, 0.22)
+            this.lastIndicatorY = y
+            rotation = side > 0 ? (Math.PI * 0.5) : (-Math.PI * 0.5)
+        }
 
         this.turnIndicator.style.left = `${x}px`
         this.turnIndicator.style.top = `${y}px`
         this.turnIndicator.style.setProperty('--turn-rotation', `${rotation}rad`)
         this.turnIndicator.classList.add('is-visible')
+    }
+
+    getIndicatorVerticalPosition(camera, viewportHeight)
+    {
+        const paddingY = 56
+        camera.getWorldDirection(this.cameraLookDirection)
+        const clampedLookY = THREE.MathUtils.clamp(this.cameraLookDirection.y, -0.95, 0.95)
+        const normalized = (clampedLookY + 1) * 0.5
+
+        return THREE.MathUtils.lerp(
+            paddingY,
+            viewportHeight - paddingY,
+            normalized
+        )
     }
 
     getIndicatorSide(camera)
