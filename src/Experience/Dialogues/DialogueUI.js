@@ -112,7 +112,7 @@ export default class DialogueUI
                 return
             }
 
-            if(event.code === 'Enter' || event.code === 'Space')
+            if(event.code === 'Enter')
             {
                 event.preventDefault()
                 this.dialogueManager.continue()
@@ -289,7 +289,7 @@ export default class DialogueUI
         }
 
         this.setChoiceCursorMode(false)
-        this.hint.textContent = 'Entrée / Espace pour continuer - Echap pour passer.'
+        this.hint.textContent = 'Entrée pour continuer - Echap pour passer.'
     }
 
     show()
