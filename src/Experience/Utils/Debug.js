@@ -8,8 +8,9 @@ const HASH_TOKEN_SEPARATOR = /[,+|]/g
 
 export default class Debug
 {
-    constructor()
+    constructor({ inputs = null } = {})
     {
+        this.inputs = inputs
         this.flags = this.parseHashFlags(window.location.hash)
 
         this.isDebugEnabled = this.flags.has('debug')
@@ -103,7 +104,7 @@ export default class Debug
             }
         }
 
-        window.addEventListener('keydown', this.onWindowKeyDown)
+        this.inputs?.on?.('keydown.debug', this.onWindowKeyDown)
     }
 
     shouldIgnoreShortcut(target)
@@ -397,7 +398,8 @@ export default class Debug
 
     destroy()
     {
-        window.removeEventListener('keydown', this.onWindowKeyDown)
+        this.inputs?.off?.('keydown.debug')
+
         this.autoRefreshCallbacks.clear()
         this.physicsSyncCleanup?.()
 

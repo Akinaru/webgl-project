@@ -12,6 +12,7 @@ import MetierManager from './Metiers/MetierManager.js'
 import MetierEnum from './Enum/MetierEnum.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
 import Menu from './Menu/Menu.js'
+import InputManager from './Inputs/InputManager.js'
 
 let instance = null
 
@@ -33,8 +34,9 @@ export default class Experience
         window.experience = this
 
         this.canvas = canvas
+        this.inputs = new InputManager({ canvas: this.canvas })
 
-        this.debug = new Debug()
+        this.debug = new Debug({ inputs: this.inputs })
         this.metierEnum = MetierEnum
         this.metierManager = new MetierManager()
         this.dialogueManager = new DialogueManager()
@@ -81,6 +83,8 @@ export default class Experience
         this.metierManager.destroy?.()
         this.dialogueManager.destroy?.()
         this.menu?.destroy?.()
+        this.debug.destroy()
+        this.inputs?.destroy?.()
         this.camera.destroy?.()
         this.renderer.destroy?.()
 
@@ -88,7 +92,5 @@ export default class Experience
         this.time.destroy()
 
         this.renderer.instance.dispose()
-
-        this.debug.destroy()
     }
 }

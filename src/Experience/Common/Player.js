@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
-import InputController from '../Utils/InputController.js'
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0)
 const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
@@ -21,6 +20,7 @@ export default class Player
         this.experience = new Experience()
         this.camera = this.experience.camera.instance
         this.canvas = this.experience.canvas
+        this.inputs = this.experience.inputs
         this.debug = this.experience.debug
 
         this.groundHeight = groundHeight
@@ -52,7 +52,6 @@ export default class Player
             maxPitch: Math.PI * 0.49
         }
 
-        this.input = new InputController()
         this.position = this.createSpawnPosition(spawnPosition)
         this.velocity = new THREE.Vector3()
         this.moveDirection = new THREE.Vector3()
@@ -121,17 +120,22 @@ export default class Player
 
     setPointerLock()
     {
-        this.onCanvasClick = () =>
+        this.onCanvasClick = (event) =>
         {
-            if(document.pointerLockElement !== this.canvas)
+            if(event?.target !== this.canvas)
             {
-                this.canvas.requestPointerLock?.()
+                return
+            }
+
+            if(!this.inputs?.isPointerLocked?.(this.canvas))
+            {
+                this.inputs?.requestPointerLock?.(this.canvas)
             }
         }
 
-        this.onPointerLockChange = () =>
+        this.onPointerLockChange = ({ element } = {}) =>
         {
-            this.isPointerLocked = document.pointerLockElement === this.canvas
+            this.isPointerLocked = element === this.canvas
             document.body.classList.toggle('is-pointer-locked', this.isPointerLocked)
         }
 
@@ -147,9 +151,11 @@ export default class Player
             this.pitch = THREE.MathUtils.clamp(this.pitch, this.settings.minPitch, this.settings.maxPitch)
         }
 
-        this.canvas.addEventListener('click', this.onCanvasClick)
-        document.addEventListener('pointerlockchange', this.onPointerLockChange)
-        document.addEventListener('mousemove', this.onMouseMove)
+        this.inputs?.on?.('click.player', this.onCanvasClick)
+        this.inputs?.on?.('pointerlockchange.player', this.onPointerLockChange)
+        this.inputs?.on?.('mousemove.player', this.onMouseMove)
+        this.isPointerLocked = this.inputs?.isPointerLocked?.(this.canvas) || false
+        document.body.classList.toggle('is-pointer-locked', this.isPointerLocked)
     }
 
     setDebug()
@@ -233,11 +239,11 @@ export default class Player
 
     updateMoveDirection()
     {
-        const forwardAxis = this.input.getAxis(
+        const forwardAxis = this.inputs.getAxis(
             ['KeyS', 'ArrowDown'],
             ['KeyW', 'KeyZ', 'ArrowUp']
         )
-        const sideAxis = this.input.getAxis(
+        const sideAxis = this.inputs.getAxis(
             ['KeyA', 'KeyQ', 'ArrowLeft'],
             ['KeyD', 'ArrowRight']
         )
@@ -251,7 +257,7 @@ export default class Player
 
     updateVelocity(deltaSeconds)
     {
-        const isSprinting = this.input.isPressed('ShiftLeft', 'ShiftRight')
+        const isSprinting = this.inputs.isPressed('ShiftLeft', 'ShiftRight')
         const currentSpeed = isSprinting ? this.settings.sprintSpeed : this.settings.walkSpeed
         const movementEnabled = this.isPointerLocked
 
@@ -270,7 +276,7 @@ export default class Player
         this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, targetVelocity.x, interpolation)
         this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, targetVelocity.z, interpolation)
 
-        const jumpPressed = this.input.isPressed('Space')
+        const jumpPressed = this.inputs.isPressed('Space')
         if(movementEnabled && this.isOnGround && jumpPressed)
         {
             this.velocity.y = this.settings.jumpSpeed
@@ -631,14 +637,13 @@ export default class Player
 
     destroy()
     {
-        this.input.destroy()
-        this.canvas.removeEventListener('click', this.onCanvasClick)
-        document.removeEventListener('pointerlockchange', this.onPointerLockChange)
-        document.removeEventListener('mousemove', this.onMouseMove)
+        this.inputs?.off?.('click.player')
+        this.inputs?.off?.('pointerlockchange.player')
+        this.inputs?.off?.('mousemove.player')
 
-        if(document.pointerLockElement === this.canvas)
+        if(this.inputs?.isPointerLocked?.(this.canvas))
         {
-            document.exitPointerLock()
+            this.inputs?.exitPointerLock?.()
         }
 
         document.body.classList.remove('is-pointer-locked')
