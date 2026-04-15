@@ -3,6 +3,7 @@ import Experience from '../../../Experience.js'
 
 const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
+const PLAN_HEIGHT_TEXTURE_RESOLUTION = 128
 
 export default class MapModel
 {
@@ -16,11 +17,17 @@ export default class MapModel
         this.terrainTintMeshes = []
         this.planVisible = false
         this.terrainWaterlineSettings = {
-            minY: 1.09,
-            deepY: -0.11,
+            minY: 1.20,
+            deepY: 0.22,
             shallowColor: new THREE.Color('#2a98a5'),
             deepColor: new THREE.Color('#14576d')
         }
+        this.planWaterMaskSettings = {
+            waterLevel: 1.20,
+            wetColor: new THREE.Color('#0d5bff'),
+            dryColor: new THREE.Color('#000000')
+        }
+        this.planWaterMaskContext = null
 
         this.resource = this.resources.items.mapModel
 
@@ -38,6 +45,7 @@ export default class MapModel
     {
         this.removeStaleMapRoots()
         this.disposeRuntimeMaterials()
+        this.disposePlanWaterMaskContext()
         this.planMeshes = []
         this.terrainTintMeshes = []
 
@@ -107,6 +115,8 @@ export default class MapModel
         this.scene.add(this.model)
         this.model.updateMatrixWorld(true)
         this.applyTerrainWaterline(this.terrainWaterlineSettings)
+        this.planWaterMaskContext = this.buildPlanWaterMaskContext()
+        this.applyPlanWaterMask(this.planWaterMaskSettings)
         this.setPlanVisibility(this.planVisible)
         this.buildCollisionBoxes()
     }
@@ -203,10 +213,19 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
             return
         }
 
+        const shallowColorUniform = this.ensureColorUniformValue(
+            uniforms.shallowColor,
+            this.terrainWaterlineSettings.shallowColor
+        )
+        const deepColorUniform = this.ensureColorUniformValue(
+            uniforms.deepColor,
+            this.terrainWaterlineSettings.deepColor
+        )
+
         uniforms.minY.value = this.terrainWaterlineSettings.minY
         uniforms.deepY.value = this.terrainWaterlineSettings.deepY
-        uniforms.shallowColor.value.copy(this.terrainWaterlineSettings.shallowColor)
-        uniforms.deepColor.value.copy(this.terrainWaterlineSettings.deepColor)
+        shallowColorUniform.copy(this.terrainWaterlineSettings.shallowColor)
+        deepColorUniform.copy(this.terrainWaterlineSettings.deepColor)
     }
 
     applyTerrainWaterline({ minY, deepY, shallowColor, deepColor, color } = {})
@@ -300,6 +319,462 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
         }
     }
 
+    buildPlanBounds()
+    {
+        if(!Array.isArray(this.planMeshes) || this.planMeshes.length === 0)
+        {
+            return null
+        }
+
+        const bounds = new THREE.Box3()
+        const meshBounds = new THREE.Box3()
+        let hasBounds = false
+
+        for(const mesh of this.planMeshes)
+        {
+            if(!(mesh instanceof THREE.Mesh))
+            {
+                continue
+            }
+
+            meshBounds.setFromObject(mesh)
+            if(!hasBounds)
+            {
+                bounds.copy(meshBounds)
+                hasBounds = true
+                continue
+            }
+
+            bounds.union(meshBounds)
+        }
+
+        if(!hasBounds)
+        {
+            return null
+        }
+
+        const size = new THREE.Vector3()
+        bounds.getSize(size)
+        if(size.x <= 0.0001 || size.z <= 0.0001)
+        {
+            return null
+        }
+
+        return bounds
+    }
+
+    buildPlanWaterMaskContext(resolution = PLAN_HEIGHT_TEXTURE_RESOLUTION)
+    {
+        const planBounds = this.buildPlanBounds()
+        if(!planBounds)
+        {
+            return null
+        }
+
+        const reliefBounds = new THREE.Box3()
+        const meshBounds = new THREE.Box3()
+        let hasRelief = false
+
+        for(const reliefMesh of this.terrainTintMeshes)
+        {
+            if(!(reliefMesh instanceof THREE.Mesh))
+            {
+                continue
+            }
+
+            meshBounds.setFromObject(reliefMesh)
+            if(!hasRelief)
+            {
+                reliefBounds.copy(meshBounds)
+                hasRelief = true
+                continue
+            }
+
+            reliefBounds.union(meshBounds)
+        }
+
+        if(!hasRelief)
+        {
+            return null
+        }
+
+        const minHeight = reliefBounds.min.y
+        const maxHeight = reliefBounds.max.y
+        const heightRange = Math.max(0.0001, maxHeight - minHeight)
+        const planSize = new THREE.Vector3()
+        planBounds.getSize(planSize)
+
+        const data = new Uint8Array(resolution * resolution)
+        const raycaster = new THREE.Raycaster()
+        const rayOrigin = new THREE.Vector3()
+        const rayDirection = new THREE.Vector3(0, -1, 0)
+        const topY = maxHeight + 5
+
+        for(let y = 0; y < resolution; y++)
+        {
+            const v = (y + 0.5) / resolution
+            const worldZ = planBounds.min.z + (v * planSize.z)
+
+            for(let x = 0; x < resolution; x++)
+            {
+                const u = (x + 0.5) / resolution
+                const worldX = planBounds.min.x + (u * planSize.x)
+
+                rayOrigin.set(worldX, topY, worldZ)
+                raycaster.set(rayOrigin, rayDirection)
+
+                const hit = raycaster.intersectObjects(this.terrainTintMeshes, false)[0]
+                const sampledHeight = hit?.point?.y ?? minHeight
+                const normalizedHeight = THREE.MathUtils.clamp((sampledHeight - minHeight) / heightRange, 0, 1)
+
+                data[y * resolution + x] = Math.round(normalizedHeight * 255)
+            }
+        }
+
+        const heightTexture = new THREE.DataTexture(data, resolution, resolution, THREE.RedFormat, THREE.UnsignedByteType)
+        heightTexture.colorSpace = THREE.NoColorSpace
+        heightTexture.wrapS = THREE.ClampToEdgeWrapping
+        heightTexture.wrapT = THREE.ClampToEdgeWrapping
+        heightTexture.minFilter = THREE.LinearFilter
+        heightTexture.magFilter = THREE.LinearFilter
+        heightTexture.generateMipmaps = false
+        heightTexture.needsUpdate = true
+
+        return {
+            bounds: new THREE.Vector4(
+                planBounds.min.x,
+                planBounds.min.z,
+                planSize.x,
+                planSize.z
+            ),
+            heightRange: new THREE.Vector2(minHeight, maxHeight),
+            heightTexture
+        }
+    }
+
+    createPlanWaterMaskMaterial(baseMaterial)
+    {
+        if(!baseMaterial)
+        {
+            return baseMaterial
+        }
+
+        if(baseMaterial.userData?.isMapPlanWaterMaskMaterial)
+        {
+            this.updatePlanWaterMaskUniforms(baseMaterial)
+            return baseMaterial
+        }
+
+        const material = baseMaterial.clone()
+        material.userData = material.userData || {}
+        material.userData.isMapPlanWaterMaskMaterial = true
+        material.userData.mapPlanWaterMaskUniforms = {
+            waterLevel: { value: this.planWaterMaskSettings.waterLevel },
+            wetColor: { value: this.planWaterMaskSettings.wetColor.clone() },
+            dryColor: { value: this.planWaterMaskSettings.dryColor.clone() },
+            bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
+            heightRange: { value: new THREE.Vector2(0, 1) },
+            heightTexture: { value: null }
+        }
+
+        material.onBeforeCompile = (shader) =>
+        {
+            const uniforms = material.userData.mapPlanWaterMaskUniforms
+            shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
+            shader.uniforms.uMapPlanWetColor = uniforms.wetColor
+            shader.uniforms.uMapPlanDryColor = uniforms.dryColor
+            shader.uniforms.uMapPlanBounds = uniforms.bounds
+            shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
+            shader.uniforms.uMapPlanHeightTexture = uniforms.heightTexture
+
+            shader.vertexShader = `
+varying vec3 vMapPlanWorldPosition;
+` + shader.vertexShader
+
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `#include <project_vertex>
+vMapPlanWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+            )
+
+            shader.fragmentShader = `
+varying vec3 vMapPlanWorldPosition;
+uniform float uMapPlanWaterLevel;
+uniform vec3 uMapPlanWetColor;
+uniform vec3 uMapPlanDryColor;
+uniform vec4 uMapPlanBounds;
+uniform vec2 uMapPlanHeightRange;
+uniform sampler2D uMapPlanHeightTexture;
+` + shader.fragmentShader
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'vec4 diffuseColor = vec4( diffuse, opacity );',
+                `vec2 planExtent = max(uMapPlanBounds.zw, vec2(0.0001));
+vec2 planUv = (vMapPlanWorldPosition.xz - uMapPlanBounds.xy) / planExtent;
+planUv = clamp(planUv, 0.0, 1.0);
+float terrainHeight01 = texture2D(uMapPlanHeightTexture, planUv).r;
+float terrainHeight = mix(uMapPlanHeightRange.x, uMapPlanHeightRange.y, terrainHeight01);
+float floodedMask = step(terrainHeight, uMapPlanWaterLevel);
+vec3 planColor = mix(uMapPlanDryColor, uMapPlanWetColor, floodedMask);
+vec4 diffuseColor = vec4(planColor, opacity);`
+            )
+        }
+
+        material.customProgramCacheKey = () =>
+        {
+            const parentKey = typeof baseMaterial.customProgramCacheKey === 'function'
+                ? baseMaterial.customProgramCacheKey()
+                : ''
+            return `${parentKey}__mapPlanWaterMaskV1`
+        }
+
+        this.runtimeMaterials.push(material)
+        this.updatePlanWaterMaskUniforms(material)
+        material.needsUpdate = true
+        return material
+    }
+
+    updatePlanWaterMaskUniforms(material)
+    {
+        const uniforms = material?.userData?.mapPlanWaterMaskUniforms
+        if(!uniforms)
+        {
+            return
+        }
+
+        if(!this.planWaterMaskContext)
+        {
+            this.planWaterMaskContext = this.buildPlanWaterMaskContext()
+        }
+
+        if(!this.planWaterMaskContext)
+        {
+            return
+        }
+
+        const wetColorUniform = this.ensureColorUniformValue(
+            uniforms.wetColor,
+            this.planWaterMaskSettings.wetColor
+        )
+        const dryColorUniform = this.ensureColorUniformValue(
+            uniforms.dryColor,
+            this.planWaterMaskSettings.dryColor
+        )
+        const boundsUniform = this.ensureVector4UniformValue(
+            uniforms.bounds,
+            this.planWaterMaskContext.bounds
+        )
+        const heightRangeUniform = this.ensureVector2UniformValue(
+            uniforms.heightRange,
+            this.planWaterMaskContext.heightRange
+        )
+
+        uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
+        wetColorUniform.copy(this.planWaterMaskSettings.wetColor)
+        dryColorUniform.copy(this.planWaterMaskSettings.dryColor)
+        boundsUniform.copy(this.planWaterMaskContext.bounds)
+        heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
+        uniforms.heightTexture.value = this.planWaterMaskContext.heightTexture
+    }
+
+    ensureColorUniformValue(uniform, fallbackColor)
+    {
+        if(!uniform)
+        {
+            return fallbackColor.clone()
+        }
+
+        if(uniform.value instanceof THREE.Color)
+        {
+            return uniform.value
+        }
+
+        const value = uniform.value
+        if(typeof value === 'string' || typeof value === 'number')
+        {
+            uniform.value = new THREE.Color(value)
+            return uniform.value
+        }
+
+        if(value && typeof value === 'object')
+        {
+            uniform.value = new THREE.Color(
+                Number.isFinite(value.r) ? value.r : fallbackColor.r,
+                Number.isFinite(value.g) ? value.g : fallbackColor.g,
+                Number.isFinite(value.b) ? value.b : fallbackColor.b
+            )
+            return uniform.value
+        }
+
+        uniform.value = fallbackColor.clone()
+        return uniform.value
+    }
+
+    ensureVector2UniformValue(uniform, fallbackVector)
+    {
+        if(!uniform)
+        {
+            return fallbackVector.clone()
+        }
+
+        if(uniform.value instanceof THREE.Vector2)
+        {
+            return uniform.value
+        }
+
+        const value = uniform.value
+        if(Array.isArray(value))
+        {
+            uniform.value = new THREE.Vector2(
+                Number.isFinite(value[0]) ? value[0] : fallbackVector.x,
+                Number.isFinite(value[1]) ? value[1] : fallbackVector.y
+            )
+            return uniform.value
+        }
+
+        if(value && typeof value === 'object')
+        {
+            uniform.value = new THREE.Vector2(
+                Number.isFinite(value.x) ? value.x : fallbackVector.x,
+                Number.isFinite(value.y) ? value.y : fallbackVector.y
+            )
+            return uniform.value
+        }
+
+        uniform.value = fallbackVector.clone()
+        return uniform.value
+    }
+
+    ensureVector4UniformValue(uniform, fallbackVector)
+    {
+        if(!uniform)
+        {
+            return fallbackVector.clone()
+        }
+
+        if(uniform.value instanceof THREE.Vector4)
+        {
+            return uniform.value
+        }
+
+        const value = uniform.value
+        if(Array.isArray(value))
+        {
+            uniform.value = new THREE.Vector4(
+                Number.isFinite(value[0]) ? value[0] : fallbackVector.x,
+                Number.isFinite(value[1]) ? value[1] : fallbackVector.y,
+                Number.isFinite(value[2]) ? value[2] : fallbackVector.z,
+                Number.isFinite(value[3]) ? value[3] : fallbackVector.w
+            )
+            return uniform.value
+        }
+
+        if(value && typeof value === 'object')
+        {
+            uniform.value = new THREE.Vector4(
+                Number.isFinite(value.x) ? value.x : fallbackVector.x,
+                Number.isFinite(value.y) ? value.y : fallbackVector.y,
+                Number.isFinite(value.z) ? value.z : fallbackVector.z,
+                Number.isFinite(value.w) ? value.w : fallbackVector.w
+            )
+            return uniform.value
+        }
+
+        uniform.value = fallbackVector.clone()
+        return uniform.value
+    }
+
+    applyPlanWaterMask({ waterLevel, wetColor, dryColor, color } = {})
+    {
+        if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
+        {
+            this.planWaterMaskSettings.waterLevel = waterLevel
+        }
+
+        if(color instanceof THREE.Color)
+        {
+            this.planWaterMaskSettings.wetColor.copy(color)
+        }
+        else if(typeof color === 'string')
+        {
+            this.planWaterMaskSettings.wetColor.set(color)
+        }
+        else if(color && typeof color === 'object')
+        {
+            this.planWaterMaskSettings.wetColor.setRGB(
+                color.r ?? this.planWaterMaskSettings.wetColor.r,
+                color.g ?? this.planWaterMaskSettings.wetColor.g,
+                color.b ?? this.planWaterMaskSettings.wetColor.b
+            )
+        }
+
+        if(wetColor instanceof THREE.Color)
+        {
+            this.planWaterMaskSettings.wetColor.copy(wetColor)
+        }
+        else if(typeof wetColor === 'string')
+        {
+            this.planWaterMaskSettings.wetColor.set(wetColor)
+        }
+        else if(wetColor && typeof wetColor === 'object')
+        {
+            this.planWaterMaskSettings.wetColor.setRGB(
+                wetColor.r ?? this.planWaterMaskSettings.wetColor.r,
+                wetColor.g ?? this.planWaterMaskSettings.wetColor.g,
+                wetColor.b ?? this.planWaterMaskSettings.wetColor.b
+            )
+        }
+
+        if(dryColor instanceof THREE.Color)
+        {
+            this.planWaterMaskSettings.dryColor.copy(dryColor)
+        }
+        else if(typeof dryColor === 'string')
+        {
+            this.planWaterMaskSettings.dryColor.set(dryColor)
+        }
+        else if(dryColor && typeof dryColor === 'object')
+        {
+            this.planWaterMaskSettings.dryColor.setRGB(
+                dryColor.r ?? this.planWaterMaskSettings.dryColor.r,
+                dryColor.g ?? this.planWaterMaskSettings.dryColor.g,
+                dryColor.b ?? this.planWaterMaskSettings.dryColor.b
+            )
+        }
+
+        if(!this.planWaterMaskContext)
+        {
+            this.planWaterMaskContext = this.buildPlanWaterMaskContext()
+        }
+
+        if(!this.planWaterMaskContext)
+        {
+            return
+        }
+
+        for(const planMesh of this.planMeshes)
+        {
+            if(!planMesh)
+            {
+                continue
+            }
+
+            if(Array.isArray(planMesh.material))
+            {
+                planMesh.material = planMesh.material.map((material) => this.createPlanWaterMaskMaterial(material))
+            }
+            else
+            {
+                planMesh.material = this.createPlanWaterMaskMaterial(planMesh.material)
+            }
+        }
+
+        for(const material of this.runtimeMaterials)
+        {
+            this.updatePlanWaterMaskUniforms(material)
+        }
+    }
+
     setPlanVisibility(visible)
     {
         this.planVisible = Boolean(visible)
@@ -330,8 +805,15 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
         this.runtimeMaterials.length = 0
     }
 
+    disposePlanWaterMaskContext()
+    {
+        this.planWaterMaskContext?.heightTexture?.dispose?.()
+        this.planWaterMaskContext = null
+    }
+
     setFallback()
     {
+        this.disposePlanWaterMaskContext()
         this.fallback = new THREE.Mesh(
             new THREE.BoxGeometry(8, 2, 8),
             new THREE.MeshStandardMaterial({
@@ -727,6 +1209,7 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
     destroy()
     {
         this.disposeRuntimeMaterials()
+        this.disposePlanWaterMaskContext()
 
         if(this.model)
         {
@@ -746,6 +1229,8 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
         this.collisionMeshes = null
         this.planMeshes = null
         this.terrainTintMeshes = null
+        this.planWaterMaskSettings = null
+        this.planWaterMaskContext = null
         this.runtimeMaterials = null
     }
 }

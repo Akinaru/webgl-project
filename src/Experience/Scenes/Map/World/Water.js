@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 
+const WATER_LEVEL_MIN = 0
+const WATER_LEVEL_MAX = 2
+
 export default class Water
 {
     constructor({ mapModel = null } = {})
@@ -10,13 +13,15 @@ export default class Water
         this.mapModel = mapModel
 
         this.state = {
-            minYPos: 1.09,
-            deepYPos: -0.11,
-            showPlan: false
+            waterLevel: 1.20,
+            deepYPos: 0.22,
+            showPlan: true
         }
 
         this.shallowColor = new THREE.Color('#2a98a5')
         this.deepColor = new THREE.Color('#14576d')
+        this.planWetColor = new THREE.Color('#0d5bff')
+        this.planDryColor = new THREE.Color('#000000')
 
         this.applyWaterline()
         this.applyPlanVisibility()
@@ -25,16 +30,28 @@ export default class Water
 
     applyWaterline()
     {
-        if(this.state.deepYPos > this.state.minYPos)
+        this.state.waterLevel = THREE.MathUtils.clamp(
+            this.state.waterLevel,
+            WATER_LEVEL_MIN,
+            WATER_LEVEL_MAX
+        )
+
+        if(this.state.deepYPos > this.state.waterLevel)
         {
-            this.state.deepYPos = this.state.minYPos
+            this.state.deepYPos = this.state.waterLevel
         }
 
         this.mapModel?.applyTerrainWaterline?.({
-            minY: this.state.minYPos,
+            minY: this.state.waterLevel,
             deepY: this.state.deepYPos,
             shallowColor: this.shallowColor,
             deepColor: this.deepColor
+        })
+
+        this.mapModel?.applyPlanWaterMask?.({
+            waterLevel: this.state.waterLevel,
+            wetColor: this.planWetColor,
+            dryColor: this.planDryColor
         })
     }
 
@@ -52,10 +69,10 @@ export default class Water
 
         this.debugFolder = this.debug.addFolder('💧 Water', { expanded: false })
 
-        this.debug.addBinding(this.debugFolder, this.state, 'minYPos', {
-            label: 'minYPos',
-            min: -10,
-            max: 10,
+        this.debug.addBinding(this.debugFolder, this.state, 'waterLevel', {
+            label: 'waterLevel',
+            min: WATER_LEVEL_MIN,
+            max: WATER_LEVEL_MAX,
             step: 0.01
         }).on('change', () =>
         {
@@ -81,6 +98,20 @@ export default class Water
 
         this.debug.addColorBinding(this.debugFolder, this, 'deepColor', {
             label: 'deepColor'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addColorBinding(this.debugFolder, this, 'planWetColor', {
+            label: 'planWetColor'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addColorBinding(this.debugFolder, this, 'planDryColor', {
+            label: 'planDryColor'
         }).on('change', () =>
         {
             this.applyWaterline()
