@@ -11,6 +11,16 @@ export default class MapModel
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
+        this.runtimeMaterials = []
+        this.planMeshes = []
+        this.terrainTintMeshes = []
+        this.planVisible = false
+        this.terrainWaterlineSettings = {
+            minY: 1.09,
+            deepY: -0.11,
+            shallowColor: new THREE.Color('#2a98a5'),
+            deepColor: new THREE.Color('#14576d')
+        }
 
         this.resource = this.resources.items.mapModel
 
@@ -27,6 +37,9 @@ export default class MapModel
     setModel()
     {
         this.removeStaleMapRoots()
+        this.disposeRuntimeMaterials()
+        this.planMeshes = []
+        this.terrainTintMeshes = []
 
         if(this.model)
         {
@@ -57,6 +70,16 @@ export default class MapModel
                 return
             }
 
+            if(this.isPlanMeshName(child.name))
+            {
+                this.planMeshes.push(child)
+            }
+
+            if(this.isTerrainTintMesh(child))
+            {
+                this.terrainTintMeshes.push(child)
+            }
+
             child.castShadow = true
             child.receiveShadow = true
 
@@ -83,7 +106,228 @@ export default class MapModel
 
         this.scene.add(this.model)
         this.model.updateMatrixWorld(true)
+        this.applyTerrainWaterline(this.terrainWaterlineSettings)
+        this.setPlanVisibility(this.planVisible)
         this.buildCollisionBoxes()
+    }
+
+    isPlanMeshName(name = '')
+    {
+        const normalized = String(name).trim().toLowerCase()
+        return normalized === 'plan' || normalized.startsWith('plan.') || normalized.startsWith('plan_') || normalized.startsWith('plan-')
+    }
+
+    isTerrainTintMesh(mesh)
+    {
+        return this.hasNameInHierarchy(mesh, ['relief'])
+    }
+
+    createTerrainWaterlineMaterial(baseMaterial)
+    {
+        if(!baseMaterial)
+        {
+            return baseMaterial
+        }
+
+        if(baseMaterial.userData?.isMapWaterlineMaterial)
+        {
+            this.updateTerrainWaterlineUniforms(baseMaterial)
+            return baseMaterial
+        }
+
+        const material = baseMaterial.clone()
+        material.userData = material.userData || {}
+        material.userData.isMapWaterlineMaterial = true
+        material.userData.mapWaterlineUniforms = {
+            minY: { value: this.terrainWaterlineSettings.minY },
+            deepY: { value: this.terrainWaterlineSettings.deepY },
+            shallowColor: { value: this.terrainWaterlineSettings.shallowColor.clone() },
+            deepColor: { value: this.terrainWaterlineSettings.deepColor.clone() }
+        }
+
+        material.onBeforeCompile = (shader) =>
+        {
+            const uniforms = material.userData.mapWaterlineUniforms
+            shader.uniforms.uMapWaterlineMinY = uniforms.minY
+            shader.uniforms.uMapWaterlineDeepY = uniforms.deepY
+            shader.uniforms.uMapWaterlineShallowColor = uniforms.shallowColor
+            shader.uniforms.uMapWaterlineDeepColor = uniforms.deepColor
+
+            shader.vertexShader = `
+varying vec3 vMapWorldPosition;
+` + shader.vertexShader
+
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <project_vertex>',
+                `#include <project_vertex>
+vMapWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
+            )
+
+            shader.fragmentShader = `
+varying vec3 vMapWorldPosition;
+uniform float uMapWaterlineMinY;
+uniform float uMapWaterlineDeepY;
+uniform vec3 uMapWaterlineShallowColor;
+uniform vec3 uMapWaterlineDeepColor;
+` + shader.fragmentShader
+
+            shader.fragmentShader = shader.fragmentShader.replace(
+                'vec4 diffuseColor = vec4( diffuse, opacity );',
+                `float shallowMask = 1.0 - smoothstep(uMapWaterlineMinY - 0.18, uMapWaterlineMinY + 0.18, vMapWorldPosition.y);
+float deepMask = 1.0 - smoothstep(uMapWaterlineDeepY - 0.18, uMapWaterlineDeepY + 0.18, vMapWorldPosition.y);
+vec3 depthTint = mix(uMapWaterlineShallowColor, uMapWaterlineDeepColor, clamp(deepMask, 0.0, 1.0));
+vec3 terrainColor = mix(diffuse, depthTint, clamp(shallowMask, 0.0, 1.0));
+vec4 diffuseColor = vec4(terrainColor, opacity);`
+            )
+        }
+
+        material.customProgramCacheKey = () =>
+        {
+            const parentKey = typeof baseMaterial.customProgramCacheKey === 'function'
+                ? baseMaterial.customProgramCacheKey()
+                : ''
+            return `${parentKey}__mapWaterlineV2`
+        }
+
+        this.runtimeMaterials.push(material)
+        this.updateTerrainWaterlineUniforms(material)
+        material.needsUpdate = true
+        return material
+    }
+
+    updateTerrainWaterlineUniforms(material)
+    {
+        const uniforms = material?.userData?.mapWaterlineUniforms
+        if(!uniforms)
+        {
+            return
+        }
+
+        uniforms.minY.value = this.terrainWaterlineSettings.minY
+        uniforms.deepY.value = this.terrainWaterlineSettings.deepY
+        uniforms.shallowColor.value.copy(this.terrainWaterlineSettings.shallowColor)
+        uniforms.deepColor.value.copy(this.terrainWaterlineSettings.deepColor)
+    }
+
+    applyTerrainWaterline({ minY, deepY, shallowColor, deepColor, color } = {})
+    {
+        if(typeof minY === 'number' && Number.isFinite(minY))
+        {
+            this.terrainWaterlineSettings.minY = minY
+        }
+
+        if(typeof deepY === 'number' && Number.isFinite(deepY))
+        {
+            this.terrainWaterlineSettings.deepY = deepY
+        }
+
+        if(this.terrainWaterlineSettings.deepY > this.terrainWaterlineSettings.minY)
+        {
+            this.terrainWaterlineSettings.deepY = this.terrainWaterlineSettings.minY
+        }
+
+        if(color instanceof THREE.Color)
+        {
+            this.terrainWaterlineSettings.shallowColor.copy(color)
+        }
+        else if(typeof color === 'string')
+        {
+            this.terrainWaterlineSettings.shallowColor.set(color)
+        }
+        else if(color && typeof color === 'object')
+        {
+            this.terrainWaterlineSettings.shallowColor.setRGB(
+                color.r ?? this.terrainWaterlineSettings.shallowColor.r,
+                color.g ?? this.terrainWaterlineSettings.shallowColor.g,
+                color.b ?? this.terrainWaterlineSettings.shallowColor.b
+            )
+        }
+
+        if(shallowColor instanceof THREE.Color)
+        {
+            this.terrainWaterlineSettings.shallowColor.copy(shallowColor)
+        }
+        else if(typeof shallowColor === 'string')
+        {
+            this.terrainWaterlineSettings.shallowColor.set(shallowColor)
+        }
+        else if(shallowColor && typeof shallowColor === 'object')
+        {
+            this.terrainWaterlineSettings.shallowColor.setRGB(
+                shallowColor.r ?? this.terrainWaterlineSettings.shallowColor.r,
+                shallowColor.g ?? this.terrainWaterlineSettings.shallowColor.g,
+                shallowColor.b ?? this.terrainWaterlineSettings.shallowColor.b
+            )
+        }
+
+        if(deepColor instanceof THREE.Color)
+        {
+            this.terrainWaterlineSettings.deepColor.copy(deepColor)
+        }
+        else if(typeof deepColor === 'string')
+        {
+            this.terrainWaterlineSettings.deepColor.set(deepColor)
+        }
+        else if(deepColor && typeof deepColor === 'object')
+        {
+            this.terrainWaterlineSettings.deepColor.setRGB(
+                deepColor.r ?? this.terrainWaterlineSettings.deepColor.r,
+                deepColor.g ?? this.terrainWaterlineSettings.deepColor.g,
+                deepColor.b ?? this.terrainWaterlineSettings.deepColor.b
+            )
+        }
+
+        for(const mesh of this.terrainTintMeshes)
+        {
+            if(!mesh)
+            {
+                continue
+            }
+
+            if(Array.isArray(mesh.material))
+            {
+                mesh.material = mesh.material.map((material) => this.createTerrainWaterlineMaterial(material))
+            }
+            else
+            {
+                mesh.material = this.createTerrainWaterlineMaterial(mesh.material)
+            }
+        }
+
+        for(const material of this.runtimeMaterials)
+        {
+            this.updateTerrainWaterlineUniforms(material)
+        }
+    }
+
+    setPlanVisibility(visible)
+    {
+        this.planVisible = Boolean(visible)
+        for(const planMesh of this.planMeshes)
+        {
+            if(!planMesh)
+            {
+                continue
+            }
+
+            planMesh.visible = this.planVisible
+        }
+    }
+
+    disposeRuntimeMaterials()
+    {
+        if(!Array.isArray(this.runtimeMaterials))
+        {
+            this.runtimeMaterials = []
+            return
+        }
+
+        for(const material of this.runtimeMaterials)
+        {
+            material?.dispose?.()
+        }
+
+        this.runtimeMaterials.length = 0
     }
 
     setFallback()
@@ -482,6 +726,8 @@ export default class MapModel
 
     destroy()
     {
+        this.disposeRuntimeMaterials()
+
         if(this.model)
         {
             this.scene.remove(this.model)
@@ -498,5 +744,8 @@ export default class MapModel
 
         this.collisionBoxes = null
         this.collisionMeshes = null
+        this.planMeshes = null
+        this.terrainTintMeshes = null
+        this.runtimeMaterials = null
     }
 }

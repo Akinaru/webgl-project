@@ -7,6 +7,7 @@ import Player from '../../../Common/Player.js'
 import MapEnvironment from './MapEnvironment.js'
 import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollisionDebug.js'
+import Water from './Water.js'
 
 let mapWorldInstanceIndex = 0
 
@@ -38,8 +39,11 @@ export default class MapWorld
         }
         this.isSetUp = true
 
-        this.environment = new MapEnvironment()
         this.mapModel = new MapModel()
+        this.environment = new MapEnvironment()
+        this.water = new Water({
+            mapModel: this.mapModel
+        })
         const bloomMinDistance = 1.2
         const bloomRetreatDistance = bloomMinDistance * 5
         this.player = new Player({
@@ -205,6 +209,12 @@ export default class MapWorld
         {
             this.player.destroy()
             this.player = null
+        }
+
+        if(this.water)
+        {
+            this.water.destroy?.()
+            this.water = null
         }
 
         if(this.mapModel)
