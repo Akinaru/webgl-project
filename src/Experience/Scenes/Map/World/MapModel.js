@@ -1,6 +1,12 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
+import { applyStandardMaterialPatch } from './Shaders/applyStandardMaterialPatch.js'
+import {
+    terrainWaterlineShaderChunks,
+    planWaterMaskShaderChunks
+} from './Shaders/mapShaderChunks.js'
 
+// MapModel centralise le chargement de la map, les collisions, et les shaders eau (relief + plan).
 const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
 const PLAN_HEIGHT_TEXTURE_RESOLUTION = 128
@@ -24,8 +30,7 @@ export default class MapModel
         }
         this.planWaterMaskSettings = {
             waterLevel: 1.20,
-            wetColor: new THREE.Color('#0d5bff'),
-            dryColor: new THREE.Color('#000000')
+            wetColor: new THREE.Color('#0d5bff')
         }
         this.planWaterMaskContext = null
 
@@ -163,32 +168,7 @@ export default class MapModel
             shader.uniforms.uMapWaterlineShallowColor = uniforms.shallowColor
             shader.uniforms.uMapWaterlineDeepColor = uniforms.deepColor
 
-            shader.vertexShader = `
-varying vec3 vMapWorldPosition;
-` + shader.vertexShader
-
-            shader.vertexShader = shader.vertexShader.replace(
-                '#include <project_vertex>',
-                `#include <project_vertex>
-vMapWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
-            )
-
-            shader.fragmentShader = `
-varying vec3 vMapWorldPosition;
-uniform float uMapWaterlineMinY;
-uniform float uMapWaterlineDeepY;
-uniform vec3 uMapWaterlineShallowColor;
-uniform vec3 uMapWaterlineDeepColor;
-` + shader.fragmentShader
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-                'vec4 diffuseColor = vec4( diffuse, opacity );',
-                `float shallowMask = 1.0 - smoothstep(uMapWaterlineMinY - 0.18, uMapWaterlineMinY + 0.18, vMapWorldPosition.y);
-float deepMask = 1.0 - smoothstep(uMapWaterlineDeepY - 0.18, uMapWaterlineDeepY + 0.18, vMapWorldPosition.y);
-vec3 depthTint = mix(uMapWaterlineShallowColor, uMapWaterlineDeepColor, clamp(deepMask, 0.0, 1.0));
-vec3 terrainColor = mix(diffuse, depthTint, clamp(shallowMask, 0.0, 1.0));
-vec4 diffuseColor = vec4(terrainColor, opacity);`
-            )
+            applyStandardMaterialPatch(shader, terrainWaterlineShaderChunks)
         }
 
         material.customProgramCacheKey = () =>
@@ -468,10 +448,22 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
         const material = baseMaterial.clone()
         material.userData = material.userData || {}
         material.userData.isMapPlanWaterMaskMaterial = true
+        // Eau de debug visuelle: rendu mat sans reflets speculaires.
+        if('roughness' in material)
+        {
+            material.roughness = 1
+        }
+        if('metalness' in material)
+        {
+            material.metalness = 0
+        }
+        if('envMapIntensity' in material)
+        {
+            material.envMapIntensity = 0
+        }
         material.userData.mapPlanWaterMaskUniforms = {
             waterLevel: { value: this.planWaterMaskSettings.waterLevel },
             wetColor: { value: this.planWaterMaskSettings.wetColor.clone() },
-            dryColor: { value: this.planWaterMaskSettings.dryColor.clone() },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
             heightTexture: { value: null }
@@ -482,42 +474,11 @@ vec4 diffuseColor = vec4(terrainColor, opacity);`
             const uniforms = material.userData.mapPlanWaterMaskUniforms
             shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
             shader.uniforms.uMapPlanWetColor = uniforms.wetColor
-            shader.uniforms.uMapPlanDryColor = uniforms.dryColor
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
             shader.uniforms.uMapPlanHeightTexture = uniforms.heightTexture
 
-            shader.vertexShader = `
-varying vec3 vMapPlanWorldPosition;
-` + shader.vertexShader
-
-            shader.vertexShader = shader.vertexShader.replace(
-                '#include <project_vertex>',
-                `#include <project_vertex>
-vMapPlanWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`
-            )
-
-            shader.fragmentShader = `
-varying vec3 vMapPlanWorldPosition;
-uniform float uMapPlanWaterLevel;
-uniform vec3 uMapPlanWetColor;
-uniform vec3 uMapPlanDryColor;
-uniform vec4 uMapPlanBounds;
-uniform vec2 uMapPlanHeightRange;
-uniform sampler2D uMapPlanHeightTexture;
-` + shader.fragmentShader
-
-            shader.fragmentShader = shader.fragmentShader.replace(
-                'vec4 diffuseColor = vec4( diffuse, opacity );',
-                `vec2 planExtent = max(uMapPlanBounds.zw, vec2(0.0001));
-vec2 planUv = (vMapPlanWorldPosition.xz - uMapPlanBounds.xy) / planExtent;
-planUv = clamp(planUv, 0.0, 1.0);
-float terrainHeight01 = texture2D(uMapPlanHeightTexture, planUv).r;
-float terrainHeight = mix(uMapPlanHeightRange.x, uMapPlanHeightRange.y, terrainHeight01);
-float floodedMask = step(terrainHeight, uMapPlanWaterLevel);
-vec3 planColor = mix(uMapPlanDryColor, uMapPlanWetColor, floodedMask);
-vec4 diffuseColor = vec4(planColor, opacity);`
-            )
+            applyStandardMaterialPatch(shader, planWaterMaskShaderChunks)
         }
 
         material.customProgramCacheKey = () =>
@@ -556,10 +517,6 @@ vec4 diffuseColor = vec4(planColor, opacity);`
             uniforms.wetColor,
             this.planWaterMaskSettings.wetColor
         )
-        const dryColorUniform = this.ensureColorUniformValue(
-            uniforms.dryColor,
-            this.planWaterMaskSettings.dryColor
-        )
         const boundsUniform = this.ensureVector4UniformValue(
             uniforms.bounds,
             this.planWaterMaskContext.bounds
@@ -571,7 +528,6 @@ vec4 diffuseColor = vec4(planColor, opacity);`
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
         wetColorUniform.copy(this.planWaterMaskSettings.wetColor)
-        dryColorUniform.copy(this.planWaterMaskSettings.dryColor)
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
         uniforms.heightTexture.value = this.planWaterMaskContext.heightTexture
@@ -684,7 +640,7 @@ vec4 diffuseColor = vec4(planColor, opacity);`
         return uniform.value
     }
 
-    applyPlanWaterMask({ waterLevel, wetColor, dryColor, color } = {})
+    applyPlanWaterMask({ waterLevel, wetColor, color } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
@@ -722,23 +678,6 @@ vec4 diffuseColor = vec4(planColor, opacity);`
                 wetColor.r ?? this.planWaterMaskSettings.wetColor.r,
                 wetColor.g ?? this.planWaterMaskSettings.wetColor.g,
                 wetColor.b ?? this.planWaterMaskSettings.wetColor.b
-            )
-        }
-
-        if(dryColor instanceof THREE.Color)
-        {
-            this.planWaterMaskSettings.dryColor.copy(dryColor)
-        }
-        else if(typeof dryColor === 'string')
-        {
-            this.planWaterMaskSettings.dryColor.set(dryColor)
-        }
-        else if(dryColor && typeof dryColor === 'object')
-        {
-            this.planWaterMaskSettings.dryColor.setRGB(
-                dryColor.r ?? this.planWaterMaskSettings.dryColor.r,
-                dryColor.g ?? this.planWaterMaskSettings.dryColor.g,
-                dryColor.b ?? this.planWaterMaskSettings.dryColor.b
             )
         }
 

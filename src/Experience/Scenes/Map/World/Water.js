@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
 
+// Water pilote les parametres d eau globaux et les applique au rendu de la map.
 const WATER_LEVEL_MIN = 0
 const WATER_LEVEL_MAX = 2
 
@@ -8,8 +8,6 @@ export default class Water
 {
     constructor({ mapModel = null } = {})
     {
-        this.experience = new Experience()
-        this.debug = this.experience.debug
         this.mapModel = mapModel
 
         this.state = {
@@ -21,11 +19,9 @@ export default class Water
         this.shallowColor = new THREE.Color('#2a98a5')
         this.deepColor = new THREE.Color('#14576d')
         this.planWetColor = new THREE.Color('#0d5bff')
-        this.planDryColor = new THREE.Color('#000000')
 
         this.applyWaterline()
         this.applyPlanVisibility()
-        this.setDebug()
     }
 
     applyWaterline()
@@ -50,8 +46,7 @@ export default class Water
 
         this.mapModel?.applyPlanWaterMask?.({
             waterLevel: this.state.waterLevel,
-            wetColor: this.planWetColor,
-            dryColor: this.planDryColor
+            wetColor: this.planWetColor
         })
     }
 
@@ -60,74 +55,8 @@ export default class Water
         this.mapModel?.setPlanVisibility?.(this.state.showPlan)
     }
 
-    setDebug()
-    {
-        if(!this.debug?.isDebugEnabled)
-        {
-            return
-        }
-
-        this.debugFolder = this.debug.addFolder('💧 Water', { expanded: false })
-
-        this.debug.addBinding(this.debugFolder, this.state, 'waterLevel', {
-            label: 'waterLevel',
-            min: WATER_LEVEL_MIN,
-            max: WATER_LEVEL_MAX,
-            step: 0.01
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addBinding(this.debugFolder, this.state, 'deepYPos', {
-            label: 'deepYPos',
-            min: -20,
-            max: 10,
-            step: 0.01
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'shallowColor', {
-            label: 'shallowColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'deepColor', {
-            label: 'deepColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'planWetColor', {
-            label: 'planWetColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'planDryColor', {
-            label: 'planDryColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addBinding(this.debugFolder, this.state, 'showPlan', {
-            label: 'showPlan'
-        }).on('change', () =>
-        {
-            this.applyPlanVisibility()
-        })
-    }
-
     destroy()
     {
-        this.debugFolder?.dispose?.()
         this.mapModel = null
     }
 }
