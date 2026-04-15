@@ -2,8 +2,8 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 
 const QUARTER_TURN = Math.PI * 0.5
-const FULL_TURN = Math.PI * 2
 const ROTATION_AXIS = 'z'
+const TUBE_JOIN_NAME_TOKEN = 'tube-join'
 
 export default class Scene1TubeWaterController
 {
@@ -19,15 +19,72 @@ export default class Scene1TubeWaterController
         this.raycaster = new THREE.Raycaster()
         this.centerNdc = new THREE.Vector2(0, 0)
         this.turnDirectionByMeshUuid = new Map()
+        this.joinTargetsByTubeUuid = new Map()
         this.hoveredTubeMesh = null
         this.bounds = new THREE.Box3()
-        this.beforeCenterWorld = new THREE.Vector3()
-        this.afterCenterWorld = new THREE.Vector3()
-        this.beforeCenterLocal = new THREE.Vector3()
-        this.afterCenterLocal = new THREE.Vector3()
+        this.rotationPivotWorld = new THREE.Vector3()
+        this.rotationAxisWorld = new THREE.Vector3()
+        this.localAxis = new THREE.Vector3()
+        this.worldPosition = new THREE.Vector3()
+        this.localPosition = new THREE.Vector3()
+        this.parentQuaternionWorld = new THREE.Quaternion()
+        this.parentQuaternionInverse = new THREE.Quaternion()
+        this.objectQuaternionWorld = new THREE.Quaternion()
+        this.objectQuaternionLocal = new THREE.Quaternion()
+        this.deltaQuaternion = new THREE.Quaternion()
+        this.targetQuaternionWorld = new THREE.Quaternion()
 
+        this.collectJoinTargets()
         this.randomizeInitialRotations()
         this.setEvents()
+    }
+
+    collectJoinTargets()
+    {
+        this.joinTargetsByTubeUuid.clear()
+
+        for(const tubeTarget of this.rotationTargets)
+        {
+            if(!tubeTarget)
+            {
+                continue
+            }
+
+            this.joinTargetsByTubeUuid.set(
+                tubeTarget.uuid,
+                this.findJoinTargetsForTube(tubeTarget)
+            )
+        }
+    }
+
+    findJoinTargetsForTube(tubeTarget)
+    {
+        const parent = tubeTarget.parent
+        if(!parent)
+        {
+            return []
+        }
+
+        const joinTargets = []
+        const visited = new Set()
+        parent.traverse((child) =>
+        {
+            if(child === tubeTarget || visited.has(child.uuid))
+            {
+                return
+            }
+
+            const name = String(child.name || '').toLowerCase()
+            if(!name.includes(TUBE_JOIN_NAME_TOKEN))
+            {
+                return
+            }
+
+            visited.add(child.uuid)
+            joinTargets.push(child)
+        })
+
+        return joinTargets
     }
 
     randomizeInitialRotations()
@@ -42,7 +99,7 @@ export default class Scene1TubeWaterController
             const randomQuarterTurns = Math.floor(Math.random() * 4)
             if(randomQuarterTurns > 0)
             {
-                this.rotateTargetAroundCenter(target, randomQuarterTurns * QUARTER_TURN)
+                this.rotateTubeAssembly(target, randomQuarterTurns * QUARTER_TURN)
             }
 
             const turnDirection = Math.random() >= 0.5 ? 1 : -1
@@ -102,33 +159,33 @@ export default class Scene1TubeWaterController
         }
 
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
-        this.rotateTargetAroundCenter(rotationTarget, QUARTER_TURN * direction)
+        this.rotateTubeAssembly(rotationTarget, QUARTER_TURN * direction)
     }
 
-    rotateTargetAroundCenter(target, angle)
+    rotateTubeAssembly(tubeTarget, angle)
     {
-        this.getWorldCenter(target, this.beforeCenterWorld)
-
-        target.rotation[ROTATION_AXIS] = this.normalizeAngle(target.rotation[ROTATION_AXIS] + angle)
-        target.updateMatrixWorld(true)
-
-        this.getWorldCenter(target, this.afterCenterWorld)
-
-        if(target.parent)
+        if(!tubeTarget)
         {
-            target.parent.updateMatrixWorld(true)
-            this.beforeCenterLocal.copy(this.beforeCenterWorld)
-            this.afterCenterLocal.copy(this.afterCenterWorld)
-            target.parent.worldToLocal(this.beforeCenterLocal)
-            target.parent.worldToLocal(this.afterCenterLocal)
-            target.position.add(this.beforeCenterLocal.sub(this.afterCenterLocal))
-        }
-        else
-        {
-            target.position.add(this.beforeCenterWorld.sub(this.afterCenterWorld))
+            return
         }
 
-        target.updateMatrixWorld(true)
+        this.getWorldCenter(tubeTarget, this.rotationPivotWorld)
+        this.getRotationAxisWorld(tubeTarget, this.rotationAxisWorld)
+        this.rotateObjectAroundWorldAxis(tubeTarget, this.rotationPivotWorld, this.rotationAxisWorld, angle)
+
+        const joinTargets = this.joinTargetsByTubeUuid.get(tubeTarget.uuid) ?? []
+        for(const joinTarget of joinTargets)
+        {
+            this.rotateObjectAroundWorldAxis(joinTarget, this.rotationPivotWorld, this.rotationAxisWorld, angle)
+        }
+    }
+
+    getRotationAxisWorld(target, out)
+    {
+        this.localAxis.set(0, 0, 0)
+        this.localAxis[ROTATION_AXIS] = 1
+        target.getWorldQuaternion(this.targetQuaternionWorld)
+        return out.copy(this.localAxis).applyQuaternion(this.targetQuaternionWorld).normalize()
     }
 
     getWorldCenter(target, out)
@@ -143,9 +200,48 @@ export default class Scene1TubeWaterController
         return this.bounds.getCenter(out)
     }
 
-    normalizeAngle(value)
+    rotateObjectAroundWorldAxis(object, pivotWorld, axisWorld, angle)
     {
-        return THREE.MathUtils.euclideanModulo(value, FULL_TURN)
+        if(!object)
+        {
+            return
+        }
+
+        object.updateMatrixWorld(true)
+
+        this.deltaQuaternion.setFromAxisAngle(axisWorld, angle)
+
+        this.worldPosition.setFromMatrixPosition(object.matrixWorld)
+        this.worldPosition.sub(pivotWorld).applyQuaternion(this.deltaQuaternion).add(pivotWorld)
+
+        if(object.parent)
+        {
+            object.parent.updateMatrixWorld(true)
+            this.localPosition.copy(this.worldPosition)
+            object.parent.worldToLocal(this.localPosition)
+            object.position.copy(this.localPosition)
+        }
+        else
+        {
+            object.position.copy(this.worldPosition)
+        }
+
+        object.getWorldQuaternion(this.objectQuaternionWorld)
+        this.objectQuaternionWorld.premultiply(this.deltaQuaternion)
+
+        if(object.parent)
+        {
+            object.parent.getWorldQuaternion(this.parentQuaternionWorld)
+            this.parentQuaternionInverse.copy(this.parentQuaternionWorld).invert()
+            this.objectQuaternionLocal.copy(this.parentQuaternionInverse).multiply(this.objectQuaternionWorld)
+            object.quaternion.copy(this.objectQuaternionLocal)
+        }
+        else
+        {
+            object.quaternion.copy(this.objectQuaternionWorld)
+        }
+
+        object.updateMatrixWorld(true)
     }
 
     destroy()
