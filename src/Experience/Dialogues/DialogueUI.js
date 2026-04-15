@@ -7,6 +7,7 @@ export default class DialogueUI
     {
         this.dialogueManager = dialogueManager
         this.experience = new Experience()
+        this.inputs = this.experience.inputs
         this.visible = false
         this.anchorWorldPosition = new THREE.Vector3()
         this.anchorWorldForIndicator = new THREE.Vector3()
@@ -119,7 +120,7 @@ export default class DialogueUI
             }
         }
 
-        window.addEventListener('keydown', this.onWindowKeyDown)
+        this.inputs?.on?.('keydown.dialogueUI', this.onWindowKeyDown)
 
         this.onWindowMouseMove = (event) =>
         {
@@ -183,7 +184,7 @@ export default class DialogueUI
 
         this.onWindowMouseDown = () =>
         {
-            if(!this.choiceCursorMode || !document.pointerLockElement)
+            if(!this.choiceCursorMode || !this.inputs?.isPointerLocked?.())
             {
                 return
             }
@@ -208,8 +209,8 @@ export default class DialogueUI
             this.syncCursorDom()
         }
 
-        window.addEventListener('mousemove', this.onWindowMouseMove)
-        window.addEventListener('mousedown', this.onWindowMouseDown)
+        this.inputs?.on?.('mousemove.dialogueUI', this.onWindowMouseMove)
+        this.inputs?.on?.('mousedown.dialogueUI', this.onWindowMouseDown)
         window.addEventListener('resize', this.onWindowResize)
         this.panel.addEventListener('mouseenter', this.onPanelMouseEnter)
         this.panel.addEventListener('mouseleave', this.onPanelMouseLeave)
@@ -342,7 +343,7 @@ export default class DialogueUI
 
     updateVirtualCursor(event)
     {
-        if(document.pointerLockElement)
+        if(this.inputs?.isPointerLocked?.())
         {
             this.virtualCursorPosition.x += event.movementX || 0
             this.virtualCursorPosition.y += event.movementY || 0
@@ -627,9 +628,9 @@ export default class DialogueUI
 
     destroy()
     {
-        window.removeEventListener('keydown', this.onWindowKeyDown)
-        window.removeEventListener('mousemove', this.onWindowMouseMove)
-        window.removeEventListener('mousedown', this.onWindowMouseDown)
+        this.inputs?.off?.('keydown.dialogueUI')
+        this.inputs?.off?.('mousemove.dialogueUI')
+        this.inputs?.off?.('mousedown.dialogueUI')
         window.removeEventListener('resize', this.onWindowResize)
         this.panel.removeEventListener('mouseenter', this.onPanelMouseEnter)
         this.panel.removeEventListener('mouseleave', this.onPanelMouseLeave)
