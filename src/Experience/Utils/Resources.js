@@ -48,6 +48,12 @@ export default class Resources extends EventEmitter
                     (file) =>
                     {
                         this.sourceLoaded(source, file)
+                    },
+                    undefined,
+                    (error) =>
+                    {
+                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
+                        this.sourceLoaded(source, null)
                     }
                 )
             }
@@ -58,6 +64,12 @@ export default class Resources extends EventEmitter
                     (file) =>
                     {
                         this.sourceLoaded(source, file)
+                    },
+                    undefined,
+                    (error) =>
+                    {
+                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
+                        this.sourceLoaded(source, null)
                     }
                 )
             }
@@ -68,6 +80,12 @@ export default class Resources extends EventEmitter
                     (file) =>
                     {
                         this.sourceLoaded(source, file)
+                    },
+                    undefined,
+                    (error) =>
+                    {
+                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
+                        this.sourceLoaded(source, null)
                     }
                 )
             }
