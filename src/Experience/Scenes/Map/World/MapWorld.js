@@ -40,6 +40,8 @@ export default class MapWorld
 
         this.environment = new MapEnvironment()
         this.mapModel = new MapModel()
+        const bloomMinDistance = 1.2
+        const bloomRetreatDistance = bloomMinDistance * 5
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: 120,
@@ -56,13 +58,20 @@ export default class MapWorld
             },
             follow: {
                 target: this.player,
-                minDistance: 3,
+                camera: this.player.camera,
+                minDistance: bloomMinDistance,
                 maxDistance: 7,
                 preferredDistance: 4.5,
+                retreatDistance: bloomRetreatDistance,
+                retreatDistanceMultiplier: 3,
                 heightOffset: 0.9,
                 speed: 3.8,
+                retreatSpeed: 3.8,
                 groundMeshes: this.mapModel.getBloomGroundMeshes?.() ?? [],
-                avoidZones: this.mapModel.getBloomAvoidZones?.() ?? []
+                avoidZones: this.mapModel.getBloomAvoidZones?.() ?? [],
+                collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+                approachDelaySeconds: 0.75,
+                retreatDelaySeconds: 3.5
             }
         })
         this.collisionDebug = new MapCollisionDebug({
