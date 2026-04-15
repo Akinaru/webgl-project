@@ -58,6 +58,27 @@ export default class SomeSystem {
 }
 ```
 
+### 2.4 Organisation des shaders (Map)
+
+Objectif: garder les shaders lisibles, ranges par domaine, et eviter les blocs GLSL inline dans les gros fichiers JS.
+
+- Dossier racine: `src/Experience/Scenes/Map/World/Shaders/`
+- Structure:
+  - `Common/`: utilitaires partages (patch material Three.js, parsing de sections GLSL).
+  - `Terrain/`: shader du relief (`waterline`).
+  - `Water/`: shader du plan d eau (`planMask`).
+- Regle de base:
+  - 1 effet shader metier = 2 fichiers GLSL (`*.vertex.glsl` + `*.fragment.glsl`) + 1 petit fichier JS de mapping des chunks si necessaire.
+  - Interdit: injecter de gros strings shader directement dans `MapModel.js` ou dans d autres modules metier.
+- Convention de sections GLSL:
+  - `// @header`
+  - `// @project` (vertex)
+  - `// @diffuse` (fragment)
+- Si un nouveau shader est ajoute:
+  - le placer dans le dossier domaine adapte (`Terrain/`, `Water/`, etc.),
+  - reutiliser `Common/` avant de creer un nouveau helper,
+  - documenter rapidement le role du shader en tete de fichier.
+
 ## 3) Boucle de jeu ordonnee
 
 Le projet doit garder une pipeline stable (inspiree de la game loop du folio):

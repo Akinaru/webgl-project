@@ -1,10 +1,8 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import { applyStandardMaterialPatch } from './Shaders/applyStandardMaterialPatch.js'
-import {
-    terrainWaterlineShaderChunks,
-    planWaterMaskShaderChunks
-} from './Shaders/mapShaderChunks.js'
+import { applyStandardMaterialPatch } from './Shaders/Common/applyStandardMaterialPatch.js'
+import { terrainWaterlineShaderChunks } from './Shaders/Terrain/waterlineShaderChunks.js'
+import { planWaterMaskShaderChunks } from './Shaders/Water/planMaskShaderChunks.js'
 
 // MapModel centralise le chargement de la map, les collisions, et les shaders eau (relief + plan).
 const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']

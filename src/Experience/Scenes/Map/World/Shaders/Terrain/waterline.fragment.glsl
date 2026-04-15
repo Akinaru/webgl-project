@@ -1,4 +1,13 @@
+// Parametres de hauteur et couleurs pour teinter le relief sous la ligne d eau.
+// @header
+varying vec3 vMapWorldPosition;
+uniform float uMapWaterlineMinY;
+uniform float uMapWaterlineDeepY;
+uniform vec3 uMapWaterlineShallowColor;
+uniform vec3 uMapWaterlineDeepColor;
+
 // Melange la couleur du relief avec une teinte eau selon la hauteur locale.
+// @diffuse
 float shallowMask = 1.0 - smoothstep(uMapWaterlineMinY - 0.18, uMapWaterlineMinY + 0.18, vMapWorldPosition.y);
 float deepMask = 1.0 - smoothstep(uMapWaterlineDeepY - 0.18, uMapWaterlineDeepY + 0.18, vMapWorldPosition.y);
 vec3 depthTint = mix(uMapWaterlineShallowColor, uMapWaterlineDeepColor, clamp(deepMask, 0.0, 1.0));
