@@ -5,7 +5,7 @@ const QUARTER_TURN = Math.PI * 0.5
 const ROTATION_AXIS = 'z'
 const FLOW_AXIS = 'y'
 const TUBE_JOIN_NAME_TOKEN = 'tube-join'
-const MODULE_ROTATION_TARGET_PATTERN = /module-(?:angle|straight)(?:_instance)?[_\s-]?(\d+)(?:[_\s-]?([bt])(\d+))?(?:\.\d+)?$/i
+const MODULE_ROTATION_TARGET_PATTERN = /module-(?:angle|straight)(?:_instance)?[_\s-]?(\d+)(?:[_\s-]?([bt])(\d+))?(?:[._\s-]\d+)*$/i
 const BRANCH_BASE_ORDER = 13
 const SPECIAL_GATE_ORDER_MERGE = 14
 const SPECIAL_GATE_ORDER_AFTER_MERGE = 15
@@ -184,7 +184,7 @@ export default class Scene1TubeWaterController
 
     getTargetMeta(target, fallbackIndex)
     {
-        const name = String(target?.name || '')
+        const name = this.getModuleNameForTarget(target)
         const match = name.match(MODULE_ROTATION_TARGET_PATTERN)
         if(!match)
         {
@@ -204,6 +204,25 @@ export default class Scene1TubeWaterController
             branchType: branchType === 'b' || branchType === 't' ? branchType : 'main',
             branchIndex: Number.isFinite(parsedBranchIndex) ? parsedBranchIndex : 0
         }
+    }
+
+    getModuleNameForTarget(target)
+    {
+        let current = target
+        let moduleCandidate = null
+        while(current)
+        {
+            const name = String(current.name || '')
+            if(MODULE_ROTATION_TARGET_PATTERN.test(name))
+            {
+                // Keep climbing: exported GLTF nodes can contain nested helper
+                // modules (e.g. module-angle_04) inside the real puzzle module.
+                moduleCandidate = name
+            }
+            current = current.parent
+        }
+
+        return moduleCandidate ?? String(target?.name || '')
     }
 
     getBranchSortWeight(branchType)
