@@ -669,7 +669,12 @@ export default class Scene1TubeWaterController
         const quarterTurnOffset = this.quarterTurnsFromInitialByTubeUuid.get(tubeUuid)
         if(quarterTurnOffset !== undefined)
         {
-            return this.normalizeQuarterTurnOffset(quarterTurnOffset) === 0
+            const normalizedOffset = this.normalizeQuarterTurnOffset(quarterTurnOffset)
+            if(this.isStraightTube(tubeUuid))
+            {
+                return normalizedOffset === 0 || normalizedOffset === 2
+            }
+            return normalizedOffset === 0
         }
 
         const initialRotation = this.initialRotationByTubeUuid.get(tubeUuid)
@@ -683,6 +688,18 @@ export default class Scene1TubeWaterController
             THREE.MathUtils.euclideanModulo((currentRotation - initialRotation) + Math.PI, Math.PI * 2) - Math.PI
         )
         return delta <= ROTATION_EPSILON
+    }
+
+    isStraightTube(tubeUuid)
+    {
+        const target = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
+        if(!target)
+        {
+            return false
+        }
+
+        const moduleName = this.getModuleNameForTarget(target)
+        return /^module-straight/i.test(moduleName)
     }
 
     getSourceTubeTarget()
