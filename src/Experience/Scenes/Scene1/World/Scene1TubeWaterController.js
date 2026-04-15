@@ -5,11 +5,12 @@ const QUARTER_TURN = Math.PI * 0.5
 const ROTATION_AXIS = 'z'
 const FLOW_AXIS = 'y'
 const TUBE_JOIN_NAME_TOKEN = 'tube-join'
-const TUBE_WATER_ORDER_PATTERN = /tube-water(?:[_\s-]?(\d+))?(?:\.\d+)?$/i
-const SOURCE_TUBE_NAME_PATTERN = /tube-water[_\s-]?4$/i
-const SOURCE_TUBE_INDEX_FALLBACK = 3
-const CONNECTION_DISTANCE_THRESHOLD = 0.52
-const CONNECTION_DIRECTION_DOT_MAX = -0.35
+const MODULE_ROTATION_TARGET_PATTERN = /module-(?:angle|straight)(?:_instance)?[_\s-]?(\d+)(?:[_\s-]?([bt])(\d+))?(?:\.\d+)?$/i
+const BRANCH_BASE_ORDER = 13
+const SPECIAL_GATE_ORDER_MERGE = 14
+const SPECIAL_GATE_ORDER_AFTER_MERGE = 15
+const REQUIRED_B_BRANCH_INDEX_FOR_MERGE = 9
+const REQUIRED_T_BRANCH_INDEX_FOR_MERGE = 3
 const ROTATION_EPSILON = 0.02
 const DISCONNECTED_COLOR = '#4a5665'
 const CONNECTED_COLOR = '#4ea7ff'
@@ -30,8 +31,9 @@ export default class Scene1TubeWaterController
         this.centerNdc = new THREE.Vector2(0, 0)
         this.turnDirectionByMeshUuid = new Map()
         this.tubeIndexByUuid = new Map()
-        this.tubeOrderByUuid = new Map()
-        this.tubeOrderRankByUuid = new Map()
+        this.targetMetaByUuid = new Map()
+        this.orderedTargetUuids = []
+        this.connectionDependencyGroupsByUuid = new Map()
         this.initialRotationByTubeUuid = new Map()
         this.quarterTurnsFromInitialByTubeUuid = new Map()
         this.joinTargetsByTubeUuid = new Map()
@@ -60,9 +62,9 @@ export default class Scene1TubeWaterController
 
         this.collectJoinTargets()
         this.buildTubeOrder()
+        this.buildConnectionDependencies()
         this.setupTubeMaterials()
         this.captureInitialRotations()
-        this.baseAdjacency = this.buildTubeAdjacency()
         this.randomizeInitialRotations()
         this.updateFlowState()
         this.setEvents()
@@ -137,8 +139,8 @@ export default class Scene1TubeWaterController
 
     buildTubeOrder()
     {
-        this.tubeOrderByUuid.clear()
-        this.tubeOrderRankByUuid.clear()
+        this.targetMetaByUuid.clear()
+        this.orderedTargetUuids = []
 
         const sortableTargets = []
         for(let index = 0; index < this.rotationTargets.length; index++)
@@ -149,57 +151,299 @@ export default class Scene1TubeWaterController
                 continue
             }
 
-            const order = this.getTubeOrder(target, index)
-            this.tubeOrderByUuid.set(target.uuid, order)
-            sortableTargets.push({ target, order, index })
+            const meta = this.getTargetMeta(target, index)
+            this.targetMetaByUuid.set(target.uuid, meta)
+            sortableTargets.push({ target, meta, index })
         }
 
         sortableTargets.sort((a, b) =>
         {
-            if(a.order !== b.order)
+            if(a.meta.order !== b.meta.order)
             {
-                return a.order - b.order
+                return a.meta.order - b.meta.order
+            }
+
+            if(a.meta.branchType !== b.meta.branchType)
+            {
+                return this.getBranchSortWeight(a.meta.branchType) - this.getBranchSortWeight(b.meta.branchType)
+            }
+
+            if(a.meta.branchIndex !== b.meta.branchIndex)
+            {
+                return a.meta.branchIndex - b.meta.branchIndex
             }
 
             return a.index - b.index
         })
 
-        for(let rank = 0; rank < sortableTargets.length; rank++)
+        for(const item of sortableTargets)
         {
-            this.tubeOrderRankByUuid.set(sortableTargets[rank].target.uuid, rank)
+            this.orderedTargetUuids.push(item.target.uuid)
         }
     }
 
-    getTubeOrder(target, fallbackIndex)
+    getTargetMeta(target, fallbackIndex)
     {
         const name = String(target?.name || '')
-        const match = name.match(TUBE_WATER_ORDER_PATTERN)
+        const match = name.match(MODULE_ROTATION_TARGET_PATTERN)
         if(!match)
         {
-            return Number.MAX_SAFE_INTEGER - (this.rotationTargets.length - fallbackIndex)
+            return {
+                order: Number.MAX_SAFE_INTEGER - (this.rotationTargets.length - fallbackIndex),
+                branchType: 'main',
+                branchIndex: 0
+            }
         }
 
-        const rawOrder = match[1]
-        if(rawOrder === undefined)
+        const parsedOrder = Number.parseInt(match[1], 10)
+        const branchType = match[2] ? String(match[2]).toLowerCase() : 'main'
+        const parsedBranchIndex = match[3] ? Number.parseInt(match[3], 10) : 0
+
+        return {
+            order: Number.isFinite(parsedOrder) ? parsedOrder : Number.MAX_SAFE_INTEGER - (this.rotationTargets.length - fallbackIndex),
+            branchType: branchType === 'b' || branchType === 't' ? branchType : 'main',
+            branchIndex: Number.isFinite(parsedBranchIndex) ? parsedBranchIndex : 0
+        }
+    }
+
+    getBranchSortWeight(branchType)
+    {
+        if(branchType === 'main')
         {
             return 0
         }
 
-        const parsedOrder = Number.parseInt(rawOrder, 10)
-        return Number.isFinite(parsedOrder) ? parsedOrder : Number.MAX_SAFE_INTEGER - (this.rotationTargets.length - fallbackIndex)
+        if(branchType === 't')
+        {
+            return 1
+        }
+
+        if(branchType === 'b')
+        {
+            return 2
+        }
+
+        return 3
+    }
+
+    buildConnectionDependencies()
+    {
+        this.connectionDependencyGroupsByUuid.clear()
+
+        for(const targetUuid of this.orderedTargetUuids)
+        {
+            this.connectionDependencyGroupsByUuid.set(targetUuid, [])
+        }
+
+        const mainTargets = this.getTargetsByMeta(({ branchType }) => branchType === 'main')
+        let previousMainUuid = null
+        for(const target of mainTargets)
+        {
+            const dependencyGroups = []
+            if(previousMainUuid)
+            {
+                dependencyGroups.push([previousMainUuid])
+            }
+
+            this.connectionDependencyGroupsByUuid.set(target.uuid, dependencyGroups)
+            previousMainUuid = target.uuid
+        }
+
+        this.buildBranchDependencies('t')
+        this.buildBranchDependencies('b')
+        this.applySpecialGateDependencies()
+    }
+
+    getTargetsByMeta(predicate)
+    {
+        return this.rotationTargets
+            .filter((target) => target && predicate(this.targetMetaByUuid.get(target.uuid) ?? {}))
+            .sort((targetA, targetB) =>
+            {
+                const metaA = this.targetMetaByUuid.get(targetA.uuid) ?? { order: Number.MAX_SAFE_INTEGER, branchIndex: 0, branchType: 'main' }
+                const metaB = this.targetMetaByUuid.get(targetB.uuid) ?? { order: Number.MAX_SAFE_INTEGER, branchIndex: 0, branchType: 'main' }
+                if(metaA.order !== metaB.order)
+                {
+                    return metaA.order - metaB.order
+                }
+
+                if(metaA.branchIndex !== metaB.branchIndex)
+                {
+                    return metaA.branchIndex - metaB.branchIndex
+                }
+
+                return 0
+            })
+    }
+
+    buildBranchDependencies(branchType)
+    {
+        const branchTargets = this.getTargetsByMeta((meta) =>
+            meta.branchType === branchType && meta.order === BRANCH_BASE_ORDER
+        )
+        if(branchTargets.length === 0)
+        {
+            return
+        }
+
+        const entryDependency = this.getMainAtOrder(BRANCH_BASE_ORDER) ?? this.getLastMainBeforeOrder(BRANCH_BASE_ORDER)
+        let previousBranchUuid = null
+        for(const target of branchTargets)
+        {
+            const dependencyGroups = []
+            if(previousBranchUuid)
+            {
+                dependencyGroups.push([previousBranchUuid])
+            }
+            else if(entryDependency)
+            {
+                dependencyGroups.push([entryDependency])
+            }
+
+            this.connectionDependencyGroupsByUuid.set(target.uuid, dependencyGroups)
+            previousBranchUuid = target.uuid
+        }
+    }
+
+    getLastMainBeforeOrder(order)
+    {
+        let candidate = null
+        let candidateOrder = -Infinity
+
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta || meta.branchType !== 'main')
+            {
+                continue
+            }
+
+            if(meta.order < order && meta.order > candidateOrder)
+            {
+                candidate = target.uuid
+                candidateOrder = meta.order
+            }
+        }
+
+        return candidate
+    }
+
+    getMainAtOrder(order)
+    {
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta)
+            {
+                continue
+            }
+
+            if(meta.branchType === 'main' && meta.order === order)
+            {
+                return target.uuid
+            }
+        }
+
+        return null
+    }
+
+    applySpecialGateDependencies()
+    {
+        const mergeTargets = this.getTargetsByMeta((meta) =>
+            meta.branchType === 'main' && meta.order === SPECIAL_GATE_ORDER_MERGE
+        )
+        const afterMergeTargets = this.getTargetsByMeta((meta) =>
+            meta.branchType === 'main' && meta.order === SPECIAL_GATE_ORDER_AFTER_MERGE
+        )
+        if(mergeTargets.length === 0 && afterMergeTargets.length === 0)
+        {
+            return
+        }
+
+        const b9Uuid = this.findBranchUuid('b', REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
+        const t3Uuid = this.findBranchUuid('t', REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
+
+        if(mergeTargets.length > 0 && (b9Uuid || t3Uuid))
+        {
+            const mergeDependencyGroups = []
+            if(b9Uuid)
+            {
+                mergeDependencyGroups.push([b9Uuid])
+            }
+            if(t3Uuid)
+            {
+                mergeDependencyGroups.push([t3Uuid])
+            }
+
+            for(const mergeTarget of mergeTargets)
+            {
+                this.connectionDependencyGroupsByUuid.set(mergeTarget.uuid, mergeDependencyGroups)
+            }
+        }
+
+        if(afterMergeTargets.length > 0)
+        {
+            const mergeUuids = mergeTargets.map((target) => target.uuid)
+            if(mergeUuids.length > 0)
+            {
+                for(const afterMergeTarget of afterMergeTargets)
+                {
+                    this.connectionDependencyGroupsByUuid.set(
+                        afterMergeTarget.uuid,
+                        mergeUuids.map((mergeUuid) => [mergeUuid])
+                    )
+                }
+            }
+        }
+    }
+
+    findBranchUuid(branchType, branchIndex)
+    {
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta)
+            {
+                continue
+            }
+
+            if(meta.order === BRANCH_BASE_ORDER && meta.branchType === branchType && meta.branchIndex === branchIndex)
+            {
+                return target.uuid
+            }
+        }
+
+        return null
     }
 
     findJoinTargetsForTube(tubeTarget)
     {
-        const parent = tubeTarget.parent
-        if(!parent)
+        const name = String(tubeTarget?.name || '').toLowerCase()
+        const isModuleTarget = MODULE_ROTATION_TARGET_PATTERN.test(name)
+        const traversalRoot = isModuleTarget ? tubeTarget : tubeTarget.parent
+        if(!traversalRoot)
         {
             return []
         }
 
         const joinTargets = []
         const visited = new Set()
-        parent.traverse((child) =>
+        traversalRoot.traverse((child) =>
         {
             if(child === tubeTarget || visited.has(child.uuid))
             {
@@ -343,45 +587,56 @@ export default class Scene1TubeWaterController
     computeConnectedTubeIds()
     {
         const connected = new Set()
-        const sourceTarget = this.getSourceTubeTarget()
-        if(!sourceTarget)
-        {
-            return connected
-        }
+        const orderedUuids = this.orderedTargetUuids.length > 0
+            ? this.orderedTargetUuids
+            : this.rotationTargets.map((target) => target?.uuid).filter(Boolean)
 
-        const adjacency = this.baseAdjacency instanceof Map
-            ? this.baseAdjacency
-            : this.buildTubeAdjacency()
-        const queue = [sourceTarget.uuid]
-        connected.add(sourceTarget.uuid)
-
-        while(queue.length > 0)
+        let hasProgress = true
+        while(hasProgress)
         {
-            const current = queue.shift()
-            const neighbors = adjacency.get(current) ?? new Set()
-            for(const neighbor of neighbors)
+            hasProgress = false
+            for(const tubeUuid of orderedUuids)
             {
-                if(connected.has(neighbor))
+                if(connected.has(tubeUuid))
                 {
                     continue
                 }
 
-                if(!this.isTubeAtInitialRotation(neighbor))
+                if(!this.isTubeAtInitialRotation(tubeUuid))
                 {
                     continue
                 }
 
-                if(!this.arePreviousTubesAtInitialRotation(neighbor))
+                if(!this.areDependencyGroupsSatisfied(tubeUuid, connected))
                 {
                     continue
                 }
 
-                connected.add(neighbor)
-                queue.push(neighbor)
+                connected.add(tubeUuid)
+                hasProgress = true
             }
         }
 
         return connected
+    }
+
+    areDependencyGroupsSatisfied(tubeUuid, connectedTubeIds)
+    {
+        const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+        if(dependencyGroups.length === 0)
+        {
+            return true
+        }
+
+        for(const group of dependencyGroups)
+        {
+            if(group.every((dependencyUuid) => connectedTubeIds.has(dependencyUuid)))
+            {
+                return true
+            }
+        }
+
+        return false
     }
 
     isTubeAtInitialRotation(tubeUuid)
@@ -411,39 +666,10 @@ export default class Scene1TubeWaterController
         return delta <= ROTATION_EPSILON
     }
 
-    arePreviousTubesAtInitialRotation(tubeUuid)
-    {
-        const rank = this.tubeOrderRankByUuid.get(tubeUuid)
-        if(rank === undefined || rank <= 0)
-        {
-            return true
-        }
-
-        for(const target of this.rotationTargets)
-        {
-            if(!target)
-            {
-                continue
-            }
-
-            const targetRank = this.tubeOrderRankByUuid.get(target.uuid)
-            if(targetRank === undefined || targetRank >= rank)
-            {
-                continue
-            }
-
-            if(!this.isTubeAtInitialRotation(target.uuid))
-            {
-                return false
-            }
-        }
-
-        return true
-    }
-
     getSourceTubeTarget()
     {
-        let indexedSource = null
+        let sourceTarget = null
+        let sourceOrder = Number.POSITIVE_INFINITY
 
         for(const target of this.rotationTargets)
         {
@@ -452,132 +678,20 @@ export default class Scene1TubeWaterController
                 continue
             }
 
-            if(this.tubeIndexByUuid.get(target.uuid) === SOURCE_TUBE_INDEX_FALLBACK)
-            {
-                indexedSource = target
-            }
-
-            const name = String(target?.name || '')
-            if(SOURCE_TUBE_NAME_PATTERN.test(name))
-            {
-                return target
-            }
-        }
-
-        if(indexedSource)
-        {
-            return indexedSource
-        }
-
-        return this.rotationTargets[SOURCE_TUBE_INDEX_FALLBACK] ?? this.rotationTargets[0] ?? null
-    }
-
-    buildTubeAdjacency()
-    {
-        const adjacency = new Map()
-        const endpointsByTube = new Map()
-
-        for(const target of this.rotationTargets)
-        {
-            if(!target)
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta || meta.branchType !== 'main')
             {
                 continue
             }
 
-            adjacency.set(target.uuid, new Set())
-            endpointsByTube.set(target.uuid, this.computeTubeEndpoints(target))
-        }
-
-        for(let i = 0; i < this.rotationTargets.length; i++)
-        {
-            const tubeA = this.rotationTargets[i]
-            if(!tubeA)
+            if(meta.order < sourceOrder)
             {
-                continue
-            }
-
-            for(let j = i + 1; j < this.rotationTargets.length; j++)
-            {
-                const tubeB = this.rotationTargets[j]
-                if(!tubeB)
-                {
-                    continue
-                }
-
-                if(!this.areTubesConnected(endpointsByTube.get(tubeA.uuid), endpointsByTube.get(tubeB.uuid)))
-                {
-                    continue
-                }
-
-                adjacency.get(tubeA.uuid)?.add(tubeB.uuid)
-                adjacency.get(tubeB.uuid)?.add(tubeA.uuid)
+                sourceOrder = meta.order
+                sourceTarget = target
             }
         }
 
-        return adjacency
-    }
-
-    computeTubeEndpoints(target)
-    {
-        this.getWorldCenter(target, this.rotationPivotWorld)
-        this.getFlowAxisWorld(target, this.flowAxisWorld)
-        const halfLength = this.estimateTubeHalfLengthWorld(target)
-
-        this.endpointA.copy(this.rotationPivotWorld).addScaledVector(this.flowAxisWorld, halfLength)
-        this.endpointB.copy(this.rotationPivotWorld).addScaledVector(this.flowAxisWorld, -halfLength)
-        this.endpointDirA.copy(this.flowAxisWorld)
-        this.endpointDirB.copy(this.flowAxisWorld).multiplyScalar(-1)
-
-        return [
-            { point: this.endpointA.clone(), direction: this.endpointDirA.clone() },
-            { point: this.endpointB.clone(), direction: this.endpointDirB.clone() }
-        ]
-    }
-
-    estimateTubeHalfLengthWorld(target)
-    {
-        if(target instanceof THREE.Mesh && target.geometry)
-        {
-            target.geometry.computeBoundingBox?.()
-            if(target.geometry.boundingBox)
-            {
-                const size = target.geometry.boundingBox.getSize(new THREE.Vector3())
-                target.matrixWorld.decompose(this.targetWorldPosition, this.targetQuaternionWorld, this.targetScale)
-                return Math.max(0.16, (size[FLOW_AXIS] * Math.abs(this.targetScale[FLOW_AXIS]) * 0.5) * 0.95)
-            }
-        }
-
-        this.bounds.setFromObject(target)
-        if(this.bounds.isEmpty())
-        {
-            return 0.45
-        }
-
-        const size = this.bounds.getSize(new THREE.Vector3())
-        return Math.max(0.16, (Math.max(size.x, size.y, size.z) * 0.5) * 0.42)
-    }
-
-    areTubesConnected(endpointsA = [], endpointsB = [])
-    {
-        for(const endpointA of endpointsA)
-        {
-            for(const endpointB of endpointsB)
-            {
-                if(endpointA.point.distanceTo(endpointB.point) > CONNECTION_DISTANCE_THRESHOLD)
-                {
-                    continue
-                }
-
-                if(endpointA.direction.dot(endpointB.direction) > CONNECTION_DIRECTION_DOT_MAX)
-                {
-                    continue
-                }
-
-                return true
-            }
-        }
-
-        return false
+        return sourceTarget ?? this.rotationTargets[0] ?? null
     }
 
     applyTubeFlowColors(connectedTubeIds)
@@ -724,8 +838,9 @@ export default class Scene1TubeWaterController
         this.inputs?.off?.('mousedown.scene1TubeWater')
         this.hoveredTubeMesh = null
         this.turnDirectionByMeshUuid.clear()
-        this.tubeOrderByUuid.clear()
-        this.tubeOrderRankByUuid.clear()
+        this.targetMetaByUuid.clear()
+        this.orderedTargetUuids = []
+        this.connectionDependencyGroupsByUuid.clear()
         this.quarterTurnsFromInitialByTubeUuid.clear()
         this.joinTargetsByTubeUuid.clear()
         this.tubeMeshesByTargetUuid.clear()

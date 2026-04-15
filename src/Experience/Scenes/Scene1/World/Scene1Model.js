@@ -13,6 +13,7 @@ const NON_COLLIDABLE_NAME_TOKENS = [
 const WALKABLE_GROUND_NAME_TOKENS = ['sol', 'chemin', 'passerelle']
 const CLICKABLE_MATERIAL_NAMES = new Set(['materiau0', 'materiau1', 'materiau2'])
 const TUBE_WATER_NAME_TOKEN = 'tube-water'
+const MODULE_ROTATION_TARGET_PATTERN = /^module-(?:angle|straight)(?:_instance)?(?:[_\s-].*)?$/i
 
 export default class Scene1Model
 {
@@ -205,6 +206,11 @@ export default class Scene1Model
         while(current)
         {
             const name = String(current.name || '').toLowerCase()
+            if(MODULE_ROTATION_TARGET_PATTERN.test(name))
+            {
+                return current
+            }
+
             if(name.includes(TUBE_WATER_NAME_TOKEN))
             {
                 return current
