@@ -3,7 +3,6 @@ import Experience from '../../../Experience.js'
 
 const CURSOR_OWNER_CLASS = 'is-scene1-material-cursor'
 const BUTTON_PRESS_DEPTH = 0.045
-const BUTTON_PRESS_DURATION = 0.08
 const BUTTON_RELEASE_DURATION = 0.14
 
 export default class Scene1MaterialButtons
@@ -22,6 +21,7 @@ export default class Scene1MaterialButtons
         this.centerNdc = new THREE.Vector2(0, 0)
         this.centerScreen = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
         this.hoveredMesh = null
+        this.activePressedMeshUuid = null
         this.cursorElement = null
         this.ownsCursor = false
         this.buttonStates = new Map()
@@ -67,7 +67,22 @@ export default class Scene1MaterialButtons
                 return
             }
 
-            this.pressButton(this.hoveredMesh)
+            this.holdButton(this.hoveredMesh)
+        }
+
+        this.onMouseUp = (event) =>
+        {
+            if(event?.button !== 0)
+            {
+                return
+            }
+
+            this.releaseHeldButton()
+        }
+
+        this.onWindowBlur = () =>
+        {
+            this.releaseHeldButton()
         }
 
         this.onWindowResize = () =>
@@ -76,6 +91,8 @@ export default class Scene1MaterialButtons
         }
 
         this.inputs?.on?.('mousedown.scene1MaterialButtons', this.onMouseDown)
+        this.inputs?.on?.('mouseup.scene1MaterialButtons', this.onMouseUp)
+        this.inputs?.on?.('blur.scene1MaterialButtons', this.onWindowBlur)
         window.addEventListener('resize', this.onWindowResize)
     }
 
@@ -104,7 +121,7 @@ export default class Scene1MaterialButtons
         this.createdCursorElement = true
     }
 
-    pressButton(mesh)
+    holdButton(mesh)
     {
         const state = this.buttonStates.get(mesh.uuid)
         if(!state)
@@ -112,7 +129,27 @@ export default class Scene1MaterialButtons
             return
         }
 
-        state.phase = 'press'
+        this.activePressedMeshUuid = mesh.uuid
+        state.phase = 'hold'
+        state.offsetY = -BUTTON_PRESS_DEPTH
+        state.timer = 0
+    }
+
+    releaseHeldButton()
+    {
+        if(!this.activePressedMeshUuid)
+        {
+            return
+        }
+
+        const state = this.buttonStates.get(this.activePressedMeshUuid)
+        this.activePressedMeshUuid = null
+        if(!state)
+        {
+            return
+        }
+
+        state.phase = 'release'
         state.timer = 0
     }
 
@@ -196,17 +233,9 @@ export default class Scene1MaterialButtons
                 continue
             }
 
-            if(state.phase === 'press')
+            if(state.phase === 'hold')
             {
-                state.timer += deltaSeconds
-                const progress = Math.min(1, state.timer / BUTTON_PRESS_DURATION)
-                state.offsetY = -BUTTON_PRESS_DEPTH * progress
-
-                if(progress >= 1)
-                {
-                    state.phase = 'release'
-                    state.timer = 0
-                }
+                state.offsetY = -BUTTON_PRESS_DEPTH
             }
             else if(state.phase === 'release')
             {
@@ -229,6 +258,8 @@ export default class Scene1MaterialButtons
     destroy()
     {
         this.inputs?.off?.('mousedown.scene1MaterialButtons')
+        this.inputs?.off?.('mouseup.scene1MaterialButtons')
+        this.inputs?.off?.('blur.scene1MaterialButtons')
         window.removeEventListener('resize', this.onWindowResize)
         this.releaseCursor()
 
