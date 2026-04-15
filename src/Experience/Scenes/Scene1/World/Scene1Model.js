@@ -1,6 +1,18 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 
+const NON_COLLIDABLE_NAME_TOKENS = [
+    'water',
+    'tube-water',
+    'tube-join',
+    'cascade',
+    'sphere',
+    'sphère',
+    'screen'
+]
+const WALKABLE_GROUND_NAME_TOKENS = ['sol', 'chemin', 'passerelle']
+const CLICKABLE_MATERIAL_NAMES = new Set(['materiau0', 'materiau1', 'materiau2'])
+
 export default class Scene1Model
 {
     constructor()
@@ -32,6 +44,8 @@ export default class Scene1Model
 
         this.collisionMeshes = []
         this.collisionBoxes = []
+        this.groundMeshes = []
+        this.clickableMaterialMeshes = []
 
         this.model.traverse((child) =>
         {
@@ -53,7 +67,22 @@ export default class Scene1Model
                 return
             }
 
+            if(!this.shouldUseForCollision(child))
+            {
+                return
+            }
+
+            this.applyCollisionMaterialFixes(child)
             this.collisionMeshes.push(child)
+            if(this.isWalkableGroundMesh(child))
+            {
+                this.groundMeshes.push(child)
+            }
+
+            if(this.isClickableMaterialMesh(child))
+            {
+                this.clickableMaterialMeshes.push(child)
+            }
         })
 
         this.scene.add(this.model)
@@ -81,6 +110,8 @@ export default class Scene1Model
 
         this.collisionMeshes = [this.fallback]
         this.collisionBoxes = [new THREE.Box3().setFromObject(this.fallback)]
+        this.groundMeshes = [this.fallback]
+        this.clickableMaterialMeshes = []
         this.computeBoundsDataFrom(this.fallback)
     }
 
@@ -97,10 +128,51 @@ export default class Scene1Model
                 return
             }
 
+            if(!this.shouldUseForCollision(child))
+            {
+                return
+            }
+
             localBounds.copy(child.geometry.boundingBox)
             worldBounds.copy(localBounds).applyMatrix4(child.matrixWorld)
             this.collisionBoxes.push(worldBounds.clone())
         })
+    }
+
+    shouldUseForCollision(mesh)
+    {
+        return !this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS)
+    }
+
+    isWalkableGroundMesh(mesh)
+    {
+        return this.hasNameInHierarchy(mesh, WALKABLE_GROUND_NAME_TOKENS)
+    }
+
+    applyCollisionMaterialFixes(mesh)
+    {
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material]
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.side = THREE.DoubleSide
+            material.needsUpdate = true
+        }
+    }
+
+    isClickableMaterialMesh(mesh)
+    {
+        const normalizedName = (mesh?.name || '')
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '')
+        return CLICKABLE_MATERIAL_NAMES.has(normalizedName)
     }
 
     computeBoundsDataFrom(object3D)
@@ -236,12 +308,17 @@ export default class Scene1Model
 
     getGroundMeshes()
     {
-        return this.collisionMeshes ?? []
+        return this.groundMeshes ?? this.collisionMeshes ?? []
     }
 
     getSpawnPosition()
     {
         return this.spawnPosition?.clone?.() ?? { x: 0, y: 3, z: 0 }
+    }
+
+    getClickableMaterialMeshes()
+    {
+        return this.clickableMaterialMeshes ?? []
     }
 
     getBoundaryRadius()
@@ -267,6 +344,8 @@ export default class Scene1Model
 
         this.collisionBoxes = null
         this.collisionMeshes = null
+        this.groundMeshes = null
+        this.clickableMaterialMeshes = null
         this.worldBounds = null
     }
 }

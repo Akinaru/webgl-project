@@ -3,6 +3,7 @@ import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Player.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import Scene1Model from './Scene1Model.js'
+import Scene1MaterialButtons from './Scene1MaterialButtons.js'
 
 let scene1WorldInstanceIndex = 0
 
@@ -40,17 +41,22 @@ export default class Scene1World
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: this.scene1Model.getBoundaryRadius?.() ?? 48,
-            collisionBoxes: this.scene1Model.getCollisionBoxes?.() ?? [],
+            collisionBoxes: [],
             collisionMeshes: this.scene1Model.getCollisionMeshes?.() ?? [],
             groundMeshes: this.scene1Model.getGroundMeshes?.() ?? [],
             spawnPosition: this.scene1Model.getSpawnPosition?.(),
             spawnYaw: 0
+        })
+
+        this.materialButtons = new Scene1MaterialButtons({
+            scene1Model: this.scene1Model
         })
     }
 
     update(delta = this.experience.time.delta)
     {
         this.player?.update(delta)
+        this.materialButtons?.update(delta)
     }
 
     destroy()
@@ -61,6 +67,12 @@ export default class Scene1World
         {
             this.player.destroy()
             this.player = null
+        }
+
+        if(this.materialButtons)
+        {
+            this.materialButtons.destroy?.()
+            this.materialButtons = null
         }
 
         if(this.scene1Model)
