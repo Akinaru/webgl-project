@@ -3,6 +3,7 @@ import Experience from '../../../Experience.js'
 
 const QUARTER_TURN = Math.PI * 0.5
 const FULL_TURN = Math.PI * 2
+const ROTATION_AXIS = 'z'
 
 export default class Scene1TubeWaterController
 {
@@ -19,6 +20,11 @@ export default class Scene1TubeWaterController
         this.centerNdc = new THREE.Vector2(0, 0)
         this.turnDirectionByMeshUuid = new Map()
         this.hoveredTubeMesh = null
+        this.bounds = new THREE.Box3()
+        this.beforeCenterWorld = new THREE.Vector3()
+        this.afterCenterWorld = new THREE.Vector3()
+        this.beforeCenterLocal = new THREE.Vector3()
+        this.afterCenterLocal = new THREE.Vector3()
 
         this.randomizeInitialRotations()
         this.setEvents()
@@ -34,7 +40,10 @@ export default class Scene1TubeWaterController
             }
 
             const randomQuarterTurns = Math.floor(Math.random() * 4)
-            target.rotation.y = this.normalizeAngle(target.rotation.y + (randomQuarterTurns * QUARTER_TURN))
+            if(randomQuarterTurns > 0)
+            {
+                this.rotateTargetAroundCenter(target, randomQuarterTurns * QUARTER_TURN)
+            }
 
             const turnDirection = Math.random() >= 0.5 ? 1 : -1
             this.turnDirectionByMeshUuid.set(target.uuid, turnDirection)
@@ -93,7 +102,45 @@ export default class Scene1TubeWaterController
         }
 
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
-        rotationTarget.rotation.y = this.normalizeAngle(rotationTarget.rotation.y + (QUARTER_TURN * direction))
+        this.rotateTargetAroundCenter(rotationTarget, QUARTER_TURN * direction)
+    }
+
+    rotateTargetAroundCenter(target, angle)
+    {
+        this.getWorldCenter(target, this.beforeCenterWorld)
+
+        target.rotation[ROTATION_AXIS] = this.normalizeAngle(target.rotation[ROTATION_AXIS] + angle)
+        target.updateMatrixWorld(true)
+
+        this.getWorldCenter(target, this.afterCenterWorld)
+
+        if(target.parent)
+        {
+            target.parent.updateMatrixWorld(true)
+            this.beforeCenterLocal.copy(this.beforeCenterWorld)
+            this.afterCenterLocal.copy(this.afterCenterWorld)
+            target.parent.worldToLocal(this.beforeCenterLocal)
+            target.parent.worldToLocal(this.afterCenterLocal)
+            target.position.add(this.beforeCenterLocal.sub(this.afterCenterLocal))
+        }
+        else
+        {
+            target.position.add(this.beforeCenterWorld.sub(this.afterCenterWorld))
+        }
+
+        target.updateMatrixWorld(true)
+    }
+
+    getWorldCenter(target, out)
+    {
+        target.updateMatrixWorld(true)
+        this.bounds.setFromObject(target)
+        if(this.bounds.isEmpty())
+        {
+            return out.setFromMatrixPosition(target.matrixWorld)
+        }
+
+        return this.bounds.getCenter(out)
     }
 
     normalizeAngle(value)
