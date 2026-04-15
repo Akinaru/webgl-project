@@ -74,6 +74,7 @@ export default class MapModel
                 return
             }
 
+            this.applyCollisionMaterialFixes(child)
             this.collisionMeshes.push(child)
         })
 
@@ -148,6 +149,34 @@ export default class MapModel
 
         const isTrunk = meshName.includes('tronc') || meshName.includes('trunk')
         return isTrunk
+    }
+
+    applyCollisionMaterialFixes(mesh)
+    {
+        if(!this.shouldForceDoubleSide(mesh))
+        {
+            return
+        }
+
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material]
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.side = THREE.DoubleSide
+            material.needsUpdate = true
+        }
+    }
+
+    shouldForceDoubleSide(object)
+    {
+        return this.hasNameInHierarchy(object, ['buildingx', 'plantes'])
     }
 
     isPalmTreePart(object)
