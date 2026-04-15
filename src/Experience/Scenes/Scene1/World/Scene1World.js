@@ -5,6 +5,7 @@ import Player from '../../../Common/Player.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import Scene1Model from './Scene1Model.js'
 import Scene1MaterialButtons from './Scene1MaterialButtons.js'
+import Scene1TubeWaterController from './Scene1TubeWaterController.js'
 
 let scene1WorldInstanceIndex = 0
 
@@ -50,6 +51,10 @@ export default class Scene1World
         })
 
         this.materialButtons = new Scene1MaterialButtons({
+            scene1Model: this.scene1Model,
+            isExternalHoverActive: () => this.tubeWaterController?.isHoveringTube?.() ?? false
+        })
+        this.tubeWaterController = new Scene1TubeWaterController({
             scene1Model: this.scene1Model
         })
 
@@ -59,6 +64,7 @@ export default class Scene1World
     update(delta = this.experience.time.delta)
     {
         this.player?.update(delta)
+        this.tubeWaterController?.update?.()
         this.materialButtons?.update(delta)
         this.checkWallCrossTeleport()
     }
@@ -165,6 +171,12 @@ export default class Scene1World
         {
             this.materialButtons.destroy?.()
             this.materialButtons = null
+        }
+
+        if(this.tubeWaterController)
+        {
+            this.tubeWaterController.destroy?.()
+            this.tubeWaterController = null
         }
 
         if(this.scene1Model)

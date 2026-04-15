@@ -12,6 +12,7 @@ const NON_COLLIDABLE_NAME_TOKENS = [
 ]
 const WALKABLE_GROUND_NAME_TOKENS = ['sol', 'chemin', 'passerelle']
 const CLICKABLE_MATERIAL_NAMES = new Set(['materiau0', 'materiau1', 'materiau2'])
+const TUBE_WATER_NAME_TOKEN = 'tube-water'
 
 export default class Scene1Model
 {
@@ -46,6 +47,9 @@ export default class Scene1Model
         this.collisionBoxes = []
         this.groundMeshes = []
         this.clickableMaterialMeshes = []
+        this.tubeWaterMeshes = []
+        this.tubeWaterRotationTargets = []
+        const tubeWaterTargetIds = new Set()
 
         this.model.traverse((child) =>
         {
@@ -67,6 +71,18 @@ export default class Scene1Model
                 return
             }
 
+            if(this.isTubeWaterMesh(child))
+            {
+                this.applyCollisionMaterialFixes(child)
+                this.tubeWaterMeshes.push(child)
+                const rotationTarget = this.getTubeWaterRotationTargetFromObject(child)
+                if(rotationTarget && !tubeWaterTargetIds.has(rotationTarget.uuid))
+                {
+                    tubeWaterTargetIds.add(rotationTarget.uuid)
+                    this.tubeWaterRotationTargets.push(rotationTarget)
+                }
+            }
+
             if(!this.shouldUseForCollision(child))
             {
                 return
@@ -83,6 +99,7 @@ export default class Scene1Model
             {
                 this.clickableMaterialMeshes.push(child)
             }
+
         })
 
         this.scene.add(this.model)
@@ -112,6 +129,8 @@ export default class Scene1Model
         this.collisionBoxes = [new THREE.Box3().setFromObject(this.fallback)]
         this.groundMeshes = [this.fallback]
         this.clickableMaterialMeshes = []
+        this.tubeWaterMeshes = []
+        this.tubeWaterRotationTargets = []
         this.computeBoundsDataFrom(this.fallback)
     }
 
@@ -173,6 +192,27 @@ export default class Scene1Model
             .toLowerCase()
             .replace(/[\s_-]+/g, '')
         return CLICKABLE_MATERIAL_NAMES.has(normalizedName)
+    }
+
+    isTubeWaterMesh(mesh)
+    {
+        return this.hasNameInHierarchy(mesh, [TUBE_WATER_NAME_TOKEN])
+    }
+
+    getTubeWaterRotationTargetFromObject(object)
+    {
+        let current = object
+        while(current)
+        {
+            const name = String(current.name || '').toLowerCase()
+            if(name.includes(TUBE_WATER_NAME_TOKEN))
+            {
+                return current
+            }
+            current = current.parent
+        }
+
+        return object ?? null
     }
 
     computeBoundsDataFrom(object3D)
@@ -321,6 +361,16 @@ export default class Scene1Model
         return this.clickableMaterialMeshes ?? []
     }
 
+    getTubeWaterMeshes()
+    {
+        return this.tubeWaterMeshes ?? []
+    }
+
+    getTubeWaterRotationTargets()
+    {
+        return this.tubeWaterRotationTargets ?? []
+    }
+
     getBoundsForNameTokens(tokens = [], { exact = false } = {})
     {
         const root = this.model ?? this.fallback
@@ -406,6 +456,8 @@ export default class Scene1Model
         this.collisionMeshes = null
         this.groundMeshes = null
         this.clickableMaterialMeshes = null
+        this.tubeWaterMeshes = null
+        this.tubeWaterRotationTargets = null
         this.worldBounds = null
     }
 }

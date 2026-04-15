@@ -7,7 +7,7 @@ const BUTTON_RELEASE_DURATION = 0.14
 
 export default class Scene1MaterialButtons
 {
-    constructor({ scene1Model } = {})
+    constructor({ scene1Model, isExternalHoverActive = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
@@ -15,6 +15,9 @@ export default class Scene1MaterialButtons
         this.canvas = this.experience.canvas
         this.dialogueManager = this.experience.dialogueManager
         this.scene1Model = scene1Model
+        this.isExternalHoverActive = typeof isExternalHoverActive === 'function'
+            ? isExternalHoverActive
+            : null
         this.clickableMeshes = this.scene1Model?.getClickableMaterialMeshes?.() ?? []
 
         this.raycaster = new THREE.Raycaster()
@@ -204,7 +207,8 @@ export default class Scene1MaterialButtons
         this.cursorElement.style.left = `${this.centerScreen.x}px`
         this.cursorElement.style.top = `${this.centerScreen.y}px`
         this.cursorElement.classList.add('is-visible')
-        this.cursorElement.classList.toggle('is-over-choice', Boolean(this.hoveredMesh))
+        const hasExternalHover = Boolean(this.isExternalHoverActive?.())
+        this.cursorElement.classList.toggle('is-over-choice', Boolean(this.hoveredMesh) || hasExternalHover)
     }
 
     releaseCursor()
