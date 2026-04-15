@@ -29,6 +29,8 @@ export default class DialogueUI
         this.cameraToTarget = new THREE.Vector3()
         this.lastIndicatorSide = 1
         this.lastIndicatorY = window.innerHeight * 0.5
+        this.verticalIndicatorMaxDistance = 6.5
+        this.verticalIndicatorCenterToleranceNdcX = 0.42
 
         this.setElements()
         this.setEvents()
@@ -522,7 +524,7 @@ export default class DialogueUI
         }
     }
 
-    showTurnIndicator(camera, { ndcX = 0, ndcY = 0 } = {})
+    showTurnIndicator(camera, { ndcX = 0, ndcY = 0, ndcZ = 0 } = {})
     {
         const width = window.innerWidth
         const height = window.innerHeight
@@ -536,6 +538,12 @@ export default class DialogueUI
 
         if(isVerticalEdge)
         {
+            if(!this.shouldShowVerticalIndicator(camera, { ndcX, ndcZ }))
+            {
+                this.hideTurnIndicator()
+                return
+            }
+
             if(ndcY > 0)
             {
                 y = paddingY
@@ -564,6 +572,22 @@ export default class DialogueUI
         this.turnIndicator.style.top = `${y}px`
         this.turnIndicator.style.setProperty('--turn-rotation', `${rotation}rad`)
         this.turnIndicator.classList.add('is-visible')
+    }
+
+    shouldShowVerticalIndicator(camera, { ndcX = 0, ndcZ = 0 } = {})
+    {
+        if(Math.abs(ndcX) > this.verticalIndicatorCenterToleranceNdcX)
+        {
+            return false
+        }
+
+        if(ndcZ < -1 || ndcZ > 1)
+        {
+            return false
+        }
+
+        const distanceToAnchor = camera.position.distanceTo(this.anchorWorldForIndicator)
+        return distanceToAnchor <= this.verticalIndicatorMaxDistance
     }
 
     getIndicatorVerticalPosition(camera, viewportHeight)
