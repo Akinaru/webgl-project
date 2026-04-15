@@ -50,6 +50,10 @@ export default class Bloom
             retreatHoldSeconds: follow.retreatHoldSeconds ?? 2.2,
             lookTurnSpeed: follow.lookTurnSpeed ?? 11,
             faceMovementMinSpeed: follow.faceMovementMinSpeed ?? 0.05,
+            contourAngularStepRadians: follow.contourAngularStepRadians ?? 0.35,
+            contourSamplesPerSide: follow.contourSamplesPerSide ?? 8,
+            contourMinProgress: follow.contourMinProgress ?? 0.12,
+            collisionSlideFactor: follow.collisionSlideFactor ?? 0.9,
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
             avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
             collisionBoxes: Array.isArray(follow.collisionBoxes) ? follow.collisionBoxes : [],
@@ -79,6 +83,11 @@ export default class Bloom
         this.followRaycastOrigin = new THREE.Vector3()
         this.followWorldNormal = new THREE.Vector3()
         this.followCollisionRaycaster = new THREE.Raycaster()
+        this.followCollisionHitNormal = new THREE.Vector3()
+        this.followCollisionSlideNormal = new THREE.Vector3()
+        this.followCollisionSlide = new THREE.Vector3()
+        this.contourDirectionCandidate = new THREE.Vector3()
+        this.contourCandidatePosition = new THREE.Vector3()
         this.movementDelta = new THREE.Vector3()
         this.movementDirection = new THREE.Vector3(0, 0, 1)
         this.followState = {
@@ -574,6 +583,17 @@ export default class Bloom
         )
         this.followDesiredPosition.y = groundY + this.baseY + bobOffset
 
+        if(shouldAdjust)
+        {
+            this.resolveFollowContourTarget({
+                currentPosition: current,
+                targetPosition: this.followTargetPosition,
+                desiredDistance,
+                preferredDirectionFromTarget: desiredDirectionFromTarget,
+                bobOffset
+            })
+        }
+
         const distanceFromPreferred = Math.max(0, horizontalDistance - this.follow.preferredDistance)
         const adaptiveSpeedFactor = THREE.MathUtils.clamp(
             distanceFromPreferred / Math.max(0.001, this.follow.speedDistanceRange),
@@ -680,6 +700,128 @@ export default class Bloom
         return this.followReturnPosition
     }
 
+    rotateHorizontalDirection(direction, angle, output)
+    {
+        const yaw = Math.atan2(direction.x, direction.z) + angle
+        output.set(Math.sin(yaw), 0, Math.cos(yaw))
+        return output
+    }
+
+    resolveFollowContourTarget({
+        currentPosition,
+        targetPosition,
+        desiredDistance,
+        preferredDirectionFromTarget,
+        bobOffset
+    } = {})
+    {
+        const directPathBlocked = this.isFollowPathBlocked(currentPosition, this.followDesiredPosition)
+        if(!directPathBlocked)
+        {
+            return
+        }
+
+        const contourStep = Math.max(0.05, this.follow.contourAngularStepRadians)
+        const contourSamples = Math.max(1, Math.floor(this.follow.contourSamplesPerSide))
+        const minimumProgress = Math.max(0, this.follow.contourMinProgress)
+
+        for(let sampleIndex = 1; sampleIndex <= contourSamples; sampleIndex++)
+        {
+            const angleOffset = contourStep * sampleIndex
+
+            for(const side of [1, -1])
+            {
+                this.rotateHorizontalDirection(
+                    preferredDirectionFromTarget,
+                    angleOffset * side,
+                    this.contourDirectionCandidate
+                )
+
+                this.contourCandidatePosition
+                    .copy(targetPosition)
+                    .addScaledVector(this.contourDirectionCandidate, desiredDistance)
+
+                this.applyAvoidZones(this.contourCandidatePosition, currentPosition)
+
+                const fallbackGroundY = currentPosition.y - this.baseY
+                const groundY = this.resolveGroundYAt(
+                    this.contourCandidatePosition.x,
+                    this.contourCandidatePosition.z,
+                    fallbackGroundY
+                )
+                this.contourCandidatePosition.y = groundY + this.baseY + bobOffset
+
+                const candidateProgress = this.contourCandidatePosition.distanceTo(currentPosition)
+                if(candidateProgress < minimumProgress)
+                {
+                    continue
+                }
+
+                if(this.isFollowPathBlocked(currentPosition, this.contourCandidatePosition))
+                {
+                    continue
+                }
+
+                this.followDesiredPosition.copy(this.contourCandidatePosition)
+                return
+            }
+        }
+    }
+
+    isFollowPathBlocked(fromPosition, toPosition)
+    {
+        const meshes = this.follow.collisionMeshes
+        if(!Array.isArray(meshes) || meshes.length === 0)
+        {
+            return false
+        }
+
+        this.followCollisionDirection
+            .set(
+                toPosition.x - fromPosition.x,
+                0,
+                toPosition.z - fromPosition.z
+            )
+
+        const travelDistance = this.followCollisionDirection.length()
+        if(travelDistance < 1e-5)
+        {
+            return false
+        }
+
+        this.followCollisionDirection.multiplyScalar(1 / travelDistance)
+        const raycastFar = travelDistance + this.follow.colliderRadius
+        const feetY = fromPosition.y - this.follow.colliderHeight + 0.02
+        const sampleHeights = [feetY + 0.3, feetY + 0.85, fromPosition.y - 0.15]
+
+        for(const sampleY of sampleHeights)
+        {
+            this.followRaycastOrigin.set(fromPosition.x, sampleY, fromPosition.z)
+            this.followCollisionRaycaster.set(this.followRaycastOrigin, this.followCollisionDirection)
+            this.followCollisionRaycaster.near = 0
+            this.followCollisionRaycaster.far = raycastFar
+
+            const hits = this.followCollisionRaycaster.intersectObjects(meshes, false)
+            for(const hit of hits)
+            {
+                if(!hit.face)
+                {
+                    continue
+                }
+
+                this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                if(this.followWorldNormal.y > 0.25)
+                {
+                    continue
+                }
+
+                return true
+            }
+        }
+
+        return false
+    }
+
     resolveFollowCollisions()
     {
         this.resolveFollowMeshCollisions()
@@ -712,6 +854,9 @@ export default class Bloom
         const feetY = this.model.position.y - this.follow.colliderHeight + 0.02
         const sampleHeights = [feetY + 0.3, feetY + 0.85, this.model.position.y - 0.15]
 
+        let hasBlockingHit = false
+        let closestBlockingDistance = Infinity
+
         for(const sampleY of sampleHeights)
         {
             this.followRaycastOrigin.set(this.followPreviousPosition.x, sampleY, this.followPreviousPosition.z)
@@ -720,7 +865,6 @@ export default class Bloom
             this.followCollisionRaycaster.far = raycastFar
 
             const hits = this.followCollisionRaycaster.intersectObjects(meshes, false)
-            let hasBlockingHit = false
             for(const hit of hits)
             {
                 if(!hit.face)
@@ -734,19 +878,50 @@ export default class Bloom
                     continue
                 }
 
+                if(hit.distance < closestBlockingDistance)
+                {
+                    closestBlockingDistance = hit.distance
+                    this.followCollisionHitNormal.copy(this.followWorldNormal)
+                }
                 hasBlockingHit = true
                 break
             }
+        }
 
-            if(!hasBlockingHit)
-            {
-                continue
-            }
+        if(!hasBlockingHit)
+        {
+            return
+        }
 
+        this.followCollisionSlide
+            .set(
+                this.model.position.x - this.followPreviousPosition.x,
+                0,
+                this.model.position.z - this.followPreviousPosition.z
+            )
+
+        this.followCollisionSlideNormal
+            .set(this.followCollisionHitNormal.x, 0, this.followCollisionHitNormal.z)
+
+        if(this.followCollisionSlideNormal.lengthSq() > 1e-8)
+        {
+            this.followCollisionSlideNormal.normalize()
+            const projection = this.followCollisionSlide.x * this.followCollisionSlideNormal.x
+                + this.followCollisionSlide.z * this.followCollisionSlideNormal.z
+
+            this.followCollisionSlide.x -= this.followCollisionSlideNormal.x * projection
+            this.followCollisionSlide.z -= this.followCollisionSlideNormal.z * projection
+        }
+
+        if(this.followCollisionSlide.lengthSq() <= 1e-8)
+        {
             this.model.position.x = this.followPreviousPosition.x
             this.model.position.z = this.followPreviousPosition.z
             return
         }
+
+        this.model.position.x = this.followPreviousPosition.x + (this.followCollisionSlide.x * this.follow.collisionSlideFactor)
+        this.model.position.z = this.followPreviousPosition.z + (this.followCollisionSlide.z * this.follow.collisionSlideFactor)
     }
 
     resolveFollowBoxCollisions()
