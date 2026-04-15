@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 
+const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
+const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
+
 export default class MapModel
 {
     constructor()
@@ -176,7 +179,7 @@ export default class MapModel
 
     shouldForceDoubleSide(object)
     {
-        return this.hasNameInHierarchy(object, ['buildingx', 'plantes'])
+        return this.hasNameInHierarchy(object, FORCE_DOUBLE_SIDE_COLLISION_TOKENS)
     }
 
     isPalmTreePart(object)
@@ -221,6 +224,7 @@ export default class MapModel
         const bounds = new THREE.Box3()
         const center = new THREE.Vector3()
         const size = new THREE.Vector3()
+        const seenContourRoots = new Set()
 
         this.model.traverse((child) =>
         {
@@ -231,16 +235,32 @@ export default class MapModel
 
             const isWater = this.hasNameInHierarchy(child, ['water', 'eau'])
             const isFountain = this.hasNameInHierarchy(child, ['fontaine', 'fountain'])
-            if(!isWater && !isFountain)
+            const contourRoot = this.findAncestorByTokens(child, BLOOM_CONTOUR_AVOID_TOKENS)
+            const isContourObstacle = Boolean(contourRoot)
+
+            if(!isWater && !isFountain && !isContourObstacle)
             {
                 return
             }
 
-            bounds.setFromObject(child)
+            if(isContourObstacle)
+            {
+                if(seenContourRoots.has(contourRoot.uuid))
+                {
+                    return
+                }
+
+                seenContourRoots.add(contourRoot.uuid)
+            }
+
+            const zoneObject = isContourObstacle ? contourRoot : child
+            bounds.setFromObject(zoneObject)
             bounds.getCenter(center)
             bounds.getSize(size)
 
-            const radius = (Math.max(size.x, size.z) * 0.5) + (isFountain ? 0.9 : 0.7)
+            const radius = isContourObstacle
+                ? ((Math.max(size.x, size.z) * 0.5) + 1.2)
+                : ((Math.max(size.x, size.z) * 0.5) + (isFountain ? 0.9 : 0.7))
             zones.push({
                 x: center.x,
                 z: center.z,

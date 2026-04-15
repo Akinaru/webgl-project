@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 
+const BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y = 0.25
+
 export default class Bloom
 {
     constructor({
@@ -54,6 +56,8 @@ export default class Bloom
             contourSamplesPerSide: follow.contourSamplesPerSide ?? 8,
             contourMinProgress: follow.contourMinProgress ?? 0.12,
             collisionSlideFactor: follow.collisionSlideFactor ?? 0.9,
+            collisionBlockingNormalMaxY: follow.collisionBlockingNormalMaxY ?? BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y,
+            groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65,
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
             avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
             collisionBoxes: Array.isArray(follow.collisionBoxes) ? follow.collisionBoxes : [],
@@ -318,6 +322,12 @@ export default class Bloom
             min: 0,
             max: 1,
             step: 0.005
+        })
+        this.debug.addBinding(this.debugFolder, this.follow, 'groundMaxSnapUp', {
+            label: 'groundSnapUp',
+            min: 0,
+            max: 4,
+            step: 0.01
         })
         this.debug.addBinding(this.debugFolder, this.follow, 'speed', {
             label: 'followSpeed',
@@ -810,7 +820,7 @@ export default class Bloom
                 }
 
                 this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > 0.25)
+                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
                 {
                     continue
                 }
@@ -873,7 +883,7 @@ export default class Bloom
                 }
 
                 this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > 0.25)
+                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
                 {
                     continue
                 }
@@ -1155,6 +1165,11 @@ export default class Bloom
 
             this.groundNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
             if(this.groundNormal.y < 0.45)
+            {
+                continue
+            }
+
+            if((hit.point.y - fallbackY) > this.follow.groundMaxSnapUp)
             {
                 continue
             }
