@@ -71,7 +71,7 @@ export default class MapWorld
                 heightOffset: 0.9,
                 speed: 3.8,
                 retreatSpeed: 3.8,
-                groundMeshes: this.mapModel.getBloomGroundMeshes?.() ?? [],
+                groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
                 avoidZones: this.mapModel.getBloomAvoidZones?.() ?? [],
                 collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
                 approachDelaySeconds: 0.75,

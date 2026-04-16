@@ -615,6 +615,7 @@ export default class Bloom
         const movementSpeed = shouldRetreatNow ? this.follow.retreatSpeed : followSpeed
         this.moveTowardsPosition(current, this.followDesiredPosition, movementSpeed, deltaSeconds)
         this.resolveFollowCollisions()
+        this.resolveFollowGroundCollision(bobOffset)
         this.updateLocomotionState(this.followPreviousPosition, deltaSeconds)
 
         this.direction
@@ -1160,14 +1161,23 @@ export default class Bloom
             return fallbackY
         }
 
-        const origin = new THREE.Vector3(x, fallbackY + 12, z)
+        const origin = new THREE.Vector3(x, fallbackY + this.baseY + 2, z)
         this.groundRaycaster.set(origin, this.followGroundRayDirection)
         this.groundRaycaster.near = 0
-        this.groundRaycaster.far = 50
+        this.groundRaycaster.far = 20
 
+        const playerStepHeight = this.follow.target?.settings?.stepHeight
+        const maxStepHeight = Number.isFinite(playerStepHeight)
+            ? playerStepHeight
+            : this.follow.groundMaxSnapUp
         const hits = this.groundRaycaster.intersectObjects(groundMeshes, false)
         for(const hit of hits)
         {
+            if(this.follow.target?.isGroundIgnoredMesh?.(hit.object))
+            {
+                continue
+            }
+
             if(!hit.face)
             {
                 continue
@@ -1179,7 +1189,8 @@ export default class Bloom
                 continue
             }
 
-            if((hit.point.y - fallbackY) > this.follow.groundMaxSnapUp)
+            const stepDelta = hit.point.y - fallbackY
+            if(stepDelta > maxStepHeight)
             {
                 continue
             }
@@ -1188,6 +1199,62 @@ export default class Bloom
         }
 
         return fallbackY
+    }
+
+    resolveFollowGroundCollision(bobOffset = 0)
+    {
+        const groundMeshes = this.follow.groundMeshes
+        if(!Array.isArray(groundMeshes) || groundMeshes.length === 0)
+        {
+            return
+        }
+
+        const currentGroundY = this.model.position.y - this.baseY - bobOffset
+        let resolvedGroundY = currentGroundY
+        const origin = new THREE.Vector3(this.model.position.x, this.model.position.y + 2, this.model.position.z)
+        this.groundRaycaster.set(origin, this.followGroundRayDirection)
+        this.groundRaycaster.near = 0
+        this.groundRaycaster.far = 20
+
+        const playerStepHeight = this.follow.target?.settings?.stepHeight
+        const maxStepHeight = Number.isFinite(playerStepHeight)
+            ? playerStepHeight
+            : this.follow.groundMaxSnapUp
+        const hits = this.groundRaycaster.intersectObjects(groundMeshes, false)
+
+        for(const hit of hits)
+        {
+            if(this.follow.target?.isGroundIgnoredMesh?.(hit.object))
+            {
+                continue
+            }
+
+            if(!hit.face)
+            {
+                continue
+            }
+
+            this.groundNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+            if(this.groundNormal.y < 0.45)
+            {
+                continue
+            }
+
+            const stepDelta = hit.point.y - currentGroundY
+            if(stepDelta > maxStepHeight)
+            {
+                continue
+            }
+
+            resolvedGroundY = Math.max(resolvedGroundY, hit.point.y)
+            break
+        }
+
+        const resolvedModelY = resolvedGroundY + this.baseY + bobOffset
+        if(this.model.position.y <= resolvedModelY + 0.08)
+        {
+            this.model.position.y = resolvedModelY
+        }
     }
 
     updateArms()
