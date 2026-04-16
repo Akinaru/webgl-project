@@ -3,11 +3,13 @@
 varying vec3 vMapPlanWorldPosition;
 uniform float uMapPlanWaterLevel;
 uniform float uMapPlanSlopeFrequency;
+uniform float uMapPlanNoiseFrequency;
 uniform float uMapPlanLocalTime;
 uniform vec4 uMapPlanBounds;
 uniform vec2 uMapPlanHeightRange;
 uniform vec2 uMapPlanTerrainDataTexelSize;
 uniform sampler2D uMapPlanTerrainDataTexture;
+uniform sampler2D uMapPlanNoiseTexture;
 
 // Equivalent du outputNode: lecture data terrain puis sortie grayscale sur le canal B.
 // @diffuse
@@ -33,4 +35,6 @@ shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv - vec2(0.0, tex
 vec4 terrainData = vec4(terrainDataCenter.r, terrainDataCenter.g, shoreDistance, terrainDataCenter.a);
 float ripple = mod((terrainData.b + uMapPlanLocalTime) * uMapPlanSlopeFrequency, 1.0);
 ripple -= (1.0 - terrainData.b);
+float noise = texture2D(uMapPlanNoiseTexture, vMapPlanWorldPosition.xz * uMapPlanNoiseFrequency).r;
+ripple += noise;
 vec4 diffuseColor = vec4(vec3(ripple), 1.0);

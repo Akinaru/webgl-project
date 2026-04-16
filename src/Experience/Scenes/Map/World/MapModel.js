@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js'
 import Experience from '../../../Experience.js'
 import { applyStandardMaterialPatch } from './Shaders/Common/applyStandardMaterialPatch.js'
 import { terrainWaterlineShaderChunks } from './Shaders/Terrain/waterlineShaderChunks.js'
@@ -8,6 +9,7 @@ import { planWaterMaskShaderChunks } from './Shaders/Water/planMaskShaderChunks.
 const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
 const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
+const PLAN_NOISE_TEXTURE_RESOLUTION = 128
 
 export default class MapModel
 {
@@ -29,6 +31,7 @@ export default class MapModel
         this.planWaterMaskSettings = {
             waterLevel: 1.20,
             slopeFrequency: 14,
+            noiseFrequency: 0.08,
             localTime: 0
         }
         this.planWaterMaskContext = null
@@ -436,6 +439,7 @@ export default class MapModel
         const maxAnisotropy = this.experience.renderer?.instance?.capabilities?.getMaxAnisotropy?.() ?? 1
         terrainDataTexture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy))
         terrainDataTexture.needsUpdate = true
+        const noiseTexture = this.buildPlanNoiseTexture(PLAN_NOISE_TEXTURE_RESOLUTION)
 
         return {
             bounds: new THREE.Vector4(
@@ -450,8 +454,69 @@ export default class MapModel
             terrainDataPixels,
             terrainDataTexture,
             terrainDataTexelSize: new THREE.Vector2(1 / resolution, 1 / resolution),
+            noiseTexture,
             lastTerrainDataWaterLevel: Number.NaN
         }
+    }
+
+    buildPlanNoiseTexture(resolution = PLAN_NOISE_TEXTURE_RESOLUTION)
+    {
+        const noiseGenerator = new ImprovedNoise()
+        const pixels = new Uint8Array(resolution * resolution)
+        const octaves = 4
+        const persistence = 0.5
+        const scale = 6
+        let amplitudeSum = 0
+
+        for(let octave = 0; octave < octaves; octave++)
+        {
+            amplitudeSum += Math.pow(persistence, octave)
+        }
+
+        for(let y = 0; y < resolution; y++)
+        {
+            for(let x = 0; x < resolution; x++)
+            {
+                const baseX = x / resolution
+                const baseY = y / resolution
+                let value = 0
+                let amplitude = 1
+                let frequency = 1
+
+                for(let octave = 0; octave < octaves; octave++)
+                {
+                    value += noiseGenerator.noise(
+                        baseX * scale * frequency,
+                        baseY * scale * frequency,
+                        0.37 * frequency
+                    ) * amplitude
+
+                    amplitude *= persistence
+                    frequency *= 2
+                }
+
+                const normalized = THREE.MathUtils.clamp((value / amplitudeSum) * 0.5 + 0.5, 0, 1)
+                pixels[(y * resolution) + x] = Math.round(normalized * 255)
+            }
+        }
+
+        const noiseTexture = new THREE.DataTexture(
+            pixels,
+            resolution,
+            resolution,
+            THREE.RedFormat,
+            THREE.UnsignedByteType
+        )
+        noiseTexture.colorSpace = THREE.NoColorSpace
+        noiseTexture.wrapS = THREE.RepeatWrapping
+        noiseTexture.wrapT = THREE.RepeatWrapping
+        noiseTexture.minFilter = THREE.LinearMipmapLinearFilter
+        noiseTexture.magFilter = THREE.LinearFilter
+        noiseTexture.generateMipmaps = true
+        const maxAnisotropy = this.experience.renderer?.instance?.capabilities?.getMaxAnisotropy?.() ?? 1
+        noiseTexture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy))
+        noiseTexture.needsUpdate = true
+        return noiseTexture
     }
 
     updatePlanTerrainDataTexture(waterLevel)
@@ -639,11 +704,13 @@ export default class MapModel
         material.userData.mapPlanWaterMaskUniforms = {
             waterLevel: { value: this.planWaterMaskSettings.waterLevel },
             slopeFrequency: { value: this.planWaterMaskSettings.slopeFrequency },
+            noiseFrequency: { value: this.planWaterMaskSettings.noiseFrequency },
             localTime: { value: this.planWaterMaskSettings.localTime },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
             terrainDataTexelSize: { value: new THREE.Vector2(1, 1) },
-            terrainDataTexture: { value: null }
+            terrainDataTexture: { value: null },
+            noiseTexture: { value: null }
         }
 
         material.onBeforeCompile = (shader) =>
@@ -651,11 +718,13 @@ export default class MapModel
             const uniforms = material.userData.mapPlanWaterMaskUniforms
             shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
             shader.uniforms.uMapPlanSlopeFrequency = uniforms.slopeFrequency
+            shader.uniforms.uMapPlanNoiseFrequency = uniforms.noiseFrequency
             shader.uniforms.uMapPlanLocalTime = uniforms.localTime
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
             shader.uniforms.uMapPlanTerrainDataTexelSize = uniforms.terrainDataTexelSize
             shader.uniforms.uMapPlanTerrainDataTexture = uniforms.terrainDataTexture
+            shader.uniforms.uMapPlanNoiseTexture = uniforms.noiseTexture
 
             applyStandardMaterialPatch(shader, planWaterMaskShaderChunks)
         }
@@ -709,11 +778,13 @@ export default class MapModel
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
         uniforms.slopeFrequency.value = this.planWaterMaskSettings.slopeFrequency
+        uniforms.noiseFrequency.value = this.planWaterMaskSettings.noiseFrequency
         uniforms.localTime.value = this.planWaterMaskSettings.localTime
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
         terrainDataTexelSizeUniform.copy(this.planWaterMaskContext.terrainDataTexelSize)
         uniforms.terrainDataTexture.value = this.planWaterMaskContext.terrainDataTexture
+        uniforms.noiseTexture.value = this.planWaterMaskContext.noiseTexture
     }
 
     ensureColorUniformValue(uniform, fallbackColor)
@@ -850,7 +921,7 @@ export default class MapModel
         }
     }
 
-    applyPlanWaterMask({ waterLevel, slopeFrequency, localTime } = {})
+    applyPlanWaterMask({ waterLevel, slopeFrequency, noiseFrequency, localTime } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
@@ -860,6 +931,11 @@ export default class MapModel
         if(typeof slopeFrequency === 'number' && Number.isFinite(slopeFrequency))
         {
             this.planWaterMaskSettings.slopeFrequency = Math.max(0, slopeFrequency)
+        }
+
+        if(typeof noiseFrequency === 'number' && Number.isFinite(noiseFrequency))
+        {
+            this.planWaterMaskSettings.noiseFrequency = Math.max(0, noiseFrequency)
         }
 
         if(typeof localTime === 'number' && Number.isFinite(localTime))
@@ -935,6 +1011,7 @@ export default class MapModel
     disposePlanWaterMaskContext()
     {
         this.planWaterMaskContext?.terrainDataTexture?.dispose?.()
+        this.planWaterMaskContext?.noiseTexture?.dispose?.()
         this.planWaterMaskContext = null
     }
 

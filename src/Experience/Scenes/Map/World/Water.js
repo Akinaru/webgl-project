@@ -18,6 +18,7 @@ export default class Water
             waterLevel: 1.20,
             deepYPos: 0.22,
             slopeFrequency: 14,
+            noiseFrequency: 0.08,
             rippleTimeSpeed: RIPPLE_TIME_SPEED_DEFAULT,
             showPlan: true
         }
@@ -52,7 +53,8 @@ export default class Water
 
         this.mapModel?.applyPlanWaterMask?.({
             waterLevel: this.state.waterLevel,
-            slopeFrequency: this.state.slopeFrequency
+            slopeFrequency: this.state.slopeFrequency,
+            noiseFrequency: this.state.noiseFrequency
         })
     }
 
@@ -101,6 +103,16 @@ export default class Water
             min: 0,
             max: 80,
             step: 0.01
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'noiseFrequency', {
+            label: 'noiseFrequency',
+            min: 0,
+            max: 2,
+            step: 0.001
         }).on('change', () =>
         {
             this.applyWaterline()
