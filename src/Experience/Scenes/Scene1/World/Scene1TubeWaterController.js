@@ -26,9 +26,13 @@ export default class Scene1TubeWaterController
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.camera = this.experience.camera?.instance
+        this.debug = this.experience.debug
         this.scene1Model = scene1Model
         this.tubeMeshes = this.scene1Model?.getTubeWaterMeshes?.() ?? []
         this.rotationTargets = this.scene1Model?.getTubeWaterRotationTargets?.() ?? []
+        this.flow = {
+            fillSpeed: FLOW_FILL_SPEED_PER_SECOND
+        }
 
         this.raycaster = new THREE.Raycaster()
         this.centerNdc = new THREE.Vector2(0, 0)
@@ -78,7 +82,24 @@ export default class Scene1TubeWaterController
         this.captureInitialRotations()
         this.randomizeInitialRotations()
         this.updateFlowState()
+        this.setDebug()
         this.setEvents()
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('🧩 Scene1 Tube Flow', { expanded: false })
+        this.debug.addBinding(this.debugFolder, this.flow, 'fillSpeed', {
+            label: 'fillSpeed',
+            min: 0.1,
+            max: 8,
+            step: 0.05
+        })
     }
 
     captureInitialRotations()
@@ -844,7 +865,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     updateTubeFlowProgress(flowPathUuids, deltaSeconds)
     {
         const flowPathSet = new Set(flowPathUuids)
-        const stepFill = Math.max(0, deltaSeconds) * FLOW_FILL_SPEED_PER_SECOND
+        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
         const stepClear = Math.max(0, deltaSeconds) * FLOW_CLEAR_SPEED_PER_SECOND
 
         for(const target of this.rotationTargets)
@@ -1177,6 +1198,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     destroy()
     {
         this.inputs?.off?.('mousedown.scene1TubeWater')
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
         this.hoveredTubeMesh = null
         this.turnDirectionByMeshUuid.clear()
         this.targetMetaByUuid.clear()
