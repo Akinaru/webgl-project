@@ -32,6 +32,7 @@ export default class MapModel
             waterLevel: 1.20,
             slopeFrequency: 14,
             noiseFrequency: 0.08,
+            rippleThreshold: 0.52,
             localTime: 0
         }
         this.planWaterMaskContext = null
@@ -705,6 +706,7 @@ export default class MapModel
             waterLevel: { value: this.planWaterMaskSettings.waterLevel },
             slopeFrequency: { value: this.planWaterMaskSettings.slopeFrequency },
             noiseFrequency: { value: this.planWaterMaskSettings.noiseFrequency },
+            rippleThreshold: { value: this.planWaterMaskSettings.rippleThreshold },
             localTime: { value: this.planWaterMaskSettings.localTime },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
@@ -719,6 +721,7 @@ export default class MapModel
             shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
             shader.uniforms.uMapPlanSlopeFrequency = uniforms.slopeFrequency
             shader.uniforms.uMapPlanNoiseFrequency = uniforms.noiseFrequency
+            shader.uniforms.uMapPlanRippleThreshold = uniforms.rippleThreshold
             shader.uniforms.uMapPlanLocalTime = uniforms.localTime
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
@@ -779,6 +782,7 @@ export default class MapModel
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
         uniforms.slopeFrequency.value = this.planWaterMaskSettings.slopeFrequency
         uniforms.noiseFrequency.value = this.planWaterMaskSettings.noiseFrequency
+        uniforms.rippleThreshold.value = this.planWaterMaskSettings.rippleThreshold
         uniforms.localTime.value = this.planWaterMaskSettings.localTime
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
@@ -921,7 +925,7 @@ export default class MapModel
         }
     }
 
-    applyPlanWaterMask({ waterLevel, slopeFrequency, noiseFrequency, localTime } = {})
+    applyPlanWaterMask({ waterLevel, slopeFrequency, noiseFrequency, rippleThreshold, localTime } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
@@ -936,6 +940,11 @@ export default class MapModel
         if(typeof noiseFrequency === 'number' && Number.isFinite(noiseFrequency))
         {
             this.planWaterMaskSettings.noiseFrequency = Math.max(0, noiseFrequency)
+        }
+
+        if(typeof rippleThreshold === 'number' && Number.isFinite(rippleThreshold))
+        {
+            this.planWaterMaskSettings.rippleThreshold = rippleThreshold
         }
 
         if(typeof localTime === 'number' && Number.isFinite(localTime))
