@@ -193,7 +193,7 @@ export default class Bloom
             return name === 'mat.2' || name.includes('mat.2')
         })
         const meshName = String(mesh.name || '').toLowerCase()
-        const isTargetMesh = meshName === 'bloom-mat.2' || meshName.includes('bloom-mat.2')
+        const isTargetMesh = meshName === 'bloom-face' || meshName.includes('bloom-face')
         return isTargetMesh || hasMat2Material
     }
 
@@ -204,8 +204,9 @@ export default class Bloom
             return
         }
 
-        const hasSourceUv = this.ensureMeshUvAttribute(mesh)
+        this.ensureMeshUvAttribute(mesh)
         this.ensureMeshNormals(mesh)
+        const hasUv = Boolean(mesh?.geometry?.getAttribute?.('uv'))
 
         if(this.bloomColorTexture)
         {
@@ -244,12 +245,13 @@ export default class Bloom
                 material.emissiveIntensity = 1
             }
 
-            if(this.bloomOpacityTexture && hasSourceUv)
+            if(this.bloomOpacityTexture && hasUv)
             {
                 material.alphaMap = this.bloomOpacityTexture
                 material.alphaTest = 0.5
                 material.transparent = true
                 material.opacity = 1
+                material.side = THREE.DoubleSide
             }
             else
             {
@@ -257,6 +259,7 @@ export default class Bloom
                 material.alphaTest = 0
                 material.transparent = false
                 material.opacity = 1
+                material.side = THREE.FrontSide
             }
 
             material.needsUpdate = true
