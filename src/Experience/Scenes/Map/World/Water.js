@@ -4,6 +4,7 @@ import Experience from '../../../Experience.js'
 // Water pilote les parametres d eau globaux et les applique au rendu de la map.
 const WATER_LEVEL_MIN = 0
 const WATER_LEVEL_MAX = 2
+const RIPPLE_TIME_SPEED_DEFAULT = 0.08
 
 export default class Water
 {
@@ -17,6 +18,7 @@ export default class Water
             waterLevel: 1.20,
             deepYPos: 0.22,
             slopeFrequency: 14,
+            rippleTimeSpeed: RIPPLE_TIME_SPEED_DEFAULT,
             showPlan: true
         }
 
@@ -24,6 +26,7 @@ export default class Water
         this.deepColor = new THREE.Color('#14576d')
         this.applyWaterline()
         this.applyPlanVisibility()
+        this.update()
         this.setDebug()
     }
 
@@ -56,6 +59,12 @@ export default class Water
     applyPlanVisibility()
     {
         this.mapModel?.setPlanVisibility?.(this.state.showPlan)
+    }
+
+    update()
+    {
+        const localTime = (this.experience.time.elapsed * 0.001) * this.state.rippleTimeSpeed
+        this.mapModel?.setPlanWaterMaskLocalTime?.(localTime)
     }
 
     setDebug()
@@ -95,6 +104,16 @@ export default class Water
         }).on('change', () =>
         {
             this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'rippleTimeSpeed', {
+            label: 'rippleTimeSpeed',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.update()
         })
 
         this.debug.addColorBinding(this.debugFolder, this, 'shallowColor', {

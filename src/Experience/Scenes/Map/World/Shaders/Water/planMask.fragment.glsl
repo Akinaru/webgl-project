@@ -3,6 +3,7 @@
 varying vec3 vMapPlanWorldPosition;
 uniform float uMapPlanWaterLevel;
 uniform float uMapPlanSlopeFrequency;
+uniform float uMapPlanLocalTime;
 uniform vec4 uMapPlanBounds;
 uniform vec2 uMapPlanHeightRange;
 uniform vec2 uMapPlanTerrainDataTexelSize;
@@ -30,5 +31,6 @@ shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv - vec2(texel.x,
 shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv + vec2(0.0, texel.y)).b * 0.15;
 shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv - vec2(0.0, texel.y)).b * 0.15;
 vec4 terrainData = vec4(terrainDataCenter.r, terrainDataCenter.g, shoreDistance, terrainDataCenter.a);
-float ripple = mod(terrainData.b * uMapPlanSlopeFrequency, 1.0);
+float ripple = mod((terrainData.b + uMapPlanLocalTime) * uMapPlanSlopeFrequency, 1.0);
+ripple -= (1.0 - terrainData.b);
 vec4 diffuseColor = vec4(vec3(ripple), 1.0);

@@ -88,6 +88,7 @@ export default class MapWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.water?.update?.(delta)
         this.bloom?.update?.()
         this.player?.update(delta)
         this.collisionDebug?.update?.()
