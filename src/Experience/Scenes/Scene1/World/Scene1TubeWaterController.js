@@ -17,6 +17,11 @@ const CONNECTED_COLOR = '#4ea7ff'
 const CONNECTED_EMISSIVE = '#2d7bc2'
 const FLOW_FILL_SPEED_PER_SECOND = 1.9
 const FLOW_PROGRESS_EPSILON = 1e-4
+const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
+const FLOW_COORD_EPSILON = 1e-5
+const ANGLE_OUTER_FILL_BIAS = 0.45
+const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
+const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
 
 export default class Scene1TubeWaterController
 {
@@ -148,6 +153,12 @@ export default class Scene1TubeWaterController
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
             const clonedMaterials = materials.map((material) => material?.clone?.() ?? material)
             mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
+            if(mesh.geometry?.clone)
+            {
+                mesh.geometry = mesh.geometry.clone()
+            }
+
+            this.setupFlowCoordAttribute(mesh, target.uuid)
 
             for(const material of clonedMaterials)
             {
@@ -222,15 +233,14 @@ export default class Scene1TubeWaterController
                 shader.vertexShader = shader.vertexShader
                     .replace(
                         'void main() {',
-                        `varying float vFlowCoord;
-uniform float uFlowMin;
-uniform float uFlowRange;
+                        `attribute float ${FLOW_COORD_ATTRIBUTE};
+varying float vFlowCoord;
 void main() {`
                     )
                     .replace(
                         '#include <begin_vertex>',
                         `#include <begin_vertex>
-vFlowCoord = clamp((position.${FLOW_AXIS} - uFlowMin) / max(uFlowRange, 1e-5), 0.0, 1.0);`
+vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);`
                     )
             }
 
@@ -276,7 +286,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         material.customProgramCacheKey = () =>
         {
             const previousKey = previousProgramCacheKey ? previousProgramCacheKey() : ''
-            return `${previousKey}|scene1-flow-fill-v1`
+            return `${previousKey}|scene1-flow-fill-v2`
         }
 
         material.needsUpdate = true
@@ -286,6 +296,176 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             this.flowShaderMaterialsByTubeUuid.set(tubeUuid, [])
         }
         this.flowShaderMaterialsByTubeUuid.get(tubeUuid).push(material)
+    }
+
+    setupFlowCoordAttribute(mesh, tubeUuid)
+    {
+        const geometry = mesh?.geometry
+        const positionAttribute = geometry?.attributes?.position
+        if(!geometry || !positionAttribute)
+        {
+            return
+        }
+
+        if(!geometry.boundingBox)
+        {
+            geometry.computeBoundingBox?.()
+        }
+
+        const bounds = geometry.boundingBox
+        if(!bounds)
+        {
+            return
+        }
+
+        const min = bounds.min[FLOW_AXIS]
+        const max = bounds.max[FLOW_AXIS]
+        const range = max - min
+        const hasAxisRange = Number.isFinite(range) && range > FLOW_COORD_EPSILON
+
+        const isAngleTube = this.isAngleTube(tubeUuid)
+        if(!hasAxisRange && !isAngleTube)
+        {
+            return
+        }
+
+        const angleProjection = isAngleTube
+            ? this.computeAngleFlowProjection(positionAttribute, bounds)
+            : null
+        const flowProjection = angleProjection
+            ? {
+                type: 'angle',
+                cornerX: angleProjection.cornerX,
+                cornerY: angleProjection.cornerY,
+                angleMin: angleProjection.angleMin,
+                angleRange: angleProjection.angleRange,
+                radiusMin: angleProjection.radiusMin,
+                radiusRange: angleProjection.radiusRange
+            }
+            : {
+                type: 'axis',
+                min,
+                range: Math.max(range, FLOW_COORD_EPSILON)
+            }
+        geometry.userData.flowProjection = flowProjection
+
+        const flowCoordArray = new Float32Array(positionAttribute.count)
+        for(let index = 0; index < positionAttribute.count; index++)
+        {
+            let flowCoord
+            if(angleProjection)
+            {
+                const x = positionAttribute.getX(index)
+                const y = positionAttribute.getY(index)
+                const dx = x - angleProjection.cornerX
+                const dy = y - angleProjection.cornerY
+                const theta = Math.atan2(dy, dx)
+                const thetaNorm = (theta - angleProjection.angleMin) / angleProjection.angleRange
+                const radius = Math.sqrt((dx * dx) + (dy * dy))
+                const radiusNorm = (radius - angleProjection.radiusMin) / angleProjection.radiusRange
+                flowCoord = thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+            }
+            else
+            {
+                const axisValue = positionAttribute.getY(index)
+                flowCoord = (axisValue - min) / Math.max(range, FLOW_COORD_EPSILON)
+            }
+
+            flowCoordArray[index] = THREE.MathUtils.clamp(flowCoord, 0, 1)
+        }
+
+        geometry.setAttribute(FLOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(flowCoordArray, 1))
+    }
+
+    computeAngleFlowProjection(positionAttribute, bounds)
+    {
+        const corners = [
+            [bounds.min.x, bounds.min.y],
+            [bounds.min.x, bounds.max.y],
+            [bounds.max.x, bounds.min.y],
+            [bounds.max.x, bounds.max.y]
+        ]
+
+        let bestProjection = null
+        for(const [cornerX, cornerY] of corners)
+        {
+            let angleMin = Number.POSITIVE_INFINITY
+            let angleMax = Number.NEGATIVE_INFINITY
+            let radiusMin = Number.POSITIVE_INFINITY
+            let radiusMax = Number.NEGATIVE_INFINITY
+
+            for(let index = 0; index < positionAttribute.count; index++)
+            {
+                const dx = positionAttribute.getX(index) - cornerX
+                const dy = positionAttribute.getY(index) - cornerY
+                const angle = Math.atan2(dy, dx)
+                const radius = Math.sqrt((dx * dx) + (dy * dy))
+                if(angle < angleMin)
+                {
+                    angleMin = angle
+                }
+                if(angle > angleMax)
+                {
+                    angleMax = angle
+                }
+                if(radius < radiusMin)
+                {
+                    radiusMin = radius
+                }
+                if(radius > radiusMax)
+                {
+                    radiusMax = radius
+                }
+            }
+
+            const angleRange = angleMax - angleMin
+            if(!(Number.isFinite(angleRange) && angleRange >= ANGLE_FLOW_MIN_SPAN && angleRange <= ANGLE_FLOW_MAX_SPAN))
+            {
+                continue
+            }
+
+            const radiusRange = radiusMax - radiusMin
+            if(!(Number.isFinite(radiusRange) && radiusRange > FLOW_COORD_EPSILON))
+            {
+                continue
+            }
+
+            if(!bestProjection || radiusRange > bestProjection.radiusRange)
+            {
+                bestProjection = {
+                    cornerX,
+                    cornerY,
+                    angleMin,
+                    angleRange,
+                    radiusMin,
+                    radiusRange
+                }
+            }
+        }
+
+        return bestProjection
+    }
+
+    computeLocalFlowCoord(mesh, localPosition)
+    {
+        const flowProjection = mesh?.geometry?.userData?.flowProjection
+        if(!flowProjection || !localPosition)
+        {
+            return null
+        }
+
+        if(flowProjection.type === 'angle')
+        {
+            const dx = localPosition.x - flowProjection.cornerX
+            const dy = localPosition.y - flowProjection.cornerY
+            const theta = Math.atan2(dy, dx)
+            const thetaNorm = (theta - flowProjection.angleMin) / Math.max(flowProjection.angleRange, FLOW_COORD_EPSILON)
+            const radius = Math.sqrt((dx * dx) + (dy * dy))
+            const radiusNorm = (radius - flowProjection.radiusMin) / Math.max(flowProjection.radiusRange, FLOW_COORD_EPSILON)
+            return thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+        }
+
+        return (localPosition[FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, FLOW_COORD_EPSILON)
     }
 
     collectJoinTargets()
@@ -1033,6 +1213,18 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return /^module-straight/i.test(moduleName)
     }
 
+    isAngleTube(tubeUuid)
+    {
+        const target = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
+        if(!target)
+        {
+            return false
+        }
+
+        const moduleName = this.getModuleNameForTarget(target)
+        return /^module-angle/i.test(moduleName)
+    }
+
     isStraightTubeFlowReversed(tubeUuid)
     {
         if(!this.isStraightTube(tubeUuid))
@@ -1044,13 +1236,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return this.normalizeQuarterTurnOffset(quarterTurnOffset) === 2
     }
 
-    getStraightFlowDirection(tubeUuid)
+    getTubeFlowDirection(tubeUuid)
     {
-        if(!this.isStraightTube(tubeUuid))
-        {
-            return 1
-        }
-
         const entryDependencyUuid = this.flowEntryByTubeUuid.get(tubeUuid)
         if(entryDependencyUuid)
         {
@@ -1059,6 +1246,11 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             {
                 return inferredDirection
             }
+        }
+
+        if(!this.isStraightTube(tubeUuid))
+        {
+            return 1
         }
 
         return this.isStraightTubeFlowReversed(tubeUuid) ? -1 : 1
@@ -1073,22 +1265,24 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return 0
         }
 
-        const shaderMaterials = this.flowShaderMaterialsByTubeUuid.get(tubeUuid) ?? []
-        const firstFlowMaterial = shaderMaterials[0]
-        const flowUniforms = firstFlowMaterial?.userData?.flowUniforms
-        const min = flowUniforms?.uFlowMin?.value
-        const range = flowUniforms?.uFlowRange?.value
-        if(!(Number.isFinite(min) && Number.isFinite(range) && range > 1e-5))
+        const currentTubeMeshes = this.tubeMeshesByTargetUuid.get(tubeUuid) ?? []
+        const currentTubeMesh = currentTubeMeshes[0]
+        if(!currentTubeMesh)
         {
             return 0
         }
 
         currentTube.updateMatrixWorld(true)
+        currentTubeMesh.updateMatrixWorld(true)
         neighborTube.updateMatrixWorld(true)
         this.targetWorldPosition.setFromMatrixPosition(neighborTube.matrixWorld)
         this.localPosition.copy(this.targetWorldPosition)
-        currentTube.worldToLocal(this.localPosition)
-        const localFlowCoord = (this.localPosition[FLOW_AXIS] - min) / range
+        currentTubeMesh.worldToLocal(this.localPosition)
+        const localFlowCoord = this.computeLocalFlowCoord(currentTubeMesh, this.localPosition)
+        if(!Number.isFinite(localFlowCoord))
+        {
+            return 0
+        }
         return localFlowCoord >= 0.5 ? -1 : 1
     }
 
@@ -1130,7 +1324,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
 
             const flowProgress = this.flowProgressByTubeUuid.get(target.uuid) ?? 0
-            const flowDirection = this.getStraightFlowDirection(target.uuid)
+            const flowDirection = this.getTubeFlowDirection(target.uuid)
             const shaderMaterials = this.flowShaderMaterialsByTubeUuid.get(target.uuid) ?? []
             for(const shaderMaterial of shaderMaterials)
             {
