@@ -26,7 +26,8 @@ export default class MapModel
             minY: 1.20,
             surfaceY: 0.72,
             fondY: 0.22,
-            sableColor: new THREE.Color('#9f7a4b'),
+            sableExtraHeight: 0.39,
+            sableColor: new THREE.Color('#bf9c51'),
             surfaceColor: new THREE.Color('#1c6972'),
             fondColor: new THREE.Color('#031d26')
         }
@@ -263,6 +264,7 @@ export default class MapModel
             minY: { value: this.terrainWaterlineSettings.minY },
             surfaceY: { value: this.terrainWaterlineSettings.surfaceY },
             fondY: { value: this.terrainWaterlineSettings.fondY },
+            sableExtraHeight: { value: this.terrainWaterlineSettings.sableExtraHeight },
             sableColor: { value: this.terrainWaterlineSettings.sableColor.clone() },
             surfaceColor: { value: this.terrainWaterlineSettings.surfaceColor.clone() },
             fondColor: { value: this.terrainWaterlineSettings.fondColor.clone() }
@@ -274,6 +276,7 @@ export default class MapModel
             shader.uniforms.uMapWaterlineMinY = uniforms.minY
             shader.uniforms.uMapWaterlineSurfaceY = uniforms.surfaceY
             shader.uniforms.uMapWaterlineFondY = uniforms.fondY
+            shader.uniforms.uMapWaterlineSableExtraHeight = uniforms.sableExtraHeight
             shader.uniforms.uMapWaterlineSableColor = uniforms.sableColor
             shader.uniforms.uMapWaterlineSurfaceColor = uniforms.surfaceColor
             shader.uniforms.uMapWaterlineFondColor = uniforms.fondColor
@@ -286,7 +289,7 @@ export default class MapModel
             const parentKey = typeof baseMaterial.customProgramCacheKey === 'function'
                 ? baseMaterial.customProgramCacheKey()
                 : ''
-            return `${parentKey}__mapWaterlineV3`
+            return `${parentKey}__mapWaterlineV4`
         }
 
         this.runtimeMaterials.push(material)
@@ -319,6 +322,10 @@ export default class MapModel
         uniforms.minY.value = this.terrainWaterlineSettings.minY
         uniforms.surfaceY.value = this.terrainWaterlineSettings.surfaceY
         uniforms.fondY.value = this.terrainWaterlineSettings.fondY
+        if(uniforms.sableExtraHeight)
+        {
+            uniforms.sableExtraHeight.value = this.terrainWaterlineSettings.sableExtraHeight
+        }
         sableColorUniform.copy(this.terrainWaterlineSettings.sableColor)
         surfaceColorUniform.copy(this.terrainWaterlineSettings.surfaceColor)
         fondColorUniform.copy(this.terrainWaterlineSettings.fondColor)
@@ -328,6 +335,7 @@ export default class MapModel
         minY,
         surfaceY,
         fondY,
+        sableExtraHeight,
         sableColor,
         surfaceColor,
         fondColor,
@@ -351,6 +359,11 @@ export default class MapModel
         if(typeof surfaceY === 'number' && Number.isFinite(surfaceY))
         {
             this.terrainWaterlineSettings.surfaceY = surfaceY
+        }
+
+        if(typeof sableExtraHeight === 'number' && Number.isFinite(sableExtraHeight))
+        {
+            this.terrainWaterlineSettings.sableExtraHeight = THREE.MathUtils.clamp(sableExtraHeight, 0, 0.7)
         }
 
         if(this.terrainWaterlineSettings.fondY > this.terrainWaterlineSettings.minY)

@@ -18,6 +18,7 @@ export default class Water
             hauteurEau: 1.20,
             hauteurSurface: 0.72,
             hauteurFond: 0.22,
+            supplementHauteurSable: 0.39,
             slopeFrequency: 14,
             noiseFrequency: 0.304,
             rippleThreshold: -0.315,
@@ -26,7 +27,7 @@ export default class Water
             showPlan: true
         }
 
-        this.couleurSable = new THREE.Color('#9f7a4b')
+        this.couleurSable = new THREE.Color('#bf9c51')
         this.couleurBleuSurface = new THREE.Color('#1c6972')
         this.couleurBleuFond = new THREE.Color('#031d26')
         this.backgroundColor = new THREE.Color('#124f69')
@@ -59,6 +60,7 @@ export default class Water
             minY: this.state.hauteurEau,
             surfaceY: this.state.hauteurSurface,
             fondY: this.state.hauteurFond,
+            sableExtraHeight: this.state.supplementHauteurSable,
             sableColor: this.couleurSable,
             surfaceColor: this.couleurBleuSurface,
             fondColor: this.couleurBleuFond
@@ -152,6 +154,16 @@ export default class Water
 
         this.debug.addColorBinding(this.terrainFolder, this, 'couleurBleuFond', {
             label: 'Couleur bleu fond'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.terrainFolder, this.state, 'supplementHauteurSable', {
+            label: 'Supplement sable',
+            min: 0,
+            max: 0.7,
+            step: 0.01
         }).on('change', () =>
         {
             this.applyWaterline()
