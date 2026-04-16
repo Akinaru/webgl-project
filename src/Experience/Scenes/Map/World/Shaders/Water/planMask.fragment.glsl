@@ -5,6 +5,8 @@ uniform float uMapPlanWaterLevel;
 uniform float uMapPlanSlopeFrequency;
 uniform float uMapPlanNoiseFrequency;
 uniform float uMapPlanRippleThreshold;
+uniform vec3 uMapPlanBackgroundColor;
+uniform float uMapPlanBackgroundOpacity;
 uniform float uMapPlanLocalTime;
 uniform vec4 uMapPlanBounds;
 uniform vec2 uMapPlanHeightRange;
@@ -38,8 +40,7 @@ float ripple = mod((terrainData.b + uMapPlanLocalTime) * uMapPlanSlopeFrequency,
 ripple -= (1.0 - terrainData.b);
 float noise = texture2D(uMapPlanNoiseTexture, vMapPlanWorldPosition.xz * uMapPlanNoiseFrequency).r;
 ripple += noise;
-if(ripple > uMapPlanRippleThreshold)
-{
-    discard;
-}
-vec4 diffuseColor = vec4(vec3(1.0), 1.0);
+float waveVisibleMask = 1.0 - step(uMapPlanRippleThreshold, ripple);
+vec3 finalColor = mix(uMapPlanBackgroundColor, vec3(1.0), waveVisibleMask);
+float finalOpacity = mix(uMapPlanBackgroundOpacity, 1.0, waveVisibleMask);
+vec4 diffuseColor = vec4(finalColor, finalOpacity);

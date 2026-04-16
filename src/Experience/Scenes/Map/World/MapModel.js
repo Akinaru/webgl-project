@@ -33,6 +33,8 @@ export default class MapModel
             slopeFrequency: 14,
             noiseFrequency: 0.304,
             rippleThreshold: -0.315,
+            backgroundColor: new THREE.Color('#124f69'),
+            backgroundOpacity: 0.45,
             localTime: 0
         }
         this.planWaterMaskContext = null
@@ -689,6 +691,8 @@ export default class MapModel
         const material = baseMaterial.clone()
         material.userData = material.userData || {}
         material.userData.isMapPlanWaterMaskMaterial = true
+        material.transparent = true
+        material.depthWrite = false
         // Eau de debug visuelle: rendu mat sans reflets speculaires.
         if('roughness' in material)
         {
@@ -707,6 +711,8 @@ export default class MapModel
             slopeFrequency: { value: this.planWaterMaskSettings.slopeFrequency },
             noiseFrequency: { value: this.planWaterMaskSettings.noiseFrequency },
             rippleThreshold: { value: this.planWaterMaskSettings.rippleThreshold },
+            backgroundColor: { value: this.planWaterMaskSettings.backgroundColor.clone() },
+            backgroundOpacity: { value: this.planWaterMaskSettings.backgroundOpacity },
             localTime: { value: this.planWaterMaskSettings.localTime },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
@@ -722,6 +728,8 @@ export default class MapModel
             shader.uniforms.uMapPlanSlopeFrequency = uniforms.slopeFrequency
             shader.uniforms.uMapPlanNoiseFrequency = uniforms.noiseFrequency
             shader.uniforms.uMapPlanRippleThreshold = uniforms.rippleThreshold
+            shader.uniforms.uMapPlanBackgroundColor = uniforms.backgroundColor
+            shader.uniforms.uMapPlanBackgroundOpacity = uniforms.backgroundOpacity
             shader.uniforms.uMapPlanLocalTime = uniforms.localTime
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
@@ -778,15 +786,21 @@ export default class MapModel
             uniforms.terrainDataTexelSize,
             this.planWaterMaskContext.terrainDataTexelSize
         )
+        const backgroundColorUniform = this.ensureColorUniformValue(
+            uniforms.backgroundColor,
+            this.planWaterMaskSettings.backgroundColor
+        )
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
         uniforms.slopeFrequency.value = this.planWaterMaskSettings.slopeFrequency
         uniforms.noiseFrequency.value = this.planWaterMaskSettings.noiseFrequency
         uniforms.rippleThreshold.value = this.planWaterMaskSettings.rippleThreshold
+        uniforms.backgroundOpacity.value = this.planWaterMaskSettings.backgroundOpacity
         uniforms.localTime.value = this.planWaterMaskSettings.localTime
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
         terrainDataTexelSizeUniform.copy(this.planWaterMaskContext.terrainDataTexelSize)
+        backgroundColorUniform.copy(this.planWaterMaskSettings.backgroundColor)
         uniforms.terrainDataTexture.value = this.planWaterMaskContext.terrainDataTexture
         uniforms.noiseTexture.value = this.planWaterMaskContext.noiseTexture
     }
@@ -925,7 +939,17 @@ export default class MapModel
         }
     }
 
-    applyPlanWaterMask({ waterLevel, slopeFrequency, noiseFrequency, rippleThreshold, localTime } = {})
+    applyPlanWaterMask({
+        waterLevel,
+        slopeFrequency,
+        noiseFrequency,
+        rippleThreshold,
+        backgroundColor,
+        backgroundOpacity,
+        color,
+        opacity,
+        localTime
+    } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
@@ -945,6 +969,30 @@ export default class MapModel
         if(typeof rippleThreshold === 'number' && Number.isFinite(rippleThreshold))
         {
             this.planWaterMaskSettings.rippleThreshold = rippleThreshold
+        }
+
+        const resolvedBackgroundColor = backgroundColor ?? color
+        if(resolvedBackgroundColor instanceof THREE.Color)
+        {
+            this.planWaterMaskSettings.backgroundColor.copy(resolvedBackgroundColor)
+        }
+        else if(typeof resolvedBackgroundColor === 'string')
+        {
+            this.planWaterMaskSettings.backgroundColor.set(resolvedBackgroundColor)
+        }
+        else if(resolvedBackgroundColor && typeof resolvedBackgroundColor === 'object')
+        {
+            this.planWaterMaskSettings.backgroundColor.setRGB(
+                resolvedBackgroundColor.r ?? this.planWaterMaskSettings.backgroundColor.r,
+                resolvedBackgroundColor.g ?? this.planWaterMaskSettings.backgroundColor.g,
+                resolvedBackgroundColor.b ?? this.planWaterMaskSettings.backgroundColor.b
+            )
+        }
+
+        const resolvedOpacity = Number.isFinite(backgroundOpacity) ? backgroundOpacity : opacity
+        if(Number.isFinite(resolvedOpacity))
+        {
+            this.planWaterMaskSettings.backgroundOpacity = THREE.MathUtils.clamp(resolvedOpacity, 0, 1)
         }
 
         if(typeof localTime === 'number' && Number.isFinite(localTime))
