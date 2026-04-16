@@ -16,7 +16,6 @@ const DISCONNECTED_COLOR = '#4a5665'
 const CONNECTED_COLOR = '#4ea7ff'
 const CONNECTED_EMISSIVE = '#2d7bc2'
 const FLOW_FILL_SPEED_PER_SECOND = 1.9
-const FLOW_CLEAR_SPEED_PER_SECOND = 5.2
 const FLOW_PROGRESS_EPSILON = 1e-4
 
 export default class Scene1TubeWaterController
@@ -870,7 +869,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     {
         const flowPathSet = new Set(flowPathUuids)
         const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
-        const stepClear = Math.max(0, deltaSeconds) * FLOW_CLEAR_SPEED_PER_SECOND
 
         for(const target of this.rotationTargets)
         {
@@ -882,11 +880,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             const tubeUuid = target.uuid
             if(!flowPathSet.has(tubeUuid))
             {
-                const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
-                this.flowProgressByTubeUuid.set(
-                    tubeUuid,
-                    this.moveTowards(currentProgress, 0, stepClear)
-                )
+                this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
             }
 
@@ -902,10 +896,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
             if(isCurrentTubeFilling)
             {
-                this.flowProgressByTubeUuid.set(
-                    tubeUuid,
-                    this.moveTowards(currentProgress, 0, stepClear)
-                )
+                this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
             }
 
