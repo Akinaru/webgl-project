@@ -3,6 +3,7 @@ import Experience from '../Experience.js'
 
 const BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y = 0.25
 const BLOOM_FACING_OFFSET_RADIANS = 0.25
+const BLOOM_UV_ZOOM = 1.15
 
 export default class Bloom
 {
@@ -18,6 +19,13 @@ export default class Bloom
         this.debug = this.experience.debug
 
         this.resource = this.resources.items.bloomModel
+        this.bloomColorTexture = this.resources.items.bloomColorTexture ?? null
+        this.bloomOpacityTexture = this.resources.items.bloomOpacityTexture ?? null
+        this.tuning = {
+            blockingSurfaceMaxNormalY: follow.collisionBlockingNormalMaxY ?? BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y,
+            facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
+            uvZoom: BLOOM_UV_ZOOM
+        }
         this.tmpQuaternion = new THREE.Quaternion()
         this.direction = new THREE.Vector3()
         this.scaleState = {
@@ -57,7 +65,7 @@ export default class Bloom
             contourSamplesPerSide: follow.contourSamplesPerSide ?? 8,
             contourMinProgress: follow.contourMinProgress ?? 0.12,
             collisionSlideFactor: follow.collisionSlideFactor ?? 0.9,
-            collisionBlockingNormalMaxY: follow.collisionBlockingNormalMaxY ?? BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y,
+            collisionBlockingNormalMaxY: this.tuning.blockingSurfaceMaxNormalY,
             groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65,
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
             avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
@@ -142,12 +150,12 @@ export default class Bloom
         this.unscaledBaseY = -bounds.min.y
 
         this.applyVisualScale()
-        this.baseYaw = this.model.rotation.y + BLOOM_FACING_OFFSET_RADIANS
+        this.baseYaw = this.model.rotation.y + this.tuning.facingOffsetRadians
         this.model.position.y = this.baseY
 
         this.model.traverse((child) =>
         {
-            if(!(child instanceof THREE.Mesh))
+            if(!child?.isMesh)
             {
                 return
             }
@@ -156,7 +164,217 @@ export default class Bloom
             child.receiveShadow = true
         })
 
+        let appliedCount = 0
+        this.model.traverse((child) =>
+        {
+            if(!child?.isMesh)
+            {
+                return
+            }
+
+            if(!this.isBloomTargetMesh(child))
+            {
+                return
+            }
+
+            this.applyBloomColorTexture(child)
+            appliedCount++
+        })
+
         this.scene.add(this.model)
+    }
+
+    isBloomTargetMesh(mesh)
+    {
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        const hasMat2Material = materials.some((material) =>
+        {
+            const name = String(material?.name || '').toLowerCase()
+            return name === 'mat.2' || name.includes('mat.2')
+        })
+        const meshName = String(mesh.name || '').toLowerCase()
+        const isTargetMesh = meshName === 'bloom-mat.2' || meshName.includes('bloom-mat.2')
+        return isTargetMesh || hasMat2Material
+    }
+
+    applyBloomColorTexture(mesh)
+    {
+        if(!this.bloomColorTexture && !this.bloomOpacityTexture)
+        {
+            return
+        }
+
+        const hasSourceUv = this.ensureMeshUvAttribute(mesh)
+        this.ensureMeshNormals(mesh)
+
+        if(this.bloomColorTexture)
+        {
+            this.bloomColorTexture.flipY = false
+            this.bloomColorTexture.colorSpace = THREE.SRGBColorSpace
+            this.bloomColorTexture.needsUpdate = true
+        }
+
+        if(this.bloomOpacityTexture)
+        {
+            this.bloomOpacityTexture.flipY = false
+            if('NoColorSpace' in THREE)
+            {
+                this.bloomOpacityTexture.colorSpace = THREE.NoColorSpace
+            }
+            this.bloomOpacityTexture.needsUpdate = true
+        }
+
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if(this.bloomColorTexture)
+            {
+                material.map = this.bloomColorTexture
+            }
+
+            material.color?.set?.('#ffffff')
+            material.emissive?.set?.('#000000')
+            if(typeof material.emissiveIntensity === 'number')
+            {
+                material.emissiveIntensity = 1
+            }
+
+            if(this.bloomOpacityTexture && hasSourceUv)
+            {
+                material.alphaMap = this.bloomOpacityTexture
+                material.alphaTest = 0.5
+                material.transparent = true
+                material.opacity = 1
+            }
+            else
+            {
+                material.alphaMap = null
+                material.alphaTest = 0
+                material.transparent = false
+                material.opacity = 1
+            }
+
+            material.needsUpdate = true
+        }
+    }
+
+    ensureMeshUvAttribute(mesh, forceRegenerate = false)
+    {
+        const geometry = mesh?.geometry
+        if(!(geometry instanceof THREE.BufferGeometry))
+        {
+            return false
+        }
+
+        if(geometry.getAttribute('uv'))
+        {
+            if(forceRegenerate && geometry.userData?.bloomGeneratedUv)
+            {
+                // continue and recompute with latest tuning.uvZoom
+            }
+            else
+            {
+                return true
+            }
+        }
+
+        const position = geometry.getAttribute('position')
+        if(!position)
+        {
+            return false
+        }
+
+        geometry.computeBoundingBox()
+        const bounds = geometry.boundingBox
+        if(!bounds)
+        {
+            return false
+        }
+
+        const size = new THREE.Vector3()
+        bounds.getSize(size)
+        const minAxis = Math.min(size.x, size.y, size.z)
+        const useXY = minAxis === size.z && size.x >= 1e-5 && size.y >= 1e-5
+        const useXZ = minAxis === size.y && size.x >= 1e-5 && size.z >= 1e-5
+        const useYZ = minAxis === size.x && size.y >= 1e-5 && size.z >= 1e-5
+
+        const uvArray = new Float32Array(position.count * 2)
+        for(let index = 0; index < position.count; index++)
+        {
+            const x = position.getX(index)
+            const y = position.getY(index)
+            const z = position.getZ(index)
+
+            let u = 0
+            let v = 0
+
+            if(useXY)
+            {
+                u = (x - bounds.min.x) / Math.max(size.x, 1e-5)
+                v = (y - bounds.min.y) / Math.max(size.y, 1e-5)
+            }
+            else if(useXZ)
+            {
+                u = (x - bounds.min.x) / Math.max(size.x, 1e-5)
+                v = (z - bounds.min.z) / Math.max(size.z, 1e-5)
+            }
+            else if(useYZ)
+            {
+                u = (y - bounds.min.y) / Math.max(size.y, 1e-5)
+                v = (z - bounds.min.z) / Math.max(size.z, 1e-5)
+            }
+
+            const zoom = Math.max(0.05, this.tuning.uvZoom)
+            const zoomedU = ((u - 0.5) / zoom) + 0.5
+            const zoomedV = ((v - 0.5) / zoom) + 0.5
+            uvArray[index * 2] = THREE.MathUtils.clamp(zoomedU, 0, 1)
+            uvArray[(index * 2) + 1] = 1 - THREE.MathUtils.clamp(zoomedV, 0, 1)
+        }
+
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2))
+        geometry.userData.bloomGeneratedUv = true
+        return false
+    }
+
+    refreshBloomTargetMaterials({ forceRegenerateUv = false } = {})
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.traverse((child) =>
+        {
+            if(!child?.isMesh || !this.isBloomTargetMesh(child))
+            {
+                return
+            }
+
+            if(forceRegenerateUv)
+            {
+                this.ensureMeshUvAttribute(child, true)
+            }
+            this.applyBloomColorTexture(child)
+        })
+    }
+
+    ensureMeshNormals(mesh)
+    {
+        const geometry = mesh?.geometry
+        if(!(geometry instanceof THREE.BufferGeometry))
+        {
+            return
+        }
+
+        if(!geometry.getAttribute('normal'))
+        {
+            geometry.computeVertexNormals()
+        }
     }
 
     setArmRig()
@@ -238,6 +456,39 @@ export default class Bloom
         }).on('change', () =>
         {
             this.applyVisualScale()
+        })
+        this.debug.addBinding(this.debugFolder, this.tuning, 'blockingSurfaceMaxNormalY', {
+            label: 'blockNormalY',
+            min: -1,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.blockingSurfaceMaxNormalY = value
+            this.follow.collisionBlockingNormalMaxY = value
+        })
+        this.debug.addBinding(this.debugFolder, this.tuning, 'facingOffsetRadians', {
+            label: 'facingOffset',
+            min: -Math.PI,
+            max: Math.PI,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.facingOffsetRadians = value
+            if(this.model)
+            {
+                this.baseYaw = this.model.rotation.y + value
+            }
+        })
+        this.debug.addBinding(this.debugFolder, this.tuning, 'uvZoom', {
+            label: 'uvZoom',
+            min: 0.2,
+            max: 3,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.uvZoom = value
+            this.refreshBloomTargetMaterials({ forceRegenerateUv: true })
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
