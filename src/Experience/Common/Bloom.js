@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import Experience from '../Experience.js'
 
 const BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y = 0.25
+const BLOOM_NAV_MAX_NODES = 950
+const BLOOM_NAV_MAX_NEIGHBORS = 12
 
 export default class Bloom
 {
@@ -58,6 +60,7 @@ export default class Bloom
             collisionSlideFactor: follow.collisionSlideFactor ?? 0.9,
             collisionBlockingNormalMaxY: follow.collisionBlockingNormalMaxY ?? BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y,
             groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65,
+            minGroundY: Number.isFinite(follow.minGroundY) ? follow.minGroundY : Number.NEGATIVE_INFINITY,
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
             avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
             collisionBoxes: Array.isArray(follow.collisionBoxes) ? follow.collisionBoxes : [],
@@ -73,6 +76,11 @@ export default class Bloom
             repositionCompleteDot: follow.repositionCompleteDot ?? 0.94,
             repositionDistance: follow.repositionDistance ?? Math.max(follow.preferredDistance ?? 4.2, (follow.minDistance ?? 2.8) + 0.9),
             returnCooldownSeconds: follow.returnCooldownSeconds ?? 1.2,
+            pathfindingEnabled: follow.pathfindingEnabled ?? true,
+            navCellSize: follow.navCellSize ?? 1.1,
+            navLinkDistance: follow.navLinkDistance ?? 2.8,
+            pathRecomputeIntervalSeconds: follow.pathRecomputeIntervalSeconds ?? 0.35,
+            pathWaypointReachDistance: follow.pathWaypointReachDistance ?? 0.45,
             enabled: Boolean(follow.target || follow.getTargetPosition)
         }
         this.followDirection = new THREE.Vector3(1, 0, 0)
@@ -106,6 +114,16 @@ export default class Bloom
         }
         this.groundRaycaster = new THREE.Raycaster()
         this.groundNormal = new THREE.Vector3()
+        this.pathWaypointWorld = new THREE.Vector3()
+        this.pathState = {
+            points: [],
+            waypointIndex: 0,
+            recomputeTimer: 0,
+            hasPath: false,
+            lastStart: null,
+            lastGoal: null
+        }
+        this.navGraph = null
         this.locomotionSpeed = 0
         this.walkCyclePhase = 0
 
@@ -592,7 +610,16 @@ export default class Bloom
             this.followDesiredPosition.z,
             fallbackGroundY
         )
-        this.followDesiredPosition.y = groundY + this.baseY + bobOffset
+        if(this.isGroundBelowPlanAt(this.followDesiredPosition.x, this.followDesiredPosition.z, fallbackGroundY))
+        {
+            this.followDesiredPosition.x = current.x
+            this.followDesiredPosition.z = current.z
+            this.followDesiredPosition.y = current.y
+        }
+        else
+        {
+            this.followDesiredPosition.y = groundY + this.baseY + bobOffset
+        }
 
         if(shouldAdjust)
         {
@@ -604,6 +631,13 @@ export default class Bloom
                 bobOffset
             })
         }
+
+        this.applyPathfindingToDesiredPosition({
+            currentPosition: current,
+            desiredPosition: this.followDesiredPosition,
+            bobOffset,
+            deltaSeconds
+        })
 
         const distanceFromPreferred = Math.max(0, horizontalDistance - this.follow.preferredDistance)
         const adaptiveSpeedFactor = THREE.MathUtils.clamp(
@@ -769,6 +803,10 @@ export default class Bloom
                     this.contourCandidatePosition.z,
                     fallbackGroundY
                 )
+                if(this.isGroundBelowPlanAt(this.contourCandidatePosition.x, this.contourCandidatePosition.z, fallbackGroundY))
+                {
+                    continue
+                }
                 this.contourCandidatePosition.y = groundY + this.baseY + bobOffset
 
                 const candidateProgress = this.contourCandidatePosition.distanceTo(currentPosition)
@@ -830,7 +868,7 @@ export default class Bloom
                 }
 
                 this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
+                if(!this.isBlockingCollisionHit(hit, this.followWorldNormal))
                 {
                     continue
                 }
@@ -893,7 +931,7 @@ export default class Bloom
                 }
 
                 this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
+                if(!this.isBlockingCollisionHit(hit, this.followWorldNormal))
                 {
                     continue
                 }
@@ -1085,6 +1123,564 @@ export default class Bloom
         }
     }
 
+    applyPathfindingToDesiredPosition({
+        currentPosition,
+        desiredPosition,
+        bobOffset = 0,
+        deltaSeconds = 0
+    } = {})
+    {
+        if(!this.follow.pathfindingEnabled)
+        {
+            return
+        }
+
+        if(!currentPosition || !desiredPosition)
+        {
+            return
+        }
+
+        this.ensureNavGraph()
+        if(!this.navGraph || this.navGraph.nodes.length === 0)
+        {
+            desiredPosition.x = currentPosition.x
+            desiredPosition.z = currentPosition.z
+            desiredPosition.y = currentPosition.y
+            return
+        }
+
+        this.pathState.recomputeTimer = Math.max(
+            0,
+            this.pathState.recomputeTimer - Math.max(0, deltaSeconds)
+        )
+
+        const shouldRecompute = this.pathState.recomputeTimer <= 0
+            || !this.pathState.hasPath
+            || this.pathState.points.length === 0
+            || this.shouldRecomputePathFromMovement(currentPosition, desiredPosition)
+
+        if(shouldRecompute)
+        {
+            this.recomputeAStarPath(currentPosition, desiredPosition)
+        }
+
+        if(!this.pathState.hasPath || this.pathState.points.length === 0)
+        {
+            desiredPosition.x = currentPosition.x
+            desiredPosition.z = currentPosition.z
+            desiredPosition.y = currentPosition.y
+            return
+        }
+
+        this.advancePathWaypointIndex(currentPosition)
+        if(!this.pathState.hasPath || this.pathState.points.length === 0)
+        {
+            return
+        }
+
+        const waypoint = this.pathState.points[this.pathState.waypointIndex]
+        if(!waypoint)
+        {
+            return
+        }
+
+        desiredPosition.x = waypoint.x
+        desiredPosition.z = waypoint.z
+        const fallbackGroundY = currentPosition.y - this.baseY
+        const waypointGroundY = this.resolveGroundYAt(
+            waypoint.x,
+            waypoint.z,
+            fallbackGroundY
+        )
+        desiredPosition.y = waypointGroundY + this.baseY + bobOffset
+    }
+
+    ensureNavGraph()
+    {
+        if(this.navGraph)
+        {
+            return
+        }
+
+        this.navGraph = this.buildNavGraphFromGroundMeshes()
+    }
+
+    shouldRecomputePathFromMovement(currentPosition, desiredPosition)
+    {
+        const lastStart = this.pathState.lastStart
+        const lastGoal = this.pathState.lastGoal
+        if(!lastStart || !lastGoal)
+        {
+            return true
+        }
+
+        const startDx = currentPosition.x - lastStart.x
+        const startDz = currentPosition.z - lastStart.z
+        const goalDx = desiredPosition.x - lastGoal.x
+        const goalDz = desiredPosition.z - lastGoal.z
+
+        const startRecomputeDistance = Math.max(0.85, this.follow.navCellSize * 1.5)
+        const goalRecomputeDistance = Math.max(1.2, this.follow.navCellSize * 2)
+        return ((startDx * startDx) + (startDz * startDz)) > (startRecomputeDistance * startRecomputeDistance)
+            || ((goalDx * goalDx) + (goalDz * goalDz)) > (goalRecomputeDistance * goalRecomputeDistance)
+    }
+
+    advancePathWaypointIndex(currentPosition)
+    {
+        const points = this.pathState.points
+        if(!Array.isArray(points) || points.length === 0)
+        {
+            this.pathState.hasPath = false
+            return
+        }
+
+        const reachDistance = Math.max(0.05, this.follow.pathWaypointReachDistance)
+        while(this.pathState.waypointIndex < points.length - 1)
+        {
+            const waypoint = points[this.pathState.waypointIndex]
+            const dx = waypoint.x - currentPosition.x
+            const dz = waypoint.z - currentPosition.z
+            if((dx * dx) + (dz * dz) > (reachDistance * reachDistance))
+            {
+                break
+            }
+            this.pathState.waypointIndex += 1
+        }
+    }
+
+    recomputeAStarPath(startPosition, goalPosition)
+    {
+        this.pathState.recomputeTimer = Math.max(0.05, this.follow.pathRecomputeIntervalSeconds)
+        const path = this.computeAStarPath(startPosition, goalPosition)
+        if(!path || path.length === 0)
+        {
+            this.pathState.hasPath = false
+            this.pathState.points = []
+            this.pathState.waypointIndex = 0
+            this.pathState.lastStart = { x: startPosition.x, z: startPosition.z }
+            this.pathState.lastGoal = { x: goalPosition.x, z: goalPosition.z }
+            return
+        }
+
+        this.pathState.points = path
+        this.pathState.waypointIndex = 0
+        this.pathState.hasPath = true
+        this.pathState.lastStart = { x: startPosition.x, z: startPosition.z }
+        this.pathState.lastGoal = { x: goalPosition.x, z: goalPosition.z }
+    }
+
+    computeAStarPath(startPosition, goalPosition)
+    {
+        const graph = this.navGraph
+        if(!graph || graph.nodes.length === 0)
+        {
+            return null
+        }
+
+        const maxAttachDistance = Math.max(this.follow.navLinkDistance, this.follow.navCellSize * 2.2)
+        const maxAttachDistanceSq = maxAttachDistance * maxAttachDistance
+        const startIndex = this.findNearestNavNodeIndex(graph, startPosition.x, startPosition.z, maxAttachDistanceSq)
+        const goalIndex = this.findNearestNavNodeIndex(graph, goalPosition.x, goalPosition.z, maxAttachDistanceSq)
+        if(startIndex < 0 || goalIndex < 0)
+        {
+            return null
+        }
+
+        if(startIndex === goalIndex)
+        {
+            return [{
+                x: graph.nodes[startIndex].x,
+                y: graph.nodes[startIndex].y,
+                z: graph.nodes[startIndex].z
+            }]
+        }
+
+        const nodeCount = graph.nodes.length
+        const gScore = new Array(nodeCount).fill(Number.POSITIVE_INFINITY)
+        const fScore = new Array(nodeCount).fill(Number.POSITIVE_INFINITY)
+        const cameFrom = new Array(nodeCount).fill(-1)
+        const openSet = new Set([startIndex])
+
+        gScore[startIndex] = 0
+        fScore[startIndex] = this.estimateHeuristic(graph, startIndex, goalIndex)
+
+        while(openSet.size > 0)
+        {
+            let currentIndex = -1
+            let bestFScore = Number.POSITIVE_INFINITY
+            for(const index of openSet)
+            {
+                if(fScore[index] < bestFScore)
+                {
+                    bestFScore = fScore[index]
+                    currentIndex = index
+                }
+            }
+
+            if(currentIndex < 0)
+            {
+                break
+            }
+
+            if(currentIndex === goalIndex)
+            {
+                return this.reconstructPath(graph, cameFrom, currentIndex)
+            }
+
+            openSet.delete(currentIndex)
+            const neighbors = graph.neighbors[currentIndex] ?? []
+            for(const neighborIndex of neighbors)
+            {
+                const tentativeG = gScore[currentIndex] + this.getPathTravelCost(graph, currentIndex, neighborIndex)
+                if(tentativeG >= gScore[neighborIndex])
+                {
+                    continue
+                }
+
+                cameFrom[neighborIndex] = currentIndex
+                gScore[neighborIndex] = tentativeG
+                fScore[neighborIndex] = tentativeG + this.estimateHeuristic(graph, neighborIndex, goalIndex)
+                openSet.add(neighborIndex)
+            }
+        }
+
+        return null
+    }
+
+    buildNavGraphFromGroundMeshes()
+    {
+        const groundMeshes = this.follow.groundMeshes
+        if(!Array.isArray(groundMeshes) || groundMeshes.length === 0)
+        {
+            return null
+        }
+
+        const cellSize = Math.max(0.5, this.follow.navCellSize)
+        const linkDistance = Math.max(cellSize * 1.8, this.follow.navLinkDistance)
+        const linkDistanceSq = linkDistance * linkDistance
+        const dedupeByCell = new Map()
+        const nodes = []
+        let neighbors = []
+
+        const addNodeForWorldPoint = (x, y, z, allowBelowMinY = false) =>
+        {
+            if(y < this.follow.minGroundY && !allowBelowMinY)
+            {
+                return -1
+            }
+
+            if(this.isPointBlockedByAvoidZones(x, z) || this.isPointBlockedByCollisionBoxes(x, z))
+            {
+                return -1
+            }
+
+            const cellX = Math.round(x / cellSize)
+            const cellZ = Math.round(z / cellSize)
+            const key = `${cellX}:${cellZ}`
+            const existingIndex = dedupeByCell.get(key)
+            if(existingIndex !== undefined)
+            {
+                const existingNode = nodes[existingIndex]
+                if(y > existingNode.y)
+                {
+                    existingNode.x = x
+                    existingNode.y = y
+                    existingNode.z = z
+                }
+                return existingIndex
+            }
+
+            const nodeIndex = nodes.length
+            dedupeByCell.set(key, nodeIndex)
+            nodes.push({ x, y, z })
+            return nodeIndex
+        }
+
+        const connectNodes = (fromIndex, toIndex) =>
+        {
+            if(fromIndex < 0 || toIndex < 0 || fromIndex === toIndex)
+            {
+                return
+            }
+
+            const fromNode = nodes[fromIndex]
+            const toNode = nodes[toIndex]
+            if(!fromNode || !toNode)
+            {
+                return
+            }
+
+            const dx = toNode.x - fromNode.x
+            const dz = toNode.z - fromNode.z
+            const distanceSq = (dx * dx) + (dz * dz)
+            if(distanceSq > linkDistanceSq)
+            {
+                return
+            }
+
+            if(Math.abs(toNode.y - fromNode.y) > (this.follow.groundMaxSnapUp + 0.55))
+            {
+                return
+            }
+
+            neighbors[fromIndex] = neighbors[fromIndex] ?? []
+            neighbors[toIndex] = neighbors[toIndex] ?? []
+            if(neighbors[fromIndex].length < BLOOM_NAV_MAX_NEIGHBORS && !neighbors[fromIndex].includes(toIndex))
+            {
+                neighbors[fromIndex].push(toIndex)
+            }
+            if(neighbors[toIndex].length < BLOOM_NAV_MAX_NEIGHBORS && !neighbors[toIndex].includes(fromIndex))
+            {
+                neighbors[toIndex].push(fromIndex)
+            }
+        }
+
+        for(const mesh of groundMeshes)
+        {
+            const geometry = mesh?.geometry
+            const positionAttribute = geometry?.attributes?.position
+            if(!positionAttribute)
+            {
+                continue
+            }
+
+            mesh.updateMatrixWorld(true)
+            const indexedArray = geometry.index?.array
+            const vertexCount = positionAttribute.count
+            const vertexToNodeIndex = new Int32Array(vertexCount).fill(-1)
+
+            const ensureNodeForVertex = (vertexIndex) =>
+            {
+                const cached = vertexToNodeIndex[vertexIndex]
+                if(cached >= 0)
+                {
+                    return cached
+                }
+                if(cached === -2)
+                {
+                    return -1
+                }
+
+                this.pathWaypointWorld
+                    .fromBufferAttribute(positionAttribute, vertexIndex)
+                    .applyMatrix4(mesh.matrixWorld)
+
+                const isBridgeSurface = this.isBridgeSurface(mesh)
+                const nodeIndex = addNodeForWorldPoint(
+                    this.pathWaypointWorld.x,
+                    this.pathWaypointWorld.y,
+                    this.pathWaypointWorld.z,
+                    isBridgeSurface
+                )
+                vertexToNodeIndex[vertexIndex] = nodeIndex >= 0 ? nodeIndex : -2
+                return nodeIndex
+            }
+
+            if(indexedArray && indexedArray.length >= 3)
+            {
+                for(let index = 0; index < indexedArray.length; index += 3)
+                {
+                    const a = ensureNodeForVertex(indexedArray[index])
+                    const b = ensureNodeForVertex(indexedArray[index + 1])
+                    const c = ensureNodeForVertex(indexedArray[index + 2])
+                    connectNodes(a, b)
+                    connectNodes(b, c)
+                    connectNodes(c, a)
+                }
+            }
+            else
+            {
+                for(let index = 0; index <= vertexCount - 3; index += 3)
+                {
+                    const a = ensureNodeForVertex(index)
+                    const b = ensureNodeForVertex(index + 1)
+                    const c = ensureNodeForVertex(index + 2)
+                    connectNodes(a, b)
+                    connectNodes(b, c)
+                    connectNodes(c, a)
+                }
+            }
+        }
+
+        if(nodes.length === 0)
+        {
+            return null
+        }
+
+        if(nodes.length > BLOOM_NAV_MAX_NODES)
+        {
+            const step = Math.ceil(nodes.length / BLOOM_NAV_MAX_NODES)
+            const keepOldIndices = []
+            for(let index = 0; index < nodes.length; index += step)
+            {
+                keepOldIndices.push(index)
+            }
+
+            const remap = new Map()
+            const reducedNodes = []
+            for(let index = 0; index < keepOldIndices.length; index++)
+            {
+                const oldIndex = keepOldIndices[index]
+                remap.set(oldIndex, index)
+                reducedNodes.push(nodes[oldIndex])
+            }
+
+            const reducedNeighbors = Array.from({ length: reducedNodes.length }, () => [])
+            for(const oldFromIndex of keepOldIndices)
+            {
+                const fromIndex = remap.get(oldFromIndex)
+                const oldNeighborList = neighbors[oldFromIndex] ?? []
+                for(const oldToIndex of oldNeighborList)
+                {
+                    if(!remap.has(oldToIndex))
+                    {
+                        continue
+                    }
+
+                    const toIndex = remap.get(oldToIndex)
+                    if(fromIndex === toIndex)
+                    {
+                        continue
+                    }
+
+                    if(!reducedNeighbors[fromIndex].includes(toIndex)
+                        && reducedNeighbors[fromIndex].length < BLOOM_NAV_MAX_NEIGHBORS)
+                    {
+                        reducedNeighbors[fromIndex].push(toIndex)
+                    }
+                }
+            }
+
+            neighbors = reducedNeighbors
+            return {
+                nodes: reducedNodes,
+                neighbors
+            }
+        }
+
+        return {
+            nodes,
+            neighbors
+        }
+    }
+
+    isPointBlockedByAvoidZones(x, z)
+    {
+        const zones = this.follow.avoidZones
+        if(!Array.isArray(zones) || zones.length === 0)
+        {
+            return false
+        }
+
+        for(const zone of zones)
+        {
+            const radius = Math.max(0, zone.radius ?? 0)
+            if(radius <= 0)
+            {
+                continue
+            }
+
+            const dx = x - zone.x
+            const dz = z - zone.z
+            if((dx * dx) + (dz * dz) <= (radius * radius))
+            {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    isPointBlockedByCollisionBoxes(x, z)
+    {
+        const boxes = this.follow.collisionBoxes
+        if(!Array.isArray(boxes) || boxes.length === 0)
+        {
+            return false
+        }
+
+        const radius = this.follow.colliderRadius
+        for(const box of boxes)
+        {
+            if(!box)
+            {
+                continue
+            }
+
+            const closestX = THREE.MathUtils.clamp(x, box.min.x, box.max.x)
+            const closestZ = THREE.MathUtils.clamp(z, box.min.z, box.max.z)
+            const dx = x - closestX
+            const dz = z - closestZ
+            if((dx * dx) + (dz * dz) < (radius * radius))
+            {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    findNearestNavNodeIndex(graph, x, z, maxDistanceSq = Number.POSITIVE_INFINITY)
+    {
+        const { nodes } = graph
+        let bestIndex = -1
+        let bestDistanceSq = Number.POSITIVE_INFINITY
+
+        for(let index = 0; index < nodes.length; index++)
+        {
+            const node = nodes[index]
+            const dx = node.x - x
+            const dz = node.z - z
+            const distanceSq = (dx * dx) + (dz * dz)
+            if(distanceSq < bestDistanceSq)
+            {
+                bestDistanceSq = distanceSq
+                bestIndex = index
+            }
+        }
+
+        if(bestDistanceSq > maxDistanceSq)
+        {
+            return -1
+        }
+
+        return bestIndex
+    }
+
+    estimateHeuristic(graph, fromIndex, toIndex)
+    {
+        const fromNode = graph.nodes[fromIndex]
+        const toNode = graph.nodes[toIndex]
+        const dx = toNode.x - fromNode.x
+        const dz = toNode.z - fromNode.z
+        return Math.hypot(dx, dz)
+    }
+
+    getPathTravelCost(graph, fromIndex, toIndex)
+    {
+        const fromNode = graph.nodes[fromIndex]
+        const toNode = graph.nodes[toIndex]
+        const dx = toNode.x - fromNode.x
+        const dz = toNode.z - fromNode.z
+        const horizontalDistance = Math.hypot(dx, dz)
+        const verticalPenalty = Math.abs(toNode.y - fromNode.y) * 0.75
+        return horizontalDistance + verticalPenalty
+    }
+
+    reconstructPath(graph, cameFrom, currentIndex)
+    {
+        const path = []
+        let walkIndex = currentIndex
+        while(walkIndex >= 0)
+        {
+            const node = graph.nodes[walkIndex]
+            path.push({ x: node.x, y: node.y, z: node.z })
+            walkIndex = cameFrom[walkIndex]
+        }
+        path.reverse()
+        return path
+    }
+
     getDynamicWalkFrequency()
     {
         const referenceSpeed = Math.max(0.001, this.follow.speed)
@@ -1184,10 +1780,99 @@ export default class Bloom
                 continue
             }
 
+            const isBridgeSurface = this.isBridgeSurface(hit.object)
+            if(hit.point.y < this.follow.minGroundY && !isBridgeSurface)
+            {
+                continue
+            }
+
             return hit.point.y
         }
 
         return fallbackY
+    }
+
+    isGroundBelowPlanAt(x, z, fallbackY = 0)
+    {
+        if(!Number.isFinite(this.follow.minGroundY))
+        {
+            return false
+        }
+
+        const groundMeshes = this.follow.groundMeshes
+        if(!Array.isArray(groundMeshes) || groundMeshes.length === 0)
+        {
+            return false
+        }
+
+        const origin = new THREE.Vector3(x, fallbackY + 12, z)
+        this.groundRaycaster.set(origin, this.followGroundRayDirection)
+        this.groundRaycaster.near = 0
+        this.groundRaycaster.far = 50
+
+        const hits = this.groundRaycaster.intersectObjects(groundMeshes, false)
+        for(const hit of hits)
+        {
+            if(!hit.face)
+            {
+                continue
+            }
+
+            this.groundNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+            if(this.groundNormal.y < 0.45)
+            {
+                continue
+            }
+
+            if((hit.point.y - fallbackY) > this.follow.groundMaxSnapUp)
+            {
+                continue
+            }
+
+            if(this.isBridgeSurface(hit.object))
+            {
+                return false
+            }
+
+            return hit.point.y < this.follow.minGroundY
+        }
+
+        return false
+    }
+
+    isBlockingCollisionHit(hit, worldNormal)
+    {
+        const isRelief = this.hasNameInHierarchy(hit?.object, ['relief'])
+        if(isRelief)
+        {
+            return true
+        }
+
+        return worldNormal.y <= this.follow.collisionBlockingNormalMaxY
+    }
+
+    isBridgeSurface(object)
+    {
+        return this.hasNameInHierarchy(object, ['pont', 'bridge'])
+    }
+
+    hasNameInHierarchy(object, tokens = [])
+    {
+        let current = object
+        while(current)
+        {
+            const name = (current.name || '').toLowerCase()
+            for(const token of tokens)
+            {
+                if(name.includes(token))
+                {
+                    return true
+                }
+            }
+            current = current.parent
+        }
+
+        return false
     }
 
     updateArms()

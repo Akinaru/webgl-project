@@ -71,19 +71,47 @@ export default class MapWorld
                 heightOffset: 0.9,
                 speed: 3.8,
                 retreatSpeed: 3.8,
+                minGroundY: 1.2,
                 groundMeshes: this.mapModel.getBloomGroundMeshes?.() ?? [],
                 avoidZones: this.mapModel.getBloomAvoidZones?.() ?? [],
                 collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+                navCellSize: 1.45,
+                navLinkDistance: 3.1,
+                pathRecomputeIntervalSeconds: 0.8,
                 approachDelaySeconds: 0.75,
                 retreatDelaySeconds: 3.5
             }
         })
+        this.spawnBloomNearHighFountain()
         this.collisionDebug = new MapCollisionDebug({
             player: this.player,
             mapModel: this.mapModel
         })
 
         this.setTeleportZone()
+    }
+
+    spawnBloomNearHighFountain()
+    {
+        if(!this.bloom?.model || !this.mapModel)
+        {
+            return
+        }
+
+        const spawnPoint = this.mapModel.getBloomSpawnPointNearFountain?.({
+            minY: 1.2
+        })
+        if(!spawnPoint)
+        {
+            return
+        }
+
+        this.bloom.model.position.set(
+            spawnPoint.x,
+            spawnPoint.y + (this.bloom.baseY ?? 0),
+            spawnPoint.z
+        )
+        this.bloom.followPreviousPosition?.copy?.(this.bloom.model.position)
     }
 
     update(delta = this.experience.time.delta)

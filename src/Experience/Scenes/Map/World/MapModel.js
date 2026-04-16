@@ -1240,6 +1240,132 @@ export default class MapModel
         return zones
     }
 
+    getBloomSpawnPointNearFountain({ minY = 1.2 } = {})
+    {
+        if(!this.model)
+        {
+            return null
+        }
+
+        const bounds = new THREE.Box3()
+        const center = new THREE.Vector3()
+        const size = new THREE.Vector3()
+        const fountainCandidates = []
+
+        this.model.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const isFountain = this.hasNameInHierarchy(child, ['fontaine', 'fountain'])
+            if(!isFountain)
+            {
+                return
+            }
+
+            bounds.setFromObject(child)
+            if(bounds.isEmpty())
+            {
+                return
+            }
+
+            bounds.getCenter(center)
+            bounds.getSize(size)
+            fountainCandidates.push({
+                center: center.clone(),
+                size: size.clone(),
+                maxY: bounds.max.y
+            })
+        })
+
+        if(fountainCandidates.length === 0)
+        {
+            return null
+        }
+
+        fountainCandidates.sort((a, b) => b.maxY - a.maxY)
+        const bestFountain = fountainCandidates[0]
+        const groundMeshes = this.getBloomGroundMeshes()
+        if(!Array.isArray(groundMeshes) || groundMeshes.length === 0)
+        {
+            return null
+        }
+
+        const raycaster = new THREE.Raycaster()
+        const rayOrigin = new THREE.Vector3()
+        const rayDirection = new THREE.Vector3(0, -1, 0)
+        const radiusBase = Math.max(bestFountain.size.x, bestFountain.size.z) * 0.5
+        const sampleRadii = [
+            radiusBase + 1.2,
+            radiusBase + 2.2,
+            radiusBase + 3.0
+        ]
+        const sampleSteps = 24
+        const fallbackY = bestFountain.maxY + 12
+        let bestPoint = null
+        let bestScore = Number.POSITIVE_INFINITY
+
+        for(const radius of sampleRadii)
+        {
+            for(let step = 0; step < sampleSteps; step++)
+            {
+                const angle = (step / sampleSteps) * Math.PI * 2
+                const sampleX = bestFountain.center.x + Math.cos(angle) * radius
+                const sampleZ = bestFountain.center.z + Math.sin(angle) * radius
+
+                rayOrigin.set(sampleX, fallbackY, sampleZ)
+                raycaster.set(rayOrigin, rayDirection)
+                raycaster.near = 0
+                raycaster.far = 80
+
+                const hits = raycaster.intersectObjects(groundMeshes, false)
+                for(const hit of hits)
+                {
+                    if(!hit.face)
+                    {
+                        continue
+                    }
+
+                    const worldNormal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld)
+                    if(worldNormal.y < 0.45)
+                    {
+                        continue
+                    }
+
+                    if(hit.point.y < minY)
+                    {
+                        continue
+                    }
+
+                    const dx = hit.point.x - bestFountain.center.x
+                    const dz = hit.point.z - bestFountain.center.z
+                    const horizontalDistance = Math.hypot(dx, dz)
+                    const distanceScore = Math.abs(horizontalDistance - (radiusBase + 1.4))
+
+                    if(distanceScore < bestScore)
+                    {
+                        bestScore = distanceScore
+                        bestPoint = {
+                            x: hit.point.x,
+                            y: hit.point.y,
+                            z: hit.point.z
+                        }
+                    }
+                    break
+                }
+            }
+
+            if(bestPoint)
+            {
+                break
+            }
+        }
+
+        return bestPoint
+    }
+
     getBridgeTeleportZone({ preferredBridge = 'cloneur_4' } = {})
     {
         if(!this.model)
