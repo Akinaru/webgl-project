@@ -1,22 +1,32 @@
-// Uniforms utilises pour ne rendre que les zones d eau du plan.
+// Uniforms utilises pour echantillonner la data terrain depuis le plan.
 // @header
 varying vec3 vMapPlanWorldPosition;
 uniform float uMapPlanWaterLevel;
-uniform vec3 uMapPlanWetColor;
 uniform vec4 uMapPlanBounds;
 uniform vec2 uMapPlanHeightRange;
-uniform sampler2D uMapPlanHeightTexture;
+uniform vec2 uMapPlanTerrainDataTexelSize;
+uniform sampler2D uMapPlanTerrainDataTexture;
 
-// Echantillonne la hauteur du relief et ignore les pixels hors eau pour eviter de dessiner la partie noire.
+// Equivalent du outputNode: lecture data terrain puis sortie grayscale sur le canal B.
 // @diffuse
 vec2 planExtent = max(uMapPlanBounds.zw, vec2(0.0001));
-vec2 planUv = (vMapPlanWorldPosition.xz - uMapPlanBounds.xy) / planExtent;
-planUv = clamp(planUv, 0.0, 1.0);
-float terrainHeight01 = texture2D(uMapPlanHeightTexture, planUv).r;
+vec2 terrainUv = (vMapPlanWorldPosition.xz - uMapPlanBounds.xy) / planExtent;
+terrainUv = clamp(terrainUv, 0.0, 1.0);
+vec4 terrainDataCenter = texture2D(uMapPlanTerrainDataTexture, terrainUv);
+float terrainHeight01 = terrainDataCenter.r;
 float terrainHeight = mix(uMapPlanHeightRange.x, uMapPlanHeightRange.y, terrainHeight01);
 float floodedMask = step(terrainHeight, uMapPlanWaterLevel);
 if(floodedMask < 0.5)
 {
     discard;
 }
-vec4 diffuseColor = vec4(uMapPlanWetColor, opacity);
+
+vec2 texel = uMapPlanTerrainDataTexelSize;
+float shoreDistance = 0.0;
+shoreDistance += terrainDataCenter.b * 0.4;
+shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv + vec2(texel.x, 0.0)).b * 0.15;
+shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv - vec2(texel.x, 0.0)).b * 0.15;
+shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv + vec2(0.0, texel.y)).b * 0.15;
+shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv - vec2(0.0, texel.y)).b * 0.15;
+vec4 terrainData = vec4(terrainDataCenter.r, terrainDataCenter.g, shoreDistance, terrainDataCenter.a);
+vec4 diffuseColor = vec4(vec3(terrainData.b), 1.0);

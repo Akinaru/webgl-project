@@ -7,7 +7,7 @@ import { planWaterMaskShaderChunks } from './Shaders/Water/planMaskShaderChunks.
 // MapModel centralise le chargement de la map, les collisions, et les shaders eau (relief + plan).
 const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
-const PLAN_HEIGHT_TEXTURE_RESOLUTION = 128
+const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
 
 export default class MapModel
 {
@@ -27,8 +27,7 @@ export default class MapModel
             deepColor: new THREE.Color('#000000')
         }
         this.planWaterMaskSettings = {
-            waterLevel: 1.20,
-            wetColor: new THREE.Color('#000000')
+            waterLevel: 1.20
         }
         this.planWaterMaskContext = null
 
@@ -382,7 +381,7 @@ export default class MapModel
         const planSize = new THREE.Vector3()
         planBounds.getSize(planSize)
 
-        const data = new Uint8Array(resolution * resolution)
+        const heightData = new Uint8Array(resolution * resolution)
         const raycaster = new THREE.Raycaster()
         const rayOrigin = new THREE.Vector3()
         const rayDirection = new THREE.Vector3(0, -1, 0)
@@ -405,18 +404,36 @@ export default class MapModel
                 const sampledHeight = hit?.point?.y ?? minHeight
                 const normalizedHeight = THREE.MathUtils.clamp((sampledHeight - minHeight) / heightRange, 0, 1)
 
-                data[y * resolution + x] = Math.round(normalizedHeight * 255)
+                heightData[y * resolution + x] = Math.round(normalizedHeight * 255)
             }
         }
 
-        const heightTexture = new THREE.DataTexture(data, resolution, resolution, THREE.RedFormat, THREE.UnsignedByteType)
-        heightTexture.colorSpace = THREE.NoColorSpace
-        heightTexture.wrapS = THREE.ClampToEdgeWrapping
-        heightTexture.wrapT = THREE.ClampToEdgeWrapping
-        heightTexture.minFilter = THREE.LinearFilter
-        heightTexture.magFilter = THREE.LinearFilter
-        heightTexture.generateMipmaps = false
-        heightTexture.needsUpdate = true
+        const terrainDataPixels = new Uint8Array(resolution * resolution * 4)
+        for(let index = 0; index < (resolution * resolution); index++)
+        {
+            const pixelOffset = index * 4
+            terrainDataPixels[pixelOffset] = heightData[index]
+            terrainDataPixels[pixelOffset + 1] = 0
+            terrainDataPixels[pixelOffset + 2] = 0
+            terrainDataPixels[pixelOffset + 3] = 255
+        }
+
+        const terrainDataTexture = new THREE.DataTexture(
+            terrainDataPixels,
+            resolution,
+            resolution,
+            THREE.RGBAFormat,
+            THREE.UnsignedByteType
+        )
+        terrainDataTexture.colorSpace = THREE.NoColorSpace
+        terrainDataTexture.wrapS = THREE.ClampToEdgeWrapping
+        terrainDataTexture.wrapT = THREE.ClampToEdgeWrapping
+        terrainDataTexture.minFilter = THREE.LinearMipmapLinearFilter
+        terrainDataTexture.magFilter = THREE.LinearFilter
+        terrainDataTexture.generateMipmaps = true
+        const maxAnisotropy = this.experience.renderer?.instance?.capabilities?.getMaxAnisotropy?.() ?? 1
+        terrainDataTexture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy))
+        terrainDataTexture.needsUpdate = true
 
         return {
             bounds: new THREE.Vector4(
@@ -426,8 +443,166 @@ export default class MapModel
                 planSize.z
             ),
             heightRange: new THREE.Vector2(minHeight, maxHeight),
-            heightTexture
+            resolution,
+            heightData,
+            terrainDataPixels,
+            terrainDataTexture,
+            terrainDataTexelSize: new THREE.Vector2(1 / resolution, 1 / resolution),
+            lastTerrainDataWaterLevel: Number.NaN
         }
+    }
+
+    updatePlanTerrainDataTexture(waterLevel)
+    {
+        const context = this.planWaterMaskContext
+        if(!context?.terrainDataTexture || !context?.terrainDataPixels || !context?.heightData)
+        {
+            return
+        }
+
+        if(
+            Number.isFinite(context.lastTerrainDataWaterLevel) &&
+            Math.abs(context.lastTerrainDataWaterLevel - waterLevel) < 0.0001
+        )
+        {
+            return
+        }
+
+        const { resolution, heightRange, heightData, terrainDataPixels } = context
+        const sampleCount = resolution * resolution
+        const heightSpan = Math.max(0.0001, heightRange.y - heightRange.x)
+        const waterLevel01 = THREE.MathUtils.clamp((waterLevel - heightRange.x) / heightSpan, 0, 1)
+
+        const floodedMask = new Uint8Array(sampleCount)
+        const shoreDistanceSteps = new Int16Array(sampleCount)
+        shoreDistanceSteps.fill(-1)
+        const queue = new Int32Array(sampleCount)
+        let queueStart = 0
+        let queueEnd = 0
+
+        const isFloodedAt = (x, y) =>
+        {
+            const index = (y * resolution) + x
+            return floodedMask[index] === 1
+        }
+
+        const isOutside = (x, y) => x < 0 || x >= resolution || y < 0 || y >= resolution
+        const shoreOffsets = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+        ]
+
+        for(let y = 0; y < resolution; y++)
+        {
+            for(let x = 0; x < resolution; x++)
+            {
+                const index = (y * resolution) + x
+                const height01 = heightData[index] / 255
+                floodedMask[index] = height01 <= waterLevel01 ? 1 : 0
+            }
+        }
+
+        for(let y = 0; y < resolution; y++)
+        {
+            for(let x = 0; x < resolution; x++)
+            {
+                const index = (y * resolution) + x
+                if(floodedMask[index] !== 1)
+                {
+                    continue
+                }
+
+                let isShore = false
+                for(const [offsetX, offsetY] of shoreOffsets)
+                {
+                    const neighborX = x + offsetX
+                    const neighborY = y + offsetY
+                    if(isOutside(neighborX, neighborY) || !isFloodedAt(neighborX, neighborY))
+                    {
+                        isShore = true
+                        break
+                    }
+                }
+
+                if(!isShore)
+                {
+                    continue
+                }
+
+                shoreDistanceSteps[index] = 0
+                queue[queueEnd++] = index
+            }
+        }
+
+        const propagationOffsets = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+        ]
+
+        while(queueStart < queueEnd)
+        {
+            const currentIndex = queue[queueStart++]
+            const currentDistance = shoreDistanceSteps[currentIndex]
+            const currentX = currentIndex % resolution
+            const currentY = Math.floor(currentIndex / resolution)
+
+            for(const [offsetX, offsetY] of propagationOffsets)
+            {
+                const neighborX = currentX + offsetX
+                const neighborY = currentY + offsetY
+                if(isOutside(neighborX, neighborY))
+                {
+                    continue
+                }
+
+                const neighborIndex = (neighborY * resolution) + neighborX
+                if(floodedMask[neighborIndex] !== 1 || shoreDistanceSteps[neighborIndex] >= 0)
+                {
+                    continue
+                }
+
+                shoreDistanceSteps[neighborIndex] = currentDistance + 1
+                queue[queueEnd++] = neighborIndex
+            }
+        }
+
+        let maxDistance = 0
+        for(let index = 0; index < sampleCount; index++)
+        {
+            if(floodedMask[index] !== 1)
+            {
+                continue
+            }
+
+            const distance = Math.max(0, shoreDistanceSteps[index])
+            if(distance > maxDistance)
+            {
+                maxDistance = distance
+            }
+        }
+
+        const distanceDenominator = Math.max(1, maxDistance)
+        for(let index = 0; index < sampleCount; index++)
+        {
+            const pixelOffset = index * 4
+            const isFlooded = floodedMask[index] === 1
+            const distance = Math.max(0, shoreDistanceSteps[index])
+            const distance01 = isFlooded
+                ? THREE.MathUtils.clamp(distance / distanceDenominator, 0, 1)
+                : 0
+
+            terrainDataPixels[pixelOffset] = heightData[index]
+            terrainDataPixels[pixelOffset + 1] = 0
+            terrainDataPixels[pixelOffset + 2] = Math.round(distance01 * 255)
+            terrainDataPixels[pixelOffset + 3] = 255
+        }
+
+        context.lastTerrainDataWaterLevel = waterLevel
+        context.terrainDataTexture.needsUpdate = true
     }
 
     createPlanWaterMaskMaterial(baseMaterial)
@@ -461,20 +636,20 @@ export default class MapModel
         }
         material.userData.mapPlanWaterMaskUniforms = {
             waterLevel: { value: this.planWaterMaskSettings.waterLevel },
-            wetColor: { value: this.planWaterMaskSettings.wetColor.clone() },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
-            heightTexture: { value: null }
+            terrainDataTexelSize: { value: new THREE.Vector2(1, 1) },
+            terrainDataTexture: { value: null }
         }
 
         material.onBeforeCompile = (shader) =>
         {
             const uniforms = material.userData.mapPlanWaterMaskUniforms
             shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
-            shader.uniforms.uMapPlanWetColor = uniforms.wetColor
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
-            shader.uniforms.uMapPlanHeightTexture = uniforms.heightTexture
+            shader.uniforms.uMapPlanTerrainDataTexelSize = uniforms.terrainDataTexelSize
+            shader.uniforms.uMapPlanTerrainDataTexture = uniforms.terrainDataTexture
 
             applyStandardMaterialPatch(shader, planWaterMaskShaderChunks)
         }
@@ -511,10 +686,8 @@ export default class MapModel
             return
         }
 
-        const wetColorUniform = this.ensureColorUniformValue(
-            uniforms.wetColor,
-            this.planWaterMaskSettings.wetColor
-        )
+        this.updatePlanTerrainDataTexture(this.planWaterMaskSettings.waterLevel)
+
         const boundsUniform = this.ensureVector4UniformValue(
             uniforms.bounds,
             this.planWaterMaskContext.bounds
@@ -523,12 +696,16 @@ export default class MapModel
             uniforms.heightRange,
             this.planWaterMaskContext.heightRange
         )
+        const terrainDataTexelSizeUniform = this.ensureVector2UniformValue(
+            uniforms.terrainDataTexelSize,
+            this.planWaterMaskContext.terrainDataTexelSize
+        )
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
-        wetColorUniform.copy(this.planWaterMaskSettings.wetColor)
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
-        uniforms.heightTexture.value = this.planWaterMaskContext.heightTexture
+        terrainDataTexelSizeUniform.copy(this.planWaterMaskContext.terrainDataTexelSize)
+        uniforms.terrainDataTexture.value = this.planWaterMaskContext.terrainDataTexture
     }
 
     ensureColorUniformValue(uniform, fallbackColor)
@@ -638,45 +815,11 @@ export default class MapModel
         return uniform.value
     }
 
-    applyPlanWaterMask({ waterLevel, wetColor, color } = {})
+    applyPlanWaterMask({ waterLevel } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
             this.planWaterMaskSettings.waterLevel = waterLevel
-        }
-
-        if(color instanceof THREE.Color)
-        {
-            this.planWaterMaskSettings.wetColor.copy(color)
-        }
-        else if(typeof color === 'string')
-        {
-            this.planWaterMaskSettings.wetColor.set(color)
-        }
-        else if(color && typeof color === 'object')
-        {
-            this.planWaterMaskSettings.wetColor.setRGB(
-                color.r ?? this.planWaterMaskSettings.wetColor.r,
-                color.g ?? this.planWaterMaskSettings.wetColor.g,
-                color.b ?? this.planWaterMaskSettings.wetColor.b
-            )
-        }
-
-        if(wetColor instanceof THREE.Color)
-        {
-            this.planWaterMaskSettings.wetColor.copy(wetColor)
-        }
-        else if(typeof wetColor === 'string')
-        {
-            this.planWaterMaskSettings.wetColor.set(wetColor)
-        }
-        else if(wetColor && typeof wetColor === 'object')
-        {
-            this.planWaterMaskSettings.wetColor.setRGB(
-                wetColor.r ?? this.planWaterMaskSettings.wetColor.r,
-                wetColor.g ?? this.planWaterMaskSettings.wetColor.g,
-                wetColor.b ?? this.planWaterMaskSettings.wetColor.b
-            )
         }
 
         if(!this.planWaterMaskContext)
@@ -688,6 +831,8 @@ export default class MapModel
         {
             return
         }
+
+        this.updatePlanTerrainDataTexture(this.planWaterMaskSettings.waterLevel)
 
         for(const planMesh of this.planMeshes)
         {
@@ -744,7 +889,7 @@ export default class MapModel
 
     disposePlanWaterMaskContext()
     {
-        this.planWaterMaskContext?.heightTexture?.dispose?.()
+        this.planWaterMaskContext?.terrainDataTexture?.dispose?.()
         this.planWaterMaskContext = null
     }
 

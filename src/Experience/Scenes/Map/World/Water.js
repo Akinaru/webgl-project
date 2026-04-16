@@ -21,8 +21,6 @@ export default class Water
 
         this.shallowColor = new THREE.Color('#2a98a5')
         this.deepColor = new THREE.Color('#14576d')
-        this.planWetColor = new THREE.Color('#000000')
-
         this.applyWaterline()
         this.applyPlanVisibility()
         this.setDebug()
@@ -49,8 +47,7 @@ export default class Water
         })
 
         this.mapModel?.applyPlanWaterMask?.({
-            waterLevel: this.state.waterLevel,
-            wetColor: this.planWetColor
+            waterLevel: this.state.waterLevel
         })
     }
 
@@ -97,13 +94,6 @@ export default class Water
 
         this.debug.addColorBinding(this.debugFolder, this, 'deepColor', {
             label: 'deepColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'planWetColor', {
-            label: 'planWetColor'
         }).on('change', () =>
         {
             this.applyWaterline()
