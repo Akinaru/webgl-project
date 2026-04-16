@@ -15,6 +15,8 @@ const ROTATION_EPSILON = 0.02
 const DISCONNECTED_COLOR = '#4a5665'
 const CONNECTED_COLOR = '#4ea7ff'
 const CONNECTED_EMISSIVE = '#2d7bc2'
+const FLOW_FILL_SPEED_PER_SECOND = 1.9
+const FLOW_PROGRESS_EPSILON = 1e-4
 
 export default class Scene1TubeWaterController
 {
@@ -23,9 +25,13 @@ export default class Scene1TubeWaterController
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.camera = this.experience.camera?.instance
+        this.debug = this.experience.debug
         this.scene1Model = scene1Model
         this.tubeMeshes = this.scene1Model?.getTubeWaterMeshes?.() ?? []
         this.rotationTargets = this.scene1Model?.getTubeWaterRotationTargets?.() ?? []
+        this.flow = {
+            fillSpeed: FLOW_FILL_SPEED_PER_SECOND
+        }
 
         this.raycaster = new THREE.Raycaster()
         this.centerNdc = new THREE.Vector2(0, 0)
@@ -38,6 +44,9 @@ export default class Scene1TubeWaterController
         this.quarterTurnsFromInitialByTubeUuid = new Map()
         this.joinTargetsByTubeUuid = new Map()
         this.tubeMeshesByTargetUuid = new Map()
+        this.flowProgressByTubeUuid = new Map()
+        this.flowShaderMaterialsByTubeUuid = new Map()
+        this.flowEntryByTubeUuid = new Map()
         this.hoveredTubeMesh = null
 
         this.bounds = new THREE.Box3()
@@ -59,6 +68,12 @@ export default class Scene1TubeWaterController
         this.endpointB = new THREE.Vector3()
         this.endpointDirA = new THREE.Vector3()
         this.endpointDirB = new THREE.Vector3()
+        this.disconnectedColor = new THREE.Color(DISCONNECTED_COLOR)
+        this.connectedColor = new THREE.Color(CONNECTED_COLOR)
+        this.connectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
+        this.emissiveOffColor = new THREE.Color('#000000')
+        this.colorMix = new THREE.Color()
+        this.emissiveMix = new THREE.Color()
 
         this.collectJoinTargets()
         this.buildTubeOrder()
@@ -67,7 +82,24 @@ export default class Scene1TubeWaterController
         this.captureInitialRotations()
         this.randomizeInitialRotations()
         this.updateFlowState()
+        this.setDebug()
         this.setEvents()
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('🧩 Scene1 Tube Flow', { expanded: false })
+        this.debug.addBinding(this.debugFolder, this.flow, 'fillSpeed', {
+            label: 'fillSpeed',
+            min: 0.1,
+            max: 8,
+            step: 0.05
+        })
     }
 
     captureInitialRotations()
@@ -116,7 +148,144 @@ export default class Scene1TubeWaterController
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
             const clonedMaterials = materials.map((material) => material?.clone?.() ?? material)
             mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
+
+            for(const material of clonedMaterials)
+            {
+                this.setupFlowShaderMaterial(material, mesh, target.uuid)
+            }
         }
+    }
+
+    setupFlowShaderMaterial(material, mesh, tubeUuid)
+    {
+        if(!material || typeof material.onBeforeCompile !== 'function')
+        {
+            return
+        }
+
+        const geometry = mesh?.geometry
+        if(!geometry?.attributes?.position)
+        {
+            return
+        }
+
+        if(!geometry.boundingBox)
+        {
+            geometry.computeBoundingBox?.()
+        }
+
+        const bounds = geometry.boundingBox
+        if(!bounds)
+        {
+            return
+        }
+
+        const min = bounds.min[FLOW_AXIS]
+        const max = bounds.max[FLOW_AXIS]
+        const range = max - min
+        if(!(Number.isFinite(range) && range > 1e-5))
+        {
+            return
+        }
+
+        const flowUniforms = {
+            uFlowProgress: { value: 0 },
+            uFlowDirection: { value: 1 },
+            uFlowFeather: { value: 0.05 },
+            uFlowMin: { value: min },
+            uFlowRange: { value: range },
+            uFlowDisconnectedColor: { value: this.disconnectedColor.clone() },
+            uFlowConnectedColor: { value: this.connectedColor.clone() },
+            uFlowConnectedEmissiveColor: { value: this.connectedEmissiveColor.clone() },
+            uFlowEmissiveIntensity: { value: 0.68 }
+        }
+
+        material.userData.flowUniforms = flowUniforms
+
+        const previousOnBeforeCompile = material.onBeforeCompile
+        material.onBeforeCompile = (shader, renderer) =>
+        {
+            previousOnBeforeCompile?.(shader, renderer)
+
+            shader.uniforms.uFlowProgress = flowUniforms.uFlowProgress
+            shader.uniforms.uFlowDirection = flowUniforms.uFlowDirection
+            shader.uniforms.uFlowFeather = flowUniforms.uFlowFeather
+            shader.uniforms.uFlowMin = flowUniforms.uFlowMin
+            shader.uniforms.uFlowRange = flowUniforms.uFlowRange
+            shader.uniforms.uFlowDisconnectedColor = flowUniforms.uFlowDisconnectedColor
+            shader.uniforms.uFlowConnectedColor = flowUniforms.uFlowConnectedColor
+            shader.uniforms.uFlowConnectedEmissiveColor = flowUniforms.uFlowConnectedEmissiveColor
+            shader.uniforms.uFlowEmissiveIntensity = flowUniforms.uFlowEmissiveIntensity
+
+            if(shader.vertexShader.includes('#include <begin_vertex>'))
+            {
+                shader.vertexShader = shader.vertexShader
+                    .replace(
+                        'void main() {',
+                        `varying float vFlowCoord;
+uniform float uFlowMin;
+uniform float uFlowRange;
+void main() {`
+                    )
+                    .replace(
+                        '#include <begin_vertex>',
+                        `#include <begin_vertex>
+vFlowCoord = clamp((position.${FLOW_AXIS} - uFlowMin) / max(uFlowRange, 1e-5), 0.0, 1.0);`
+                    )
+            }
+
+            let flowFragmentShader = shader.fragmentShader
+                .replace(
+                    'void main() {',
+                    `varying float vFlowCoord;
+uniform float uFlowProgress;
+uniform float uFlowDirection;
+uniform float uFlowFeather;
+uniform vec3 uFlowDisconnectedColor;
+uniform vec3 uFlowConnectedColor;
+uniform vec3 uFlowConnectedEmissiveColor;
+uniform float uFlowEmissiveIntensity;
+void main() {`
+                )
+
+            const hasDiffuseLine = flowFragmentShader.includes('vec4 diffuseColor = vec4( diffuse, opacity );')
+            if(hasDiffuseLine)
+            {
+                flowFragmentShader = flowFragmentShader.replace(
+                    'vec4 diffuseColor = vec4( diffuse, opacity );',
+                    `float flowEdge = max(0.0001, uFlowFeather);
+float flowCoord = uFlowDirection >= 0.0 ? vFlowCoord : (1.0 - vFlowCoord);
+float flowFill = 1.0 - smoothstep(uFlowProgress - flowEdge, uFlowProgress, flowCoord);
+vec3 flowBaseColor = mix(uFlowDisconnectedColor, uFlowConnectedColor, flowFill);
+vec4 diffuseColor = vec4(flowBaseColor, opacity);`
+                )
+            }
+
+            if(hasDiffuseLine && flowFragmentShader.includes('vec3 totalEmissiveRadiance = emissive;'))
+            {
+                flowFragmentShader = flowFragmentShader.replace(
+                    'vec3 totalEmissiveRadiance = emissive;',
+                    'vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensity * flowFill);'
+                )
+            }
+
+            shader.fragmentShader = flowFragmentShader
+        }
+
+        const previousProgramCacheKey = material.customProgramCacheKey?.bind(material)
+        material.customProgramCacheKey = () =>
+        {
+            const previousKey = previousProgramCacheKey ? previousProgramCacheKey() : ''
+            return `${previousKey}|scene1-flow-fill-v1`
+        }
+
+        material.needsUpdate = true
+
+        if(!this.flowShaderMaterialsByTubeUuid.has(tubeUuid))
+        {
+            this.flowShaderMaterialsByTubeUuid.set(tubeUuid, [])
+        }
+        this.flowShaderMaterialsByTubeUuid.get(tubeUuid).push(material)
     }
 
     collectJoinTargets()
@@ -551,6 +720,7 @@ export default class Scene1TubeWaterController
     update()
     {
         this.hoveredTubeMesh = this.getTubeMeshAtCenter()
+        this.updateFlowState(this.getDeltaSeconds())
     }
 
     isHoveringTube()
@@ -597,18 +767,23 @@ export default class Scene1TubeWaterController
         }
     }
 
-    updateFlowState()
+    updateFlowState(deltaSeconds = this.getDeltaSeconds())
     {
-        const connectedTubeIds = this.computeConnectedTubeIds()
-        this.applyTubeFlowColors(connectedTubeIds)
+        const { flowPathUuids, flowEntryByTubeUuid } = this.computeSequentialFlowPathUuids()
+        this.flowEntryByTubeUuid = flowEntryByTubeUuid
+        this.updateTubeFlowProgress(flowPathUuids, deltaSeconds)
+        this.applyTubeFlowColors()
     }
 
-    computeConnectedTubeIds()
+    computeSequentialFlowPathUuids()
     {
         const connected = new Set()
+        const flowPath = []
+        const flowEntryByTubeUuid = new Map()
         const orderedUuids = this.orderedTargetUuids.length > 0
             ? this.orderedTargetUuids
             : this.rotationTargets.map((target) => target?.uuid).filter(Boolean)
+        let branchLock = null
 
         let hasProgress = true
         while(hasProgress)
@@ -617,6 +792,12 @@ export default class Scene1TubeWaterController
             for(const tubeUuid of orderedUuids)
             {
                 if(connected.has(tubeUuid))
+                {
+                    continue
+                }
+
+                const targetMeta = this.targetMetaByUuid.get(tubeUuid) ?? null
+                if(!this.isTubeAllowedByBranchLock(targetMeta, branchLock))
                 {
                     continue
                 }
@@ -631,12 +812,162 @@ export default class Scene1TubeWaterController
                     continue
                 }
 
+                const entryDependencyUuid = this.getSatisfiedEntryDependencyUuid(tubeUuid, connected)
                 connected.add(tubeUuid)
+                flowPath.push(tubeUuid)
+                if(entryDependencyUuid)
+                {
+                    flowEntryByTubeUuid.set(tubeUuid, entryDependencyUuid)
+                }
+                branchLock = this.getNextBranchLock(branchLock, targetMeta)
                 hasProgress = true
+                break
             }
         }
 
-        return connected
+        return {
+            flowPathUuids: flowPath,
+            flowEntryByTubeUuid
+        }
+    }
+
+    getSatisfiedEntryDependencyUuid(tubeUuid, connectedTubeIds)
+    {
+        const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+        for(const group of dependencyGroups)
+        {
+            if(group.length === 0)
+            {
+                continue
+            }
+
+            if(group.every((dependencyUuid) => connectedTubeIds.has(dependencyUuid)))
+            {
+                return group[0]
+            }
+        }
+
+        return null
+    }
+
+    isTubeAllowedByBranchLock(meta, branchLock)
+    {
+        if(!branchLock)
+        {
+            return true
+        }
+
+        if(!meta)
+        {
+            return false
+        }
+
+        if(meta.order === BRANCH_BASE_ORDER && (meta.branchType === 't' || meta.branchType === 'b'))
+        {
+            return meta.branchType === branchLock
+        }
+
+        if(meta.branchType === 'main' && meta.order >= SPECIAL_GATE_ORDER_MERGE)
+        {
+            return true
+        }
+
+        return true
+    }
+
+    getNextBranchLock(currentBranchLock, meta)
+    {
+        if(!meta)
+        {
+            return currentBranchLock
+        }
+
+        if(meta.order === BRANCH_BASE_ORDER && (meta.branchType === 't' || meta.branchType === 'b'))
+        {
+            return currentBranchLock ?? meta.branchType
+        }
+
+        if(meta.branchType === 'main' && meta.order >= SPECIAL_GATE_ORDER_MERGE)
+        {
+            return null
+        }
+
+        return currentBranchLock
+    }
+
+    updateTubeFlowProgress(flowPathUuids, deltaSeconds)
+    {
+        const flowPathSet = new Set(flowPathUuids)
+        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const tubeUuid = target.uuid
+            if(!flowPathSet.has(tubeUuid))
+            {
+                this.flowProgressByTubeUuid.set(tubeUuid, 0)
+                continue
+            }
+
+            if(!this.flowProgressByTubeUuid.has(tubeUuid))
+            {
+                this.flowProgressByTubeUuid.set(tubeUuid, 0)
+            }
+        }
+
+        let isCurrentTubeFilling = false
+        for(const tubeUuid of flowPathUuids)
+        {
+            const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
+            if(isCurrentTubeFilling)
+            {
+                this.flowProgressByTubeUuid.set(tubeUuid, 0)
+                continue
+            }
+
+            if(currentProgress >= (1 - FLOW_PROGRESS_EPSILON))
+            {
+                this.flowProgressByTubeUuid.set(tubeUuid, 1)
+                continue
+            }
+
+            const nextProgress = this.moveTowards(currentProgress, 1, stepFill)
+            this.flowProgressByTubeUuid.set(tubeUuid, nextProgress)
+            if(nextProgress < (1 - FLOW_PROGRESS_EPSILON))
+            {
+                isCurrentTubeFilling = true
+            }
+        }
+    }
+
+    moveTowards(value, target, maxStep)
+    {
+        if(maxStep <= 0)
+        {
+            return THREE.MathUtils.clamp(value, 0, 1)
+        }
+
+        const delta = target - value
+        if(Math.abs(delta) <= maxStep)
+        {
+            return THREE.MathUtils.clamp(target, 0, 1)
+        }
+
+        return THREE.MathUtils.clamp(
+            value + Math.sign(delta) * maxStep,
+            0,
+            1
+        )
+    }
+
+    getDeltaSeconds()
+    {
+        return Math.min(this.experience.time?.delta ?? 0, 50) * 0.001
     }
 
     areDependencyGroupsSatisfied(tubeUuid, connectedTubeIds)
@@ -702,6 +1033,65 @@ export default class Scene1TubeWaterController
         return /^module-straight/i.test(moduleName)
     }
 
+    isStraightTubeFlowReversed(tubeUuid)
+    {
+        if(!this.isStraightTube(tubeUuid))
+        {
+            return false
+        }
+
+        const quarterTurnOffset = this.quarterTurnsFromInitialByTubeUuid.get(tubeUuid) ?? 0
+        return this.normalizeQuarterTurnOffset(quarterTurnOffset) === 2
+    }
+
+    getStraightFlowDirection(tubeUuid)
+    {
+        if(!this.isStraightTube(tubeUuid))
+        {
+            return 1
+        }
+
+        const entryDependencyUuid = this.flowEntryByTubeUuid.get(tubeUuid)
+        if(entryDependencyUuid)
+        {
+            const inferredDirection = this.inferFlowDirectionFromNeighbor(tubeUuid, entryDependencyUuid)
+            if(inferredDirection !== 0)
+            {
+                return inferredDirection
+            }
+        }
+
+        return this.isStraightTubeFlowReversed(tubeUuid) ? -1 : 1
+    }
+
+    inferFlowDirectionFromNeighbor(tubeUuid, neighborTubeUuid)
+    {
+        const currentTube = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
+        const neighborTube = this.rotationTargets.find((item) => item?.uuid === neighborTubeUuid)
+        if(!currentTube || !neighborTube)
+        {
+            return 0
+        }
+
+        const shaderMaterials = this.flowShaderMaterialsByTubeUuid.get(tubeUuid) ?? []
+        const firstFlowMaterial = shaderMaterials[0]
+        const flowUniforms = firstFlowMaterial?.userData?.flowUniforms
+        const min = flowUniforms?.uFlowMin?.value
+        const range = flowUniforms?.uFlowRange?.value
+        if(!(Number.isFinite(min) && Number.isFinite(range) && range > 1e-5))
+        {
+            return 0
+        }
+
+        currentTube.updateMatrixWorld(true)
+        neighborTube.updateMatrixWorld(true)
+        this.targetWorldPosition.setFromMatrixPosition(neighborTube.matrixWorld)
+        this.localPosition.copy(this.targetWorldPosition)
+        currentTube.worldToLocal(this.localPosition)
+        const localFlowCoord = (this.localPosition[FLOW_AXIS] - min) / range
+        return localFlowCoord >= 0.5 ? -1 : 1
+    }
+
     getSourceTubeTarget()
     {
         let sourceTarget = null
@@ -730,7 +1120,7 @@ export default class Scene1TubeWaterController
         return sourceTarget ?? this.rotationTargets[0] ?? null
     }
 
-    applyTubeFlowColors(connectedTubeIds)
+    applyTubeFlowColors()
     {
         for(const target of this.rotationTargets)
         {
@@ -739,7 +1129,22 @@ export default class Scene1TubeWaterController
                 continue
             }
 
-            const isConnected = connectedTubeIds.has(target.uuid)
+            const flowProgress = this.flowProgressByTubeUuid.get(target.uuid) ?? 0
+            const flowDirection = this.getStraightFlowDirection(target.uuid)
+            const shaderMaterials = this.flowShaderMaterialsByTubeUuid.get(target.uuid) ?? []
+            for(const shaderMaterial of shaderMaterials)
+            {
+                const flowUniforms = shaderMaterial?.userData?.flowUniforms
+                if(flowUniforms?.uFlowProgress)
+                {
+                    flowUniforms.uFlowProgress.value = flowProgress
+                }
+                if(flowUniforms?.uFlowDirection)
+                {
+                    flowUniforms.uFlowDirection.value = flowDirection
+                }
+            }
+
             const tubeMeshes = this.tubeMeshesByTargetUuid.get(target.uuid) ?? []
             for(const mesh of tubeMeshes)
             {
@@ -751,15 +1156,25 @@ export default class Scene1TubeWaterController
                         continue
                     }
 
+                    // Fallback path for materials where onBeforeCompile shader hook
+                    // is not available.
+                    const usesFlowShader = Boolean(material.userData?.flowUniforms)
+                    if(usesFlowShader)
+                    {
+                        continue
+                    }
+
                     if(material.color)
                     {
-                        material.color.set(isConnected ? CONNECTED_COLOR : DISCONNECTED_COLOR)
+                        this.colorMix.lerpColors(this.disconnectedColor, this.connectedColor, flowProgress)
+                        material.color.copy(this.colorMix)
                     }
 
                     if(material.emissive)
                     {
-                        material.emissive.set(isConnected ? CONNECTED_EMISSIVE : '#000000')
-                        material.emissiveIntensity = isConnected ? 0.68 : 0
+                        this.emissiveMix.lerpColors(this.emissiveOffColor, this.connectedEmissiveColor, flowProgress)
+                        material.emissive.copy(this.emissiveMix)
+                        material.emissiveIntensity = 0.68 * flowProgress
                     }
 
                     material.needsUpdate = true
@@ -872,6 +1287,8 @@ export default class Scene1TubeWaterController
     destroy()
     {
         this.inputs?.off?.('mousedown.scene1TubeWater')
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
         this.hoveredTubeMesh = null
         this.turnDirectionByMeshUuid.clear()
         this.targetMetaByUuid.clear()
@@ -880,5 +1297,8 @@ export default class Scene1TubeWaterController
         this.quarterTurnsFromInitialByTubeUuid.clear()
         this.joinTargetsByTubeUuid.clear()
         this.tubeMeshesByTargetUuid.clear()
+        this.flowProgressByTubeUuid.clear()
+        this.flowShaderMaterialsByTubeUuid.clear()
+        this.flowEntryByTubeUuid.clear()
     }
 }

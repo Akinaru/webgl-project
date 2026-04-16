@@ -80,6 +80,7 @@ export default class Bloom
         this.followDesiredPosition = new THREE.Vector3()
         this.followPreviousPosition = new THREE.Vector3()
         this.followCameraForward = new THREE.Vector3()
+        this.followCameraToBloom = new THREE.Vector3()
         this.followToBloom = new THREE.Vector3()
         this.followReturnPosition = new THREE.Vector3()
         this.followGroundRayDirection = new THREE.Vector3(0, -1, 0)
@@ -657,14 +658,23 @@ export default class Bloom
         }
         this.followCameraForward.normalize()
 
-        if(directionFromTarget.lengthSq() <= 1e-8)
+        let directionForBehindCheck = directionFromTarget
+        this.followCameraToBloom.copy(this.model.position).sub(camera.position)
+        this.followCameraToBloom.y = 0
+        if(this.followCameraToBloom.lengthSq() > 1e-8)
+        {
+            this.followCameraToBloom.normalize()
+            directionForBehindCheck = this.followCameraToBloom
+        }
+
+        if(directionForBehindCheck.lengthSq() <= 1e-8)
         {
             this.followState.behindDuration = 0
             this.followState.isRepositioning = false
             return
         }
 
-        const dot = this.followCameraForward.dot(directionFromTarget)
+        const dot = this.followCameraForward.dot(directionForBehindCheck)
         const isBehind = dot < this.follow.behindThresholdDot
 
         if(this.followState.isRepositioning)
