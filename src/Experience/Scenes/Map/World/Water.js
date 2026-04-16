@@ -4,6 +4,7 @@ import Experience from '../../../Experience.js'
 // Water pilote les parametres d eau globaux et les applique au rendu de la map.
 const WATER_LEVEL_MIN = 0
 const WATER_LEVEL_MAX = 2
+const RIPPLE_TIME_SPEED_DEFAULT = 0.08
 
 export default class Water
 {
@@ -16,15 +17,16 @@ export default class Water
         this.state = {
             waterLevel: 1.20,
             deepYPos: 0.22,
+            slopeFrequency: 14,
+            rippleTimeSpeed: RIPPLE_TIME_SPEED_DEFAULT,
             showPlan: true
         }
 
         this.shallowColor = new THREE.Color('#2a98a5')
         this.deepColor = new THREE.Color('#14576d')
-        this.planWetColor = new THREE.Color('#0d5bff')
-
         this.applyWaterline()
         this.applyPlanVisibility()
+        this.update()
         this.setDebug()
     }
 
@@ -50,13 +52,19 @@ export default class Water
 
         this.mapModel?.applyPlanWaterMask?.({
             waterLevel: this.state.waterLevel,
-            wetColor: this.planWetColor
+            slopeFrequency: this.state.slopeFrequency
         })
     }
 
     applyPlanVisibility()
     {
         this.mapModel?.setPlanVisibility?.(this.state.showPlan)
+    }
+
+    update()
+    {
+        const localTime = (this.experience.time.elapsed * 0.001) * this.state.rippleTimeSpeed
+        this.mapModel?.setPlanWaterMaskLocalTime?.(localTime)
     }
 
     setDebug()
@@ -88,6 +96,26 @@ export default class Water
             this.applyWaterline()
         })
 
+        this.debug.addBinding(this.debugFolder, this.state, 'slopeFrequency', {
+            label: 'slopeFrequency',
+            min: 0,
+            max: 80,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'rippleTimeSpeed', {
+            label: 'rippleTimeSpeed',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.update()
+        })
+
         this.debug.addColorBinding(this.debugFolder, this, 'shallowColor', {
             label: 'shallowColor'
         }).on('change', () =>
@@ -97,13 +125,6 @@ export default class Water
 
         this.debug.addColorBinding(this.debugFolder, this, 'deepColor', {
             label: 'deepColor'
-        }).on('change', () =>
-        {
-            this.applyWaterline()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'planWetColor', {
-            label: 'planWetColor'
         }).on('change', () =>
         {
             this.applyWaterline()
