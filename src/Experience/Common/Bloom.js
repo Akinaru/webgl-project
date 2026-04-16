@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import Experience from '../Experience.js'
 
 const BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y = 0.25
+const BLOOM_FACING_OFFSET_RADIANS = 0.25
 
 export default class Bloom
 {
@@ -141,7 +142,7 @@ export default class Bloom
         this.unscaledBaseY = -bounds.min.y
 
         this.applyVisualScale()
-        this.baseYaw = this.model.rotation.y + Math.PI
+        this.baseYaw = this.model.rotation.y + BLOOM_FACING_OFFSET_RADIANS
         this.model.position.y = this.baseY
 
         this.model.traverse((child) =>
