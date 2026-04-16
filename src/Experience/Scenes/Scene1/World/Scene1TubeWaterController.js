@@ -15,7 +15,7 @@ const ROTATION_EPSILON = 0.02
 const DISCONNECTED_COLOR = '#4a5665'
 const CONNECTED_COLOR = '#4ea7ff'
 const CONNECTED_EMISSIVE = '#2d7bc2'
-const FLOW_FILL_SPEED_PER_SECOND = 1.9
+const FLOW_FILL_SPEED_PER_SECOND = 0.45
 const FLOW_PROGRESS_EPSILON = 1e-4
 const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
@@ -23,7 +23,11 @@ const ANGLE_OUTER_FILL_BIAS = 0.45
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
 const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
 const BLUE_WINDOW_NAME_PATTERN = /fenetre[\s_-]?blue/i
-const FLOW_ACTIVE_EPSILON = 1e-3
+const WINDOW_COORD_ATTRIBUTE = 'aWindowCoord'
+const WINDOW_FLOW_AXIS = 'x'
+const PRIMARY_WINDOW_KEY = 'fenetre-blue'
+const BRANCH_WINDOW_KEY = 'fenetre-blue_1'
+const AFTER_20_WINDOW_KEY = 'fenetre-blue_2'
 
 export default class Scene1TubeWaterController
 {
@@ -57,6 +61,9 @@ export default class Scene1TubeWaterController
         this.rotationTargetUuidByName = new Map()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName = new Map()
+        this.blueWindowShaderMaterialsByMeshUuid = new Map()
+        this.blueWindowFlowProgressByName = new Map()
+        this.requiredWindowByTubeUuid = new Map()
         this.hoveredTubeMesh = null
 
         this.bounds = new THREE.Box3()
@@ -88,6 +95,7 @@ export default class Scene1TubeWaterController
         this.collectJoinTargets()
         this.buildTubeOrder()
         this.buildConnectionDependencies()
+        this.buildWindowTubeDependencies()
         this.setupTubeMaterials()
         this.setupBlueWindowMeshes()
         this.captureInitialRotations()
@@ -177,6 +185,8 @@ export default class Scene1TubeWaterController
     {
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
+        this.blueWindowShaderMaterialsByMeshUuid.clear()
+        this.blueWindowFlowProgressByName.clear()
 
         const root = this.scene1Model?.model
         if(!root)
@@ -201,6 +211,17 @@ export default class Scene1TubeWaterController
             const materials = Array.isArray(child.material) ? child.material : [child.material]
             const clonedMaterials = materials.map((material) => material?.clone?.() ?? material)
             child.material = Array.isArray(child.material) ? clonedMaterials : clonedMaterials[0]
+            if(child.geometry?.clone)
+            {
+                child.geometry = child.geometry.clone()
+            }
+
+            this.setupBlueWindowCoordAttribute(child)
+            for(const material of clonedMaterials)
+            {
+                this.setupBlueWindowShaderMaterial(material, child)
+            }
+
             this.blueWindowMeshes.push(child)
 
             let windowKey = normalizedName
@@ -218,6 +239,131 @@ export default class Scene1TubeWaterController
             }
             this.blueWindowMeshesByName.get(windowKey).push(child)
         })
+    }
+
+    setupBlueWindowCoordAttribute(mesh)
+    {
+        const geometry = mesh?.geometry
+        const position = geometry?.attributes?.position
+        if(!geometry || !position)
+        {
+            return
+        }
+
+        if(!geometry.boundingBox)
+        {
+            geometry.computeBoundingBox?.()
+        }
+
+        const bounds = geometry.boundingBox
+        if(!bounds)
+        {
+            return
+        }
+
+        const minCoord = bounds.min[WINDOW_FLOW_AXIS]
+        const maxCoord = bounds.max[WINDOW_FLOW_AXIS]
+        const range = maxCoord - minCoord
+        if(!(Number.isFinite(range) && range > 1e-5))
+        {
+            return
+        }
+
+        const coordValues = new Float32Array(position.count)
+        for(let index = 0; index < position.count; index++)
+        {
+            const axisValue = position.getX(index)
+            coordValues[index] = THREE.MathUtils.clamp((axisValue - minCoord) / range, 0, 1)
+        }
+
+        geometry.setAttribute(WINDOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(coordValues, 1))
+        geometry.attributes[WINDOW_COORD_ATTRIBUTE].needsUpdate = true
+    }
+
+    setupBlueWindowShaderMaterial(material, mesh)
+    {
+        if(!material || typeof material.onBeforeCompile !== 'function')
+        {
+            return
+        }
+
+        const geometry = mesh?.geometry
+        if(!geometry?.attributes?.[WINDOW_COORD_ATTRIBUTE] || !geometry.attributes?.position)
+        {
+            return
+        }
+
+        const windowUniforms = {
+            uWindowProgress: { value: 0 },
+            uWindowDisconnectedColor: { value: this.disconnectedColor.clone() },
+            uWindowConnectedColor: { value: this.connectedColor.clone() },
+            uWindowConnectedEmissiveColor: { value: this.connectedEmissiveColor.clone() },
+            uWindowEmissiveIntensity: { value: 0.68 }
+        }
+        material.userData.windowFlowUniforms = windowUniforms
+
+        const previousOnBeforeCompile = material.onBeforeCompile
+        material.onBeforeCompile = (shader, renderer) =>
+        {
+            previousOnBeforeCompile?.(shader, renderer)
+
+            shader.uniforms.uWindowProgress = windowUniforms.uWindowProgress
+            shader.uniforms.uWindowDisconnectedColor = windowUniforms.uWindowDisconnectedColor
+            shader.uniforms.uWindowConnectedColor = windowUniforms.uWindowConnectedColor
+            shader.uniforms.uWindowConnectedEmissiveColor = windowUniforms.uWindowConnectedEmissiveColor
+            shader.uniforms.uWindowEmissiveIntensity = windowUniforms.uWindowEmissiveIntensity
+
+            if(shader.vertexShader.includes('#include <begin_vertex>'))
+            {
+                shader.vertexShader = shader.vertexShader
+                    .replace(
+                        'void main() {',
+                        `attribute float ${WINDOW_COORD_ATTRIBUTE};
+varying float vWindowCoord;
+void main() {`
+                    )
+                    .replace(
+                        '#include <begin_vertex>',
+                        `#include <begin_vertex>
+vWindowCoord = ${WINDOW_COORD_ATTRIBUTE};`
+                    )
+            }
+
+            if(shader.fragmentShader.includes('#include <color_fragment>'))
+            {
+                shader.fragmentShader = shader.fragmentShader
+                    .replace(
+                        'void main() {',
+                        `varying float vWindowCoord;
+uniform float uWindowProgress;
+uniform vec3 uWindowDisconnectedColor;
+uniform vec3 uWindowConnectedColor;
+uniform vec3 uWindowConnectedEmissiveColor;
+uniform float uWindowEmissiveIntensity;
+void main() {`
+                    )
+                    .replace(
+                        '#include <color_fragment>',
+                        `#include <color_fragment>
+float windowFillMask = step(vWindowCoord, uWindowProgress);
+diffuseColor.rgb = mix(uWindowDisconnectedColor, uWindowConnectedColor, windowFillMask);`
+                    )
+                    .replace(
+                        '#include <emissivemap_fragment>',
+                        `#include <emissivemap_fragment>
+totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEmissiveIntensity, windowFillMask);`
+                    )
+            }
+        }
+
+        material.customProgramCacheKey = () => `${material.type}_windowFlow`
+        material.needsUpdate = true
+
+        if(!this.blueWindowShaderMaterialsByMeshUuid.has(mesh.uuid))
+        {
+            this.blueWindowShaderMaterialsByMeshUuid.set(mesh.uuid, [])
+        }
+        this.blueWindowShaderMaterialsByMeshUuid.get(mesh.uuid).push(material)
     }
 
     setupFlowShaderMaterial(material, mesh, tubeUuid)
@@ -831,6 +977,36 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
     }
 
+    buildWindowTubeDependencies()
+    {
+        this.requiredWindowByTubeUuid.clear()
+
+        const t1Uuid = this.findBranchUuid('t', 1)
+        const b1Uuid = this.findBranchUuid('b', 1)
+        const main14Uuid = this.getMainAtOrder(SPECIAL_GATE_ORDER_MERGE)
+        const main21Uuid = this.getMainAtOrder(21)
+
+        if(t1Uuid)
+        {
+            this.requiredWindowByTubeUuid.set(t1Uuid, PRIMARY_WINDOW_KEY)
+        }
+
+        if(b1Uuid)
+        {
+            this.requiredWindowByTubeUuid.set(b1Uuid, PRIMARY_WINDOW_KEY)
+        }
+
+        if(main14Uuid)
+        {
+            this.requiredWindowByTubeUuid.set(main14Uuid, BRANCH_WINDOW_KEY)
+        }
+
+        if(main21Uuid)
+        {
+            this.requiredWindowByTubeUuid.set(main21Uuid, AFTER_20_WINDOW_KEY)
+        }
+    }
+
     findBranchUuid(branchType, branchIndex)
     {
         for(const target of this.rotationTargets)
@@ -1008,8 +1184,26 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const { flowPathUuids, flowEntryByTubeUuid } = this.computeSequentialFlowPathUuids()
         this.flowEntryByTubeUuid = flowEntryByTubeUuid
         this.updateTubeFlowProgress(flowPathUuids, deltaSeconds)
+        this.updateBlueWindowFlowProgress(deltaSeconds)
         this.applyTubeFlowColors()
         this.applyBlueWindowColors()
+    }
+
+    updateBlueWindowFlowProgress(deltaSeconds)
+    {
+        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+        const gateReadyByName = new Map([
+            ['fenetre-blue', this.isModuleFlowComplete('module-angle_13')],
+            ['fenetre-blue_1', this.isModuleFlowComplete('module-straight_13_t3') || this.isModuleFlowComplete('module-angle_13_b9')],
+            ['fenetre-blue_2', this.isModuleFlowComplete('module-angle_20')]
+        ])
+
+        for(const [windowName, isReady] of gateReadyByName)
+        {
+            const current = this.blueWindowFlowProgressByName.get(windowName) ?? 0
+            const target = isReady ? 1 : 0
+            this.blueWindowFlowProgressByName.set(windowName, this.moveTowards(current, target, stepFill))
+        }
     }
 
     applyBlueWindowColors()
@@ -1019,19 +1213,19 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return
         }
 
-        const windowStateByName = new Map([
-            ['fenetre-blue', this.isModuleBlue('module-angle_13')],
-            ['fenetre-blue_1', this.isModuleBlue('module-straight_13_t3') || this.isModuleBlue('module-angle_13_b9')],
-            ['fenetre-blue_2', this.isModuleBlue('module-angle_20')]
+        const windowProgressByName = new Map([
+            ['fenetre-blue', this.blueWindowFlowProgressByName.get('fenetre-blue') ?? 0],
+            ['fenetre-blue_1', this.blueWindowFlowProgressByName.get('fenetre-blue_1') ?? 0],
+            ['fenetre-blue_2', this.blueWindowFlowProgressByName.get('fenetre-blue_2') ?? 0]
         ])
 
         // Preferred path: explicit window names (fenêtre-blue, _1, _2).
-        for(const [windowName, isActive] of windowStateByName)
+        for(const [windowName, flowProgress] of windowProgressByName)
         {
             const meshes = this.blueWindowMeshesByName.get(windowName) ?? []
             for(const mesh of meshes)
             {
-                this.applyBlueWindowMeshState(mesh, isActive)
+                this.applyBlueWindowMeshState(mesh, flowProgress)
             }
         }
 
@@ -1043,26 +1237,41 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         ]
         if(fallbackMeshBuckets.every((bucket) => bucket.length === 0) && this.blueWindowMeshes.length > 0)
         {
-            const fallbackStates = [
-                windowStateByName.get('fenetre-blue') ?? false,
-                windowStateByName.get('fenetre-blue_1') ?? false,
-                windowStateByName.get('fenetre-blue_2') ?? false
+            const fallbackProgress = [
+                windowProgressByName.get('fenetre-blue') ?? 0,
+                windowProgressByName.get('fenetre-blue_1') ?? 0,
+                windowProgressByName.get('fenetre-blue_2') ?? 0
             ]
             for(let index = 0; index < this.blueWindowMeshes.length; index++)
             {
-                const fallbackState = fallbackStates[Math.min(index, fallbackStates.length - 1)]
-                this.applyBlueWindowMeshState(this.blueWindowMeshes[index], fallbackState)
+                const progress = fallbackProgress[Math.min(index, fallbackProgress.length - 1)]
+                this.applyBlueWindowMeshState(this.blueWindowMeshes[index], progress)
             }
         }
     }
 
-    applyBlueWindowMeshState(mesh, isActive)
+    applyBlueWindowMeshState(mesh, flowProgress)
     {
-        const colorLerp = isActive ? 1 : 0
+        const colorLerp = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
+        const shaderMaterials = this.blueWindowShaderMaterialsByMeshUuid.get(mesh.uuid) ?? []
+        for(const shaderMaterial of shaderMaterials)
+        {
+            const uniforms = shaderMaterial?.userData?.windowFlowUniforms
+            if(uniforms?.uWindowProgress)
+            {
+                uniforms.uWindowProgress.value = colorLerp
+            }
+        }
+
         const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         for(const material of materials)
         {
             if(!material)
+            {
+                continue
+            }
+
+            if(material.userData?.windowFlowUniforms)
             {
                 continue
             }
@@ -1084,17 +1293,38 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
     }
 
-    isModuleBlue(moduleName)
+    getModuleFlowProgress(moduleName)
     {
         const normalizedName = this.normalizeObjectName(moduleName)
         const targetUuid = this.rotationTargetUuidByName.get(normalizedName)
         if(!targetUuid)
         {
-            return false
+            return 0
         }
 
         const flowProgress = this.flowProgressByTubeUuid.get(targetUuid) ?? 0
-        return flowProgress >= (1 - FLOW_ACTIVE_EPSILON)
+        return THREE.MathUtils.clamp(flowProgress, 0, 1)
+    }
+
+    getMaxModuleFlowProgress(moduleNames = [])
+    {
+        let maxProgress = 0
+        for(const moduleName of moduleNames)
+        {
+            maxProgress = Math.max(maxProgress, this.getModuleFlowProgress(moduleName))
+        }
+        return maxProgress
+    }
+
+    isModuleFlowComplete(moduleName)
+    {
+        return this.getModuleFlowProgress(moduleName) >= (1 - FLOW_PROGRESS_EPSILON)
+    }
+
+    isBlueWindowFlowComplete(windowName)
+    {
+        const flowProgress = this.blueWindowFlowProgressByName.get(windowName) ?? 0
+        return flowProgress >= (1 - FLOW_PROGRESS_EPSILON)
     }
 
     normalizeObjectName(value)
@@ -1213,6 +1443,12 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     canTubeFillNow(tubeUuid)
     {
+        const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
+        if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
+        {
+            return false
+        }
+
         const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
         if(dependencyGroups.length === 0)
         {
@@ -1607,5 +1843,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.rotationTargetUuidByName.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
+        this.blueWindowShaderMaterialsByMeshUuid.clear()
+        this.blueWindowFlowProgressByName.clear()
+        this.requiredWindowByTubeUuid.clear()
     }
 }
