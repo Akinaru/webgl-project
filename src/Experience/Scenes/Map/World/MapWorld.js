@@ -5,6 +5,7 @@ import SceneEnum from '../../../Enum/SceneEnum.js'
 import Bloom from '../../../Common/Bloom.js'
 import Player from '../../../Common/Player.js'
 import MapEnvironment from './MapEnvironment.js'
+import MapLight from './MapLight.js'
 import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
@@ -55,6 +56,9 @@ export default class MapWorld
             spawnPosition: { x: -2.2, y: 7, z: 0.9 },
             spawnYaw: Math.PI
         })
+        this.light = new MapLight({
+            getFocusPosition: () => this.player?.position ?? null
+        })
         this.bloom = new Bloom({
             motion: {
                 center: { x: 2.5, y: 2.0, z: 2.5 },
@@ -88,6 +92,7 @@ export default class MapWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.light?.update?.(delta)
         this.water?.update?.(delta)
         this.bloom?.update?.()
         this.player?.update(delta)
@@ -240,6 +245,12 @@ export default class MapWorld
         {
             this.environment.destroy?.()
             this.environment = null
+        }
+
+        if(this.light)
+        {
+            this.light.destroy?.()
+            this.light = null
         }
 
         if(this.teleportGroup)

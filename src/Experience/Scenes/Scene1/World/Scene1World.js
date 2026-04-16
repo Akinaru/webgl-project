@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Player.js'
+import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import Scene1Model from './Scene1Model.js'
 import Scene1MaterialButtons from './Scene1MaterialButtons.js'
@@ -49,6 +50,9 @@ export default class Scene1World
             spawnPosition: this.scene1Model.getSpawnPosition?.(),
             spawnYaw: 0
         })
+        this.light = new MapLight({
+            getFocusPosition: () => this.player?.position ?? null
+        })
 
         this.materialButtons = new Scene1MaterialButtons({
             scene1Model: this.scene1Model,
@@ -63,6 +67,7 @@ export default class Scene1World
 
     update(delta = this.experience.time.delta)
     {
+        this.light?.update?.(delta)
         this.player?.update(delta)
         this.tubeWaterController?.update?.()
         this.materialButtons?.update(delta)
@@ -189,6 +194,12 @@ export default class Scene1World
         {
             this.environment.destroy?.()
             this.environment = null
+        }
+
+        if(this.light)
+        {
+            this.light.destroy?.()
+            this.light = null
         }
 
         this.wallCrossTeleport = null

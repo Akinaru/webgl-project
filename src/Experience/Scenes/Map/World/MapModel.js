@@ -98,9 +98,6 @@ export default class MapModel
                 this.terrainTintMeshes.push(child)
             }
 
-            child.castShadow = true
-            child.receiveShadow = true
-
             if(!child.geometry?.boundingBox)
             {
                 child.geometry?.computeBoundingBox?.()
@@ -122,6 +119,8 @@ export default class MapModel
             this.collisionMeshes.push(child)
         })
 
+        this.applyReliefShadowReceiverPolicy()
+
         this.scene.add(this.model)
         this.model.updateMatrixWorld(true)
         this.applyTerrainWaterline(this.terrainWaterlineSettings)
@@ -140,6 +139,106 @@ export default class MapModel
     isTerrainTintMesh(mesh)
     {
         return this.hasNameInHierarchy(mesh, ['relief'])
+    }
+
+    applyReliefShadowReceiverPolicy()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        const receiverRoots = this.findReliefReceiverRoots()
+        const receiverMeshes = new Set()
+        for(const root of receiverRoots)
+        {
+            root?.traverse?.((object) =>
+            {
+                if(object instanceof THREE.Mesh)
+                {
+                    receiverMeshes.add(object.uuid)
+                }
+            })
+        }
+
+        this.model.traverse((object) =>
+        {
+            if(!(object instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            this.ensureGeometryNormals(object.geometry)
+            object.castShadow = true
+            object.receiveShadow = receiverMeshes.has(object.uuid)
+        })
+
+        if(receiverMeshes.size > 0)
+        {
+            return
+        }
+
+        for(const reliefMesh of this.terrainTintMeshes)
+        {
+            if(!(reliefMesh instanceof THREE.Mesh))
+            {
+                continue
+            }
+
+            reliefMesh.receiveShadow = true
+        }
+    }
+
+    findReliefReceiverRoots()
+    {
+        if(!this.model)
+        {
+            return []
+        }
+
+        const exactRoots = []
+        const fuzzyRoots = []
+
+        this.model.traverse((object) =>
+        {
+            const normalizedName = String(object?.name || '').trim().toLowerCase()
+            if(!normalizedName)
+            {
+                return
+            }
+
+            if(normalizedName === 'relief')
+            {
+                exactRoots.push(object)
+                return
+            }
+
+            if(normalizedName.includes('relief'))
+            {
+                fuzzyRoots.push(object)
+            }
+        })
+
+        if(exactRoots.length > 0)
+        {
+            return exactRoots
+        }
+
+        return fuzzyRoots
+    }
+
+    ensureGeometryNormals(geometry)
+    {
+        if(!geometry?.attributes?.position || geometry?.attributes?.normal)
+        {
+            return
+        }
+
+        geometry.computeVertexNormals?.()
+        if(geometry.attributes?.normal)
+        {
+            geometry.attributes.normal.needsUpdate = true
+        }
     }
 
     createTerrainWaterlineMaterial(baseMaterial)
