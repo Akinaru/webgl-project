@@ -64,6 +64,7 @@ export default class Scene1TubeWaterController
         this.blueWindowShaderMaterialsByMeshUuid = new Map()
         this.blueWindowFlowProgressByName = new Map()
         this.requiredWindowByTubeUuid = new Map()
+        this.windowSourceByTubeUuid = new Map()
         this.hoveredTubeMesh = null
 
         this.bounds = new THREE.Box3()
@@ -799,6 +800,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     buildConnectionDependencies()
     {
         this.connectionDependencyGroupsByUuid.clear()
+        this.windowSourceByTubeUuid.clear()
 
         for(const targetUuid of this.orderedTargetUuids)
         {
@@ -822,6 +824,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.buildBranchDependencies('t')
         this.buildBranchDependencies('b')
         this.applySpecialGateDependencies()
+        this.applyBidirectionalBBranchDependencies()
+        this.applyBidirectionalTBranchDependencies()
     }
 
     getTargetsByMeta(predicate)
@@ -974,6 +978,108 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                     )
                 }
             }
+        }
+    }
+
+    applyBidirectionalBBranchDependencies()
+    {
+        const bBranchByIndex = new Map()
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta || meta.order !== BRANCH_BASE_ORDER || meta.branchType !== 'b')
+            {
+                continue
+            }
+
+            bBranchByIndex.set(meta.branchIndex, target.uuid)
+        }
+
+        const bIndexes = Array.from(bBranchByIndex.keys()).sort((a, b) => a - b)
+        for(const branchIndex of bIndexes)
+        {
+            const tubeUuid = bBranchByIndex.get(branchIndex)
+            if(!tubeUuid)
+            {
+                continue
+            }
+
+            const groups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+            const prevUuid = bBranchByIndex.get(branchIndex - 1)
+            const nextUuid = bBranchByIndex.get(branchIndex + 1)
+
+            if(prevUuid && !groups.some((group) => group.length === 1 && group[0] === prevUuid))
+            {
+                groups.push([prevUuid])
+            }
+
+            if(nextUuid && !groups.some((group) => group.length === 1 && group[0] === nextUuid))
+            {
+                groups.push([nextUuid])
+            }
+
+            if(branchIndex === REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
+            {
+                this.windowSourceByTubeUuid.set(tubeUuid, BRANCH_WINDOW_KEY)
+            }
+
+            this.connectionDependencyGroupsByUuid.set(tubeUuid, groups)
+        }
+    }
+
+    applyBidirectionalTBranchDependencies()
+    {
+        const tBranchByIndex = new Map()
+        for(const target of this.rotationTargets)
+        {
+            if(!target)
+            {
+                continue
+            }
+
+            const meta = this.targetMetaByUuid.get(target.uuid)
+            if(!meta || meta.order !== BRANCH_BASE_ORDER || meta.branchType !== 't')
+            {
+                continue
+            }
+
+            tBranchByIndex.set(meta.branchIndex, target.uuid)
+        }
+
+        const tIndexes = Array.from(tBranchByIndex.keys()).sort((a, b) => a - b)
+        for(const branchIndex of tIndexes)
+        {
+            const tubeUuid = tBranchByIndex.get(branchIndex)
+            if(!tubeUuid)
+            {
+                continue
+            }
+
+            const groups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+            const prevUuid = tBranchByIndex.get(branchIndex - 1)
+            const nextUuid = tBranchByIndex.get(branchIndex + 1)
+
+            if(prevUuid && !groups.some((group) => group.length === 1 && group[0] === prevUuid))
+            {
+                groups.push([prevUuid])
+            }
+
+            if(nextUuid && !groups.some((group) => group.length === 1 && group[0] === nextUuid))
+            {
+                groups.push([nextUuid])
+            }
+
+            if(branchIndex === REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
+            {
+                this.windowSourceByTubeUuid.set(tubeUuid, BRANCH_WINDOW_KEY)
+            }
+
+            this.connectionDependencyGroupsByUuid.set(tubeUuid, groups)
         }
     }
 
@@ -1327,6 +1433,17 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return flowProgress >= (1 - FLOW_PROGRESS_EPSILON)
     }
 
+    isWindowSourceReady(tubeUuid)
+    {
+        const windowName = this.windowSourceByTubeUuid.get(tubeUuid)
+        if(!windowName)
+        {
+            return false
+        }
+
+        return this.isBlueWindowFlowComplete(windowName)
+    }
+
     normalizeObjectName(value)
     {
         return String(value || '')
@@ -1468,7 +1585,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
         }
 
-        return false
+        return this.isWindowSourceReady(tubeUuid)
     }
 
     moveTowards(value, target, maxStep)
@@ -1512,7 +1629,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
         }
 
-        return false
+        return this.isWindowSourceReady(tubeUuid)
     }
 
     isTubeAtInitialRotation(tubeUuid)
@@ -1846,5 +1963,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.blueWindowShaderMaterialsByMeshUuid.clear()
         this.blueWindowFlowProgressByName.clear()
         this.requiredWindowByTubeUuid.clear()
+        this.windowSourceByTubeUuid.clear()
     }
 }
