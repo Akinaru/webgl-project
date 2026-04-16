@@ -21,7 +21,7 @@ export default class Water
 
         this.shallowColor = new THREE.Color('#2a98a5')
         this.deepColor = new THREE.Color('#14576d')
-        this.planWetColor = new THREE.Color('#0d5bff')
+        this.planWetColor = new THREE.Color('#000000')
 
         this.applyWaterline()
         this.applyPlanVisibility()

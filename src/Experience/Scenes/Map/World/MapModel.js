@@ -23,12 +23,12 @@ export default class MapModel
         this.terrainWaterlineSettings = {
             minY: 1.20,
             deepY: 0.22,
-            shallowColor: new THREE.Color('#2a98a5'),
-            deepColor: new THREE.Color('#14576d')
+            shallowColor: new THREE.Color('#050505'),
+            deepColor: new THREE.Color('#000000')
         }
         this.planWaterMaskSettings = {
             waterLevel: 1.20,
-            wetColor: new THREE.Color('#0d5bff')
+            wetColor: new THREE.Color('#000000')
         }
         this.planWaterMaskContext = null
 
