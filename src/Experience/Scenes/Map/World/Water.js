@@ -15,8 +15,9 @@ export default class Water
         this.mapModel = mapModel
 
         this.state = {
-            waterLevel: 1.20,
-            deepYPos: 0.22,
+            hauteurEau: 1.20,
+            hauteurSurface: 0.72,
+            hauteurFond: 0.22,
             slopeFrequency: 14,
             noiseFrequency: 0.304,
             rippleThreshold: -0.315,
@@ -25,8 +26,9 @@ export default class Water
             showPlan: true
         }
 
-        this.shallowColor = new THREE.Color('#2a98a5')
-        this.deepColor = new THREE.Color('#146c89')
+        this.couleurSable = new THREE.Color('#9f7a4b')
+        this.couleurBleuSurface = new THREE.Color('#1c6972')
+        this.couleurBleuFond = new THREE.Color('#031d26')
         this.backgroundColor = new THREE.Color('#124f69')
         this.applyWaterline()
         this.applyPlanVisibility()
@@ -36,26 +38,34 @@ export default class Water
 
     applyWaterline()
     {
-        this.state.waterLevel = THREE.MathUtils.clamp(
-            this.state.waterLevel,
+        this.state.hauteurEau = THREE.MathUtils.clamp(
+            this.state.hauteurEau,
             WATER_LEVEL_MIN,
             WATER_LEVEL_MAX
         )
 
-        if(this.state.deepYPos > this.state.waterLevel)
+        if(this.state.hauteurFond > this.state.hauteurEau)
         {
-            this.state.deepYPos = this.state.waterLevel
+            this.state.hauteurFond = this.state.hauteurEau
         }
 
+        this.state.hauteurSurface = THREE.MathUtils.clamp(
+            this.state.hauteurSurface,
+            this.state.hauteurFond,
+            this.state.hauteurEau
+        )
+
         this.mapModel?.applyTerrainWaterline?.({
-            minY: this.state.waterLevel,
-            deepY: this.state.deepYPos,
-            shallowColor: this.shallowColor,
-            deepColor: this.deepColor
+            minY: this.state.hauteurEau,
+            surfaceY: this.state.hauteurSurface,
+            fondY: this.state.hauteurFond,
+            sableColor: this.couleurSable,
+            surfaceColor: this.couleurBleuSurface,
+            fondColor: this.couleurBleuFond
         })
 
         this.mapModel?.applyPlanWaterMask?.({
-            waterLevel: this.state.waterLevel,
+            waterLevel: this.state.hauteurEau,
             slopeFrequency: this.state.slopeFrequency,
             noiseFrequency: this.state.noiseFrequency,
             rippleThreshold: this.state.rippleThreshold,
@@ -82,7 +92,7 @@ export default class Water
             return
         }
 
-        this.debugFolder = this.debug.addFolder('💧 Water', { expanded: false })
+        this.debugFolder = this.debug.addFolder('💧 Eau', { expanded: false })
         this.terrainFolder = this.debug.addFolder('Terrain', {
             parent: this.debugFolder,
             expanded: false
@@ -96,8 +106,8 @@ export default class Water
             expanded: false
         })
 
-        this.debug.addBinding(this.terrainFolder, this.state, 'waterLevel', {
-            label: 'waterLevel',
+        this.debug.addBinding(this.terrainFolder, this.state, 'hauteurEau', {
+            label: 'Hauteur eau',
             min: WATER_LEVEL_MIN,
             max: WATER_LEVEL_MAX,
             step: 0.01
@@ -106,8 +116,8 @@ export default class Water
             this.applyWaterline()
         })
 
-        this.debug.addBinding(this.terrainFolder, this.state, 'deepYPos', {
-            label: 'deepYPos',
+        this.debug.addBinding(this.terrainFolder, this.state, 'hauteurSurface', {
+            label: 'Hauteur surface',
             min: -20,
             max: 10,
             step: 0.01
@@ -116,22 +126,39 @@ export default class Water
             this.applyWaterline()
         })
 
-        this.debug.addColorBinding(this.terrainFolder, this, 'shallowColor', {
-            label: 'shallowColor'
+        this.debug.addBinding(this.terrainFolder, this.state, 'hauteurFond', {
+            label: 'Hauteur fond',
+            min: -20,
+            max: 10,
+            step: 0.01
         }).on('change', () =>
         {
             this.applyWaterline()
         })
 
-        this.debug.addColorBinding(this.terrainFolder, this, 'deepColor', {
-            label: 'deepColor'
+        this.debug.addColorBinding(this.terrainFolder, this, 'couleurSable', {
+            label: 'Couleur sable'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addColorBinding(this.terrainFolder, this, 'couleurBleuSurface', {
+            label: 'Couleur bleu surface'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addColorBinding(this.terrainFolder, this, 'couleurBleuFond', {
+            label: 'Couleur bleu fond'
         }).on('change', () =>
         {
             this.applyWaterline()
         })
 
         this.debug.addBinding(this.wavesFolder, this.state, 'slopeFrequency', {
-            label: 'slopeFrequency',
+            label: 'Frequence pente',
             min: 0,
             max: 80,
             step: 0.01
@@ -141,7 +168,7 @@ export default class Water
         })
 
         this.debug.addBinding(this.wavesFolder, this.state, 'noiseFrequency', {
-            label: 'noiseFrequency',
+            label: 'Frequence bruit',
             min: 0,
             max: 2,
             step: 0.001
@@ -151,7 +178,7 @@ export default class Water
         })
 
         this.debug.addBinding(this.wavesFolder, this.state, 'rippleThreshold', {
-            label: 'rippleThreshold',
+            label: 'Seuil ondulation',
             min: -1,
             max: 2,
             step: 0.001
@@ -161,7 +188,7 @@ export default class Water
         })
 
         this.debug.addBinding(this.wavesFolder, this.state, 'rippleTimeSpeed', {
-            label: 'rippleTimeSpeed',
+            label: 'Vitesse ondulation',
             min: 0,
             max: 1,
             step: 0.001
@@ -171,14 +198,14 @@ export default class Water
         })
 
         this.debug.addColorBinding(this.waterColorFolder, this, 'backgroundColor', {
-            label: 'backgroundColor'
+            label: 'Couleur eau'
         }).on('change', () =>
         {
             this.applyWaterline()
         })
 
         this.debug.addBinding(this.waterColorFolder, this.state, 'backgroundOpacity', {
-            label: 'backgroundOpacity',
+            label: 'Opacite eau',
             min: 0,
             max: 1,
             step: 0.001
@@ -188,7 +215,7 @@ export default class Water
         })
 
         this.debug.addBinding(this.waterColorFolder, this.state, 'showPlan', {
-            label: 'showPlan'
+            label: 'Afficher plan'
         }).on('change', () =>
         {
             this.applyPlanVisibility()
