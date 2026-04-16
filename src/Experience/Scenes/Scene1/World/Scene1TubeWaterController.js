@@ -963,7 +963,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const orderedUuids = this.orderedTargetUuids.length > 0
             ? this.orderedTargetUuids
             : this.rotationTargets.map((target) => target?.uuid).filter(Boolean)
-        let branchLock = null
 
         let hasProgress = true
         while(hasProgress)
@@ -972,12 +971,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             for(const tubeUuid of orderedUuids)
             {
                 if(connected.has(tubeUuid))
-                {
-                    continue
-                }
-
-                const targetMeta = this.targetMetaByUuid.get(tubeUuid) ?? null
-                if(!this.isTubeAllowedByBranchLock(targetMeta, branchLock))
                 {
                     continue
                 }
@@ -999,7 +992,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 {
                     flowEntryByTubeUuid.set(tubeUuid, entryDependencyUuid)
                 }
-                branchLock = this.getNextBranchLock(branchLock, targetMeta)
                 hasProgress = true
                 break
             }
@@ -1030,51 +1022,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return null
     }
 
-    isTubeAllowedByBranchLock(meta, branchLock)
-    {
-        if(!branchLock)
-        {
-            return true
-        }
-
-        if(!meta)
-        {
-            return false
-        }
-
-        if(meta.order === BRANCH_BASE_ORDER && (meta.branchType === 't' || meta.branchType === 'b'))
-        {
-            return meta.branchType === branchLock
-        }
-
-        if(meta.branchType === 'main' && meta.order >= SPECIAL_GATE_ORDER_MERGE)
-        {
-            return true
-        }
-
-        return true
-    }
-
-    getNextBranchLock(currentBranchLock, meta)
-    {
-        if(!meta)
-        {
-            return currentBranchLock
-        }
-
-        if(meta.order === BRANCH_BASE_ORDER && (meta.branchType === 't' || meta.branchType === 'b'))
-        {
-            return currentBranchLock ?? meta.branchType
-        }
-
-        if(meta.branchType === 'main' && meta.order >= SPECIAL_GATE_ORDER_MERGE)
-        {
-            return null
-        }
-
-        return currentBranchLock
-    }
-
     updateTubeFlowProgress(flowPathUuids, deltaSeconds)
     {
         const flowPathSet = new Set(flowPathUuids)
@@ -1100,29 +1047,42 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
         }
 
-        let isCurrentTubeFilling = false
         for(const tubeUuid of flowPathUuids)
         {
             const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
-            if(isCurrentTubeFilling)
+            if(!this.canTubeFillNow(tubeUuid))
             {
                 this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
             }
 
-            if(currentProgress >= (1 - FLOW_PROGRESS_EPSILON))
-            {
-                this.flowProgressByTubeUuid.set(tubeUuid, 1)
-                continue
-            }
-
             const nextProgress = this.moveTowards(currentProgress, 1, stepFill)
             this.flowProgressByTubeUuid.set(tubeUuid, nextProgress)
-            if(nextProgress < (1 - FLOW_PROGRESS_EPSILON))
+        }
+    }
+
+    canTubeFillNow(tubeUuid)
+    {
+        const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+        if(dependencyGroups.length === 0)
+        {
+            return true
+        }
+
+        for(const group of dependencyGroups)
+        {
+            const isGroupReady = group.every((dependencyUuid) =>
             {
-                isCurrentTubeFilling = true
+                const dependencyProgress = this.flowProgressByTubeUuid.get(dependencyUuid) ?? 0
+                return dependencyProgress >= (1 - FLOW_PROGRESS_EPSILON)
+            })
+            if(isGroupReady)
+            {
+                return true
             }
         }
+
+        return false
     }
 
     moveTowards(value, target, maxStep)
