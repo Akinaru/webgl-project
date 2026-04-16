@@ -190,6 +190,7 @@ export default class Scene1TubeWaterController
 
         const flowUniforms = {
             uFlowProgress: { value: 0 },
+            uFlowDirection: { value: 1 },
             uFlowFeather: { value: 0.05 },
             uFlowMin: { value: min },
             uFlowRange: { value: range },
@@ -207,6 +208,7 @@ export default class Scene1TubeWaterController
             previousOnBeforeCompile?.(shader, renderer)
 
             shader.uniforms.uFlowProgress = flowUniforms.uFlowProgress
+            shader.uniforms.uFlowDirection = flowUniforms.uFlowDirection
             shader.uniforms.uFlowFeather = flowUniforms.uFlowFeather
             shader.uniforms.uFlowMin = flowUniforms.uFlowMin
             shader.uniforms.uFlowRange = flowUniforms.uFlowRange
@@ -237,6 +239,7 @@ vFlowCoord = clamp((position.${FLOW_AXIS} - uFlowMin) / max(uFlowRange, 1e-5), 0
                     'void main() {',
                     `varying float vFlowCoord;
 uniform float uFlowProgress;
+uniform float uFlowDirection;
 uniform float uFlowFeather;
 uniform vec3 uFlowDisconnectedColor;
 uniform vec3 uFlowConnectedColor;
@@ -251,7 +254,8 @@ void main() {`
                 flowFragmentShader = flowFragmentShader.replace(
                     'vec4 diffuseColor = vec4( diffuse, opacity );',
                     `float flowEdge = max(0.0001, uFlowFeather);
-float flowFill = 1.0 - smoothstep(uFlowProgress - flowEdge, uFlowProgress, vFlowCoord);
+float flowCoord = uFlowDirection >= 0.0 ? vFlowCoord : (1.0 - vFlowCoord);
+float flowFill = 1.0 - smoothstep(uFlowProgress - flowEdge, uFlowProgress, flowCoord);
 vec3 flowBaseColor = mix(uFlowDisconnectedColor, uFlowConnectedColor, flowFill);
 vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 )
@@ -1008,6 +1012,17 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return /^module-straight/i.test(moduleName)
     }
 
+    isStraightTubeFlowReversed(tubeUuid)
+    {
+        if(!this.isStraightTube(tubeUuid))
+        {
+            return false
+        }
+
+        const quarterTurnOffset = this.quarterTurnsFromInitialByTubeUuid.get(tubeUuid) ?? 0
+        return this.normalizeQuarterTurnOffset(quarterTurnOffset) === 2
+    }
+
     getSourceTubeTarget()
     {
         let sourceTarget = null
@@ -1046,6 +1061,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
 
             const flowProgress = this.flowProgressByTubeUuid.get(target.uuid) ?? 0
+            const flowDirection = this.isStraightTubeFlowReversed(target.uuid) ? -1 : 1
             const shaderMaterials = this.flowShaderMaterialsByTubeUuid.get(target.uuid) ?? []
             for(const shaderMaterial of shaderMaterials)
             {
@@ -1053,6 +1069,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 if(flowUniforms?.uFlowProgress)
                 {
                     flowUniforms.uFlowProgress.value = flowProgress
+                }
+                if(flowUniforms?.uFlowDirection)
+                {
+                    flowUniforms.uFlowDirection.value = flowDirection
                 }
             }
 
