@@ -24,9 +24,11 @@ export default class MapModel
         this.planVisible = false
         this.terrainWaterlineSettings = {
             minY: 1.20,
-            deepY: 0.22,
-            shallowColor: new THREE.Color('#050505'),
-            deepColor: new THREE.Color('#000000')
+            surfaceY: 0.72,
+            fondY: 0.22,
+            sableColor: new THREE.Color('#9f7a4b'),
+            surfaceColor: new THREE.Color('#1c6972'),
+            fondColor: new THREE.Color('#031d26')
         }
         this.planWaterMaskSettings = {
             waterLevel: 1.20,
@@ -259,18 +261,22 @@ export default class MapModel
         material.userData.isMapWaterlineMaterial = true
         material.userData.mapWaterlineUniforms = {
             minY: { value: this.terrainWaterlineSettings.minY },
-            deepY: { value: this.terrainWaterlineSettings.deepY },
-            shallowColor: { value: this.terrainWaterlineSettings.shallowColor.clone() },
-            deepColor: { value: this.terrainWaterlineSettings.deepColor.clone() }
+            surfaceY: { value: this.terrainWaterlineSettings.surfaceY },
+            fondY: { value: this.terrainWaterlineSettings.fondY },
+            sableColor: { value: this.terrainWaterlineSettings.sableColor.clone() },
+            surfaceColor: { value: this.terrainWaterlineSettings.surfaceColor.clone() },
+            fondColor: { value: this.terrainWaterlineSettings.fondColor.clone() }
         }
 
         material.onBeforeCompile = (shader) =>
         {
             const uniforms = material.userData.mapWaterlineUniforms
             shader.uniforms.uMapWaterlineMinY = uniforms.minY
-            shader.uniforms.uMapWaterlineDeepY = uniforms.deepY
-            shader.uniforms.uMapWaterlineShallowColor = uniforms.shallowColor
-            shader.uniforms.uMapWaterlineDeepColor = uniforms.deepColor
+            shader.uniforms.uMapWaterlineSurfaceY = uniforms.surfaceY
+            shader.uniforms.uMapWaterlineFondY = uniforms.fondY
+            shader.uniforms.uMapWaterlineSableColor = uniforms.sableColor
+            shader.uniforms.uMapWaterlineSurfaceColor = uniforms.surfaceColor
+            shader.uniforms.uMapWaterlineFondColor = uniforms.fondColor
 
             applyStandardMaterialPatch(shader, terrainWaterlineShaderChunks)
         }
@@ -280,7 +286,7 @@ export default class MapModel
             const parentKey = typeof baseMaterial.customProgramCacheKey === 'function'
                 ? baseMaterial.customProgramCacheKey()
                 : ''
-            return `${parentKey}__mapWaterlineV2`
+            return `${parentKey}__mapWaterlineV3`
         }
 
         this.runtimeMaterials.push(material)
@@ -297,88 +303,136 @@ export default class MapModel
             return
         }
 
-        const shallowColorUniform = this.ensureColorUniformValue(
-            uniforms.shallowColor,
-            this.terrainWaterlineSettings.shallowColor
+        const sableColorUniform = this.ensureColorUniformValue(
+            uniforms.sableColor,
+            this.terrainWaterlineSettings.sableColor
         )
-        const deepColorUniform = this.ensureColorUniformValue(
-            uniforms.deepColor,
-            this.terrainWaterlineSettings.deepColor
+        const surfaceColorUniform = this.ensureColorUniformValue(
+            uniforms.surfaceColor,
+            this.terrainWaterlineSettings.surfaceColor
+        )
+        const fondColorUniform = this.ensureColorUniformValue(
+            uniforms.fondColor,
+            this.terrainWaterlineSettings.fondColor
         )
 
         uniforms.minY.value = this.terrainWaterlineSettings.minY
-        uniforms.deepY.value = this.terrainWaterlineSettings.deepY
-        shallowColorUniform.copy(this.terrainWaterlineSettings.shallowColor)
-        deepColorUniform.copy(this.terrainWaterlineSettings.deepColor)
+        uniforms.surfaceY.value = this.terrainWaterlineSettings.surfaceY
+        uniforms.fondY.value = this.terrainWaterlineSettings.fondY
+        sableColorUniform.copy(this.terrainWaterlineSettings.sableColor)
+        surfaceColorUniform.copy(this.terrainWaterlineSettings.surfaceColor)
+        fondColorUniform.copy(this.terrainWaterlineSettings.fondColor)
     }
 
-    applyTerrainWaterline({ minY, deepY, shallowColor, deepColor, color } = {})
+    applyTerrainWaterline({
+        minY,
+        surfaceY,
+        fondY,
+        sableColor,
+        surfaceColor,
+        fondColor,
+        deepY,
+        shallowColor,
+        deepColor,
+        color
+    } = {})
     {
         if(typeof minY === 'number' && Number.isFinite(minY))
         {
             this.terrainWaterlineSettings.minY = minY
         }
 
-        if(typeof deepY === 'number' && Number.isFinite(deepY))
+        const resolvedFondY = Number.isFinite(fondY) ? fondY : deepY
+        if(typeof resolvedFondY === 'number' && Number.isFinite(resolvedFondY))
         {
-            this.terrainWaterlineSettings.deepY = deepY
+            this.terrainWaterlineSettings.fondY = resolvedFondY
         }
 
-        if(this.terrainWaterlineSettings.deepY > this.terrainWaterlineSettings.minY)
+        if(typeof surfaceY === 'number' && Number.isFinite(surfaceY))
         {
-            this.terrainWaterlineSettings.deepY = this.terrainWaterlineSettings.minY
+            this.terrainWaterlineSettings.surfaceY = surfaceY
+        }
+
+        if(this.terrainWaterlineSettings.fondY > this.terrainWaterlineSettings.minY)
+        {
+            this.terrainWaterlineSettings.fondY = this.terrainWaterlineSettings.minY
         }
 
         if(color instanceof THREE.Color)
         {
-            this.terrainWaterlineSettings.shallowColor.copy(color)
+            this.terrainWaterlineSettings.sableColor.copy(color)
         }
         else if(typeof color === 'string')
         {
-            this.terrainWaterlineSettings.shallowColor.set(color)
+            this.terrainWaterlineSettings.sableColor.set(color)
         }
         else if(color && typeof color === 'object')
         {
-            this.terrainWaterlineSettings.shallowColor.setRGB(
-                color.r ?? this.terrainWaterlineSettings.shallowColor.r,
-                color.g ?? this.terrainWaterlineSettings.shallowColor.g,
-                color.b ?? this.terrainWaterlineSettings.shallowColor.b
+            this.terrainWaterlineSettings.sableColor.setRGB(
+                color.r ?? this.terrainWaterlineSettings.sableColor.r,
+                color.g ?? this.terrainWaterlineSettings.sableColor.g,
+                color.b ?? this.terrainWaterlineSettings.sableColor.b
             )
         }
 
-        if(shallowColor instanceof THREE.Color)
+        const resolvedSableColor = sableColor ?? shallowColor
+        if(resolvedSableColor instanceof THREE.Color)
         {
-            this.terrainWaterlineSettings.shallowColor.copy(shallowColor)
+            this.terrainWaterlineSettings.sableColor.copy(resolvedSableColor)
         }
-        else if(typeof shallowColor === 'string')
+        else if(typeof resolvedSableColor === 'string')
         {
-            this.terrainWaterlineSettings.shallowColor.set(shallowColor)
+            this.terrainWaterlineSettings.sableColor.set(resolvedSableColor)
         }
-        else if(shallowColor && typeof shallowColor === 'object')
+        else if(resolvedSableColor && typeof resolvedSableColor === 'object')
         {
-            this.terrainWaterlineSettings.shallowColor.setRGB(
-                shallowColor.r ?? this.terrainWaterlineSettings.shallowColor.r,
-                shallowColor.g ?? this.terrainWaterlineSettings.shallowColor.g,
-                shallowColor.b ?? this.terrainWaterlineSettings.shallowColor.b
+            this.terrainWaterlineSettings.sableColor.setRGB(
+                resolvedSableColor.r ?? this.terrainWaterlineSettings.sableColor.r,
+                resolvedSableColor.g ?? this.terrainWaterlineSettings.sableColor.g,
+                resolvedSableColor.b ?? this.terrainWaterlineSettings.sableColor.b
             )
         }
 
-        if(deepColor instanceof THREE.Color)
+        if(surfaceColor instanceof THREE.Color)
         {
-            this.terrainWaterlineSettings.deepColor.copy(deepColor)
+            this.terrainWaterlineSettings.surfaceColor.copy(surfaceColor)
         }
-        else if(typeof deepColor === 'string')
+        else if(typeof surfaceColor === 'string')
         {
-            this.terrainWaterlineSettings.deepColor.set(deepColor)
+            this.terrainWaterlineSettings.surfaceColor.set(surfaceColor)
         }
-        else if(deepColor && typeof deepColor === 'object')
+        else if(surfaceColor && typeof surfaceColor === 'object')
         {
-            this.terrainWaterlineSettings.deepColor.setRGB(
-                deepColor.r ?? this.terrainWaterlineSettings.deepColor.r,
-                deepColor.g ?? this.terrainWaterlineSettings.deepColor.g,
-                deepColor.b ?? this.terrainWaterlineSettings.deepColor.b
+            this.terrainWaterlineSettings.surfaceColor.setRGB(
+                surfaceColor.r ?? this.terrainWaterlineSettings.surfaceColor.r,
+                surfaceColor.g ?? this.terrainWaterlineSettings.surfaceColor.g,
+                surfaceColor.b ?? this.terrainWaterlineSettings.surfaceColor.b
             )
         }
+
+        const resolvedFondColor = fondColor ?? deepColor
+        if(resolvedFondColor instanceof THREE.Color)
+        {
+            this.terrainWaterlineSettings.fondColor.copy(resolvedFondColor)
+        }
+        else if(typeof resolvedFondColor === 'string')
+        {
+            this.terrainWaterlineSettings.fondColor.set(resolvedFondColor)
+        }
+        else if(resolvedFondColor && typeof resolvedFondColor === 'object')
+        {
+            this.terrainWaterlineSettings.fondColor.setRGB(
+                resolvedFondColor.r ?? this.terrainWaterlineSettings.fondColor.r,
+                resolvedFondColor.g ?? this.terrainWaterlineSettings.fondColor.g,
+                resolvedFondColor.b ?? this.terrainWaterlineSettings.fondColor.b
+            )
+        }
+
+        this.terrainWaterlineSettings.surfaceY = THREE.MathUtils.clamp(
+            this.terrainWaterlineSettings.surfaceY,
+            this.terrainWaterlineSettings.fondY,
+            this.terrainWaterlineSettings.minY
+        )
 
         for(const mesh of this.terrainTintMeshes)
         {
