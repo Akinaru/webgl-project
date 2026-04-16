@@ -27,7 +27,8 @@ export default class MapModel
             deepColor: new THREE.Color('#000000')
         }
         this.planWaterMaskSettings = {
-            waterLevel: 1.20
+            waterLevel: 1.20,
+            slopeFrequency: 14
         }
         this.planWaterMaskContext = null
 
@@ -636,6 +637,7 @@ export default class MapModel
         }
         material.userData.mapPlanWaterMaskUniforms = {
             waterLevel: { value: this.planWaterMaskSettings.waterLevel },
+            slopeFrequency: { value: this.planWaterMaskSettings.slopeFrequency },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
             terrainDataTexelSize: { value: new THREE.Vector2(1, 1) },
@@ -646,6 +648,7 @@ export default class MapModel
         {
             const uniforms = material.userData.mapPlanWaterMaskUniforms
             shader.uniforms.uMapPlanWaterLevel = uniforms.waterLevel
+            shader.uniforms.uMapPlanSlopeFrequency = uniforms.slopeFrequency
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
             shader.uniforms.uMapPlanTerrainDataTexelSize = uniforms.terrainDataTexelSize
@@ -702,6 +705,7 @@ export default class MapModel
         )
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
+        uniforms.slopeFrequency.value = this.planWaterMaskSettings.slopeFrequency
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
         terrainDataTexelSizeUniform.copy(this.planWaterMaskContext.terrainDataTexelSize)
@@ -815,11 +819,16 @@ export default class MapModel
         return uniform.value
     }
 
-    applyPlanWaterMask({ waterLevel } = {})
+    applyPlanWaterMask({ waterLevel, slopeFrequency } = {})
     {
         if(typeof waterLevel === 'number' && Number.isFinite(waterLevel))
         {
             this.planWaterMaskSettings.waterLevel = waterLevel
+        }
+
+        if(typeof slopeFrequency === 'number' && Number.isFinite(slopeFrequency))
+        {
+            this.planWaterMaskSettings.slopeFrequency = Math.max(0, slopeFrequency)
         }
 
         if(!this.planWaterMaskContext)

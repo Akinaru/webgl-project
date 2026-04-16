@@ -16,6 +16,7 @@ export default class Water
         this.state = {
             waterLevel: 1.20,
             deepYPos: 0.22,
+            slopeFrequency: 14,
             showPlan: true
         }
 
@@ -47,7 +48,8 @@ export default class Water
         })
 
         this.mapModel?.applyPlanWaterMask?.({
-            waterLevel: this.state.waterLevel
+            waterLevel: this.state.waterLevel,
+            slopeFrequency: this.state.slopeFrequency
         })
     }
 
@@ -79,6 +81,16 @@ export default class Water
             label: 'deepYPos',
             min: -20,
             max: 10,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'slopeFrequency', {
+            label: 'slopeFrequency',
+            min: 0,
+            max: 80,
             step: 0.01
         }).on('change', () =>
         {
