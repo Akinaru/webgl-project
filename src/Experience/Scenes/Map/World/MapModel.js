@@ -31,8 +31,8 @@ export default class MapModel
         this.planWaterMaskSettings = {
             waterLevel: 1.20,
             slopeFrequency: 14,
-            noiseFrequency: 0.08,
-            rippleThreshold: 0.52,
+            noiseFrequency: 0.304,
+            rippleThreshold: -0.315,
             localTime: 0
         }
         this.planWaterMaskContext = null
