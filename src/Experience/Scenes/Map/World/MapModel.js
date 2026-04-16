@@ -1072,6 +1072,11 @@ export default class MapModel
 
     shouldUseForCollision(mesh)
     {
+        if(this.isPlanMesh(mesh))
+        {
+            return false
+        }
+
         const meshName = (mesh.name || '').toLowerCase()
         const isPalmTreePart = this.isPalmTreePart(mesh)
 
@@ -1082,6 +1087,20 @@ export default class MapModel
 
         const isTrunk = meshName.includes('tronc') || meshName.includes('trunk')
         return isTrunk
+    }
+
+    isPlanMesh(object)
+    {
+        let current = object
+        while(current)
+        {
+            if(this.isPlanMeshName(current.name))
+            {
+                return true
+            }
+            current = current.parent
+        }
+        return false
     }
 
     applyCollisionMaterialFixes(mesh)
@@ -1135,6 +1154,17 @@ export default class MapModel
     getCollisionMeshes()
     {
         return this.collisionMeshes ?? []
+    }
+
+    getGroundMeshes()
+    {
+        const meshes = this.collisionMeshes ?? []
+        return meshes.filter((mesh) => this.isPlayerGroundSurface(mesh))
+    }
+
+    isPlayerGroundSurface(object)
+    {
+        return this.isBloomWalkableSurface(object)
     }
 
     getBloomGroundMeshes()

@@ -51,7 +51,7 @@ export default class MapWorld
             boundaryRadius: 120,
             collisionBoxes: [],
             collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
-            groundMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+            groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
             spawnPosition: { x: -2.2, y: 7, z: 0.9 },
             spawnYaw: Math.PI
         })
