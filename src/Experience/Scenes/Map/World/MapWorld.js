@@ -89,7 +89,7 @@ export default class MapWorld
                 speed: 3.8,
                 railSwitchDistance: 0.9,
                 endpointSwitchDistance: 1.6,
-                showHelpers: false
+                showHelpers: true
             }
         })
         this.collisionDebug = new MapCollisionDebug({

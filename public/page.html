@@ -309,7 +309,9 @@
       const raycaster = new THREE.Raycaster()
       const pointer = new THREE.Vector2()
       const mapRaycastMeshes = []
+      const walkableRaycastMeshes = []
       let mapRoot = null
+      let mapRaycastTopY = 400
       const fallbackPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
       function round3(value)
@@ -434,6 +436,65 @@
         }
 
         return rails
+      }
+
+      function hasNameInHierarchy(object, tokens = [])
+      {
+        let current = object
+        while(current)
+        {
+          const name = String(current?.name || '').toLowerCase()
+          for(const token of tokens)
+          {
+            if(name.includes(token))
+            {
+              return true
+            }
+          }
+          current = current.parent
+        }
+
+        return false
+      }
+
+      function isBloomWalkableSurface(object)
+      {
+        const isForbidden = hasNameInHierarchy(object, [
+          'palm', 'palmi', 'tree', 'arbre', 'bush', 'buisson', 'plant', 'plante', 'leaf', 'feuille',
+          'building', 'batiment', 'maison', 'house', 'mur', 'wall', 'rocher', 'rock', 'stone',
+          'water', 'eau', 'fontaine', 'fountain'
+        ])
+        if(isForbidden)
+        {
+          return false
+        }
+
+        const isBridge = hasNameInHierarchy(object, ['pont', 'bridge'])
+        if(isBridge)
+        {
+          return true
+        }
+
+        const isRelief = hasNameInHierarchy(object, ['relief'])
+        return isRelief
+      }
+
+      function projectDownOnWalkable(x, z)
+      {
+        if(walkableRaycastMeshes.length === 0)
+        {
+          return null
+        }
+
+        const origin = new THREE.Vector3(x, mapRaycastTopY, z)
+        raycaster.set(origin, new THREE.Vector3(0, -1, 0))
+        const hits = raycaster.intersectObjects(walkableRaycastMeshes, false)
+        if(hits.length > 0)
+        {
+          return hits[0].point.clone()
+        }
+
+        return null
       }
 
       function countPoints(rails)
@@ -580,13 +641,22 @@
 
         raycaster.setFromCamera(pointer, camera)
 
-        if(state.snapToGround && mapRaycastMeshes.length > 0)
+        if(state.snapToGround)
         {
           const hits = raycaster.intersectObjects(mapRaycastMeshes, false)
-          if(hits.length > 0)
+          if(hits.length <= 0)
           {
-            return hits[0].point.clone()
+            return null
           }
+
+          const hit = hits[0].point
+          const walkablePoint = projectDownOnWalkable(hit.x, hit.z)
+          if(walkablePoint)
+          {
+            return walkablePoint
+          }
+
+          return null
         }
 
         const fallback = new THREE.Vector3()
@@ -603,6 +673,7 @@
         const point = projectPointFromClient(clientX, clientY)
         if(!point)
         {
+          updateStatus('Aucun sol marchable Bloom sous le curseur (pont/relief)')
           return
         }
 
@@ -831,9 +902,15 @@
               object.receiveShadow = false
               object.castShadow = false
               mapRaycastMeshes.push(object)
+              if(isBloomWalkableSurface(object))
+              {
+                walkableRaycastMeshes.push(object)
+              }
             })
 
             scene.add(mapRoot)
+            const mapBounds = new THREE.Box3().setFromObject(mapRoot)
+            mapRaycastTopY = (mapBounds.max.y || 0) + 300
             fitCameraToMap(mapRoot)
             updateStatus('Map chargee. Tu peux tracer tes rails.')
           },

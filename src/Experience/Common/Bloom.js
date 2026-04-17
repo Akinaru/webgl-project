@@ -69,7 +69,7 @@ export default class Bloom
             railSwitchDistance: rails.railSwitchDistance ?? 0.7,
             endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.4,
             helperPointRadius: rails.helperPointRadius ?? 0.08,
-            showHelpers: rails.showHelpers ?? false
+            showHelpers: rails.showHelpers ?? true
         })
 
         this.railEditor = {
