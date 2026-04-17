@@ -115,6 +115,7 @@ export default class SceneManager
         this.transitionElement = document.querySelector('#sceneTransition')
         if(this.transitionElement)
         {
+            this.transitionLabelElement = this.transitionElement.querySelector('[data-scene-transition-label]')
             this.transitionFillElement = this.transitionElement.querySelector('[data-scene-transition-fill]')
             this.transitionValueElement = this.transitionElement.querySelector('[data-scene-transition-value]')
             return
@@ -126,7 +127,7 @@ export default class SceneManager
         overlay.setAttribute('aria-hidden', 'true')
         overlay.innerHTML = `
             <div class="scene-transition__panel">
-                <span class="scene-transition__label">Transition de scene</span>
+                <span class="scene-transition__label" data-scene-transition-label>Transition de scene</span>
                 <span class="scene-transition__value" data-scene-transition-value>0%</span>
                 <div class="scene-transition__bar">
                     <span class="scene-transition__fill" data-scene-transition-fill></span>
@@ -135,6 +136,7 @@ export default class SceneManager
         `
         document.body.appendChild(overlay)
         this.transitionElement = overlay
+        this.transitionLabelElement = overlay.querySelector('[data-scene-transition-label]')
         this.transitionFillElement = overlay.querySelector('[data-scene-transition-fill]')
         this.transitionValueElement = overlay.querySelector('[data-scene-transition-value]')
     }
@@ -148,6 +150,10 @@ export default class SceneManager
 
         this.transitionProgress = 0
         this.transitionStartAt = performance.now()
+        if(this.transitionLabelElement)
+        {
+            this.transitionLabelElement.textContent = 'Transition de scene'
+        }
         this.updateTransitionOverlayProgress(0)
         this.transitionElement.classList.add('is-visible')
         this.transitionElement.setAttribute('aria-hidden', 'false')

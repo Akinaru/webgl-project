@@ -33,6 +33,10 @@ export default class Menu
         this.btnStartMuted = document.querySelector('#btnStartMuted')
         this.bootLoadingValue = document.querySelector('#bootLoadingValue')
         this.bootLoadingFill = document.querySelector('#bootLoadingFill')
+        this.transitionOverlay = document.querySelector('#sceneTransition')
+        this.transitionLabel = this.transitionOverlay?.querySelector?.('[data-scene-transition-label]') ?? null
+        this.transitionValue = this.transitionOverlay?.querySelector?.('[data-scene-transition-value]') ?? null
+        this.transitionFill = this.transitionOverlay?.querySelector?.('[data-scene-transition-fill]') ?? null
 
         this.hasUI = Boolean(this.bootScreen && this.btnStartWithAudio && this.btnStartMuted)
 
@@ -168,14 +172,54 @@ export default class Menu
     setLoadingProgress(percent)
     {
         const clamped = Math.max(0, Math.min(100, Math.round(percent)))
-        if(this.bootLoadingValue)
+        if(this.transitionValue)
+        {
+            this.transitionValue.textContent = `${clamped}%`
+        }
+        else if(this.bootLoadingValue)
         {
             this.bootLoadingValue.textContent = `${clamped}%`
         }
-        if(this.bootLoadingFill)
+        if(this.transitionFill)
+        {
+            this.transitionFill.style.width = `${clamped}%`
+        }
+        else if(this.bootLoadingFill)
         {
             this.bootLoadingFill.style.width = `${clamped}%`
         }
+    }
+
+    showTransitionOverlay(label = 'Chargement')
+    {
+        this.transitionOverlay = this.transitionOverlay || document.querySelector('#sceneTransition')
+        if(!this.transitionOverlay)
+        {
+            return
+        }
+
+        this.transitionLabel = this.transitionLabel || this.transitionOverlay.querySelector('[data-scene-transition-label]')
+        this.transitionValue = this.transitionValue || this.transitionOverlay.querySelector('[data-scene-transition-value]')
+        this.transitionFill = this.transitionFill || this.transitionOverlay.querySelector('[data-scene-transition-fill]')
+
+        if(this.transitionLabel)
+        {
+            this.transitionLabel.textContent = label
+        }
+
+        this.transitionOverlay.classList.add('is-visible')
+        this.transitionOverlay.setAttribute('aria-hidden', 'false')
+    }
+
+    hideTransitionOverlay()
+    {
+        if(!this.transitionOverlay)
+        {
+            return
+        }
+
+        this.transitionOverlay.classList.remove('is-visible')
+        this.transitionOverlay.setAttribute('aria-hidden', 'true')
     }
 
     updateLoadingProgressLoop()
@@ -262,6 +306,7 @@ export default class Menu
         await this.wait(START_DELAY_MS)
         this.bootScreen.classList.remove(START_CLASS)
         this.bootScreen.classList.add(LOADING_CLASS)
+        this.showTransitionOverlay('Chargement')
 
         this.experience?.resources?.startLoading?.()
         this.setLoadingProgress(0)
@@ -269,6 +314,8 @@ export default class Menu
         await this.waitForResourcesReady()
         this.stopLoadingProgressLoop()
         this.setLoadingProgress(100)
+        await this.wait(160)
+        this.hideTransitionOverlay()
 
         this.resolveStart({ audioEnabled: this.audioEnabled })
         this.bootScreen.classList.remove(LOADING_CLASS)
