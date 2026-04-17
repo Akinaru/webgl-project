@@ -10,7 +10,6 @@ export default class Debug
 {
     constructor({ inputs = null } = {})
     {
-        this.inputs = inputs
         this.flags = this.parseHashFlags(window.location.hash)
 
         this.isDebugEnabled = this.flags.has('debug')
@@ -30,15 +29,12 @@ export default class Debug
         this.inspectorInstance = null
         this.inspectorInitPromise = null
 
-        this.visible = true
-
         if(!this.panelActive)
         {
             return
         }
 
         this.setUI()
-        this.setKeyboardShortcuts()
     }
 
     parseHashFlags(rawHash)
@@ -86,46 +82,7 @@ export default class Debug
         style.width = '360px'
         style.maxHeight = 'calc(100vh - 32px)'
         style.overflow = 'auto'
-        style.zIndex = '30'
-    }
-
-    setKeyboardShortcuts()
-    {
-        this.onWindowKeyDown = (event) =>
-        {
-            if(event.repeat || this.shouldIgnoreShortcut(event.target))
-            {
-                return
-            }
-
-            if(event.code === 'KeyH')
-            {
-                this.toggleVisibility()
-            }
-        }
-
-        this.inputs?.on?.('keydown.debug', this.onWindowKeyDown)
-    }
-
-    shouldIgnoreShortcut(target)
-    {
-        if(!(target instanceof HTMLElement))
-        {
-            return false
-        }
-
-        return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-    }
-
-    toggleVisibility()
-    {
-        if(!this.ui)
-        {
-            return
-        }
-
-        this.visible = !this.visible
-        this.ui.hidden = !this.visible
+        style.zIndex = '120'
     }
 
     addFolder(title, { parent = this.ui, expanded = false } = {})
@@ -398,8 +355,6 @@ export default class Debug
 
     destroy()
     {
-        this.inputs?.off?.('keydown.debug')
-
         this.autoRefreshCallbacks.clear()
         this.physicsSyncCleanup?.()
 
