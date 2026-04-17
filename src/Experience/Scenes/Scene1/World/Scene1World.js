@@ -76,6 +76,7 @@ export default class Scene1World
 
         this.setScreenIndicator()
         this.applyScreenColor(null)
+        this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
     }
@@ -84,6 +85,7 @@ export default class Scene1World
     {
         this.light?.update?.(delta)
         this.player?.update(delta)
+        this.checkRoom2FlowTrigger()
         this.tubeWaterController?.update?.()
         this.collisionDebug?.update?.()
         this.materialButtons?.update(delta)
@@ -155,6 +157,47 @@ export default class Scene1World
                 material.needsUpdate = true
             }
         }
+    }
+
+    setRoom2FlowTrigger()
+    {
+        const room2Bounds = this.scene1Model?.getBoundsForNameTokens?.(['room2'], { exact: false })
+            ?? this.scene1Model?.getBoundsForNameTokens?.(['sol-room2'], { exact: false })
+        if(!room2Bounds)
+        {
+            this.room2FlowTrigger = null
+            this.hasStartedRoom2Flow = true
+            return
+        }
+
+        this.room2FlowTrigger = room2Bounds.clone()
+        this.hasStartedRoom2Flow = false
+    }
+
+    checkRoom2FlowTrigger()
+    {
+        if(this.hasStartedRoom2Flow || !this.room2FlowTrigger || !this.player?.position)
+        {
+            return
+        }
+
+        const position = this.player.position
+        const margin = 0.05
+        const isInsideRoom2 = (
+            position.x >= (this.room2FlowTrigger.min.x - margin) &&
+            position.x <= (this.room2FlowTrigger.max.x + margin) &&
+            position.y >= (this.room2FlowTrigger.min.y - 2) &&
+            position.y <= (this.room2FlowTrigger.max.y + 3) &&
+            position.z >= (this.room2FlowTrigger.min.z - margin) &&
+            position.z <= (this.room2FlowTrigger.max.z + margin)
+        )
+        if(!isInsideRoom2)
+        {
+            return
+        }
+
+        this.hasStartedRoom2Flow = true
+        this.tubeWaterController?.startFlowAnimation?.()
     }
 
     setWallCrossTeleport()
@@ -432,6 +475,8 @@ export default class Scene1World
 
         this.wallCrossTeleport = null
         this.nextWallCrossTeleportAt = 0
+        this.room2FlowTrigger = null
+        this.hasStartedRoom2Flow = false
         this.screenIndicatorEntries = null
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
