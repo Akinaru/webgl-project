@@ -7,6 +7,7 @@ import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import Scene1Model from './Scene1Model.js'
 import Scene1MaterialButtons from './Scene1MaterialButtons.js'
 import Scene1TubeWaterController from './Scene1TubeWaterController.js'
+import Scene1CollisionDebug from './Scene1CollisionDebug.js'
 
 const SCREEN_INACTIVE_COLOR = '#0e131d'
 const EXIT_TELEPORT_INACTIVE_COLOR = '#2f3d50'
@@ -63,6 +64,10 @@ export default class Scene1World
         this.tubeWaterController = new Scene1TubeWaterController({
             scene1Model: this.scene1Model
         })
+        this.collisionDebug = new Scene1CollisionDebug({
+            player: this.player,
+            scene1Model: this.scene1Model
+        })
         this.materialButtons = new Scene1MaterialButtons({
             scene1Model: this.scene1Model,
             isExternalHoverActive: () => this.tubeWaterController?.isHoveringTube?.() ?? false,
@@ -80,6 +85,7 @@ export default class Scene1World
         this.light?.update?.(delta)
         this.player?.update(delta)
         this.tubeWaterController?.update?.()
+        this.collisionDebug?.update?.()
         this.materialButtons?.update(delta)
         this.updateWallCrossTeleportVisual()
         this.checkWallCrossTeleport()
@@ -396,6 +402,12 @@ export default class Scene1World
         {
             this.tubeWaterController.destroy?.()
             this.tubeWaterController = null
+        }
+
+        if(this.collisionDebug)
+        {
+            this.collisionDebug.destroy?.()
+            this.collisionDebug = null
         }
 
         this.clearWallCrossTeleportVisual()

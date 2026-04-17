@@ -19,7 +19,6 @@ const FLOW_FILL_SPEED_PER_SECOND = 0.45
 const FLOW_PROGRESS_EPSILON = 1e-4
 const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
-const ANGLE_OUTER_FILL_BIAS = 0.45
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
 const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
 const BLUE_WINDOW_NAME_PATTERN = /fenetre[\s_-]?blue/i
@@ -56,6 +55,7 @@ export default class Scene1TubeWaterController
         this.joinTargetsByTubeUuid = new Map()
         this.tubeMeshesByTargetUuid = new Map()
         this.flowProgressByTubeUuid = new Map()
+        this.activeFlowSourceByTubeUuid = new Map()
         this.flowShaderMaterialsByTubeUuid = new Map()
         this.flowEntryByTubeUuid = new Map()
         this.rotationTargetUuidByName = new Map()
@@ -105,6 +105,7 @@ export default class Scene1TubeWaterController
         this.captureInitialRotations()
         this.randomizeInitialRotations()
         this.updateFlowState()
+        this.scene1Model?.refreshCollisionBoxes?.()
         this.setDebug()
         this.setEvents()
     }
@@ -535,15 +536,19 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const angleProjection = isAngleTube
             ? this.computeAngleFlowProjection(positionAttribute, bounds)
             : null
+        const joinGuidedAngleProjection = angleProjection
+            ? this.refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
+            : null
+        const effectiveAngleProjection = joinGuidedAngleProjection ?? angleProjection
         const flowProjection = angleProjection
             ? {
                 type: 'angle',
-                cornerX: angleProjection.cornerX,
-                cornerY: angleProjection.cornerY,
-                angleMin: angleProjection.angleMin,
-                angleRange: angleProjection.angleRange,
-                radiusMin: angleProjection.radiusMin,
-                radiusRange: angleProjection.radiusRange
+                cornerX: effectiveAngleProjection.cornerX,
+                cornerY: effectiveAngleProjection.cornerY,
+                angleMin: effectiveAngleProjection.angleMin,
+                angleRange: effectiveAngleProjection.angleRange,
+                radiusMin: effectiveAngleProjection.radiusMin,
+                radiusRange: effectiveAngleProjection.radiusRange
             }
             : {
                 type: 'axis',
@@ -560,13 +565,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             {
                 const x = positionAttribute.getX(index)
                 const y = positionAttribute.getY(index)
-                const dx = x - angleProjection.cornerX
-                const dy = y - angleProjection.cornerY
+                const dx = x - effectiveAngleProjection.cornerX
+                const dy = y - effectiveAngleProjection.cornerY
                 const theta = Math.atan2(dy, dx)
-                const thetaNorm = (theta - angleProjection.angleMin) / angleProjection.angleRange
-                const radius = Math.sqrt((dx * dx) + (dy * dy))
-                const radiusNorm = (radius - angleProjection.radiusMin) / angleProjection.radiusRange
-                flowCoord = thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+                flowCoord = this.getAngleArcProgress(theta, effectiveAngleProjection.angleMin, effectiveAngleProjection.angleRange)
             }
             else
             {
@@ -649,6 +651,160 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return bestProjection
     }
 
+    refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
+    {
+        if(!angleProjection || !mesh || !tubeUuid || !bounds)
+        {
+            return angleProjection
+        }
+
+        const localJoinCenters = this.getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
+        if(localJoinCenters.length < 2)
+        {
+            return angleProjection
+        }
+
+        let maxDistanceSq = -Infinity
+        let joinA = null
+        let joinB = null
+        for(let i = 0; i < localJoinCenters.length; i++)
+        {
+            for(let j = i + 1; j < localJoinCenters.length; j++)
+            {
+                const dx = localJoinCenters[i].x - localJoinCenters[j].x
+                const dy = localJoinCenters[i].y - localJoinCenters[j].y
+                const dz = localJoinCenters[i].z - localJoinCenters[j].z
+                const distanceSq = (dx * dx) + (dy * dy) + (dz * dz)
+                if(distanceSq <= maxDistanceSq)
+                {
+                    continue
+                }
+                maxDistanceSq = distanceSq
+                joinA = localJoinCenters[i]
+                joinB = localJoinCenters[j]
+            }
+        }
+
+        if(!joinA || !joinB)
+        {
+            return angleProjection
+        }
+
+        const corners = [
+            { x: bounds.min.x, y: bounds.min.y },
+            { x: bounds.min.x, y: bounds.max.y },
+            { x: bounds.max.x, y: bounds.min.y },
+            { x: bounds.max.x, y: bounds.max.y }
+        ]
+
+        let bestProjection = null
+        let bestScore = Number.POSITIVE_INFINITY
+        for(const corner of corners)
+        {
+            const angleAReal = Math.atan2(joinA.y - corner.y, joinA.x - corner.x)
+            const angleBReal = Math.atan2(joinB.y - corner.y, joinB.x - corner.x)
+            let delta = Math.atan2(Math.sin(angleBReal - angleAReal), Math.cos(angleBReal - angleAReal))
+            let angleMin = angleAReal
+            if(delta < 0)
+            {
+                angleMin = angleBReal
+                delta = -delta
+            }
+
+            if(!(Number.isFinite(delta) && delta > FLOW_COORD_EPSILON))
+            {
+                continue
+            }
+
+            const radiusA = Math.sqrt(((joinA.x - corner.x) ** 2) + ((joinA.y - corner.y) ** 2))
+            const radiusB = Math.sqrt(((joinB.x - corner.x) ** 2) + ((joinB.y - corner.y) ** 2))
+            const radiusMismatch = Math.abs(radiusA - radiusB)
+            const quarterTurnDelta = Math.abs(delta - (Math.PI * 0.5))
+            const score = (radiusMismatch * 2.5) + quarterTurnDelta
+            if(score >= bestScore)
+            {
+                continue
+            }
+            bestScore = score
+
+            bestProjection = {
+                ...angleProjection,
+                cornerX: corner.x,
+                cornerY: corner.y,
+                angleMin,
+                angleRange: delta,
+                isJoinGuided: true
+            }
+        }
+
+        return bestProjection ?? angleProjection
+    }
+
+    getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
+    {
+        const joinTargets = this.joinTargetsByTubeUuid.get(tubeUuid) ?? []
+        if(joinTargets.length === 0)
+        {
+            return []
+        }
+
+        const objectBounds = new THREE.Box3()
+        const worldCenter = new THREE.Vector3()
+        const localCenter = new THREE.Vector3()
+        const centers = []
+
+        mesh.updateMatrixWorld(true)
+
+        for(const joinTarget of joinTargets)
+        {
+            if(!joinTarget)
+            {
+                continue
+            }
+
+            joinTarget.updateMatrixWorld(true)
+            objectBounds.setFromObject(joinTarget)
+            if(objectBounds.isEmpty())
+            {
+                continue
+            }
+
+            objectBounds.getCenter(worldCenter)
+            localCenter.copy(worldCenter)
+            mesh.worldToLocal(localCenter)
+            centers.push({
+                x: localCenter.x,
+                y: localCenter.y,
+                z: localCenter.z
+            })
+        }
+
+        return centers
+    }
+
+    getAngleArcProgress(theta, angleMin, angleRange)
+    {
+        const safeRange = Math.max(angleRange, FLOW_COORD_EPSILON)
+        const arcStart = angleMin
+        const arcEnd = angleMin + safeRange
+        let bestClampedAngle = arcStart
+        let bestDistance = Number.POSITIVE_INFINITY
+
+        for(const wrap of [-Math.PI * 2, 0, Math.PI * 2])
+        {
+            const wrappedTheta = theta + wrap
+            const clampedTheta = THREE.MathUtils.clamp(wrappedTheta, arcStart, arcEnd)
+            const distance = Math.abs(wrappedTheta - clampedTheta)
+            if(distance < bestDistance)
+            {
+                bestDistance = distance
+                bestClampedAngle = clampedTheta
+            }
+        }
+
+        return (bestClampedAngle - arcStart) / safeRange
+    }
+
     computeLocalFlowCoord(mesh, localPosition)
     {
         const flowProjection = mesh?.geometry?.userData?.flowProjection
@@ -662,10 +818,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             const dx = localPosition.x - flowProjection.cornerX
             const dy = localPosition.y - flowProjection.cornerY
             const theta = Math.atan2(dy, dx)
-            const thetaNorm = (theta - flowProjection.angleMin) / Math.max(flowProjection.angleRange, FLOW_COORD_EPSILON)
-            const radius = Math.sqrt((dx * dx) + (dy * dy))
-            const radiusNorm = (radius - flowProjection.radiusMin) / Math.max(flowProjection.radiusRange, FLOW_COORD_EPSILON)
-            return thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+            return this.getAngleArcProgress(theta, flowProjection.angleMin, flowProjection.angleRange)
         }
 
         return (localPosition[FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, FLOW_COORD_EPSILON)
@@ -1266,6 +1419,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
         this.rotateTubeAssembly(rotationTarget, QUARTER_TURN * direction)
         this.updateFlowState()
+        this.scene1Model?.refreshCollisionBoxes?.()
     }
 
     rotateTubeAssembly(tubeTarget, angle)
@@ -1533,6 +1687,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     {
         const flowPathSet = new Set(flowPathUuids)
         const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+        this.activeFlowSourceByTubeUuid.clear()
 
         for(const target of this.rotationTargets)
         {
@@ -1557,10 +1712,17 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(const tubeUuid of flowPathUuids)
         {
             const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
-            if(!this.canTubeFillNow(tubeUuid))
+            const fillSource = this.resolveTubeFillSource(tubeUuid)
+            const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+            const requiresSource = dependencyGroups.length > 0
+            if(requiresSource && !fillSource)
             {
                 this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
+            }
+            if(fillSource)
+            {
+                this.activeFlowSourceByTubeUuid.set(tubeUuid, fillSource)
             }
 
             const nextProgress = this.moveTowards(currentProgress, 1, stepFill)
@@ -1570,32 +1732,77 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     canTubeFillNow(tubeUuid)
     {
-        const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
-        if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
-        {
-            return false
-        }
-
         const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
         if(dependencyGroups.length === 0)
         {
             return true
         }
 
+        return Boolean(this.resolveTubeFillSource(tubeUuid))
+    }
+
+    resolveTubeFillSource(tubeUuid)
+    {
+        const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
+        if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
+        {
+            return null
+        }
+
+        const dependencySource = this.getReadyDependencySourceUuid(tubeUuid)
+        if(dependencySource)
+        {
+            return {
+                type: 'tube',
+                tubeUuid: dependencySource
+            }
+        }
+
+        const windowName = this.windowSourceByTubeUuid.get(tubeUuid)
+        if(windowName && this.isBlueWindowFlowComplete(windowName))
+        {
+            return {
+                type: 'window',
+                windowName
+            }
+        }
+
+        return null
+    }
+
+    getReadyDependencySourceUuid(tubeUuid)
+    {
+        const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+        let bestDependencyUuid = null
+        let bestProgress = -1
+
         for(const group of dependencyGroups)
         {
+            if(group.length === 0)
+            {
+                continue
+            }
+
             const isGroupReady = group.every((dependencyUuid) =>
             {
                 const dependencyProgress = this.flowProgressByTubeUuid.get(dependencyUuid) ?? 0
                 return dependencyProgress >= (1 - FLOW_PROGRESS_EPSILON)
             })
-            if(isGroupReady)
+            if(!isGroupReady)
             {
-                return true
+                continue
+            }
+
+            const candidateUuid = group[0]
+            const candidateProgress = this.flowProgressByTubeUuid.get(candidateUuid) ?? 0
+            if(candidateProgress > bestProgress)
+            {
+                bestProgress = candidateProgress
+                bestDependencyUuid = candidateUuid
             }
         }
 
-        return this.isWindowSourceReady(tubeUuid)
+        return bestDependencyUuid
     }
 
     moveTowards(value, target, maxStep)
@@ -1711,6 +1918,25 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     getTubeFlowDirection(tubeUuid)
     {
+        const activeSource = this.activeFlowSourceByTubeUuid.get(tubeUuid)
+        if(activeSource?.type === 'tube' && activeSource.tubeUuid)
+        {
+            const inferredDirection = this.inferFlowDirectionFromNeighbor(tubeUuid, activeSource.tubeUuid)
+            if(inferredDirection !== 0)
+            {
+                return inferredDirection
+            }
+        }
+
+        if(activeSource?.type === 'window' && activeSource.windowName)
+        {
+            const inferredDirection = this.inferFlowDirectionFromWindow(tubeUuid, activeSource.windowName)
+            if(inferredDirection !== 0)
+            {
+                return inferredDirection
+            }
+        }
+
         const entryDependencyUuid = this.flowEntryByTubeUuid.get(tubeUuid)
         if(entryDependencyUuid)
         {
@@ -1727,6 +1953,50 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
 
         return this.isStraightTubeFlowReversed(tubeUuid) ? -1 : 1
+    }
+
+    inferFlowDirectionFromWindow(tubeUuid, windowName)
+    {
+        const worldPosition = this.getWindowSourceWorldPosition(windowName)
+        if(!worldPosition)
+        {
+            return 0
+        }
+
+        return this.inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
+    }
+
+    getWindowSourceWorldPosition(windowName)
+    {
+        const meshes = this.blueWindowMeshesByName.get(windowName) ?? []
+        let sourceMesh = meshes[0] ?? null
+
+        if(!sourceMesh && this.blueWindowMeshes.length > 0)
+        {
+            const fallbackIndexByWindow = new Map([
+                ['fenetre-blue', 0],
+                ['fenetre-blue_1', 1],
+                ['fenetre-blue_2', 2]
+            ])
+            const fallbackIndex = fallbackIndexByWindow.get(windowName)
+            if(fallbackIndex !== undefined)
+            {
+                sourceMesh = this.blueWindowMeshes[Math.min(fallbackIndex, this.blueWindowMeshes.length - 1)] ?? null
+            }
+        }
+
+        if(!sourceMesh)
+        {
+            return null
+        }
+
+        this.bounds.setFromObject(sourceMesh)
+        if(this.bounds.isEmpty())
+        {
+            return sourceMesh.getWorldPosition(this.targetWorldPosition)
+        }
+
+        return this.bounds.getCenter(this.targetWorldPosition)
     }
 
     inferFlowDirectionFromNeighbor(tubeUuid, neighborTubeUuid)
@@ -1749,7 +2019,20 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         currentTubeMesh.updateMatrixWorld(true)
         neighborTube.updateMatrixWorld(true)
         this.targetWorldPosition.setFromMatrixPosition(neighborTube.matrixWorld)
-        this.localPosition.copy(this.targetWorldPosition)
+        return this.inferFlowDirectionFromWorldPosition(tubeUuid, this.targetWorldPosition)
+    }
+
+    inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
+    {
+        const currentTubeMeshes = this.tubeMeshesByTargetUuid.get(tubeUuid) ?? []
+        const currentTubeMesh = currentTubeMeshes[0]
+        if(!currentTubeMesh)
+        {
+            return 0
+        }
+
+        currentTubeMesh.updateMatrixWorld(true)
+        this.localPosition.copy(worldPosition)
         currentTubeMesh.worldToLocal(this.localPosition)
         const localFlowCoord = this.computeLocalFlowCoord(currentTubeMesh, this.localPosition)
         if(!Number.isFinite(localFlowCoord))
@@ -2019,6 +2302,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.flowProgressByTubeUuid.clear()
         this.flowShaderMaterialsByTubeUuid.clear()
         this.flowEntryByTubeUuid.clear()
+        this.activeFlowSourceByTubeUuid.clear()
         this.rotationTargetUuidByName.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
