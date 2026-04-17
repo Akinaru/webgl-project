@@ -85,12 +85,13 @@ export default class Scene1MaterialButtons
                 return
             }
 
-            if(!this.hoveredMesh)
+            const clickedMesh = this.getMaterialMeshAtCenter()
+            if(!clickedMesh)
             {
                 return
             }
 
-            this.holdButton(this.hoveredMesh)
+            this.holdButton(clickedMesh)
         }
 
         this.onMouseUp = (event) =>
@@ -103,10 +104,9 @@ export default class Scene1MaterialButtons
             const clickedState = this.activePressedMeshUuid
                 ? this.buttonStates.get(this.activePressedMeshUuid)
                 : null
-            const shouldSelect = Boolean(clickedState && this.hoveredMesh?.uuid === clickedState.mesh?.uuid)
             this.releaseHeldButton()
 
-            if(shouldSelect)
+            if(clickedState && this.isInteractionActive())
             {
                 this.selectMaterialMesh(clickedState.mesh)
             }
@@ -212,15 +212,19 @@ export default class Scene1MaterialButtons
 
     updateHoveredMesh()
     {
-        if(this.clickableMeshes.length === 0)
+        this.hoveredMesh = this.getMaterialMeshAtCenter()
+    }
+
+    getMaterialMeshAtCenter()
+    {
+        if(this.clickableMeshes.length === 0 || !this.camera)
         {
-            this.hoveredMesh = null
-            return
+            return null
         }
 
         this.raycaster.setFromCamera(this.centerNdc, this.camera)
         const hits = this.raycaster.intersectObjects(this.clickableMeshes, false)
-        this.hoveredMesh = hits[0]?.object ?? null
+        return hits[0]?.object ?? null
     }
 
     updateCursor()

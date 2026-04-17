@@ -1310,8 +1310,15 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(const [windowName, isReady] of gateReadyByName)
         {
             const current = this.blueWindowFlowProgressByName.get(windowName) ?? 0
-            const target = isReady ? 1 : 0
-            this.blueWindowFlowProgressByName.set(windowName, this.moveTowards(current, target, stepFill))
+            if(isReady)
+            {
+                this.blueWindowFlowProgressByName.set(windowName, this.moveTowards(current, 1, stepFill))
+                continue
+            }
+
+            // Requested UX: water in windows must disappear instantly when the
+            // upstream flow is no longer valid.
+            this.blueWindowFlowProgressByName.set(windowName, 0)
         }
     }
 
@@ -1849,12 +1856,16 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         {
             this.tubeConnectedColor.set(CONNECTED_COLOR)
             this.tubeConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
+            this.windowConnectedColor.set(CONNECTED_COLOR)
+            this.windowConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
         }
         else
         {
             this.tmpColor.set(colorValue)
             this.tubeConnectedColor.copy(this.tmpColor)
             this.tubeConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
+            this.windowConnectedColor.copy(this.tmpColor)
+            this.windowConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
         }
 
         for(const shaderMaterials of this.flowShaderMaterialsByTubeUuid.values())
@@ -1872,7 +1883,23 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             }
         }
 
+        for(const shaderMaterials of this.blueWindowShaderMaterialsByMeshUuid.values())
+        {
+            for(const shaderMaterial of shaderMaterials)
+            {
+                const windowFlowUniforms = shaderMaterial?.userData?.windowFlowUniforms
+                if(!windowFlowUniforms)
+                {
+                    continue
+                }
+
+                windowFlowUniforms.uWindowConnectedColor?.value?.copy?.(this.windowConnectedColor)
+                windowFlowUniforms.uWindowConnectedEmissiveColor?.value?.copy?.(this.windowConnectedEmissiveColor)
+            }
+        }
+
         this.applyTubeFlowColors()
+        this.applyBlueWindowColors()
     }
 
     getRotationAxisWorld(target, out)
