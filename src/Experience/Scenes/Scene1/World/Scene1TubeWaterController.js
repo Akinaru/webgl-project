@@ -21,7 +21,6 @@ const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
 const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
-const ANGLE_CENTERLINE_SEGMENTS = 24
 const BLUE_WINDOW_NAME_PATTERN = /fenetre[\s_-]?blue/i
 const WINDOW_COORD_ATTRIBUTE = 'aWindowCoord'
 const WINDOW_FLOW_AXIS = 'x'
@@ -56,6 +55,7 @@ export default class Scene1TubeWaterController
         this.joinTargetsByTubeUuid = new Map()
         this.tubeMeshesByTargetUuid = new Map()
         this.flowProgressByTubeUuid = new Map()
+        this.activeFlowSourceByTubeUuid = new Map()
         this.flowShaderMaterialsByTubeUuid = new Map()
         this.flowEntryByTubeUuid = new Map()
         this.rotationTargetUuidByName = new Map()
@@ -539,21 +539,15 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             ? this.refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
             : null
         const effectiveAngleProjection = joinGuidedAngleProjection ?? angleProjection
-        const useCenterline = Boolean(effectiveAngleProjection && !effectiveAngleProjection.isJoinGuided)
-        const angleCenterline = useCenterline
-            ? this.buildAngleFlowCenterline(effectiveAngleProjection, bounds)
-            : null
         const flowProjection = angleProjection
             ? {
-                type: angleCenterline ? 'angleCenterline' : 'angle',
+                type: 'angle',
                 cornerX: effectiveAngleProjection.cornerX,
                 cornerY: effectiveAngleProjection.cornerY,
                 angleMin: effectiveAngleProjection.angleMin,
                 angleRange: effectiveAngleProjection.angleRange,
                 radiusMin: effectiveAngleProjection.radiusMin,
-                radiusRange: effectiveAngleProjection.radiusRange,
-                guidePoints: angleCenterline?.points ?? null,
-                guideLength: angleCenterline?.length ?? 0
+                radiusRange: effectiveAngleProjection.radiusRange
             }
             : {
                 type: 'axis',
@@ -566,14 +560,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(let index = 0; index < positionAttribute.count; index++)
         {
             let flowCoord
-            if(angleCenterline)
-            {
-                const x = positionAttribute.getX(index)
-                const y = positionAttribute.getY(index)
-                const z = positionAttribute.getZ(index)
-                flowCoord = this.getFlowCoordOnCenterline(x, y, z, angleCenterline.points, angleCenterline.length)
-            }
-            else if(angleProjection)
+            if(angleProjection)
             {
                 const x = positionAttribute.getX(index)
                 const y = positionAttribute.getY(index)
@@ -661,61 +648,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
 
         return bestProjection
-    }
-
-    buildAngleFlowCenterline(angleProjection, bounds)
-    {
-        if(!angleProjection || !bounds)
-        {
-            return null
-        }
-
-        const radiusCenter = angleProjection.radiusMin + (angleProjection.radiusRange * 0.5)
-        if(!(Number.isFinite(radiusCenter) && radiusCenter > FLOW_COORD_EPSILON))
-        {
-            return null
-        }
-
-        const zCenter = (bounds.min.z + bounds.max.z) * 0.5
-        const sampleCount = Math.max(4, ANGLE_CENTERLINE_SEGMENTS)
-        const points = []
-        let cumulativeLength = 0
-
-        for(let sampleIndex = 0; sampleIndex <= sampleCount; sampleIndex++)
-        {
-            const alpha = sampleIndex / sampleCount
-            const theta = angleProjection.angleMin + (angleProjection.angleRange * alpha)
-            const x = angleProjection.cornerX + (Math.cos(theta) * radiusCenter)
-            const y = angleProjection.cornerY + (Math.sin(theta) * radiusCenter)
-
-            if(sampleIndex > 0)
-            {
-                const previous = points[sampleIndex - 1]
-                const segmentLength = Math.sqrt(
-                    ((x - previous.x) ** 2) +
-                    ((y - previous.y) ** 2) +
-                    ((zCenter - previous.z) ** 2)
-                )
-                cumulativeLength += segmentLength
-            }
-
-            points.push({
-                x,
-                y,
-                z: zCenter,
-                s: cumulativeLength
-            })
-        }
-
-        if(!(Number.isFinite(cumulativeLength) && cumulativeLength > FLOW_COORD_EPSILON))
-        {
-            return null
-        }
-
-        return {
-            points,
-            length: cumulativeLength
-        }
     }
 
     refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
@@ -872,71 +804,12 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return (bestClampedAngle - arcStart) / safeRange
     }
 
-    getFlowCoordOnCenterline(x, y, z, centerlinePoints, centerlineLength)
-    {
-        if(!Array.isArray(centerlinePoints) || centerlinePoints.length < 2 || centerlineLength <= FLOW_COORD_EPSILON)
-        {
-            return null
-        }
-
-        let closestDistanceSq = Number.POSITIVE_INFINITY
-        let closestArcLength = 0
-
-        for(let index = 1; index < centerlinePoints.length; index++)
-        {
-            const pointA = centerlinePoints[index - 1]
-            const pointB = centerlinePoints[index]
-            const segmentX = pointB.x - pointA.x
-            const segmentY = pointB.y - pointA.y
-            const segmentZ = pointB.z - pointA.z
-            const segmentLengthSq = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ)
-            if(segmentLengthSq <= FLOW_COORD_EPSILON)
-            {
-                continue
-            }
-
-            const toPointX = x - pointA.x
-            const toPointY = y - pointA.y
-            const toPointZ = z - pointA.z
-            const projectionT = THREE.MathUtils.clamp(
-                ((toPointX * segmentX) + (toPointY * segmentY) + (toPointZ * segmentZ)) / segmentLengthSq,
-                0,
-                1
-            )
-
-            const nearestX = pointA.x + (segmentX * projectionT)
-            const nearestY = pointA.y + (segmentY * projectionT)
-            const nearestZ = pointA.z + (segmentZ * projectionT)
-            const distSq = ((x - nearestX) ** 2) + ((y - nearestY) ** 2) + ((z - nearestZ) ** 2)
-            if(distSq >= closestDistanceSq)
-            {
-                continue
-            }
-
-            closestDistanceSq = distSq
-            closestArcLength = pointA.s + ((pointB.s - pointA.s) * projectionT)
-        }
-
-        return closestArcLength / centerlineLength
-    }
-
     computeLocalFlowCoord(mesh, localPosition)
     {
         const flowProjection = mesh?.geometry?.userData?.flowProjection
         if(!flowProjection || !localPosition)
         {
             return null
-        }
-
-        if(flowProjection.type === 'angleCenterline')
-        {
-            return this.getFlowCoordOnCenterline(
-                localPosition.x,
-                localPosition.y,
-                localPosition.z,
-                flowProjection.guidePoints,
-                flowProjection.guideLength
-            )
         }
 
         if(flowProjection.type === 'angle')
@@ -1812,6 +1685,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     {
         const flowPathSet = new Set(flowPathUuids)
         const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+        this.activeFlowSourceByTubeUuid.clear()
 
         for(const target of this.rotationTargets)
         {
@@ -1836,10 +1710,17 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(const tubeUuid of flowPathUuids)
         {
             const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
-            if(!this.canTubeFillNow(tubeUuid))
+            const fillSource = this.resolveTubeFillSource(tubeUuid)
+            const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+            const requiresSource = dependencyGroups.length > 0
+            if(requiresSource && !fillSource)
             {
                 this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
+            }
+            if(fillSource)
+            {
+                this.activeFlowSourceByTubeUuid.set(tubeUuid, fillSource)
             }
 
             const nextProgress = this.moveTowards(currentProgress, 1, stepFill)
@@ -1849,32 +1730,77 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     canTubeFillNow(tubeUuid)
     {
-        const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
-        if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
-        {
-            return false
-        }
-
         const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
         if(dependencyGroups.length === 0)
         {
             return true
         }
 
+        return Boolean(this.resolveTubeFillSource(tubeUuid))
+    }
+
+    resolveTubeFillSource(tubeUuid)
+    {
+        const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
+        if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
+        {
+            return null
+        }
+
+        const dependencySource = this.getReadyDependencySourceUuid(tubeUuid)
+        if(dependencySource)
+        {
+            return {
+                type: 'tube',
+                tubeUuid: dependencySource
+            }
+        }
+
+        const windowName = this.windowSourceByTubeUuid.get(tubeUuid)
+        if(windowName && this.isBlueWindowFlowComplete(windowName))
+        {
+            return {
+                type: 'window',
+                windowName
+            }
+        }
+
+        return null
+    }
+
+    getReadyDependencySourceUuid(tubeUuid)
+    {
+        const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
+        let bestDependencyUuid = null
+        let bestProgress = -1
+
         for(const group of dependencyGroups)
         {
+            if(group.length === 0)
+            {
+                continue
+            }
+
             const isGroupReady = group.every((dependencyUuid) =>
             {
                 const dependencyProgress = this.flowProgressByTubeUuid.get(dependencyUuid) ?? 0
                 return dependencyProgress >= (1 - FLOW_PROGRESS_EPSILON)
             })
-            if(isGroupReady)
+            if(!isGroupReady)
             {
-                return true
+                continue
+            }
+
+            const candidateUuid = group[0]
+            const candidateProgress = this.flowProgressByTubeUuid.get(candidateUuid) ?? 0
+            if(candidateProgress > bestProgress)
+            {
+                bestProgress = candidateProgress
+                bestDependencyUuid = candidateUuid
             }
         }
 
-        return this.isWindowSourceReady(tubeUuid)
+        return bestDependencyUuid
     }
 
     moveTowards(value, target, maxStep)
@@ -1990,6 +1916,25 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     getTubeFlowDirection(tubeUuid)
     {
+        const activeSource = this.activeFlowSourceByTubeUuid.get(tubeUuid)
+        if(activeSource?.type === 'tube' && activeSource.tubeUuid)
+        {
+            const inferredDirection = this.inferFlowDirectionFromNeighbor(tubeUuid, activeSource.tubeUuid)
+            if(inferredDirection !== 0)
+            {
+                return inferredDirection
+            }
+        }
+
+        if(activeSource?.type === 'window' && activeSource.windowName)
+        {
+            const inferredDirection = this.inferFlowDirectionFromWindow(tubeUuid, activeSource.windowName)
+            if(inferredDirection !== 0)
+            {
+                return inferredDirection
+            }
+        }
+
         const entryDependencyUuid = this.flowEntryByTubeUuid.get(tubeUuid)
         if(entryDependencyUuid)
         {
@@ -2006,6 +1951,50 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
 
         return this.isStraightTubeFlowReversed(tubeUuid) ? -1 : 1
+    }
+
+    inferFlowDirectionFromWindow(tubeUuid, windowName)
+    {
+        const worldPosition = this.getWindowSourceWorldPosition(windowName)
+        if(!worldPosition)
+        {
+            return 0
+        }
+
+        return this.inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
+    }
+
+    getWindowSourceWorldPosition(windowName)
+    {
+        const meshes = this.blueWindowMeshesByName.get(windowName) ?? []
+        let sourceMesh = meshes[0] ?? null
+
+        if(!sourceMesh && this.blueWindowMeshes.length > 0)
+        {
+            const fallbackIndexByWindow = new Map([
+                ['fenetre-blue', 0],
+                ['fenetre-blue_1', 1],
+                ['fenetre-blue_2', 2]
+            ])
+            const fallbackIndex = fallbackIndexByWindow.get(windowName)
+            if(fallbackIndex !== undefined)
+            {
+                sourceMesh = this.blueWindowMeshes[Math.min(fallbackIndex, this.blueWindowMeshes.length - 1)] ?? null
+            }
+        }
+
+        if(!sourceMesh)
+        {
+            return null
+        }
+
+        this.bounds.setFromObject(sourceMesh)
+        if(this.bounds.isEmpty())
+        {
+            return sourceMesh.getWorldPosition(this.targetWorldPosition)
+        }
+
+        return this.bounds.getCenter(this.targetWorldPosition)
     }
 
     inferFlowDirectionFromNeighbor(tubeUuid, neighborTubeUuid)
@@ -2028,7 +2017,20 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         currentTubeMesh.updateMatrixWorld(true)
         neighborTube.updateMatrixWorld(true)
         this.targetWorldPosition.setFromMatrixPosition(neighborTube.matrixWorld)
-        this.localPosition.copy(this.targetWorldPosition)
+        return this.inferFlowDirectionFromWorldPosition(tubeUuid, this.targetWorldPosition)
+    }
+
+    inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
+    {
+        const currentTubeMeshes = this.tubeMeshesByTargetUuid.get(tubeUuid) ?? []
+        const currentTubeMesh = currentTubeMeshes[0]
+        if(!currentTubeMesh)
+        {
+            return 0
+        }
+
+        currentTubeMesh.updateMatrixWorld(true)
+        this.localPosition.copy(worldPosition)
         currentTubeMesh.worldToLocal(this.localPosition)
         const localFlowCoord = this.computeLocalFlowCoord(currentTubeMesh, this.localPosition)
         if(!Number.isFinite(localFlowCoord))
@@ -2298,6 +2300,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.flowProgressByTubeUuid.clear()
         this.flowShaderMaterialsByTubeUuid.clear()
         this.flowEntryByTubeUuid.clear()
+        this.activeFlowSourceByTubeUuid.clear()
         this.rotationTargetUuidByName.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
