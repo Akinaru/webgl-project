@@ -1,0 +1,3743 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editeur de dialogues</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23111'/%3E%3Cpath d='M8 9h16v10H13l-5 4v-4H8z' fill='none' stroke='%23fff' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f3f3f3;
+        --panel: #ffffff;
+        --muted: #666;
+        --line: #d0d0d0;
+        --line-soft: rgba(0, 0, 0, 0.08);
+        --text: #111;
+        --accent: #111;
+        --primary-blue: #0057ff;
+        --primary-red: #d41c1c;
+        --primary-yellow: #f5b400;
+        --primary-green: #0f9d58;
+        --ok: #0b8f3f;
+        --warn: #b56a00;
+        --danger: #cc1d1d;
+        --shadow: rgba(0, 0, 0, 0.1);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        font-family: "Manrope", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      .app {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid #222;
+        background: #111;
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        box-shadow: 0 8px 20px var(--shadow);
+      }
+      .topbar h1 {
+        margin: 0;
+        font-size: 0.96rem;
+        letter-spacing: 0.03em;
+        color: #fff;
+      }
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid #444;
+        background: #1b1b1b;
+        color: #fff;
+        font-size: 1.1rem;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      .icon-btn .ico {
+        width: 17px;
+        height: 17px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .icon-btn:hover {
+        background: #282828;
+      }
+      .btn {
+        border: 1px solid #111;
+        background: #fff;
+        color: #111;
+        border-radius: 11px;
+        padding: 8px 13px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.84rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        transition: border-color 120ms ease, transform 120ms ease, filter 120ms ease;
+      }
+      .btn .ico {
+        width: 14px;
+        height: 14px;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        flex: 0 0 14px;
+      }
+      .btn:hover { transform: translateY(-1px); border-color: #111; filter: brightness(0.97); }
+      .btn.secondary {
+        background: #f5f5f5;
+        border-color: #555;
+      }
+      .btn.warn {
+        background: #fff4f4;
+        border-color: #c25e5e;
+        color: #8d1010;
+      }
+      .btn.tone-blue {
+        background: #eaf1ff;
+        border-color: #0057ff;
+        color: #0039ad;
+      }
+      .btn.tone-green {
+        background: #eaf8ef;
+        border-color: #0f9d58;
+        color: #0a6e3e;
+      }
+      .btn.tone-amber {
+        background: #fff8df;
+        border-color: #d29c00;
+        color: #8b6700;
+      }
+      .btn.tone-red {
+        background: #ffefef;
+        border-color: #d41c1c;
+        color: #991313;
+      }
+      .btn.tone-slate {
+        background: #f0f0f0;
+        border-color: #535353;
+        color: #222;
+      }
+      .spacer { flex: 1; }
+      .status {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+      .topbar .status { color: #e5e5e5; }
+      .layout {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        background: #fafafa;
+      }
+      .layout.right-open {
+        grid-template-columns: 320px 1fr 410px;
+      }
+      .layout.left-collapsed {
+        grid-template-columns: 1fr;
+      }
+      .layout.left-collapsed.right-open {
+        grid-template-columns: 1fr 410px;
+      }
+      .panel {
+        border-right: 1px solid var(--line);
+        background: var(--panel);
+        min-height: 0;
+        overflow: auto;
+      }
+      .layout.left-collapsed .panel.left {
+        display: none;
+      }
+      .panel.right {
+        display: none;
+        border-right: 0;
+        border-left: 1px solid var(--line);
+      }
+      .layout.right-open .panel.right {
+        display: block;
+      }
+      .section {
+        padding: 13px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .section h2 {
+        margin: 0 0 10px;
+        font-size: 0.84rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #1f1f1f;
+      }
+      .menu-actions {
+        display: grid;
+        gap: 8px;
+      }
+      .menu-actions .btn {
+        width: 100%;
+        text-align: left;
+        justify-content: flex-start;
+      }
+      .kpi-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .menu-note {
+        font-size: 0.76rem;
+        color: #666;
+        margin-top: 6px;
+      }
+      .dialogue-list {
+        display: grid;
+        gap: 8px;
+      }
+      .dialogue-item {
+        width: 100%;
+        text-align: left;
+        border: 1px solid #303030;
+        background: #fff;
+        border-radius: 12px;
+        padding: 9px 10px;
+        cursor: pointer;
+        color: #111;
+        font: inherit;
+        transition: transform 120ms ease, border-color 120ms ease;
+      }
+      .dialogue-item.active {
+        border-color: #111;
+        background: #f7f7f7;
+        box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+      }
+      .dialogue-item:hover { transform: translateY(-1px); border-color: #4d4d4d; }
+      .field {
+        margin-bottom: 10px;
+      }
+      .field label {
+        display: block;
+        font-size: 0.73rem;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .field input,
+      .field select,
+      .field textarea {
+        width: 100%;
+        border: 1px solid #3b3b3b;
+        background: #fff;
+        color: #111;
+        border-radius: 10px;
+        padding: 8px;
+        font: inherit;
+      }
+      .field input:focus,
+      .field select:focus,
+      .field textarea:focus {
+        outline: none;
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.14);
+      }
+      .field textarea { min-height: 78px; resize: vertical; }
+      .inline {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .graph-wrap {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+      }
+      #graph {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(rgba(0,0,0,0.055) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,0,0,0.055) 1px, transparent 1px),
+          linear-gradient(180deg, #fff, #f7f7f7);
+        background-size: 24px 24px, 24px 24px, cover;
+      }
+      .graph-wrap.link-pending #graph {
+        cursor: copy;
+      }
+      .canvas-headup {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 3;
+        display: grid;
+        gap: 8px;
+        max-width: min(520px, calc(100% - 24px));
+        pointer-events: none;
+      }
+      .canvas-guide {
+        border: 1px solid #d7d7d7;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.92);
+        padding: 8px 10px;
+        font-size: 0.78rem;
+        color: #303030;
+        backdrop-filter: blur(6px);
+      }
+      .bottom-dock {
+        position: absolute;
+        left: 50%;
+        bottom: 14px;
+        transform: translateX(-50%);
+        z-index: 4;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        border: 1px solid #252525;
+        border-radius: 16px;
+        background: rgba(17, 17, 17, 0.94);
+        box-shadow: 0 16px 30px rgba(0, 0, 0, 0.2);
+        overflow-x: auto;
+        overflow-y: hidden;
+        max-width: calc(100% - 20px);
+      }
+      .dock-group {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 6px;
+        padding: 0 2px;
+      }
+      .dock-group + .dock-group {
+        border-left: 1px solid rgba(255, 255, 255, 0.18);
+        padding-left: 10px;
+      }
+      .btn.dock-btn {
+        flex: 0 0 auto;
+        border-radius: 10px;
+        min-height: 34px;
+        font-size: 0.76rem;
+        padding: 6px 10px;
+        white-space: nowrap;
+      }
+      .btn.dock-btn:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+      }
+      .quick-palette {
+        position: absolute;
+        z-index: 5;
+        min-width: 218px;
+        display: none;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 13px;
+        border: 1px solid #333;
+        background: rgba(22, 22, 22, 0.97);
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.24);
+      }
+      .quick-palette.visible {
+        display: grid;
+      }
+      .quick-palette__title {
+        font-size: 0.73rem;
+        color: #ddd;
+        margin-bottom: 2px;
+      }
+      .quick-palette .btn {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .node-hover-tooltip {
+        position: absolute;
+        z-index: 6;
+        display: none;
+        max-width: min(420px, calc(100% - 24px));
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid #2e2e2e;
+        background: rgba(18, 18, 18, 0.96);
+        color: #f4f4f4;
+        font-size: 0.76rem;
+        line-height: 1.35;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        pointer-events: none;
+        white-space: pre-wrap;
+      }
+      .node-hover-tooltip.visible {
+        display: block;
+      }
+      .node-card {
+        border: 1px solid #3a3a3a;
+        background: #fff;
+        border-radius: 12px;
+        padding: 9px;
+        margin-bottom: 11px;
+      }
+      .node-card h4 {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        color: #111;
+      }
+      .row-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .tiny {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+      }
+      .btn.tiny .ico {
+        width: 12px;
+        height: 12px;
+        flex-basis: 12px;
+      }
+      .btn.active {
+        background: #111;
+        color: #fff;
+      }
+      .btn.tone-amber.active {
+        background: #f5b400;
+        color: #111;
+        border-color: #b68500;
+      }
+      .kv-row {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr auto;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .kv-row input {
+        border: 1px solid #3b3b3b;
+        border-radius: 9px;
+        padding: 6px 8px;
+        font: inherit;
+      }
+      .inspector-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #cfcfcf;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 0.74rem;
+        color: #333;
+        background: #fff;
+      }
+      .editor-guide {
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        border: 1px solid #d7d7d7;
+        border-radius: 10px;
+        background: #f9f9f9;
+        font-size: 0.77rem;
+        color: #444;
+      }
+      .editor-section {
+        border: 1px solid #d7d7d7;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .editor-section__title {
+        margin: 0 0 4px;
+        font-size: 0.86rem;
+        color: #151515;
+      }
+      .editor-section__help {
+        margin: 0 0 10px;
+        font-size: 0.75rem;
+        color: #666;
+      }
+      .editor-section.blue { border-left: 4px solid #0057ff; }
+      .editor-section.red { border-left: 4px solid #d41c1c; }
+      .editor-section.amber { border-left: 4px solid #f5b400; }
+      .editor-section.green { border-left: 4px solid #0f9d58; }
+      .editor-section.slate { border-left: 4px solid #444; }
+      details.item {
+        border: 1px solid #e2e2e2;
+        border-radius: 10px;
+        background: #fff;
+        margin-bottom: 8px;
+        padding: 6px 8px;
+      }
+      details.item > summary {
+        cursor: pointer;
+        font-size: 0.79rem;
+        color: #1f1f1f;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .summary-meta {
+        color: #666;
+        font-size: 0.74rem;
+      }
+      .choice-overview {
+        border: 1px solid #e5e5e5;
+        border-radius: 10px;
+        background: #fafafa;
+        padding: 8px;
+        margin-bottom: 8px;
+      }
+      .choice-overview__row {
+        display: grid;
+        grid-template-columns: 24px 1fr auto;
+        gap: 8px;
+        align-items: center;
+        font-size: 0.77rem;
+        color: #222;
+        padding: 4px 0;
+      }
+      .choice-overview__idx {
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #d41c1c;
+        color: #a61919;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        background: #fff;
+      }
+      .choice-overview__to {
+        color: #666;
+        font-size: 0.72rem;
+      }
+      .list-editor {
+        border: 1px solid #d4d4d4;
+        border-radius: 12px;
+        background: #fff;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .list-editor h4 {
+        margin: 0 0 8px;
+        font-size: 0.8rem;
+      }
+      .list-item {
+        border-top: 1px solid #ececec;
+        padding-top: 8px;
+        margin-top: 8px;
+      }
+      .list-item:first-of-type {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 0;
+      }
+      .row-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+      }
+      .row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .control {
+        width: 100%;
+        border: 1px solid #3b3b3b;
+        border-radius: 9px;
+        background: #fff;
+        color: #111;
+        padding: 7px 8px;
+        font: inherit;
+        font-size: 0.8rem;
+      }
+      .control:focus {
+        outline: none;
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+      }
+      details.plain {
+        border: 1px dashed #cfcfcf;
+        border-radius: 10px;
+        padding: 6px 8px;
+        margin-top: 6px;
+      }
+      details.plain > summary {
+        cursor: pointer;
+        font-size: 0.78rem;
+        color: #444;
+      }
+      .hint {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .muted { color: var(--muted); }
+      .empty {
+        padding: 16px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+      .kpi {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 8px;
+        border: 1px solid #3a3a3a;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        color: #222;
+        background: #fff;
+      }
+      .ok { color: var(--ok); }
+      .warn-txt { color: var(--warn); }
+      .field-help {
+        margin-top: 5px;
+        font-size: 0.72rem;
+        color: #666;
+      }
+      .app-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
+        padding: 16px;
+      }
+      .app-modal.visible {
+        display: flex;
+      }
+      .app-modal__backdrop {
+        position: absolute;
+        inset: 0;
+        border: 0;
+        background: rgba(0, 0, 0, 0.42);
+        cursor: pointer;
+      }
+      .app-modal__dialog {
+        position: relative;
+        z-index: 1;
+        width: min(540px, calc(100vw - 32px));
+        border-radius: 16px;
+        border: 1px solid #1a1a1a;
+        background: #fff;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+        padding: 14px;
+      }
+      .app-modal__title {
+        margin: 0;
+        font-size: 0.94rem;
+      }
+      .app-modal__message {
+        margin: 8px 0 0;
+        font-size: 0.84rem;
+        color: #333;
+      }
+      .app-modal__input-wrap {
+        margin-top: 12px;
+      }
+      .app-modal__input-wrap label {
+        display: block;
+        font-size: 0.74rem;
+        color: #666;
+        margin-bottom: 6px;
+      }
+      .app-modal__input {
+        width: 100%;
+        border: 1px solid #3b3b3b;
+        border-radius: 10px;
+        padding: 8px;
+        font: inherit;
+        color: #111;
+        background: #fff;
+      }
+      .app-modal__input:focus {
+        outline: none;
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+      }
+      .app-modal__actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+      .app-modal__actions .btn {
+        min-width: 112px;
+      }
+      @media (max-width: 1300px) {
+        .layout { grid-template-columns: 280px 1fr; }
+        .layout.right-open { grid-template-columns: 280px 1fr 340px; }
+        .layout.left-collapsed { grid-template-columns: 1fr; }
+        .layout.left-collapsed.right-open { grid-template-columns: 1fr 340px; }
+      }
+      @media (max-width: 1080px) {
+        .layout,
+        .layout.right-open,
+        .layout.left-collapsed,
+        .layout.left-collapsed.right-open {
+          grid-template-columns: 1fr;
+        }
+        .layout.left-collapsed .panel.left {
+          display: none;
+        }
+        .panel.right {
+          display: none;
+        }
+        .layout.right-open .panel.right {
+          display: block;
+        }
+        .panel,
+        .panel.right { border: 0; border-top: 1px solid var(--line); max-height: 38vh; }
+        .graph-wrap { min-height: 44vh; }
+        .bottom-dock {
+          width: calc(100% - 20px);
+          justify-content: flex-start;
+          left: 10px;
+          transform: none;
+        }
+        .node-hover-tooltip {
+          max-width: calc(100% - 20px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <button class="icon-btn" id="btnToggleLeft" aria-label="Ouvrir ou fermer le menu">☰</button>
+        <h1>Editeur de dialogues</h1>
+        <span class="spacer"></span>
+        <span class="status" id="statusText">Pret.</span>
+        <input type="file" id="fileInput" accept=".json,.kspn,application/json" hidden />
+      </header>
+
+      <main class="layout" id="layoutRoot">
+        <aside class="panel left">
+          <section class="section">
+            <h2>Fichier</h2>
+            <div class="menu-actions">
+              <button class="btn tone-blue" id="btnLoadDefault">Charger dialogues du projet</button>
+              <button class="btn tone-blue" id="btnImport">Importer fichier JSON / KSPN</button>
+              <button class="btn tone-slate" id="btnRestoreLocal">Ouvrir sauvegarde locale</button>
+              <button class="btn tone-slate" id="btnCloseFile">Fermer fichier courant</button>
+              <button class="btn tone-red" id="btnClearLocal">Effacer sauvegarde locale</button>
+              <button class="btn tone-green" id="btnExport">Exporter fichier JSON</button>
+            </div>
+            <div class="menu-note" id="fileSourceText">Source active: aucune</div>
+          </section>
+
+          <section class="section">
+            <h2>Canvas</h2>
+          </section>
+
+          <section class="section">
+            <h2>Dialogues</h2>
+            <div class="menu-actions" style="margin-bottom: 10px;">
+              <button class="btn tone-blue" id="btnNewDialogue">Nouveau dialogue</button>
+            </div>
+            <div class="dialogue-list" id="dialogueList"></div>
+          </section>
+
+          <section class="section" id="dialogueMetaSection">
+            <h2>Reglages du dialogue</h2>
+            <div class="empty">Selectionne un dialogue.</div>
+          </section>
+        </aside>
+
+        <section class="graph-wrap" id="graphWrap">
+          <div id="graph"></div>
+          <div class="canvas-headup">
+            <div class="kpi-row">
+              <span class="kpi">Blocs: <strong id="kpiNodes">0</strong></span>
+              <span class="kpi">Liens: <strong id="kpiEdges">0</strong></span>
+            </div>
+            <div class="canvas-guide" id="canvasGuide">Double-clique dans le canvas pour ajouter un bloc.</div>
+          </div>
+          <div class="quick-palette" id="quickPalette" aria-hidden="true">
+            <div class="quick-palette__title">Ajouter un bloc ici</div>
+            <button class="btn dock-btn tone-blue" data-add-type="line"></button>
+            <button class="btn dock-btn tone-red" data-add-type="choice"></button>
+            <button class="btn dock-btn tone-amber" data-add-type="branch"></button>
+            <button class="btn dock-btn tone-green" data-add-type="action"></button>
+            <button class="btn dock-btn tone-slate" data-add-type="end"></button>
+          </div>
+          <div class="node-hover-tooltip" id="nodeHoverTooltip" aria-hidden="true"></div>
+          <div class="bottom-dock" id="bottomDock">
+            <div class="dock-group">
+              <button class="btn dock-btn tone-blue" id="dockAddLine"></button>
+              <button class="btn dock-btn tone-red" id="dockAddChoice"></button>
+              <button class="btn dock-btn tone-amber" id="dockAddBranch"></button>
+              <button class="btn dock-btn tone-green" id="dockAddAction"></button>
+              <button class="btn dock-btn tone-slate" id="dockAddEnd"></button>
+            </div>
+            <div class="dock-group">
+              <button class="btn dock-btn tone-slate" id="dockStartLink"></button>
+              <button class="btn dock-btn tone-amber" id="dockAutoLayout"></button>
+              <button class="btn dock-btn tone-slate" id="dockFitView"></button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel right">
+          <section class="section" id="nodeInspectorSection">
+            <h2>Bloc</h2>
+            <div class="empty">Selectionne un bloc dans le graphe.</div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <div class="app-modal" id="appModalRoot" aria-hidden="true">
+      <button class="app-modal__backdrop" id="appModalBackdrop" type="button" aria-label="Fermer"></button>
+      <section class="app-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+        <h3 class="app-modal__title" id="appModalTitle">Confirmation</h3>
+        <p class="app-modal__message" id="appModalMessage"></p>
+        <div class="app-modal__input-wrap" id="appModalInputWrap" hidden>
+          <label for="appModalInput" id="appModalInputLabel">Valeur</label>
+          <input class="app-modal__input" id="appModalInput" type="text" />
+        </div>
+        <div class="app-modal__actions">
+          <button class="btn secondary" id="appModalCancel" type="button">Annuler</button>
+          <button class="btn tone-red" id="appModalConfirm" type="button">Confirmer</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="https://unpkg.com/vis-data@7.1.9/peer/umd/vis-data.min.js"></script>
+    <script src="https://unpkg.com/vis-network@9.1.9/peer/umd/vis-network.min.js"></script>
+    <script>
+      const TYPE_COLORS = {
+        line: '#0057ff',
+        choice: '#d41c1c',
+        branch: '#f5b400',
+        action: '#0f9d58',
+        end: '#222'
+      }
+
+      const NODE_TYPE_LABELS = {
+        line: 'Texte simple',
+        choice: 'Question a choix',
+        branch: 'Branchement conditionnel',
+        action: 'Bloc d actions',
+        end: 'Fin de dialogue'
+      }
+
+      const NODE_TYPE_UI = {
+        line: { label: 'Texte', icon: 'text', tone: 'blue' },
+        choice: { label: 'Choix', icon: 'choice', tone: 'red' },
+        branch: { label: 'Branchement', icon: 'branch', tone: 'amber' },
+        action: { label: 'Actions', icon: 'action', tone: 'green' },
+        end: { label: 'Fin', icon: 'end', tone: 'slate' }
+      }
+
+      const BUTTON_TONE_CLASSES = ['tone-blue', 'tone-green', 'tone-amber', 'tone-red', 'tone-slate']
+
+      const ICON_MAP = {
+        menu: '<path d="M2 4h12M2 8h12M2 12h12"></path>',
+        menuOpen: '<path d="M2 4h12M2 8h8M2 12h12"></path>',
+        menuClose: '<path d="M2 4h12M2 8h6M2 12h12"></path><path d="M11 7l3 3-3 3"></path>',
+        folder: '<path d="M2 4h4l2 2h6v7H2z"></path>',
+        upload: '<path d="M8 11V3"></path><path d="M5.5 5.5L8 3l2.5 2.5"></path><path d="M3 13h10"></path>',
+        download: '<path d="M8 3v8"></path><path d="M5.5 8.5L8 11l2.5-2.5"></path><path d="M3 13h10"></path>',
+        plus: '<path d="M8 3v10M3 8h10"></path>',
+        trash: '<path d="M3 4h10"></path><path d="M6 4V2h4v2"></path><path d="M5 4l.6 9h4.8l.6-9"></path>',
+        layout: '<rect x="2.5" y="2.5" width="4.5" height="4.5"></rect><rect x="9" y="2.5" width="4.5" height="4.5"></rect><rect x="2.5" y="9" width="4.5" height="4.5"></rect><rect x="9" y="9" width="4.5" height="4.5"></rect>',
+        link: '<path d="M6.2 9.8L4.6 11.4a2 2 0 1 1-2.8-2.8l1.6-1.6"></path><path d="M9.8 6.2l1.6-1.6a2 2 0 1 1 2.8 2.8l-1.6 1.6"></path><path d="M5.5 10.5l5-5"></path>',
+        dialogue: '<path d="M2 3h12v8H6l-3 2v-2H2z"></path>',
+        text: '<path d="M3 4h10M5.5 4v8M10.5 4v8"></path>',
+        choice: '<path d="M3 5h10M3 8h7M3 11h5"></path><circle cx="12.2" cy="11.2" r="1.3"></circle>',
+        branch: '<path d="M8 2v12"></path><path d="M8 8l-4 4"></path><path d="M8 8l4 4"></path>',
+        action: '<path d="M8 2l1.9 4.2L14 7l-3 2.9L11.8 14 8 11.8 4.2 14 5 9.9 2 7l4.1-.8z"></path>',
+        end: '<circle cx="8" cy="8" r="5.5"></circle><path d="M5.5 8l1.6 1.6L10.5 6.2"></path>',
+        close: '<path d="M3 3l10 10M13 3L3 13"></path>',
+        focus: '<path d="M2 6V2h4"></path><path d="M10 2h4v4"></path><path d="M14 10v4h-4"></path><path d="M6 14H2v-4"></path><circle cx="8" cy="8" r="2.2"></circle>',
+        block: '<rect x="2.5" y="3.5" width="11" height="9"></rect>'
+      }
+
+      const ACTION_TYPE_OPTIONS = [
+        { value: 'setFlag', label: 'Definir un drapeau (flag)' },
+        { value: 'addMetier', label: 'Modifier un metier' },
+        { value: 'switchScene', label: 'Changer de scene' },
+        { value: 'startMiniGame', label: 'Lancer un mini-jeu' },
+        { value: 'startDialogue', label: 'Lancer un autre dialogue' },
+        { value: 'setHudHint', label: 'Afficher un message HUD' },
+        { value: 'emit', label: 'Declencher un evenement' },
+        { value: 'log', label: 'Log debug (console)' }
+      ]
+
+      const CONDITION_TYPE_OPTIONS = [
+        { value: 'flagEquals', label: 'Flag egal a une valeur' },
+        { value: 'flagTruthy', label: 'Flag actif (true)' },
+        { value: 'metierAtLeast', label: 'Metier au moins' },
+        { value: 'metierAtMost', label: 'Metier au plus' },
+        { value: 'contextEquals', label: 'Contexte egal a une valeur' }
+      ]
+
+      const METIER_OPTIONS = [
+        { value: 'INVENTEUR', label: 'Inventeur' },
+        { value: 'MENEUR', label: 'Meneur' },
+        { value: 'TRAVAILLEUR', label: 'Travailleur' },
+        { value: 'BOTANISTE', label: 'Botaniste' }
+      ]
+
+      const LOCAL_SESSION_STORAGE_KEY = 'dialogue-editor.session.v1'
+      const PROJECT_DIALOGUES_CANDIDATE_PATHS = [
+        './src/Experience/Dialogues/dialogues.export.json',
+        './src/Experience/Dialogues/dialogues.json',
+        './dialogues.export.json',
+        './dialogues.json'
+      ]
+
+      function iconSvg(name) {
+        const paths = ICON_MAP[name] || ICON_MAP.block
+        return `<svg class="ico" viewBox="0 0 16 16" aria-hidden="true">${paths}</svg>`
+      }
+
+      function setButtonVisual(button, { label, icon, tone } = {}) {
+        if(!button) {
+          return
+        }
+
+        if(tone) {
+          BUTTON_TONE_CLASSES.forEach((className) => button.classList.remove(className))
+          button.classList.add(`tone-${tone}`)
+        }
+
+        const text = label ?? button.textContent.trim()
+        button.innerHTML = `${iconSvg(icon || 'block')}<span>${text}</span>`
+      }
+
+      const state = {
+        dialogues: {},
+        layouts: {},
+        file: {
+          sourceLabel: 'Aucune source'
+        },
+        ui: {
+          leftPanelOpen: true,
+          rightPanelVisible: false,
+          linkSourceId: null,
+          quickPaletteCanvasPos: null,
+          inspectorDetailsOpen: {}
+        }
+      }
+
+      let currentDialogueKey = null
+      let selectedNodeId = null
+      const inspectorObjectKeys = new WeakMap()
+      let inspectorObjectKeyCounter = 1
+      let lastPersistedSessionSnapshot = ''
+      let localSessionPersistInterval = null
+
+      const nodesDS = new vis.DataSet()
+      const edgesDS = new vis.DataSet()
+      let network = null
+
+      const refs = {
+        dialogueList: document.getElementById('dialogueList'),
+        dialogueMetaSection: document.getElementById('dialogueMetaSection'),
+        nodeInspectorSection: document.getElementById('nodeInspectorSection'),
+        layoutRoot: document.getElementById('layoutRoot'),
+        graphWrap: document.getElementById('graphWrap'),
+        statusText: document.getElementById('statusText'),
+        canvasGuide: document.getElementById('canvasGuide'),
+        quickPalette: document.getElementById('quickPalette'),
+        nodeHoverTooltip: document.getElementById('nodeHoverTooltip'),
+        kpiNodes: document.getElementById('kpiNodes'),
+        kpiEdges: document.getElementById('kpiEdges'),
+        btnLoadDefault: document.getElementById('btnLoadDefault'),
+        btnImport: document.getElementById('btnImport'),
+        btnRestoreLocal: document.getElementById('btnRestoreLocal'),
+        btnCloseFile: document.getElementById('btnCloseFile'),
+        btnClearLocal: document.getElementById('btnClearLocal'),
+        btnNewDialogue: document.getElementById('btnNewDialogue'),
+        btnToggleLeft: document.getElementById('btnToggleLeft'),
+        dockAddLine: document.getElementById('dockAddLine'),
+        dockAddChoice: document.getElementById('dockAddChoice'),
+        dockAddBranch: document.getElementById('dockAddBranch'),
+        dockAddAction: document.getElementById('dockAddAction'),
+        dockAddEnd: document.getElementById('dockAddEnd'),
+        dockStartLink: document.getElementById('dockStartLink'),
+        dockAutoLayout: document.getElementById('dockAutoLayout'),
+        dockFitView: document.getElementById('dockFitView'),
+        btnExport: document.getElementById('btnExport'),
+        fileInput: document.getElementById('fileInput'),
+        fileSourceText: document.getElementById('fileSourceText'),
+        appModalRoot: document.getElementById('appModalRoot'),
+        appModalBackdrop: document.getElementById('appModalBackdrop'),
+        appModalTitle: document.getElementById('appModalTitle'),
+        appModalMessage: document.getElementById('appModalMessage'),
+        appModalInputWrap: document.getElementById('appModalInputWrap'),
+        appModalInputLabel: document.getElementById('appModalInputLabel'),
+        appModalInput: document.getElementById('appModalInput'),
+        appModalCancel: document.getElementById('appModalCancel'),
+        appModalConfirm: document.getElementById('appModalConfirm')
+      }
+
+      function setStatus(message, type = 'normal') {
+        refs.statusText.textContent = message
+        refs.statusText.className = `status ${type === 'ok' ? 'ok' : type === 'warn' ? 'warn-txt' : ''}`
+      }
+
+      function deepClone(value) {
+        return JSON.parse(JSON.stringify(value))
+      }
+
+      function hasDialoguesLoaded() {
+        return Object.keys(state.dialogues).length > 0
+      }
+
+      function hasLocalSessionSaved() {
+        try {
+          return Boolean(window.localStorage.getItem(LOCAL_SESSION_STORAGE_KEY))
+        } catch(error) {
+          return false
+        }
+      }
+
+      function updateFileControlsState() {
+        const hasLocal = hasLocalSessionSaved()
+        refs.btnRestoreLocal.disabled = !hasLocal
+        refs.btnClearLocal.disabled = !hasLocal
+        refs.btnCloseFile.disabled = !hasDialoguesLoaded()
+      }
+
+      function setActiveSourceLabel(label = 'Aucune source') {
+        state.file.sourceLabel = label
+        if(refs.fileSourceText) {
+          refs.fileSourceText.textContent = `Source active: ${label}`
+        }
+        updateFileControlsState()
+      }
+
+      function serializeLocalSessionPayload() {
+        return JSON.stringify({
+          version: 1,
+          savedAt: new Date().toISOString(),
+          sourceLabel: state.file.sourceLabel,
+          dialogues: deepClone(state.dialogues),
+          layouts: deepClone(state.layouts)
+        })
+      }
+
+      function persistLocalSession({ force = false } = {}) {
+        if(!hasDialoguesLoaded()) {
+          return false
+        }
+
+        try {
+          const payload = serializeLocalSessionPayload()
+          if(!force && payload === lastPersistedSessionSnapshot) {
+            return false
+          }
+          window.localStorage.setItem(LOCAL_SESSION_STORAGE_KEY, payload)
+          lastPersistedSessionSnapshot = payload
+          updateFileControlsState()
+          return true
+        } catch(error) {
+          return false
+        }
+      }
+
+      function clearLocalSession({ silent = false } = {}) {
+        try {
+          window.localStorage.removeItem(LOCAL_SESSION_STORAGE_KEY)
+          lastPersistedSessionSnapshot = ''
+          updateFileControlsState()
+          if(!silent) {
+            setStatus('Sauvegarde locale effacee.', 'ok')
+          }
+          return true
+        } catch(error) {
+          if(!silent) {
+            setStatus(`Impossible d effacer la sauvegarde locale (${error.message}).`, 'warn')
+          }
+          return false
+        }
+      }
+
+      function resetEditorPanelsAndGraph() {
+        currentDialogueKey = null
+        selectedNodeId = null
+        clearLinkArming()
+        hideQuickPalette()
+        state.ui.rightPanelVisible = false
+        updateLayoutVisibility()
+        renderDialogueList()
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+        updateFileControlsState()
+      }
+
+      function applyDialoguesState(dialoguesMap, {
+        layouts = null,
+        sourceLabel = 'Aucune source',
+        persist = true
+      } = {}) {
+        state.dialogues = normalizeData(dialoguesMap)
+        if(layouts && typeof layouts === 'object') {
+          state.layouts = deepClone(layouts)
+          Object.keys(state.dialogues).forEach((key) => {
+            if(!state.layouts[key]) {
+              state.layouts[key] = buildAutoLayout(state.dialogues[key])
+            }
+          })
+        } else {
+          buildLayoutsForAllDialogues()
+        }
+
+        setActiveSourceLabel(sourceLabel)
+        resetEditorPanelsAndGraph()
+
+        if(persist) {
+          persistLocalSession({ force: true })
+        }
+      }
+
+      function loadLocalSessionIntoEditor({ silent = false } = {}) {
+        let parsed
+
+        try {
+          const raw = window.localStorage.getItem(LOCAL_SESSION_STORAGE_KEY)
+          if(!raw) {
+            return false
+          }
+          parsed = JSON.parse(raw)
+        } catch(error) {
+          if(!silent) {
+            setStatus(`Sauvegarde locale invalide (${error.message}).`, 'warn')
+          }
+          return false
+        }
+
+        const savedDialogues = parsed?.dialogues
+        if(!savedDialogues || typeof savedDialogues !== 'object') {
+          if(!silent) {
+            setStatus('Sauvegarde locale vide.', 'warn')
+          }
+          return false
+        }
+
+        applyDialoguesState(savedDialogues, {
+          layouts: parsed?.layouts,
+          sourceLabel: parsed?.sourceLabel || 'Sauvegarde locale',
+          persist: false
+        })
+
+        lastPersistedSessionSnapshot = JSON.stringify(parsed)
+        updateFileControlsState()
+        if(!silent) {
+          setStatus('Sauvegarde locale chargee.', 'ok')
+        }
+        return true
+      }
+
+      function startLocalSessionAutoPersist() {
+        if(localSessionPersistInterval) {
+          return
+        }
+
+        localSessionPersistInterval = window.setInterval(() => {
+          persistLocalSession()
+        }, 1500)
+
+        window.addEventListener('beforeunload', () => {
+          persistLocalSession({ force: true })
+        })
+      }
+
+      const modalState = {
+        resolver: null,
+        lastFocusedElement: null
+      }
+
+      function isModalVisible() {
+        return refs.appModalRoot.classList.contains('visible')
+      }
+
+      function closeAppModal({ confirmed = false } = {}) {
+        const resolver = modalState.resolver
+        const value = refs.appModalInput.value
+
+        modalState.resolver = null
+        refs.appModalRoot.classList.remove('visible')
+        refs.appModalRoot.setAttribute('aria-hidden', 'true')
+        refs.appModalInputWrap.hidden = true
+        refs.appModalInput.value = ''
+        document.body.style.overflow = ''
+
+        if(modalState.lastFocusedElement && typeof modalState.lastFocusedElement.focus === 'function') {
+          modalState.lastFocusedElement.focus()
+        }
+
+        if(resolver) {
+          resolver({ confirmed, value })
+        }
+      }
+
+      function openAppModal({
+        title = 'Confirmation',
+        message = '',
+        confirmLabel = 'Confirmer',
+        cancelLabel = 'Annuler',
+        tone = 'red',
+        input = null
+      } = {}) {
+        if(modalState.resolver) {
+          modalState.resolver({ confirmed: false, value: '' })
+          modalState.resolver = null
+        }
+
+        return new Promise((resolve) => {
+          modalState.lastFocusedElement = document.activeElement
+          modalState.resolver = resolve
+
+          refs.appModalTitle.textContent = title
+          refs.appModalMessage.textContent = message
+          refs.appModalCancel.textContent = cancelLabel
+          refs.appModalConfirm.textContent = confirmLabel
+
+          BUTTON_TONE_CLASSES.forEach((className) => refs.appModalConfirm.classList.remove(className))
+          refs.appModalConfirm.classList.add(`tone-${tone}`)
+
+          if(input) {
+            refs.appModalInputWrap.hidden = false
+            refs.appModalInputLabel.textContent = input.label || 'Valeur'
+            refs.appModalInput.value = input.value || ''
+            refs.appModalInput.placeholder = input.placeholder || ''
+          } else {
+            refs.appModalInputWrap.hidden = true
+            refs.appModalInputLabel.textContent = 'Valeur'
+            refs.appModalInput.value = ''
+            refs.appModalInput.placeholder = ''
+          }
+
+          refs.appModalRoot.classList.add('visible')
+          refs.appModalRoot.setAttribute('aria-hidden', 'false')
+          document.body.style.overflow = 'hidden'
+
+          requestAnimationFrame(() => {
+            if(input) {
+              refs.appModalInput.focus()
+              refs.appModalInput.select()
+            } else {
+              refs.appModalConfirm.focus()
+            }
+          })
+        })
+      }
+
+      async function showConfirmModal({
+        title = 'Confirmation',
+        message = '',
+        confirmLabel = 'Confirmer',
+        cancelLabel = 'Annuler',
+        tone = 'red'
+      } = {}) {
+        const result = await openAppModal({ title, message, confirmLabel, cancelLabel, tone })
+        return result.confirmed
+      }
+
+      async function showPromptModal({
+        title = 'Saisie',
+        message = '',
+        confirmLabel = 'Valider',
+        cancelLabel = 'Annuler',
+        tone = 'blue',
+        inputLabel = 'Valeur',
+        inputValue = '',
+        inputPlaceholder = ''
+      } = {}) {
+        const result = await openAppModal({
+          title,
+          message,
+          confirmLabel,
+          cancelLabel,
+          tone,
+          input: {
+            label: inputLabel,
+            value: inputValue,
+            placeholder: inputPlaceholder
+          }
+        })
+        return result.confirmed ? result.value : null
+      }
+
+      function updateLayoutVisibility() {
+        const hasDialogueSelection = Boolean(currentDialogueKey)
+        const shouldShowRight = state.ui.rightPanelVisible && hasDialogueSelection
+
+        refs.layoutRoot.classList.toggle('left-collapsed', !state.ui.leftPanelOpen)
+        refs.layoutRoot.classList.toggle('right-open', shouldShowRight)
+        refs.btnToggleLeft.title = state.ui.leftPanelOpen ? 'Masquer menu' : 'Afficher menu'
+        refs.btnToggleLeft.innerHTML = iconSvg(state.ui.leftPanelOpen ? 'menuClose' : 'menuOpen')
+      }
+
+      function hasSelectedNode() {
+        const dialogue = currentDialogue()
+        return Boolean(dialogue && selectedNodeId && dialogue.nodes[selectedNodeId])
+      }
+
+      function updateCanvasGuide() {
+        if(!currentDialogueKey) {
+          refs.canvasGuide.textContent = 'Selectionne un dialogue pour commencer.'
+          return
+        }
+        if(state.ui.linkSourceId) {
+          refs.canvasGuide.textContent = `Liaison active depuis ${state.ui.linkSourceId}. Clique un bloc cible.`
+          return
+        }
+        refs.canvasGuide.textContent = 'Canvas actif.'
+      }
+
+      function updateDockState() {
+        const linkActive = Boolean(state.ui.linkSourceId)
+        const hasDialogue = Boolean(currentDialogueKey)
+
+        setButtonVisual(refs.dockStartLink, {
+          label: linkActive ? `Lier: ${state.ui.linkSourceId}` : 'Lier depuis la selection',
+          icon: 'link',
+          tone: linkActive ? 'amber' : 'slate'
+        })
+
+        refs.dockStartLink.classList.toggle('active', linkActive)
+        refs.dockStartLink.disabled = !linkActive && !hasSelectedNode()
+        refs.dockAddLine.disabled = !hasDialogue
+        refs.dockAddChoice.disabled = !hasDialogue
+        refs.dockAddBranch.disabled = !hasDialogue
+        refs.dockAddAction.disabled = !hasDialogue
+        refs.dockAddEnd.disabled = !hasDialogue
+        refs.dockAutoLayout.disabled = !hasDialogue
+        refs.dockFitView.disabled = nodesDS.length === 0
+        refs.graphWrap.classList.toggle('link-pending', linkActive)
+        updateCanvasGuide()
+      }
+
+      function hideQuickPalette() {
+        state.ui.quickPaletteCanvasPos = null
+        refs.quickPalette.classList.remove('visible')
+        refs.quickPalette.setAttribute('aria-hidden', 'true')
+      }
+
+      function showQuickPalette(canvasPos) {
+        if(!currentDialogueKey) {
+          setStatus('Selectionne un dialogue avant d ajouter des blocs.', 'warn')
+          return
+        }
+        if(!canvasPos || !network) {
+          return
+        }
+
+        state.ui.quickPaletteCanvasPos = { x: canvasPos.x, y: canvasPos.y }
+        const domPos = network.canvasToDOM(canvasPos)
+        const wrapBounds = refs.graphWrap.getBoundingClientRect()
+
+        refs.quickPalette.classList.add('visible')
+        refs.quickPalette.setAttribute('aria-hidden', 'false')
+
+        const paletteRect = refs.quickPalette.getBoundingClientRect()
+        const maxX = wrapBounds.width - paletteRect.width - 10
+        const maxY = wrapBounds.height - paletteRect.height - 10
+        const left = Math.max(10, Math.min(domPos.x + 12, maxX))
+        const top = Math.max(10, Math.min(domPos.y - 10, maxY))
+        refs.quickPalette.style.left = `${left}px`
+        refs.quickPalette.style.top = `${top}px`
+      }
+
+      function hideNodeHoverTooltip() {
+        refs.nodeHoverTooltip.classList.remove('visible')
+        refs.nodeHoverTooltip.setAttribute('aria-hidden', 'true')
+        refs.nodeHoverTooltip.textContent = ''
+      }
+
+      function getNodeTooltipPreview(node) {
+        const text = typeof node?.text === 'string' ? node.text.trim() : ''
+        if(!text) {
+          return ''
+        }
+        const normalized = text.replace(/\s+/g, ' ').trim()
+        if(normalized.length <= 260) {
+          return normalized
+        }
+        return `${normalized.slice(0, 259)}…`
+      }
+
+      function showNodeHoverTooltip(nodeId) {
+        if(!network || !nodeId) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const dialogue = currentDialogue()
+        const node = dialogue?.nodes?.[nodeId]
+        const preview = getNodeTooltipPreview(node)
+        if(!preview) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const canvasPos = network.getPositions([nodeId])?.[nodeId]
+        if(!canvasPos) {
+          hideNodeHoverTooltip()
+          return
+        }
+
+        const domPos = network.canvasToDOM(canvasPos)
+        const tooltip = refs.nodeHoverTooltip
+        tooltip.textContent = preview
+        tooltip.classList.add('visible')
+        tooltip.setAttribute('aria-hidden', 'false')
+        tooltip.style.left = '0px'
+        tooltip.style.top = '0px'
+
+        const wrapRect = refs.graphWrap.getBoundingClientRect()
+        const tipRect = tooltip.getBoundingClientRect()
+
+        const leftMin = 8
+        const topMin = 8
+        const leftMax = Math.max(leftMin, wrapRect.width - tipRect.width - 8)
+        const topMax = Math.max(topMin, wrapRect.height - tipRect.height - 8)
+
+        const left = Math.max(leftMin, Math.min(domPos.x - tipRect.width / 2, leftMax))
+        const top = Math.max(topMin, Math.min(domPos.y - tipRect.height - 18, topMax))
+
+        tooltip.style.left = `${left}px`
+        tooltip.style.top = `${top}px`
+      }
+
+      function decorateStaticButtons() {
+        setButtonVisual(refs.btnLoadDefault, { label: 'Charger dialogues du projet', icon: 'folder', tone: 'blue' })
+        setButtonVisual(refs.btnImport, { label: 'Importer fichier JSON / KSPN', icon: 'upload', tone: 'blue' })
+        setButtonVisual(refs.btnRestoreLocal, { label: 'Ouvrir sauvegarde locale', icon: 'folder', tone: 'slate' })
+        setButtonVisual(refs.btnCloseFile, { label: 'Fermer fichier courant', icon: 'close', tone: 'slate' })
+        setButtonVisual(refs.btnClearLocal, { label: 'Effacer sauvegarde locale', icon: 'trash', tone: 'red' })
+        setButtonVisual(refs.btnExport, { label: 'Exporter fichier JSON', icon: 'download', tone: 'green' })
+        setButtonVisual(refs.btnNewDialogue, { label: 'Nouveau dialogue', icon: 'dialogue', tone: 'blue' })
+
+        setButtonVisual(refs.dockAddLine, NODE_TYPE_UI.line)
+        setButtonVisual(refs.dockAddChoice, NODE_TYPE_UI.choice)
+        setButtonVisual(refs.dockAddBranch, NODE_TYPE_UI.branch)
+        setButtonVisual(refs.dockAddAction, NODE_TYPE_UI.action)
+        setButtonVisual(refs.dockAddEnd, NODE_TYPE_UI.end)
+        setButtonVisual(refs.dockStartLink, { label: 'Lier depuis la selection', icon: 'link', tone: 'slate' })
+        setButtonVisual(refs.dockAutoLayout, { label: 'Auto layout', icon: 'layout', tone: 'amber' })
+        setButtonVisual(refs.dockFitView, { label: 'Cadrer', icon: 'focus', tone: 'slate' })
+
+        refs.quickPalette.querySelectorAll('[data-add-type]').forEach((button) => {
+          const type = button.dataset.addType
+          const ui = NODE_TYPE_UI[type]
+          if(ui) {
+            setButtonVisual(button, ui)
+          }
+        })
+
+        updateFileControlsState()
+      }
+
+      function createNode(type = 'line') {
+        if(type === 'choice') {
+          return {
+            type: 'choice',
+            speaker: 'Bloom',
+            text: '',
+            choices: []
+          }
+        }
+        if(type === 'branch') {
+          return {
+            type: 'branch',
+            branches: [],
+            fallbackNext: ''
+          }
+        }
+        if(type === 'action') {
+          return {
+            type: 'action',
+            run: [],
+            next: ''
+          }
+        }
+        if(type === 'end') {
+          return {
+            type: 'end',
+            actions: []
+          }
+        }
+
+        return {
+          type: 'line',
+          speaker: 'Bloom',
+          text: '',
+          next: ''
+        }
+      }
+
+      function normalizeDialogue(rawKey, rawDialogue) {
+        const key = typeof rawDialogue?.key === 'string' && rawDialogue.key.trim() !== ''
+          ? rawDialogue.key.trim()
+          : rawKey
+
+        const nodes = {}
+        const rawNodes = rawDialogue?.nodes || {}
+        for(const nodeId of Object.keys(rawNodes)) {
+          const rawNode = rawNodes[nodeId] || {}
+          const type = rawNode.type || 'line'
+          const base = createNode(type)
+          nodes[nodeId] = { ...base, ...rawNode, type }
+        }
+
+        return {
+          key,
+          once: Boolean(rawDialogue?.once),
+          startNode: rawDialogue?.startNode || Object.keys(nodes)[0] || '',
+          nodes
+        }
+      }
+
+      function normalizeData(input) {
+        const map = input?.dialogues && typeof input.dialogues === 'object'
+          ? input.dialogues
+          : (typeof input === 'object' ? input : {})
+
+        const normalized = {}
+        for(const key of Object.keys(map)) {
+          normalized[key] = normalizeDialogue(key, map[key])
+        }
+        return normalized
+      }
+
+      function currentDialogue() {
+        return state.dialogues[currentDialogueKey] || null
+      }
+
+      function currentLayout() {
+        if(!currentDialogueKey) {
+          return {}
+        }
+        if(!state.layouts[currentDialogueKey]) {
+          state.layouts[currentDialogueKey] = {}
+        }
+        return state.layouts[currentDialogueKey]
+      }
+
+      function getNodeTargets(dialogue, node) {
+        const targets = []
+        const push = (nodeId) => {
+          if(typeof nodeId !== 'string' || nodeId.trim() === '') {
+            return
+          }
+          if(!dialogue.nodes[nodeId]) {
+            return
+          }
+          if(!targets.includes(nodeId)) {
+            targets.push(nodeId)
+          }
+        }
+
+        push(node.next)
+        push(node.fallbackNext)
+
+        if(Array.isArray(node.choices)) {
+          node.choices.forEach((choice) => push(choice.next))
+        }
+        if(Array.isArray(node.branches)) {
+          node.branches.forEach((branch) => push(branch.next))
+        }
+
+        return targets
+      }
+
+      function buildAutoLayout(dialogue) {
+        const ids = Object.keys(dialogue.nodes)
+        if(ids.length === 0) {
+          return {}
+        }
+
+        const start = dialogue.startNode && dialogue.nodes[dialogue.startNode]
+          ? dialogue.startNode
+          : ids[0]
+
+        const outgoing = {}
+        const parents = {}
+        ids.forEach((id) => {
+          outgoing[id] = []
+          parents[id] = []
+        })
+
+        ids.forEach((id) => {
+          const targets = getNodeTargets(dialogue, dialogue.nodes[id])
+          targets.forEach((toId) => {
+            outgoing[id].push(toId)
+            parents[toId].push(id)
+          })
+        })
+
+        const levelOf = {}
+        levelOf[start] = 0
+        const queue = [start]
+        while(queue.length > 0) {
+          const currentId = queue.shift()
+          const currentLevel = levelOf[currentId]
+
+          outgoing[currentId].forEach((nextId) => {
+            const nextLevel = currentLevel + 1
+            if(levelOf[nextId] === undefined || nextLevel < levelOf[nextId]) {
+              levelOf[nextId] = nextLevel
+              queue.push(nextId)
+            }
+          })
+        }
+
+        let maxLevel = Math.max(...Object.values(levelOf), 0)
+        ids.forEach((id) => {
+          if(levelOf[id] === undefined) {
+            maxLevel += 1
+            levelOf[id] = maxLevel
+          }
+        })
+
+        const groups = {}
+        ids.forEach((id) => {
+          const level = levelOf[id]
+          if(!groups[level]) {
+            groups[level] = []
+          }
+          groups[level].push(id)
+        })
+
+        const orderedLevels = Object.keys(groups)
+          .map(Number)
+          .sort((a, b) => a - b)
+
+        const rank = {}
+        orderedLevels.forEach((level, levelIndex) => {
+          const nodesAtLevel = groups[level]
+          if(levelIndex === 0) {
+            nodesAtLevel.sort((a, b) => a.localeCompare(b))
+            nodesAtLevel.forEach((id, index) => {
+              rank[id] = index
+            })
+            return
+          }
+
+          nodesAtLevel.sort((a, b) => {
+            const aParents = parents[a] || []
+            const bParents = parents[b] || []
+
+            const score = (list) => {
+              if(list.length === 0) {
+                return Number.POSITIVE_INFINITY
+              }
+              return list.reduce((sum, parentId) => sum + (rank[parentId] ?? 0), 0) / list.length
+            }
+
+            const delta = score(aParents) - score(bParents)
+            if(delta !== 0) {
+              return delta
+            }
+            return a.localeCompare(b)
+          })
+
+          nodesAtLevel.forEach((id, index) => {
+            rank[id] = index
+          })
+        })
+
+        const spacingX = 360
+        const spacingY = 190
+        const result = {}
+
+        orderedLevels.forEach((level) => {
+          const nodesAtLevel = groups[level]
+          const totalHeight = (nodesAtLevel.length - 1) * spacingY
+          nodesAtLevel.forEach((id, index) => {
+            result[id] = {
+              x: level * spacingX,
+              y: index * spacingY - totalHeight / 2
+            }
+          })
+        })
+
+        return result
+      }
+
+      function ensureLayoutForCurrentDialogue() {
+        const dialogue = currentDialogue()
+        if(!dialogue) {
+          return
+        }
+
+        const layout = currentLayout()
+        let requiresLayout = false
+
+        Object.keys(layout).forEach((id) => {
+          if(!dialogue.nodes[id]) {
+            delete layout[id]
+          }
+        })
+
+        Object.keys(dialogue.nodes).forEach((id) => {
+          if(!layout[id]) {
+            requiresLayout = true
+          }
+        })
+
+        if(requiresLayout || Object.keys(layout).length === 0) {
+          state.layouts[currentDialogueKey] = buildAutoLayout(dialogue)
+        }
+      }
+
+      function buildLayoutsForAllDialogues() {
+        const layouts = {}
+        Object.entries(state.dialogues).forEach(([dialogueKey, dialogue]) => {
+          layouts[dialogueKey] = buildAutoLayout(dialogue)
+        })
+        state.layouts = layouts
+      }
+
+      function autoLayoutCurrentDialogue({ fit = true } = {}) {
+        const dialogue = currentDialogue()
+        if(!dialogue) {
+          return
+        }
+
+        state.layouts[currentDialogueKey] = buildAutoLayout(dialogue)
+        syncGraphFromDialogue()
+        if(fit) {
+          network.fit({ animation: { duration: 420, easingFunction: 'easeInOutQuad' } })
+        }
+      }
+
+      function selectDialogue(key) {
+        if(!state.dialogues[key]) {
+          return
+        }
+        currentDialogueKey = key
+        selectedNodeId = null
+        clearLinkArming()
+        hideQuickPalette()
+        state.ui.rightPanelVisible = true
+        updateLayoutVisibility()
+        renderDialogueList()
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+      }
+
+      function createDialogue(baseKey = 'dialogue.new', { select = false } = {}) {
+        const key = uniqueDialogueKey(baseKey)
+        state.dialogues[key] = {
+          key,
+          once: false,
+          startNode: '',
+          nodes: {}
+        }
+        state.layouts[key] = {}
+
+        if(select) {
+          selectDialogue(key)
+          setStatus(`Dialogue cree: ${key}`, 'ok')
+          return
+        }
+
+        currentDialogueKey = null
+        selectedNodeId = null
+        clearLinkArming()
+        hideQuickPalette()
+        state.ui.rightPanelVisible = false
+        updateLayoutVisibility()
+        renderDialogueList()
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+        setStatus(`Dialogue cree: ${key}. Clique dessus pour l ouvrir.`, 'ok')
+      }
+
+      function uniqueDialogueKey(base) {
+        let index = 1
+        let key = base
+        while(state.dialogues[key]) {
+          key = `${base}.${index++}`
+        }
+        return key
+      }
+
+      function uniqueNodeId(prefix = 'node') {
+        const dialogue = currentDialogue()
+        let index = 1
+        let id = `${prefix}_${index}`
+        while(dialogue.nodes[id]) {
+          id = `${prefix}_${++index}`
+        }
+        return id
+      }
+
+      function renameDialogue(oldKey, newKey) {
+        const normalized = newKey.trim()
+        if(!normalized || normalized === oldKey) {
+          return
+        }
+        if(state.dialogues[normalized]) {
+          setStatus(`Cle dialogue deja utilisee: ${normalized}`, 'warn')
+          return
+        }
+
+        const copy = state.dialogues[oldKey]
+        const layout = state.layouts[oldKey] || {}
+        delete state.dialogues[oldKey]
+        delete state.layouts[oldKey]
+        copy.key = normalized
+        state.dialogues[normalized] = copy
+        state.layouts[normalized] = layout
+        currentDialogueKey = normalized
+        renderDialogueList()
+        setStatus(`Dialogue renomme: ${normalized}`, 'ok')
+      }
+
+      function renameNode(oldId, newId) {
+        const dialogue = currentDialogue()
+        const targetId = newId.trim()
+        if(!targetId || targetId === oldId) {
+          return true
+        }
+        if(dialogue.nodes[targetId]) {
+          setStatus(`Identifiant de bloc deja pris: ${targetId}`, 'warn')
+          return false
+        }
+
+        dialogue.nodes[targetId] = dialogue.nodes[oldId]
+        delete dialogue.nodes[oldId]
+
+        if(dialogue.startNode === oldId) {
+          dialogue.startNode = targetId
+        }
+
+        replaceNodeReferences(dialogue, oldId, targetId)
+        const layout = currentLayout()
+        if(layout[oldId]) {
+          layout[targetId] = layout[oldId]
+          delete layout[oldId]
+        }
+        selectedNodeId = targetId
+        return true
+      }
+
+      function replaceNodeReferences(dialogue, oldId, newId) {
+        for(const node of Object.values(dialogue.nodes)) {
+          if(node.next === oldId) {
+            node.next = newId
+          }
+          if(node.fallbackNext === oldId) {
+            node.fallbackNext = newId
+          }
+          if(Array.isArray(node.choices)) {
+            node.choices.forEach((choice) => {
+              if(choice.next === oldId) {
+                choice.next = newId
+              }
+            })
+          }
+          if(Array.isArray(node.branches)) {
+            node.branches.forEach((branch) => {
+              if(branch.next === oldId) {
+                branch.next = newId
+              }
+            })
+          }
+        }
+      }
+
+      function removeNodeReferences(dialogue, targetId) {
+        for(const node of Object.values(dialogue.nodes)) {
+          if(node.next === targetId) {
+            node.next = ''
+          }
+          if(node.fallbackNext === targetId) {
+            node.fallbackNext = ''
+          }
+          if(Array.isArray(node.choices)) {
+            node.choices.forEach((choice) => {
+              if(choice.next === targetId) {
+                choice.next = ''
+              }
+            })
+          }
+          if(Array.isArray(node.branches)) {
+            node.branches.forEach((branch) => {
+              if(branch.next === targetId) {
+                branch.next = ''
+              }
+            })
+          }
+        }
+      }
+
+      function deleteCurrentNode() {
+        deleteNodeById(selectedNodeId)
+      }
+
+      function deleteNodeById(nodeId) {
+        const dialogue = currentDialogue()
+        if(!dialogue || !nodeId || !dialogue.nodes[nodeId]) {
+          return
+        }
+
+        const removedId = nodeId
+        delete dialogue.nodes[removedId]
+        delete currentLayout()[removedId]
+        removeNodeReferences(dialogue, removedId)
+
+        if(dialogue.startNode === removedId) {
+          dialogue.startNode = Object.keys(dialogue.nodes)[0] || ''
+        }
+
+        if(state.ui.linkSourceId === removedId) {
+          clearLinkArming()
+        }
+
+        if(selectedNodeId === removedId) {
+          selectedNodeId = null
+        }
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+        setStatus(`Bloc supprime: ${removedId}`, 'ok')
+      }
+
+      function getViewportCenter() {
+        if(!network) {
+          return { x: 0, y: 0 }
+        }
+        const center = network.getViewPosition()
+        return { x: center.x, y: center.y }
+      }
+
+      function addNode(type = 'line', { canvasPos = null } = {}) {
+        const dialogue = currentDialogue()
+        if(!dialogue) {
+          setStatus('Selectionne un dialogue avant d ajouter un bloc.', 'warn')
+          return
+        }
+
+        const nodeId = uniqueNodeId(type)
+        dialogue.nodes[nodeId] = createNode(type)
+        const layout = currentLayout()
+        const anchor = canvasPos
+          ? { x: canvasPos.x, y: canvasPos.y }
+          : (selectedNodeId && layout[selectedNodeId]
+              ? { x: layout[selectedNodeId].x + 290, y: layout[selectedNodeId].y + 120 }
+              : getViewportCenter())
+
+        layout[nodeId] = {
+          x: anchor.x,
+          y: anchor.y
+        }
+
+        if(!dialogue.startNode) {
+          dialogue.startNode = nodeId
+        }
+
+        selectedNodeId = nodeId
+        state.ui.rightPanelVisible = true
+        hideQuickPalette()
+        updateLayoutVisibility()
+        renderDialogueMeta()
+        renderNodeInspector()
+        syncGraphFromDialogue()
+        setStatus(`Bloc ajoute: ${nodeId}`, 'ok')
+      }
+
+      function clearLinkArming() {
+        state.ui.linkSourceId = null
+        updateDockState()
+      }
+
+      function armLinkFromSelection() {
+        const dialogue = currentDialogue()
+        if(!dialogue || !selectedNodeId || !dialogue.nodes[selectedNodeId]) {
+          setStatus('Selectionne un bloc pour demarrer une liaison.', 'warn')
+          return
+        }
+        state.ui.linkSourceId = selectedNodeId
+        hideQuickPalette()
+        updateDockState()
+        setStatus(`Liaison active depuis ${selectedNodeId}. Clique un bloc cible.`, 'ok')
+      }
+
+      function connectNodes(fromId, toId) {
+        const dialogue = currentDialogue()
+        if(!dialogue || !dialogue.nodes[fromId] || !dialogue.nodes[toId]) {
+          setStatus('Impossible de creer le lien entre ces blocs.', 'warn')
+          return false
+        }
+
+        const source = dialogue.nodes[fromId]
+
+        if(source.type === 'end') {
+          setStatus('Un bloc de fin ne peut pas avoir de sortie.', 'warn')
+          return false
+        }
+
+        if(source.type === 'line' || source.type === 'action') {
+          source.next = toId
+          setStatus(`Lien cree: ${fromId} -> ${toId}`, 'ok')
+          return true
+        }
+
+        if(source.type === 'choice') {
+          if(!Array.isArray(source.choices)) {
+            source.choices = []
+          }
+
+          let slot = source.choices.find((choice) => !choice.next)
+          if(!slot) {
+            slot = {
+              id: `choice_${source.choices.length + 1}`,
+              text: 'Nouvelle reponse',
+              next: '',
+              conditions: [],
+              actions: []
+            }
+            source.choices.push(slot)
+          }
+
+          slot.next = toId
+          setStatus(`Lien cree sur une reponse: ${fromId} -> ${toId}`, 'ok')
+          return true
+        }
+
+        if(source.type === 'branch') {
+          if(!Array.isArray(source.branches)) {
+            source.branches = []
+          }
+
+          let slot = source.branches.find((branch) => !branch.next)
+          if(!slot) {
+            slot = { conditions: [], next: '' }
+            source.branches.push(slot)
+          }
+
+          slot.next = toId
+          setStatus(`Lien cree sur une regle: ${fromId} -> ${toId}`, 'ok')
+          return true
+        }
+
+        setStatus('Type de bloc non gere pour la liaison.', 'warn')
+        return false
+      }
+
+      function toEditorValue(value) {
+        if(value === null) {
+          return 'null'
+        }
+        if(typeof value === 'string') {
+          return value
+        }
+        if(typeof value === 'number' || typeof value === 'boolean') {
+          return String(value)
+        }
+        try {
+          return JSON.stringify(value)
+        } catch(error) {
+          return String(value)
+        }
+      }
+
+      function parseEditorValue(rawValue) {
+        const value = rawValue.trim()
+        if(value === '') {
+          return ''
+        }
+        if(value === 'true') {
+          return true
+        }
+        if(value === 'false') {
+          return false
+        }
+        if(value === 'null') {
+          return null
+        }
+        if(/^-?\d+(\.\d+)?$/.test(value)) {
+          return Number(value)
+        }
+        if((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+          try {
+            return JSON.parse(value)
+          } catch(error) {
+            return rawValue
+          }
+        }
+        return rawValue
+      }
+
+      function asObjectArray(list) {
+        if(!Array.isArray(list)) {
+          return []
+        }
+        return list.map((item) => {
+          if(item && typeof item === 'object' && !Array.isArray(item)) {
+            return { ...item }
+          }
+          return {}
+        })
+      }
+
+      function createControlSelect(options, value, onChange) {
+        const select = document.createElement('select')
+        select.className = 'control'
+
+        options.forEach((optionData) => {
+          const option = document.createElement('option')
+          option.value = optionData.value
+          option.textContent = optionData.label
+          select.appendChild(option)
+        })
+
+        if(value && !options.some((optionData) => optionData.value === value)) {
+          const custom = document.createElement('option')
+          custom.value = value
+          custom.textContent = `${value} (personnalise)`
+          select.appendChild(custom)
+        }
+
+        select.value = value ?? options[0]?.value ?? ''
+        select.addEventListener('change', () => onChange(select.value))
+        return select
+      }
+
+      function createControlInput(value, onChange, { placeholder = '', smart = false } = {}) {
+        const input = document.createElement('input')
+        input.className = 'control'
+        input.value = value === undefined ? '' : toEditorValue(value)
+        input.placeholder = placeholder
+        input.addEventListener('blur', () => {
+          onChange(smart ? parseEditorValue(input.value) : input.value)
+        })
+        return input
+      }
+
+      function normalizeAction(action = {}) {
+        const type = action.type || 'setFlag'
+        action.type = type
+        if(type === 'setFlag') {
+          action.key = action.key ?? ''
+          action.value = action.value ?? true
+        } else if(type === 'addMetier') {
+          action.metier = action.metier ?? 'INVENTEUR'
+          action.amount = Number(action.amount ?? 0)
+        } else if(type === 'switchScene') {
+          action.scene = action.scene ?? ''
+        } else if(type === 'startMiniGame') {
+          action.key = action.key ?? ''
+          action.payload = action.payload ?? null
+        } else if(type === 'startDialogue') {
+          action.key = action.key ?? ''
+        } else if(type === 'setHudHint') {
+          action.text = action.text ?? ''
+        } else if(type === 'emit') {
+          action.event = action.event ?? ''
+          action.payload = action.payload ?? null
+        } else if(type === 'log') {
+          action.message = action.message ?? ''
+        }
+      }
+
+      function normalizeCondition(condition = {}) {
+        const type = condition.type || 'flagEquals'
+        condition.type = type
+        if(type === 'flagEquals') {
+          condition.key = condition.key ?? ''
+          condition.value = condition.value ?? true
+        } else if(type === 'flagTruthy') {
+          condition.key = condition.key ?? ''
+        } else if(type === 'metierAtLeast' || type === 'metierAtMost') {
+          condition.metier = condition.metier ?? 'INVENTEUR'
+          condition.value = Number(condition.value ?? 0)
+        } else if(type === 'contextEquals') {
+          condition.key = condition.key ?? ''
+          condition.value = condition.value ?? ''
+        }
+      }
+
+      function renderActionFields(parent, action, commit, refresh) {
+        if(action.type === 'setFlag') {
+          parent.appendChild(createField({
+            label: 'Nom du flag',
+            element: createControlInput(action.key, (value) => {
+              action.key = value
+              commit()
+            }, { placeholder: 'ex: intro.terminee' })
+          }))
+          parent.appendChild(createField({
+            label: 'Valeur du flag',
+            element: createControlInput(action.value, (value) => {
+              action.value = value
+              commit()
+            }, { placeholder: 'true / false / texte / nombre', smart: true })
+          }))
+          return
+        }
+
+        if(action.type === 'addMetier') {
+          parent.appendChild(createField({
+            label: 'Metier cible',
+            element: createControlSelect(METIER_OPTIONS, action.metier, (value) => {
+              action.metier = value
+              commit()
+            })
+          }))
+          parent.appendChild(createField({
+            label: 'Valeur a ajouter (negatif possible)',
+            element: createControlInput(action.amount, (value) => {
+              action.amount = Number(value || 0)
+              commit()
+            }, { placeholder: 'ex: -2 ou 5', smart: true })
+          }))
+          return
+        }
+
+        if(action.type === 'switchScene') {
+          parent.appendChild(createField({
+            label: 'Cle de la scene',
+            element: createControlInput(action.scene, (value) => {
+              action.scene = value
+              commit()
+            }, { placeholder: 'ex: ville' })
+          }))
+          return
+        }
+
+        if(action.type === 'startMiniGame') {
+          parent.appendChild(createField({
+            label: 'Cle du mini-jeu',
+            element: createControlInput(action.key, (value) => {
+              action.key = value
+              commit()
+            }, { placeholder: 'ex: puzzle_intro' })
+          }))
+          parent.appendChild(createField({
+            label: 'Donnees optionnelles',
+            element: createControlInput(action.payload, (value) => {
+              action.payload = value
+              commit()
+            }, { placeholder: 'texte, nombre, true/false, JSON', smart: true })
+          }))
+          return
+        }
+
+        if(action.type === 'startDialogue') {
+          parent.appendChild(createField({
+            label: 'Dialogue a lancer',
+            element: createControlInput(action.key, (value) => {
+              action.key = value
+              commit()
+            }, { placeholder: 'ex: bloom.second_acte' })
+          }))
+          return
+        }
+
+        if(action.type === 'setHudHint') {
+          const hintText = document.createElement('textarea')
+          hintText.className = 'control'
+          hintText.value = action.text ?? ''
+          hintText.placeholder = 'Message HUD'
+          hintText.addEventListener('input', () => {
+            action.text = hintText.value
+            commit()
+          })
+          parent.appendChild(createField({ label: 'Message a afficher', element: hintText }))
+          return
+        }
+
+        if(action.type === 'emit') {
+          parent.appendChild(createField({
+            label: 'Nom de l evenement',
+            element: createControlInput(action.event, (value) => {
+              action.event = value
+              commit()
+            }, { placeholder: 'ex: ui.flash' })
+          }))
+          parent.appendChild(createField({
+            label: 'Donnees de l evenement',
+            element: createControlInput(action.payload, (value) => {
+              action.payload = value
+              commit()
+            }, { placeholder: 'texte, nombre, true/false, JSON', smart: true })
+          }))
+          return
+        }
+
+        if(action.type === 'log') {
+          parent.appendChild(createField({
+            label: 'Message console',
+            element: createControlInput(action.message, (value) => {
+              action.message = value
+              commit()
+            }, { placeholder: 'Message debug' })
+          }))
+          return
+        }
+
+        const fallback = document.createElement('div')
+        fallback.className = 'field-help'
+        fallback.textContent = 'Type personnalise: active le mode technique pour editer ce cas.'
+        parent.appendChild(fallback)
+        refresh()
+      }
+
+      function renderConditionFields(parent, condition, commit, refresh) {
+        if(condition.type === 'flagEquals') {
+          parent.appendChild(createField({
+            label: 'Nom du flag',
+            element: createControlInput(condition.key, (value) => {
+              condition.key = value
+              commit()
+            }, { placeholder: 'ex: tutorial.termine' })
+          }))
+          parent.appendChild(createField({
+            label: 'Valeur attendue',
+            element: createControlInput(condition.value, (value) => {
+              condition.value = value
+              commit()
+            }, { placeholder: 'true / false / texte / nombre', smart: true })
+          }))
+          return
+        }
+
+        if(condition.type === 'flagTruthy') {
+          parent.appendChild(createField({
+            label: 'Nom du flag',
+            element: createControlInput(condition.key, (value) => {
+              condition.key = value
+              commit()
+            }, { placeholder: 'ex: has_key_item' })
+          }))
+          return
+        }
+
+        if(condition.type === 'metierAtLeast' || condition.type === 'metierAtMost') {
+          parent.appendChild(createField({
+            label: 'Metier',
+            element: createControlSelect(METIER_OPTIONS, condition.metier, (value) => {
+              condition.metier = value
+              commit()
+            })
+          }))
+          parent.appendChild(createField({
+            label: 'Valeur cible',
+            element: createControlInput(condition.value, (value) => {
+              condition.value = Number(value || 0)
+              commit()
+            }, { placeholder: 'ex: 3', smart: true })
+          }))
+          return
+        }
+
+        if(condition.type === 'contextEquals') {
+          parent.appendChild(createField({
+            label: 'Cle de contexte',
+            element: createControlInput(condition.key, (value) => {
+              condition.key = value
+              commit()
+            }, { placeholder: 'ex: origin' })
+          }))
+          parent.appendChild(createField({
+            label: 'Valeur attendue',
+            element: createControlInput(condition.value, (value) => {
+              condition.value = value
+              commit()
+            }, { placeholder: 'ex: hub', smart: true })
+          }))
+          return
+        }
+
+        const fallback = document.createElement('div')
+        fallback.className = 'field-help'
+        fallback.textContent = 'Condition personnalisee: active le mode technique pour editer ce cas.'
+        parent.appendChild(fallback)
+        refresh()
+      }
+
+      function appendActionListEditor(root, { title, help = '', actions = [], onUpdate }) {
+        const wrapper = document.createElement('div')
+        wrapper.className = 'list-editor'
+        wrapper.innerHTML = `<h4>${title}</h4>`
+
+        if(help) {
+          const helpEl = document.createElement('div')
+          helpEl.className = 'field-help'
+          helpEl.textContent = help
+          wrapper.appendChild(helpEl)
+        }
+
+        const list = asObjectArray(actions)
+        list.forEach((action) => normalizeAction(action))
+        onUpdate(list)
+
+        if(list.length === 0) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Aucune action.'
+          wrapper.appendChild(empty)
+        }
+
+        list.forEach((action, index) => {
+          const item = document.createElement('div')
+          item.className = 'list-item'
+
+          const typeSelect = createControlSelect(ACTION_TYPE_OPTIONS, action.type, (value) => {
+            action.type = value
+            normalizeAction(action)
+            onUpdate(list)
+            renderNodeInspector()
+          })
+          item.appendChild(createField({
+            label: `Action #${index + 1}`,
+            element: typeSelect
+          }))
+
+          renderActionFields(item, action, () => onUpdate(list), () => renderNodeInspector())
+
+          const actionsRow = document.createElement('div')
+          actionsRow.className = 'row-actions'
+          const removeBtn = document.createElement('button')
+          removeBtn.className = 'btn tiny tone-red'
+          setButtonVisual(removeBtn, { label: 'Supprimer cette action', icon: 'trash', tone: 'red' })
+          removeBtn.addEventListener('click', () => {
+            list.splice(index, 1)
+            onUpdate(list)
+            renderNodeInspector()
+          })
+          actionsRow.appendChild(removeBtn)
+          item.appendChild(actionsRow)
+
+          wrapper.appendChild(item)
+        })
+
+        const addBtn = document.createElement('button')
+        addBtn.className = 'btn tiny tone-green'
+        setButtonVisual(addBtn, { label: 'Ajouter une action', icon: 'plus', tone: 'green' })
+        addBtn.addEventListener('click', () => {
+          list.push({ type: 'setFlag', key: '', value: true })
+          onUpdate(list)
+          renderNodeInspector()
+        })
+        wrapper.appendChild(addBtn)
+        root.appendChild(wrapper)
+      }
+
+      function appendConditionListEditor(root, { title, help = '', conditions = [], onUpdate }) {
+        const wrapper = document.createElement('div')
+        wrapper.className = 'list-editor'
+        wrapper.innerHTML = `<h4>${title}</h4>`
+
+        if(help) {
+          const helpEl = document.createElement('div')
+          helpEl.className = 'field-help'
+          helpEl.textContent = help
+          wrapper.appendChild(helpEl)
+        }
+
+        const list = asObjectArray(conditions)
+        list.forEach((condition) => normalizeCondition(condition))
+        onUpdate(list)
+
+        if(list.length === 0) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Aucune condition.'
+          wrapper.appendChild(empty)
+        }
+
+        list.forEach((condition, index) => {
+          const item = document.createElement('div')
+          item.className = 'list-item'
+
+          const typeSelect = createControlSelect(CONDITION_TYPE_OPTIONS, condition.type, (value) => {
+            condition.type = value
+            normalizeCondition(condition)
+            onUpdate(list)
+            renderNodeInspector()
+          })
+          item.appendChild(createField({
+            label: `Condition #${index + 1}`,
+            element: typeSelect
+          }))
+
+          renderConditionFields(item, condition, () => onUpdate(list), () => renderNodeInspector())
+
+          const actionsRow = document.createElement('div')
+          actionsRow.className = 'row-actions'
+          const removeBtn = document.createElement('button')
+          removeBtn.className = 'btn tiny tone-red'
+          setButtonVisual(removeBtn, { label: 'Supprimer cette condition', icon: 'trash', tone: 'red' })
+          removeBtn.addEventListener('click', () => {
+            list.splice(index, 1)
+            onUpdate(list)
+            renderNodeInspector()
+          })
+          actionsRow.appendChild(removeBtn)
+          item.appendChild(actionsRow)
+
+          wrapper.appendChild(item)
+        })
+
+        const addBtn = document.createElement('button')
+        addBtn.className = 'btn tiny tone-green'
+        setButtonVisual(addBtn, { label: 'Ajouter une condition', icon: 'plus', tone: 'green' })
+        addBtn.addEventListener('click', () => {
+          list.push({ type: 'flagEquals', key: '', value: true })
+          onUpdate(list)
+          renderNodeInspector()
+        })
+        wrapper.appendChild(addBtn)
+        root.appendChild(wrapper)
+      }
+
+      function createField({ label, element, help = '' }) {
+        const wrapper = document.createElement('div')
+        wrapper.className = 'field'
+        const title = document.createElement('label')
+        title.textContent = label
+        wrapper.appendChild(title)
+        wrapper.appendChild(element)
+        if(help) {
+          const hint = document.createElement('div')
+          hint.className = 'field-help'
+          hint.textContent = help
+          wrapper.appendChild(hint)
+        }
+        return wrapper
+      }
+
+      function createEditorSection({ title, help = '', tone = 'slate' }) {
+        const section = document.createElement('section')
+        section.className = `editor-section ${tone}`
+
+        const heading = document.createElement('h3')
+        heading.className = 'editor-section__title'
+        heading.textContent = title
+        section.appendChild(heading)
+
+        if(help) {
+          const hint = document.createElement('p')
+          hint.className = 'editor-section__help'
+          hint.textContent = help
+          section.appendChild(hint)
+        }
+
+        return section
+      }
+
+      function getInspectorObjectKey(object, prefix = 'item') {
+        if(!object || typeof object !== 'object') {
+          return `${prefix}.none`
+        }
+        if(!inspectorObjectKeys.has(object)) {
+          inspectorObjectKeys.set(object, `${prefix}.${inspectorObjectKeyCounter++}`)
+        }
+        return inspectorObjectKeys.get(object)
+      }
+
+      function inspectorDetailsStateKey(localKey) {
+        return `${currentDialogueKey || 'none'}::${selectedNodeId || 'none'}::${localKey}`
+      }
+
+      function createPersistentDetails(localKey, { className = 'item', defaultOpen = false } = {}) {
+        const details = document.createElement('details')
+        details.className = className
+
+        const key = inspectorDetailsStateKey(localKey)
+        if(state.ui.inspectorDetailsOpen[key] === undefined) {
+          details.open = defaultOpen
+        } else {
+          details.open = Boolean(state.ui.inspectorDetailsOpen[key])
+        }
+
+        details.addEventListener('toggle', () => {
+          state.ui.inspectorDetailsOpen[key] = details.open
+        })
+
+        return details
+      }
+
+      function previewText(value, maxLength = 40) {
+        const text = String(value ?? '').trim()
+        if(text === '') {
+          return '(vide)'
+        }
+        if(text.length <= maxLength) {
+          return text
+        }
+        return `${text.slice(0, maxLength - 1)}…`
+      }
+
+      function createNodeSelect(currentValue, onChange) {
+        const select = document.createElement('select')
+        select.className = 'control'
+        const dialogue = currentDialogue()
+
+        const blank = document.createElement('option')
+        blank.value = ''
+        blank.textContent = '-- Aucun --'
+        select.appendChild(blank)
+
+        Object.keys(dialogue.nodes).forEach((nodeId) => {
+          const option = document.createElement('option')
+          option.value = nodeId
+          option.textContent = nodeId
+          select.appendChild(option)
+        })
+
+        select.value = currentValue || ''
+        select.addEventListener('change', () => {
+          onChange(select.value || '')
+        })
+
+        return select
+      }
+
+      function renderDialogueList() {
+        refs.dialogueList.innerHTML = ''
+
+        const keys = Object.keys(state.dialogues).sort()
+        if(keys.length === 0) {
+          refs.dialogueList.innerHTML = '<div class="empty">Aucun dialogue.</div>'
+          return
+        }
+
+        keys.forEach((key) => {
+          const item = document.createElement('button')
+          item.type = 'button'
+          item.className = `dialogue-item ${key === currentDialogueKey ? 'active' : ''}`
+
+          const dialogue = state.dialogues[key]
+          const count = Object.keys(dialogue.nodes || {}).length
+          item.innerHTML = `
+            <strong>${key}</strong><br />
+            <span class="muted">${count} bloc(s) - debut: ${dialogue.startNode || 'non defini'}</span>
+          `
+          item.addEventListener('click', () => selectDialogue(key))
+          refs.dialogueList.appendChild(item)
+        })
+      }
+
+      function renderDialogueMeta() {
+        const dialogue = currentDialogue()
+        const root = refs.dialogueMetaSection
+        root.innerHTML = '<h2>Configuration du dialogue</h2>'
+
+        if(!dialogue) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Selectionne un dialogue a gauche pour voir ses reglages.'
+          root.appendChild(empty)
+          return
+        }
+
+        const keyInput = document.createElement('input')
+        keyInput.value = currentDialogueKey
+        keyInput.addEventListener('blur', () => renameDialogue(currentDialogueKey, keyInput.value))
+        root.appendChild(createField({
+          label: 'Nom unique du dialogue',
+          element: keyInput,
+          help: 'Identifiant interne. Exemple: bloom.intro'
+        }))
+
+        const onceSelect = document.createElement('select')
+        onceSelect.innerHTML = '<option value="false">Non, ce dialogue peut se rejouer</option><option value="true">Oui, ce dialogue ne se joue qu une fois</option>'
+        onceSelect.value = String(Boolean(dialogue.once))
+        onceSelect.addEventListener('change', () => {
+          dialogue.once = onceSelect.value === 'true'
+        })
+        root.appendChild(createField({
+          label: 'Ce dialogue ne se joue qu une seule fois ?',
+          element: onceSelect,
+          help: 'Active cette option pour bloquer le dialogue apres la premiere lecture.'
+        }))
+
+        const startSelect = createNodeSelect(dialogue.startNode, (value) => {
+          dialogue.startNode = value
+          syncGraphFromDialogue()
+          renderDialogueList()
+        })
+        root.appendChild(createField({
+          label: 'Bloc de demarrage du dialogue',
+          element: startSelect,
+          help: 'Ce bloc sera lu en premier quand le dialogue est lance.'
+        }))
+
+        const dangerRow = document.createElement('div')
+        dangerRow.className = 'row-actions'
+        dangerRow.style.marginTop = '8px'
+
+        const deleteDialogue = document.createElement('button')
+        deleteDialogue.className = 'btn tiny tone-red'
+        setButtonVisual(deleteDialogue, { label: 'Supprimer dialogue', icon: 'trash', tone: 'red' })
+        deleteDialogue.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Supprimer ce dialogue',
+            message: `Le dialogue ${currentDialogueKey} sera supprime de l editeur.`,
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(!confirmed) {
+            return
+          }
+          delete state.dialogues[currentDialogueKey]
+          delete state.layouts[currentDialogueKey]
+          currentDialogueKey = null
+          selectedNodeId = null
+          clearLinkArming()
+          hideQuickPalette()
+          state.ui.rightPanelVisible = false
+          updateLayoutVisibility()
+          renderDialogueList()
+          renderDialogueMeta()
+          renderNodeInspector()
+          syncGraphFromDialogue()
+        })
+        dangerRow.appendChild(deleteDialogue)
+        root.appendChild(dangerRow)
+      }
+
+      function renderNodeInspector() {
+        const dialogue = currentDialogue()
+        const root = refs.nodeInspectorSection
+        root.innerHTML = ''
+
+        const heading = document.createElement('h2')
+        heading.textContent = selectedNodeId || 'Bloc'
+        root.appendChild(heading)
+
+        if(!dialogue || !selectedNodeId || !dialogue.nodes[selectedNodeId]) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Selectionne un bloc dans le graphe.'
+          root.appendChild(empty)
+          updateDockState()
+          return
+        }
+
+        const node = dialogue.nodes[selectedNodeId]
+        const inspectorNodeId = selectedNodeId
+        const inspectorHead = document.createElement('div')
+        inspectorHead.className = 'inspector-head'
+        const infoPill = document.createElement('div')
+        infoPill.className = 'pill'
+        infoPill.textContent = NODE_TYPE_LABELS[node.type] || node.type
+        inspectorHead.appendChild(infoPill)
+        root.appendChild(inspectorHead)
+
+        const typeSelect = document.createElement('select')
+        ;['line', 'choice', 'branch', 'action', 'end'].forEach((type) => {
+          const option = document.createElement('option')
+          option.value = type
+          option.textContent = NODE_TYPE_LABELS[type] || type
+          typeSelect.appendChild(option)
+        })
+        typeSelect.value = node.type || 'line'
+        typeSelect.addEventListener('change', () => {
+          const nextType = typeSelect.value
+          const base = createNode(nextType)
+          dialogue.nodes[selectedNodeId] = {
+            ...base,
+            speaker: node.speaker ?? base.speaker,
+            text: node.text ?? base.text,
+            next: node.next ?? base.next
+          }
+          renderNodeInspector()
+          syncGraphFromDialogue()
+        })
+        root.appendChild(createField({
+          label: 'Role du bloc',
+          element: typeSelect,
+          help: 'Definit ce que fait ce bloc.'
+        }))
+
+        const idInput = document.createElement('input')
+        idInput.value = selectedNodeId
+        idInput.addEventListener('blur', () => {
+          const ok = renameNode(selectedNodeId, idInput.value)
+          if(ok) {
+            renderDialogueList()
+            renderDialogueMeta()
+            renderNodeInspector()
+            syncGraphFromDialogue()
+          }
+        })
+        root.appendChild(createField({
+          label: 'Nom technique unique du bloc',
+          element: idInput,
+          help: 'Utilise un nom court et unique.'
+        }))
+
+        if(node.type === 'line') {
+          renderLineEditor(root, node)
+        } else if(node.type === 'choice') {
+          renderChoiceEditor(root, node)
+        } else if(node.type === 'branch') {
+          renderBranchEditor(root, node)
+        } else if(node.type === 'action') {
+          renderActionEditor(root, node)
+        } else if(node.type === 'end') {
+          renderEndEditor(root, node)
+        }
+
+        const dangerRow = document.createElement('div')
+        dangerRow.className = 'row-actions'
+        const deleteNodeBtn = document.createElement('button')
+        deleteNodeBtn.type = 'button'
+        deleteNodeBtn.className = 'btn tiny tone-red'
+        setButtonVisual(deleteNodeBtn, { label: 'Supprimer bloc', icon: 'trash', tone: 'red' })
+        deleteNodeBtn.addEventListener('click', async (event) => {
+          event.preventDefault()
+          const confirmed = await showConfirmModal({
+            title: 'Supprimer ce bloc',
+            message: `Le bloc ${inspectorNodeId} sera supprime, et ses references seront nettoyees.`,
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(confirmed) {
+            deleteNodeById(inspectorNodeId)
+          }
+        })
+        dangerRow.appendChild(deleteNodeBtn)
+        root.appendChild(dangerRow)
+        updateDockState()
+      }
+
+      function renderLineEditor(root, node) {
+        const contentSection = createEditorSection({
+          title: '1. Contenu du message',
+          help: '',
+          tone: 'blue'
+        })
+
+        const speaker = document.createElement('input')
+        speaker.className = 'control'
+        speaker.value = node.speaker || ''
+        speaker.addEventListener('input', () => {
+          node.speaker = speaker.value
+        })
+        contentSection.appendChild(createField({
+          label: 'Personnage qui parle',
+          element: speaker,
+          help: 'Exemple: Bloom, Narrateur, Joueur'
+        }))
+
+        const text = document.createElement('textarea')
+        text.className = 'control'
+        text.value = node.text || ''
+        text.addEventListener('input', () => {
+          node.text = text.value
+        })
+        contentSection.appendChild(createField({
+          label: 'Texte affiche au joueur',
+          element: text
+        }))
+        root.appendChild(contentSection)
+
+        const navSection = createEditorSection({
+          title: '2. Suite du dialogue',
+          help: '',
+          tone: 'amber'
+        })
+
+        const next = createNodeSelect(node.next, (value) => {
+          node.next = value
+          syncGraphFromDialogue()
+        })
+        navSection.appendChild(createField({
+          label: 'Bloc suivant apres ce texte',
+          element: next
+        }))
+        root.appendChild(navSection)
+
+        const actionSection = createEditorSection({
+          title: '3. Actions optionnelles',
+          help: '',
+          tone: 'green'
+        })
+
+        appendActionListEditor(actionSection, {
+          title: 'Actions declenchees dans ce bloc',
+          help: 'Optionnel. Declenche des effets au moment ou cette ligne s affiche.',
+          actions: node.actions || [],
+          onUpdate: (nextActions) => {
+            node.actions = nextActions
+          }
+        })
+        root.appendChild(actionSection)
+      }
+
+      function renderChoiceEditor(root, node) {
+        const questionSection = createEditorSection({
+          title: '1. Question affichee',
+          help: '',
+          tone: 'blue'
+        })
+
+        const speaker = document.createElement('input')
+        speaker.className = 'control'
+        speaker.value = node.speaker || ''
+        speaker.addEventListener('input', () => {
+          node.speaker = speaker.value
+        })
+        questionSection.appendChild(createField({
+          label: 'Personnage qui pose la question',
+          element: speaker
+        }))
+
+        const text = document.createElement('textarea')
+        text.className = 'control'
+        text.value = node.text || ''
+        text.addEventListener('input', () => {
+          node.text = text.value
+        })
+        questionSection.appendChild(createField({
+          label: 'Question affichee au joueur',
+          element: text
+        }))
+        root.appendChild(questionSection)
+
+        if(!Array.isArray(node.choices)) {
+          node.choices = []
+        }
+
+        const answersSection = createEditorSection({
+          title: '2. Reponses du joueur',
+          help: '',
+          tone: 'red'
+        })
+
+        if(node.choices.length > 0) {
+          const overview = document.createElement('div')
+          overview.className = 'choice-overview'
+          node.choices.forEach((choice, index) => {
+            const row = document.createElement('div')
+            row.className = 'choice-overview__row'
+            row.innerHTML = `
+              <span class="choice-overview__idx">${index + 1}</span>
+              <span>${previewText(choice.text, 52)}</span>
+              <span class="choice-overview__to">→ ${choice.next || 'non defini'}</span>
+            `
+            overview.appendChild(row)
+          })
+          answersSection.appendChild(overview)
+        }
+
+        if(node.choices.length === 0) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Aucune reponse pour le moment.'
+          answersSection.appendChild(empty)
+        }
+
+        node.choices.forEach((choice, index) => {
+          if(!choice.id) {
+            choice.id = `choice_${index + 1}`
+          }
+
+          const choiceKey = getInspectorObjectKey(choice, 'choice')
+          const item = createPersistentDetails(`choice.item.${choiceKey}`, {
+            className: 'item',
+            defaultOpen: index === 0
+          })
+          const summary = document.createElement('summary')
+          const nextLabel = choice.next && currentDialogue()?.nodes?.[choice.next] ? choice.next : 'non defini'
+          summary.innerHTML = `
+            <span>Reponse ${index + 1}: ${previewText(choice.text, 46)}</span>
+            <span class="summary-meta">→ ${nextLabel}</span>
+          `
+          item.appendChild(summary)
+
+          const ctext = document.createElement('textarea')
+          ctext.className = 'control'
+          ctext.value = choice.text || ''
+          ctext.addEventListener('input', () => {
+            choice.text = ctext.value
+          })
+          item.appendChild(createField({
+            label: 'Texte',
+            element: ctext
+          }))
+
+          const next = createNodeSelect(choice.next, (value) => {
+            choice.next = value
+            syncGraphFromDialogue()
+            renderNodeInspector()
+          })
+          item.appendChild(createField({
+            label: 'Bloc cible',
+            element: next
+          }))
+
+          const advancedDetails = createPersistentDetails(`choice.advanced.${choiceKey}`, {
+            className: 'plain'
+          })
+          const advancedSummary = document.createElement('summary')
+          advancedSummary.textContent = 'Options avancees'
+          advancedDetails.appendChild(advancedSummary)
+
+          const id = document.createElement('input')
+          id.className = 'control'
+          id.value = choice.id
+          id.addEventListener('input', () => {
+            choice.id = id.value
+            syncGraphFromDialogue()
+          })
+          advancedDetails.appendChild(createField({
+            label: 'Identifiant technique de la reponse',
+            element: id
+          }))
+
+          appendConditionListEditor(advancedDetails, {
+            title: 'Conditions',
+            conditions: choice.conditions || [],
+            onUpdate: (nextConditions) => {
+              choice.conditions = nextConditions
+            }
+          })
+
+          appendActionListEditor(advancedDetails, {
+            title: 'Actions',
+            actions: choice.actions || [],
+            onUpdate: (nextActions) => {
+              choice.actions = nextActions
+            }
+          })
+          item.appendChild(advancedDetails)
+
+          const del = document.createElement('button')
+          del.className = 'btn tiny tone-red'
+          setButtonVisual(del, { label: 'Supprimer cette reponse', icon: 'trash', tone: 'red' })
+          del.addEventListener('click', () => {
+            node.choices.splice(index, 1)
+            renderNodeInspector()
+            syncGraphFromDialogue()
+          })
+          item.appendChild(del)
+
+          answersSection.appendChild(item)
+        })
+
+        const add = document.createElement('button')
+        add.className = 'btn tiny tone-green'
+        setButtonVisual(add, { label: 'Ajouter une reponse joueur', icon: 'plus', tone: 'green' })
+        add.addEventListener('click', () => {
+          node.choices.push({
+            id: `choice_${node.choices.length + 1}`,
+            text: '',
+            next: '',
+            conditions: [],
+            actions: []
+          })
+          renderNodeInspector()
+        })
+        answersSection.appendChild(add)
+        root.appendChild(answersSection)
+      }
+
+      function renderBranchEditor(root, node) {
+        if(!Array.isArray(node.branches)) {
+          node.branches = []
+        }
+
+        const rulesSection = createEditorSection({
+          title: '1. Regles de decision',
+          help: '',
+          tone: 'amber'
+        })
+
+        if(node.branches.length === 0) {
+          const empty = document.createElement('div')
+          empty.className = 'empty'
+          empty.textContent = 'Aucune regle pour le moment.'
+          rulesSection.appendChild(empty)
+        }
+
+        node.branches.forEach((branch, index) => {
+          const branchKey = getInspectorObjectKey(branch, 'branch')
+          const item = createPersistentDetails(`branch.item.${branchKey}`, {
+            className: 'item',
+            defaultOpen: index === 0
+          })
+          const summary = document.createElement('summary')
+          const nextLabel = branch.next && currentDialogue()?.nodes?.[branch.next] ? branch.next : 'non defini'
+          summary.innerHTML = `
+            <span>Regle ${index + 1}</span>
+            <span class="summary-meta">→ ${nextLabel}</span>
+          `
+          item.appendChild(summary)
+
+          const next = createNodeSelect(branch.next, (value) => {
+            branch.next = value
+            syncGraphFromDialogue()
+            renderNodeInspector()
+          })
+          item.appendChild(createField({
+            label: 'Aller vers ce bloc si la regle est valide',
+            element: next
+          }))
+
+          appendConditionListEditor(item, {
+            title: 'Conditions',
+            conditions: branch.conditions || [],
+            onUpdate: (nextConditions) => {
+              branch.conditions = nextConditions
+            }
+          })
+
+          const del = document.createElement('button')
+          del.className = 'btn tiny tone-red'
+          setButtonVisual(del, { label: 'Supprimer cette regle', icon: 'trash', tone: 'red' })
+          del.addEventListener('click', () => {
+            node.branches.splice(index, 1)
+            renderNodeInspector()
+            syncGraphFromDialogue()
+          })
+          item.appendChild(del)
+
+          rulesSection.appendChild(item)
+        })
+
+        const add = document.createElement('button')
+        add.className = 'btn tiny tone-green'
+        setButtonVisual(add, { label: 'Ajouter une regle', icon: 'plus', tone: 'green' })
+        add.addEventListener('click', () => {
+          node.branches.push({
+            conditions: [],
+            next: ''
+          })
+          renderNodeInspector()
+        })
+        rulesSection.appendChild(add)
+        root.appendChild(rulesSection)
+
+        const fallbackSection = createEditorSection({
+          title: '2. Chemin par defaut',
+          help: '',
+          tone: 'slate'
+        })
+
+        const fallback = createNodeSelect(node.fallbackNext, (value) => {
+          node.fallbackNext = value
+          syncGraphFromDialogue()
+        })
+        fallbackSection.appendChild(createField({
+          label: 'Si aucune regle ne passe, aller vers ce bloc',
+          element: fallback
+        }))
+        root.appendChild(fallbackSection)
+      }
+
+      function renderActionEditor(root, node) {
+        const actionSection = createEditorSection({
+          title: '1. Actions a executer',
+          help: '',
+          tone: 'green'
+        })
+
+        appendActionListEditor(actionSection, {
+          title: 'Actions executees dans ce bloc',
+          actions: node.run || [],
+          onUpdate: (nextActions) => {
+            node.run = nextActions
+          }
+        })
+        root.appendChild(actionSection)
+
+        const navSection = createEditorSection({
+          title: '2. Bloc suivant',
+          help: '',
+          tone: 'amber'
+        })
+
+        const next = createNodeSelect(node.next, (value) => {
+          node.next = value
+          syncGraphFromDialogue()
+        })
+        navSection.appendChild(createField({
+          label: 'Bloc suivant apres execution',
+          element: next
+        }))
+        root.appendChild(navSection)
+      }
+
+      function renderEndEditor(root, node) {
+        const section = createEditorSection({
+          title: 'Actions de fin',
+          help: '',
+          tone: 'slate'
+        })
+
+        appendActionListEditor(section, {
+          title: 'Actions de fin de dialogue',
+          actions: node.actions || [],
+          onUpdate: (nextActions) => {
+            node.actions = nextActions
+          }
+        })
+        root.appendChild(section)
+      }
+
+      function edgeId(from, to, label) {
+        return `${from}__${to}__${label}`
+      }
+
+      function syncGraphFromDialogue() {
+        const dialogue = currentDialogue()
+        nodesDS.clear()
+        edgesDS.clear()
+        hideNodeHoverTooltip()
+
+        if(!dialogue) {
+          refs.kpiNodes.textContent = '0'
+          refs.kpiEdges.textContent = '0'
+          hideQuickPalette()
+          clearLinkArming()
+          return
+        }
+
+        ensureLayoutForCurrentDialogue()
+        const layout = currentLayout()
+
+        const nodeIds = Object.keys(dialogue.nodes)
+        nodeIds.forEach((id) => {
+          const node = dialogue.nodes[id]
+          const isStart = dialogue.startNode === id
+          const color = TYPE_COLORS[node.type] || '#111'
+          const position = layout[id] || { x: 0, y: 0 }
+          nodesDS.add({
+            id,
+            label: `${isStart ? '★ ' : ''}${id}\n${NODE_TYPE_LABELS[node.type] || node.type}`,
+            shape: 'box',
+            font: { color: '#111', face: 'Manrope, Segoe UI, sans-serif', size: 14 },
+            color: {
+              background: '#fff',
+              border: color,
+              highlight: { background: '#f4f4f4', border: '#111' }
+            },
+            borderWidth: isStart ? 3 : 2,
+            x: position.x,
+            y: position.y
+          })
+        })
+
+        const rawEdges = []
+        const pushEdge = (from, to, label, color = '#111') => {
+          if(!from || !to || !dialogue.nodes[from] || !dialogue.nodes[to]) {
+            return
+          }
+          rawEdges.push({
+            id: edgeId(from, to, label),
+            from,
+            to,
+            label,
+            color
+          })
+        }
+
+        for(const [from, node] of Object.entries(dialogue.nodes)) {
+          if(node.next) {
+            pushEdge(from, node.next, 'suivant', '#0057ff')
+          }
+          if(Array.isArray(node.choices)) {
+            node.choices.forEach((choice) => {
+              if(choice.next) {
+                pushEdge(from, choice.next, `reponse:${choice.id || '?'}`, '#d41c1c')
+              }
+            })
+          }
+          if(Array.isArray(node.branches)) {
+            node.branches.forEach((branch, index) => {
+              if(branch.next) {
+                pushEdge(from, branch.next, `si#${index + 1}`, '#f5b400')
+              }
+            })
+          }
+          if(node.fallbackNext) {
+            pushEdge(from, node.fallbackNext, 'sinon', '#111')
+          }
+        }
+
+        const buckets = {}
+        rawEdges.forEach((edge) => {
+          const key = `${edge.from}__${edge.to}`
+          if(!buckets[key]) {
+            buckets[key] = []
+          }
+          buckets[key].push(edge)
+        })
+
+        Object.values(buckets).forEach((bucket) => {
+          const total = bucket.length
+          bucket.forEach((edge, index) => {
+            let smooth
+            if(total === 1) {
+              smooth = { enabled: true, type: 'cubicBezier', roundness: 0.26 }
+            } else {
+              const center = (total - 1) / 2
+              const offset = index - center
+              const direction = offset >= 0 ? 'curvedCW' : 'curvedCCW'
+              const roundness = Math.min(0.72, 0.2 + Math.abs(offset) * 0.16)
+              smooth = { enabled: true, type: direction, roundness }
+            }
+
+            edgesDS.update({
+              ...edge,
+              arrows: 'to',
+              smooth,
+              color: edge.color,
+              font: { color: '#111', size: 11, face: 'Manrope, Segoe UI, sans-serif', strokeWidth: 0 }
+            })
+          })
+        })
+
+        refs.kpiNodes.textContent = String(nodesDS.length)
+        refs.kpiEdges.textContent = String(edgesDS.length)
+
+        if(selectedNodeId && dialogue.nodes[selectedNodeId]) {
+          network.selectNodes([selectedNodeId])
+        }
+
+        updateDockState()
+      }
+
+      function exportJson() {
+        const payload = {
+          dialogues: deepClone(state.dialogues)
+        }
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'dialogues.export.json'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+        setStatus('Export JSON termine.', 'ok')
+      }
+
+      async function fetchJsonNoCache(path) {
+        const url = `${path}${path.includes('?') ? '&' : '?'}_ts=${Date.now()}`
+        const response = await fetch(url, { cache: 'no-store' })
+        if(!response.ok) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        return response.json()
+      }
+
+      async function loadDefaultFile({ silent = false } = {}) {
+        try {
+          let json = null
+          let lastError = null
+          let loadedPath = null
+
+          for(const path of PROJECT_DIALOGUES_CANDIDATE_PATHS) {
+            try {
+              json = await fetchJsonNoCache(path)
+              loadedPath = path
+              break
+            } catch(error) {
+              lastError = error
+            }
+          }
+
+          if(!json) {
+            throw lastError || new Error('Fichier introuvable')
+          }
+
+          applyDialoguesState(json, {
+            sourceLabel: `Projet (${loadedPath || 'fichier'})`
+          })
+
+          if(!silent) {
+            setStatus(`Dialogues projet charges depuis ${loadedPath}.`, 'ok')
+          }
+          return true
+        } catch(error) {
+          if(!silent) {
+            setStatus(`Impossible de charger le fichier projet (${error.message}).`, 'warn')
+          }
+          return false
+        }
+      }
+
+      function importFromFile(file) {
+        const reader = new FileReader()
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || '{}'))
+            applyDialoguesState(parsed, {
+              sourceLabel: `Import (${file.name})`
+            })
+            setStatus(`Import reussi: ${file.name}`, 'ok')
+          } catch(error) {
+            setStatus(`Import invalide (${error.message})`, 'warn')
+          }
+        }
+        reader.readAsText(file)
+      }
+
+      function setupNetwork() {
+        network = new vis.Network(
+          document.getElementById('graph'),
+          { nodes: nodesDS, edges: edgesDS },
+          {
+            physics: false,
+            interaction: {
+              hover: true,
+              multiselect: false
+            },
+            layout: {
+              improvedLayout: false
+            },
+            nodes: {
+              shape: 'box',
+              margin: 10
+            },
+            edges: {
+              arrows: { to: { enabled: true, scaleFactor: 0.75 } }
+            }
+          }
+        )
+
+        network.on('click', (params) => {
+          hideNodeHoverTooltip()
+          const clickedNodeId = params.nodes[0]
+          const rawEvent = params.event?.srcEvent
+          const shouldArmByAlt = Boolean(rawEvent?.altKey)
+
+          if(clickedNodeId) {
+            hideQuickPalette()
+
+            if(state.ui.linkSourceId) {
+              if(state.ui.linkSourceId === clickedNodeId) {
+                setStatus('Choisis un bloc cible different du bloc source.', 'warn')
+                return
+              }
+
+              const sourceId = state.ui.linkSourceId
+              clearLinkArming()
+
+              if(connectNodes(sourceId, clickedNodeId)) {
+                selectedNodeId = sourceId
+                renderNodeInspector()
+                syncGraphFromDialogue()
+              }
+              return
+            }
+
+            if(shouldArmByAlt) {
+              state.ui.linkSourceId = clickedNodeId
+              selectedNodeId = clickedNodeId
+              renderNodeInspector()
+              updateDockState()
+              setStatus(`Source de liaison definie: ${clickedNodeId}. Clique ensuite un bloc cible.`, 'ok')
+              return
+            }
+
+            selectedNodeId = clickedNodeId
+            renderNodeInspector()
+            return
+          }
+
+          if(state.ui.linkSourceId) {
+            clearLinkArming()
+            setStatus('Liaison annulee.', 'warn')
+          }
+
+          selectedNodeId = null
+          hideQuickPalette()
+          renderNodeInspector()
+        })
+
+        network.on('doubleClick', (params) => {
+          hideNodeHoverTooltip()
+          if(params.nodes.length > 0) {
+            selectedNodeId = params.nodes[0]
+            hideQuickPalette()
+            renderNodeInspector()
+            return
+          }
+          if(currentDialogueKey) {
+            showQuickPalette(params.pointer?.canvas || getViewportCenter())
+          }
+        })
+
+        network.on('dragEnd', (params) => {
+          if(!currentDialogueKey || !params.nodes || params.nodes.length === 0) {
+            return
+          }
+
+          const positions = network.getPositions(params.nodes)
+          const layout = currentLayout()
+          params.nodes.forEach((id) => {
+            if(positions[id]) {
+              layout[id] = {
+                x: positions[id].x,
+                y: positions[id].y
+              }
+            }
+          })
+        })
+
+        network.on('hoverNode', (params) => {
+          showNodeHoverTooltip(params.node)
+        })
+
+        network.on('blurNode', () => {
+          hideNodeHoverTooltip()
+        })
+
+        network.on('dragStart', () => {
+          hideNodeHoverTooltip()
+        })
+
+        network.on('zoom', () => {
+          hideNodeHoverTooltip()
+        })
+      }
+
+      function setupEvents() {
+        refs.appModalBackdrop.addEventListener('click', () => closeAppModal({ confirmed: false }))
+        refs.appModalCancel.addEventListener('click', () => closeAppModal({ confirmed: false }))
+        refs.appModalConfirm.addEventListener('click', () => closeAppModal({ confirmed: true }))
+        refs.appModalInput.addEventListener('keydown', (event) => {
+          if(event.key === 'Enter') {
+            event.preventDefault()
+            closeAppModal({ confirmed: true })
+          }
+        })
+
+        refs.btnLoadDefault.addEventListener('click', loadDefaultFile)
+
+        refs.btnImport.addEventListener('click', () => refs.fileInput.click())
+        refs.fileInput.addEventListener('change', () => {
+          const file = refs.fileInput.files?.[0]
+          if(file) {
+            importFromFile(file)
+          }
+          refs.fileInput.value = ''
+        })
+
+        refs.btnRestoreLocal.addEventListener('click', () => {
+          const ok = loadLocalSessionIntoEditor()
+          if(!ok) {
+            setStatus('Aucune sauvegarde locale disponible.', 'warn')
+          }
+        })
+
+        refs.btnCloseFile.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Fermer le fichier courant',
+            message: 'Le contenu sera retire de l editeur. La sauvegarde locale est conservee.',
+            confirmLabel: 'Fermer',
+            cancelLabel: 'Annuler',
+            tone: 'slate'
+          })
+          if(!confirmed) {
+            return
+          }
+
+          state.dialogues = {}
+          state.layouts = {}
+          setActiveSourceLabel('Aucune source')
+          resetEditorPanelsAndGraph()
+          setStatus('Fichier ferme. Tu peux reouvrir le projet ou une sauvegarde locale.', 'ok')
+        })
+
+        refs.btnClearLocal.addEventListener('click', async () => {
+          const confirmed = await showConfirmModal({
+            title: 'Effacer la sauvegarde locale',
+            message: 'Cette action supprime la reprise automatique au prochain chargement.',
+            confirmLabel: 'Effacer',
+            cancelLabel: 'Annuler',
+            tone: 'red'
+          })
+          if(!confirmed) {
+            return
+          }
+          clearLocalSession()
+        })
+
+        refs.btnNewDialogue.addEventListener('click', async () => {
+          const key = await showPromptModal({
+            title: 'Nouveau dialogue',
+            message: 'Renseigne une cle interne unique (ex: bloom.new).',
+            confirmLabel: 'Creer',
+            cancelLabel: 'Annuler',
+            tone: 'blue',
+            inputLabel: 'Cle du dialogue',
+            inputValue: 'bloom.new',
+            inputPlaceholder: 'ex: bloom.new'
+          })
+
+          if(key === null) {
+            return
+          }
+
+          const normalized = key.trim()
+          if(!normalized) {
+            setStatus('Creation annulee: cle vide.', 'warn')
+            return
+          }
+
+          createDialogue(normalized)
+        })
+
+        refs.btnToggleLeft.addEventListener('click', () => {
+          state.ui.leftPanelOpen = !state.ui.leftPanelOpen
+          updateLayoutVisibility()
+        })
+
+        refs.btnExport.addEventListener('click', exportJson)
+
+        refs.dockAddLine.addEventListener('click', () => addNode('line'))
+        refs.dockAddChoice.addEventListener('click', () => addNode('choice'))
+        refs.dockAddBranch.addEventListener('click', () => addNode('branch'))
+        refs.dockAddAction.addEventListener('click', () => addNode('action'))
+        refs.dockAddEnd.addEventListener('click', () => addNode('end'))
+
+        refs.quickPalette.querySelectorAll('[data-add-type]').forEach((button) => {
+          button.addEventListener('click', () => {
+            const type = button.dataset.addType
+            addNode(type, { canvasPos: state.ui.quickPaletteCanvasPos || getViewportCenter() })
+          })
+        })
+
+        refs.dockStartLink.addEventListener('click', () => {
+          if(state.ui.linkSourceId) {
+            clearLinkArming()
+            setStatus('Liaison annulee.', 'warn')
+            return
+          }
+          armLinkFromSelection()
+        })
+
+        refs.dockAutoLayout.addEventListener('click', () => {
+          autoLayoutCurrentDialogue({ fit: true })
+          setStatus('Reorganisation automatique appliquee.', 'ok')
+        })
+
+        refs.dockFitView.addEventListener('click', () => {
+          network.fit({ animation: { duration: 280, easingFunction: 'easeInOutQuad' } })
+          setStatus('Canvas recadre.', 'ok')
+        })
+
+        document.addEventListener('keydown', (event) => {
+          if(isModalVisible()) {
+            if(event.key === 'Escape') {
+              event.preventDefault()
+              closeAppModal({ confirmed: false })
+            }
+            return
+          }
+
+          const activeTag = document.activeElement?.tagName || ''
+          const inTextField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || Boolean(document.activeElement?.isContentEditable)
+
+          if(event.key === 'Escape') {
+            hideQuickPalette()
+            if(state.ui.linkSourceId) {
+              clearLinkArming()
+              setStatus('Liaison annulee.', 'warn')
+            }
+            return
+          }
+
+          if(inTextField) {
+            return
+          }
+
+          if(event.key.toLowerCase() === 'l') {
+            event.preventDefault()
+            if(state.ui.linkSourceId) {
+              clearLinkArming()
+              setStatus('Liaison annulee.', 'warn')
+            } else {
+              armLinkFromSelection()
+            }
+          }
+
+          if(event.key.toLowerCase() === 'n') {
+            event.preventDefault()
+            showQuickPalette(getViewportCenter())
+          }
+        })
+
+        document.addEventListener('pointerdown', (event) => {
+          if(!refs.quickPalette.classList.contains('visible')) {
+            return
+          }
+          if(refs.quickPalette.contains(event.target)) {
+            return
+          }
+          hideQuickPalette()
+        })
+      }
+
+      async function bootstrap() {
+        setupNetwork()
+        setupEvents()
+        decorateStaticButtons()
+        setActiveSourceLabel('Aucune source')
+        startLocalSessionAutoPersist()
+
+        const restoredLocalSession = loadLocalSessionIntoEditor({ silent: true })
+        if(restoredLocalSession) {
+          setStatus('Sauvegarde locale restauree automatiquement.', 'ok')
+          return
+        }
+
+        const loadedFromProject = await loadDefaultFile({ silent: true })
+        if(loadedFromProject) {
+          setStatus('Dialogues projet charges.', 'ok')
+          return
+        }
+
+        updateLayoutVisibility()
+        updateDockState()
+        setStatus('Outil pret. Charge un fichier projet ou importe un JSON.', 'ok')
+      }
+
+      bootstrap()
+    </script>
+  </body>
+</html>

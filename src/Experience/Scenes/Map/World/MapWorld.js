@@ -10,23 +10,11 @@ import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
+import bloomRails from './bloomRails.json'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
-const BLOOM_RAILS = Object.freeze([
-    [
-        { x: -6.8, y: 0, z: -1.5 },
-        { x: -4.8, y: 0, z: 0.4 },
-        { x: -2.5, y: 0, z: 2.6 },
-        { x: -2.2, y: 0, z: 5.9 },
-        { x: 0.8, y: 0, z: 5.1 },
-        { x: 3.3, y: 0, z: 2.8 },
-        { x: 2.4, y: 0, z: -0.1 },
-        { x: -0.6, y: 0, z: -1.8 },
-        { x: -3.8, y: 0, z: -1.2 },
-        { x: -6.8, y: 0, z: -1.5 }
-    ]
-])
+const BLOOM_RAILS = Object.freeze(Array.isArray(bloomRails) ? bloomRails : [])
 
 let mapWorldInstanceIndex = 0
 
