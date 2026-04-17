@@ -19,9 +19,9 @@ const FLOW_FILL_SPEED_PER_SECOND = 0.45
 const FLOW_PROGRESS_EPSILON = 1e-4
 const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
-const ANGLE_OUTER_FILL_BIAS = 0.45
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
 const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
+const ANGLE_CENTERLINE_SEGMENTS = 24
 const BLUE_WINDOW_NAME_PATTERN = /fenetre[\s_-]?blue/i
 const WINDOW_COORD_ATTRIBUTE = 'aWindowCoord'
 const WINDOW_FLOW_AXIS = 'x'
@@ -535,15 +535,25 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const angleProjection = isAngleTube
             ? this.computeAngleFlowProjection(positionAttribute, bounds)
             : null
+        const joinGuidedAngleProjection = angleProjection
+            ? this.refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
+            : null
+        const effectiveAngleProjection = joinGuidedAngleProjection ?? angleProjection
+        const useCenterline = Boolean(effectiveAngleProjection && !effectiveAngleProjection.isJoinGuided)
+        const angleCenterline = useCenterline
+            ? this.buildAngleFlowCenterline(effectiveAngleProjection, bounds)
+            : null
         const flowProjection = angleProjection
             ? {
-                type: 'angle',
-                cornerX: angleProjection.cornerX,
-                cornerY: angleProjection.cornerY,
-                angleMin: angleProjection.angleMin,
-                angleRange: angleProjection.angleRange,
-                radiusMin: angleProjection.radiusMin,
-                radiusRange: angleProjection.radiusRange
+                type: angleCenterline ? 'angleCenterline' : 'angle',
+                cornerX: effectiveAngleProjection.cornerX,
+                cornerY: effectiveAngleProjection.cornerY,
+                angleMin: effectiveAngleProjection.angleMin,
+                angleRange: effectiveAngleProjection.angleRange,
+                radiusMin: effectiveAngleProjection.radiusMin,
+                radiusRange: effectiveAngleProjection.radiusRange,
+                guidePoints: angleCenterline?.points ?? null,
+                guideLength: angleCenterline?.length ?? 0
             }
             : {
                 type: 'axis',
@@ -556,17 +566,21 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(let index = 0; index < positionAttribute.count; index++)
         {
             let flowCoord
-            if(angleProjection)
+            if(angleCenterline)
             {
                 const x = positionAttribute.getX(index)
                 const y = positionAttribute.getY(index)
-                const dx = x - angleProjection.cornerX
-                const dy = y - angleProjection.cornerY
+                const z = positionAttribute.getZ(index)
+                flowCoord = this.getFlowCoordOnCenterline(x, y, z, angleCenterline.points, angleCenterline.length)
+            }
+            else if(angleProjection)
+            {
+                const x = positionAttribute.getX(index)
+                const y = positionAttribute.getY(index)
+                const dx = x - effectiveAngleProjection.cornerX
+                const dy = y - effectiveAngleProjection.cornerY
                 const theta = Math.atan2(dy, dx)
-                const thetaNorm = (theta - angleProjection.angleMin) / angleProjection.angleRange
-                const radius = Math.sqrt((dx * dx) + (dy * dy))
-                const radiusNorm = (radius - angleProjection.radiusMin) / angleProjection.radiusRange
-                flowCoord = thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+                flowCoord = this.getAngleArcProgress(theta, effectiveAngleProjection.angleMin, effectiveAngleProjection.angleRange)
             }
             else
             {
@@ -649,6 +663,263 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         return bestProjection
     }
 
+    buildAngleFlowCenterline(angleProjection, bounds)
+    {
+        if(!angleProjection || !bounds)
+        {
+            return null
+        }
+
+        const radiusCenter = angleProjection.radiusMin + (angleProjection.radiusRange * 0.5)
+        if(!(Number.isFinite(radiusCenter) && radiusCenter > FLOW_COORD_EPSILON))
+        {
+            return null
+        }
+
+        const zCenter = (bounds.min.z + bounds.max.z) * 0.5
+        const sampleCount = Math.max(4, ANGLE_CENTERLINE_SEGMENTS)
+        const points = []
+        let cumulativeLength = 0
+
+        for(let sampleIndex = 0; sampleIndex <= sampleCount; sampleIndex++)
+        {
+            const alpha = sampleIndex / sampleCount
+            const theta = angleProjection.angleMin + (angleProjection.angleRange * alpha)
+            const x = angleProjection.cornerX + (Math.cos(theta) * radiusCenter)
+            const y = angleProjection.cornerY + (Math.sin(theta) * radiusCenter)
+
+            if(sampleIndex > 0)
+            {
+                const previous = points[sampleIndex - 1]
+                const segmentLength = Math.sqrt(
+                    ((x - previous.x) ** 2) +
+                    ((y - previous.y) ** 2) +
+                    ((zCenter - previous.z) ** 2)
+                )
+                cumulativeLength += segmentLength
+            }
+
+            points.push({
+                x,
+                y,
+                z: zCenter,
+                s: cumulativeLength
+            })
+        }
+
+        if(!(Number.isFinite(cumulativeLength) && cumulativeLength > FLOW_COORD_EPSILON))
+        {
+            return null
+        }
+
+        return {
+            points,
+            length: cumulativeLength
+        }
+    }
+
+    refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
+    {
+        if(!angleProjection || !mesh || !tubeUuid || !bounds)
+        {
+            return angleProjection
+        }
+
+        const localJoinCenters = this.getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
+        if(localJoinCenters.length < 2)
+        {
+            return angleProjection
+        }
+
+        let maxDistanceSq = -Infinity
+        let joinA = null
+        let joinB = null
+        for(let i = 0; i < localJoinCenters.length; i++)
+        {
+            for(let j = i + 1; j < localJoinCenters.length; j++)
+            {
+                const dx = localJoinCenters[i].x - localJoinCenters[j].x
+                const dy = localJoinCenters[i].y - localJoinCenters[j].y
+                const dz = localJoinCenters[i].z - localJoinCenters[j].z
+                const distanceSq = (dx * dx) + (dy * dy) + (dz * dz)
+                if(distanceSq <= maxDistanceSq)
+                {
+                    continue
+                }
+                maxDistanceSq = distanceSq
+                joinA = localJoinCenters[i]
+                joinB = localJoinCenters[j]
+            }
+        }
+
+        if(!joinA || !joinB)
+        {
+            return angleProjection
+        }
+
+        const corners = [
+            { x: bounds.min.x, y: bounds.min.y },
+            { x: bounds.min.x, y: bounds.max.y },
+            { x: bounds.max.x, y: bounds.min.y },
+            { x: bounds.max.x, y: bounds.max.y }
+        ]
+
+        let bestProjection = null
+        let bestScore = Number.POSITIVE_INFINITY
+        for(const corner of corners)
+        {
+            const angleAReal = Math.atan2(joinA.y - corner.y, joinA.x - corner.x)
+            const angleBReal = Math.atan2(joinB.y - corner.y, joinB.x - corner.x)
+            let delta = Math.atan2(Math.sin(angleBReal - angleAReal), Math.cos(angleBReal - angleAReal))
+            let angleMin = angleAReal
+            if(delta < 0)
+            {
+                angleMin = angleBReal
+                delta = -delta
+            }
+
+            if(!(Number.isFinite(delta) && delta > FLOW_COORD_EPSILON))
+            {
+                continue
+            }
+
+            const radiusA = Math.sqrt(((joinA.x - corner.x) ** 2) + ((joinA.y - corner.y) ** 2))
+            const radiusB = Math.sqrt(((joinB.x - corner.x) ** 2) + ((joinB.y - corner.y) ** 2))
+            const radiusMismatch = Math.abs(radiusA - radiusB)
+            const quarterTurnDelta = Math.abs(delta - (Math.PI * 0.5))
+            const score = (radiusMismatch * 2.5) + quarterTurnDelta
+            if(score >= bestScore)
+            {
+                continue
+            }
+            bestScore = score
+
+            bestProjection = {
+                ...angleProjection,
+                cornerX: corner.x,
+                cornerY: corner.y,
+                angleMin,
+                angleRange: delta,
+                isJoinGuided: true
+            }
+        }
+
+        return bestProjection ?? angleProjection
+    }
+
+    getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
+    {
+        const joinTargets = this.joinTargetsByTubeUuid.get(tubeUuid) ?? []
+        if(joinTargets.length === 0)
+        {
+            return []
+        }
+
+        const objectBounds = new THREE.Box3()
+        const worldCenter = new THREE.Vector3()
+        const localCenter = new THREE.Vector3()
+        const centers = []
+
+        mesh.updateMatrixWorld(true)
+
+        for(const joinTarget of joinTargets)
+        {
+            if(!joinTarget)
+            {
+                continue
+            }
+
+            joinTarget.updateMatrixWorld(true)
+            objectBounds.setFromObject(joinTarget)
+            if(objectBounds.isEmpty())
+            {
+                continue
+            }
+
+            objectBounds.getCenter(worldCenter)
+            localCenter.copy(worldCenter)
+            mesh.worldToLocal(localCenter)
+            centers.push({
+                x: localCenter.x,
+                y: localCenter.y,
+                z: localCenter.z
+            })
+        }
+
+        return centers
+    }
+
+    getAngleArcProgress(theta, angleMin, angleRange)
+    {
+        const safeRange = Math.max(angleRange, FLOW_COORD_EPSILON)
+        const arcStart = angleMin
+        const arcEnd = angleMin + safeRange
+        let bestClampedAngle = arcStart
+        let bestDistance = Number.POSITIVE_INFINITY
+
+        for(const wrap of [-Math.PI * 2, 0, Math.PI * 2])
+        {
+            const wrappedTheta = theta + wrap
+            const clampedTheta = THREE.MathUtils.clamp(wrappedTheta, arcStart, arcEnd)
+            const distance = Math.abs(wrappedTheta - clampedTheta)
+            if(distance < bestDistance)
+            {
+                bestDistance = distance
+                bestClampedAngle = clampedTheta
+            }
+        }
+
+        return (bestClampedAngle - arcStart) / safeRange
+    }
+
+    getFlowCoordOnCenterline(x, y, z, centerlinePoints, centerlineLength)
+    {
+        if(!Array.isArray(centerlinePoints) || centerlinePoints.length < 2 || centerlineLength <= FLOW_COORD_EPSILON)
+        {
+            return null
+        }
+
+        let closestDistanceSq = Number.POSITIVE_INFINITY
+        let closestArcLength = 0
+
+        for(let index = 1; index < centerlinePoints.length; index++)
+        {
+            const pointA = centerlinePoints[index - 1]
+            const pointB = centerlinePoints[index]
+            const segmentX = pointB.x - pointA.x
+            const segmentY = pointB.y - pointA.y
+            const segmentZ = pointB.z - pointA.z
+            const segmentLengthSq = (segmentX * segmentX) + (segmentY * segmentY) + (segmentZ * segmentZ)
+            if(segmentLengthSq <= FLOW_COORD_EPSILON)
+            {
+                continue
+            }
+
+            const toPointX = x - pointA.x
+            const toPointY = y - pointA.y
+            const toPointZ = z - pointA.z
+            const projectionT = THREE.MathUtils.clamp(
+                ((toPointX * segmentX) + (toPointY * segmentY) + (toPointZ * segmentZ)) / segmentLengthSq,
+                0,
+                1
+            )
+
+            const nearestX = pointA.x + (segmentX * projectionT)
+            const nearestY = pointA.y + (segmentY * projectionT)
+            const nearestZ = pointA.z + (segmentZ * projectionT)
+            const distSq = ((x - nearestX) ** 2) + ((y - nearestY) ** 2) + ((z - nearestZ) ** 2)
+            if(distSq >= closestDistanceSq)
+            {
+                continue
+            }
+
+            closestDistanceSq = distSq
+            closestArcLength = pointA.s + ((pointB.s - pointA.s) * projectionT)
+        }
+
+        return closestArcLength / centerlineLength
+    }
+
     computeLocalFlowCoord(mesh, localPosition)
     {
         const flowProjection = mesh?.geometry?.userData?.flowProjection
@@ -657,15 +928,23 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return null
         }
 
+        if(flowProjection.type === 'angleCenterline')
+        {
+            return this.getFlowCoordOnCenterline(
+                localPosition.x,
+                localPosition.y,
+                localPosition.z,
+                flowProjection.guidePoints,
+                flowProjection.guideLength
+            )
+        }
+
         if(flowProjection.type === 'angle')
         {
             const dx = localPosition.x - flowProjection.cornerX
             const dy = localPosition.y - flowProjection.cornerY
             const theta = Math.atan2(dy, dx)
-            const thetaNorm = (theta - flowProjection.angleMin) / Math.max(flowProjection.angleRange, FLOW_COORD_EPSILON)
-            const radius = Math.sqrt((dx * dx) + (dy * dy))
-            const radiusNorm = (radius - flowProjection.radiusMin) / Math.max(flowProjection.radiusRange, FLOW_COORD_EPSILON)
-            return thetaNorm + ((0.5 - radiusNorm) * ANGLE_OUTER_FILL_BIAS)
+            return this.getAngleArcProgress(theta, flowProjection.angleMin, flowProjection.angleRange)
         }
 
         return (localPosition[FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, FLOW_COORD_EPSILON)
