@@ -710,12 +710,8 @@ export default class Player
         this.inputs?.off?.('pointerlockchange.player')
         this.inputs?.off?.('mousemove.player')
 
-        if(this.inputs?.isPointerLocked?.(this.canvas))
-        {
-            this.inputs?.exitPointerLock?.()
-        }
-
-        document.body.classList.remove('is-pointer-locked')
+        const isCanvasStillPointerLocked = this.inputs?.isPointerLocked?.(this.canvas) || false
+        document.body.classList.toggle('is-pointer-locked', isCanvasStillPointerLocked)
         this.debugFolder?.dispose?.()
     }
 }
