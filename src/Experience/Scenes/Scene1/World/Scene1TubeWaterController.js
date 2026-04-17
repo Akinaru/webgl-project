@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
+import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 
 const QUARTER_TURN = Math.PI * 0.5
 const ROTATION_AXIS = 'z'
@@ -34,7 +35,6 @@ export default class Scene1TubeWaterController
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
-        this.camera = this.experience.camera?.instance
         this.debug = this.experience.debug
         this.scene1Model = scene1Model
         this.tubeMeshes = this.scene1Model?.getTubeWaterMeshes?.() ?? []
@@ -43,8 +43,9 @@ export default class Scene1TubeWaterController
             fillSpeed: FLOW_FILL_SPEED_PER_SECOND
         }
 
-        this.raycaster = new THREE.Raycaster()
-        this.centerNdc = new THREE.Vector2(0, 0)
+        this.centerRaycaster = new CenterScreenRaycaster({
+            getCamera: () => this.experience.camera?.instance ?? null
+        })
         this.turnDirectionByMeshUuid = new Map()
         this.tubeIndexByUuid = new Map()
         this.targetMetaByUuid = new Map()
@@ -1390,11 +1391,6 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     {
         this.onMouseDown = (event) =>
         {
-            if(event?.button !== 0)
-            {
-                return
-            }
-
             const tubeMesh = this.hoveredTubeMesh || this.getTubeMeshAtCenter()
             if(!tubeMesh)
             {
@@ -1404,19 +1400,12 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             this.rotateTubeByQuarterTurn(tubeMesh)
         }
 
-        this.inputs?.on?.('mousedown.scene1TubeWater', this.onMouseDown)
+        this.inputs?.on?.('sceneinteractdown.scene1TubeWater', this.onMouseDown)
     }
 
     getTubeMeshAtCenter()
     {
-        if(!this.camera || this.tubeMeshes.length === 0)
-        {
-            return null
-        }
-
-        this.raycaster.setFromCamera(this.centerNdc, this.camera)
-        const hits = this.raycaster.intersectObjects(this.tubeMeshes, false)
-        return hits[0]?.object ?? null
+        return this.centerRaycaster.intersectFirst(this.tubeMeshes, false)
     }
 
     update()
@@ -2381,7 +2370,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     destroy()
     {
-        this.inputs?.off?.('mousedown.scene1TubeWater')
+        this.inputs?.off?.('sceneinteractdown.scene1TubeWater')
         this.debugFolder?.dispose?.()
         this.debugFolder = null
         this.hoveredTubeMesh = null

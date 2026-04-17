@@ -52,12 +52,22 @@ export default class InputManager extends EventEmitter
         {
             this.buttons.add(event.button)
             this.trigger('mousedown', [event])
+
+            if(this.shouldStartSceneInteraction(event))
+            {
+                this.trigger('sceneinteractdown', [event])
+            }
         }
 
         this.onMouseUp = (event) =>
         {
             this.buttons.delete(event.button)
             this.trigger('mouseup', [event])
+
+            if(event?.button === 0)
+            {
+                this.trigger('sceneinteractup', [event])
+            }
         }
 
         this.onClick = (event) =>
@@ -140,6 +150,21 @@ export default class InputManager extends EventEmitter
         document.exitPointerLock?.()
     }
 
+    shouldStartSceneInteraction(event)
+    {
+        if(event?.button !== 0)
+        {
+            return false
+        }
+
+        if(event.defaultPrevented)
+        {
+            return false
+        }
+
+        return this.isPointerLocked(this.canvas)
+    }
+
     destroy()
     {
         window.removeEventListener('keydown', this.onKeyDown)
@@ -165,5 +190,7 @@ export default class InputManager extends EventEmitter
         this.off('click')
         this.off('wheel')
         this.off('pointerlockchange')
+        this.off('sceneinteractdown')
+        this.off('sceneinteractup')
     }
 }
