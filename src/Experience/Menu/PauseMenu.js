@@ -477,12 +477,8 @@ export default class PauseMenu extends EventEmitter
 
     trace(label, payload = {})
     {
-        if(!this.traceEnabled)
-        {
-            return
-        }
-
-        console.info(`[PauseMenu] ${label}`, payload)
+        void label
+        void payload
     }
 
     focusCanvas()

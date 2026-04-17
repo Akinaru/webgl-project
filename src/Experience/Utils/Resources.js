@@ -5,7 +5,7 @@ import EventEnum from '../Enum/EventEnum.js'
 
 export default class Resources extends EventEmitter
 {
-    constructor(sources)
+    constructor(sources, { autoStart = true } = {})
     {
         super()
 
@@ -14,9 +14,14 @@ export default class Resources extends EventEmitter
         this.toLoad = this.sources.length
         this.loaded = 0
         this.isReady = false
+        this.hasStartedLoading = false
 
         this.setLoaders()
-        this.startLoading()
+
+        if(autoStart)
+        {
+            this.startLoading()
+        }
     }
 
     setLoaders()
@@ -29,6 +34,13 @@ export default class Resources extends EventEmitter
 
     startLoading()
     {
+        if(this.hasStartedLoading || this.isReady)
+        {
+            return
+        }
+
+        this.hasStartedLoading = true
+
         if(this.toLoad === 0)
         {
             this.isReady = true
