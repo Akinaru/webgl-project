@@ -465,8 +465,10 @@ export default class Player
 
         const radius = this.settings.radius
         const radiusSq = radius * radius
-        const feetY = this.position.y - this.settings.height + 0.05
-        const headY = this.position.y - 0.1
+        // Use the true feet plane so low horizontal obstacles on the ground
+        // (e.g. straight pipes) are still considered for collision.
+        const feetY = this.position.y - this.settings.height
+        const headY = this.position.y + 0.04
 
         for(let iteration = 0; iteration < 3; iteration++)
         {
@@ -585,7 +587,7 @@ export default class Player
         this.collisionDirection.multiplyScalar(1 / travelDistance)
         const raycastFar = travelDistance + this.settings.radius
         const feetY = this.position.y - this.settings.height
-        const sampleHeights = [feetY + 0.35, feetY + 0.9, this.position.y - 0.2]
+        const sampleHeights = [feetY + 0.35, feetY + 0.9, this.position.y - 0.2, this.position.y + 0.02]
 
         let hasHit = false
 

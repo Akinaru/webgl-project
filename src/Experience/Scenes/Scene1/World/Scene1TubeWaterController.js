@@ -105,6 +105,7 @@ export default class Scene1TubeWaterController
         this.captureInitialRotations()
         this.randomizeInitialRotations()
         this.updateFlowState()
+        this.scene1Model?.refreshCollisionBoxes?.()
         this.setDebug()
         this.setEvents()
     }
@@ -1418,6 +1419,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
         this.rotateTubeAssembly(rotationTarget, QUARTER_TURN * direction)
         this.updateFlowState()
+        this.scene1Model?.refreshCollisionBoxes?.()
     }
 
     rotateTubeAssembly(tubeTarget, angle)

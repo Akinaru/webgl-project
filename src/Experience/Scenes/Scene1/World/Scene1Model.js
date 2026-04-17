@@ -3,13 +3,12 @@ import Experience from '../../../Experience.js'
 
 const NON_COLLIDABLE_NAME_TOKENS = [
     'water',
-    'tube-water',
-    'tube-join',
     'cascade',
     'sphere',
     'sphère',
     'screen'
 ]
+const FORCE_COLLIDABLE_NAME_TOKENS = ['tube-water', 'tube-join']
 const WALKABLE_GROUND_NAME_TOKENS = ['sol', 'chemin', 'passerelle']
 const CLICKABLE_MATERIAL_NAMES = new Set(['materiau0', 'materiau1', 'materiau2'])
 const TUBE_WATER_NAME_TOKEN = 'tube-water'
@@ -137,7 +136,8 @@ export default class Scene1Model
 
     buildCollisionBoxes()
     {
-        this.collisionBoxes = []
+        this.collisionBoxes = this.collisionBoxes ?? []
+        this.collisionBoxes.length = 0
         const localBounds = new THREE.Box3()
         const worldBounds = new THREE.Box3()
 
@@ -161,7 +161,23 @@ export default class Scene1Model
 
     shouldUseForCollision(mesh)
     {
+        if(this.hasNameInHierarchy(mesh, FORCE_COLLIDABLE_NAME_TOKENS))
+        {
+            return true
+        }
+
         return !this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS)
+    }
+
+    refreshCollisionBoxes()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.updateMatrixWorld(true)
+        this.buildCollisionBoxes()
     }
 
     isWalkableGroundMesh(mesh)
