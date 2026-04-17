@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
+import SceneEnum from '../../../Enum/SceneEnum.js'
 import Player from '../../../Common/Player.js'
 import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
@@ -11,6 +12,7 @@ import Scene1CollisionDebug from './Scene1CollisionDebug.js'
 
 const SCREEN_INACTIVE_COLOR = '#0e131d'
 const EXIT_TELEPORT_INACTIVE_COLOR = '#2f3d50'
+const FINAL_TUBE_MODULE_NAME = 'module-straight_24'
 
 let scene1WorldInstanceIndex = 0
 
@@ -24,6 +26,7 @@ export default class Scene1World
 
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
+        this.isReturningToMap = false
 
         if(this.resources.isReady)
         {
@@ -89,6 +92,7 @@ export default class Scene1World
         this.tubeWaterController?.update?.()
         this.collisionDebug?.update?.()
         this.materialButtons?.update(delta)
+        this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
         this.checkWallCrossTeleport()
     }
@@ -198,6 +202,23 @@ export default class Scene1World
 
         this.hasStartedRoom2Flow = true
         this.tubeWaterController?.startFlowAnimation?.()
+    }
+
+    checkPuzzleCompletionReturn()
+    {
+        if(this.isReturningToMap || !this.tubeWaterController)
+        {
+            return
+        }
+
+        const isComplete = this.tubeWaterController.isModuleFlowComplete?.(FINAL_TUBE_MODULE_NAME)
+        if(!isComplete)
+        {
+            return
+        }
+
+        this.isReturningToMap = true
+        this.experience.sceneManager?.switchTo?.(SceneEnum.MAP)
     }
 
     setWallCrossTeleport()
@@ -480,6 +501,7 @@ export default class Scene1World
         this.screenIndicatorEntries = null
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
+        this.isReturningToMap = false
 
         this.isSetUp = false
     }
