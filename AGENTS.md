@@ -96,6 +96,14 @@ Regles:
 - Un systeme sait dans quelle phase il tourne.
 - Eviter les dependances circulaires entre phases.
 
+### 3.1 Gestion des inputs (obligatoire)
+
+- Toute la gestion des inputs runtime passe uniquement par `InputManager`.
+- Interdit d'ajouter des `addEventListener` clavier/souris/touch dans les modules metier, scenes, debug UI ou composants.
+- Les autres modules consomment un etat d'input normalise (ou des events) expose par `InputManager`, sans acces direct au DOM pour les controles.
+- Toute inscription a un event d'input doit avoir son cleanup dans `destroy()` de `InputManager`.
+- Les raccourcis clavier debug et gameplay sont declares dans `InputManager` (source unique de verite).
+
 ## 4) Chargement des ressources
 
 ### 4.1 Loader unique
