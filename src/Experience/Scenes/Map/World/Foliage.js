@@ -17,7 +17,8 @@ export default class Foliage
         alphaTexture = null,
         alphaTest = DEFAULT_ALPHA_TEST,
         normalBlend = DEFAULT_NORMAL_BLEND,
-        rotationRandomness = DEFAULT_ROTATION_RANDOMNESS
+        rotationRandomness = DEFAULT_ROTATION_RANDOMNESS,
+        createMesh = true
     } = {})
     {
         this.planeCount = Math.max(1, Math.floor(planeCount))
@@ -28,6 +29,7 @@ export default class Foliage
         this.alphaTest = alphaTest
         this.normalBlend = THREE.MathUtils.clamp(normalBlend, 0, 1)
         this.rotationRandomness = Math.max(0, rotationRandomness)
+        this.createMesh = Boolean(createMesh)
 
         this.random = this.createSeededRandom(this.seed)
 
@@ -38,7 +40,10 @@ export default class Foliage
     {
         this.setGeometry()
         this.setMaterial()
-        this.setMesh()
+        if(this.createMesh)
+        {
+            this.setMesh()
+        }
     }
 
     createSeededRandom(seed)

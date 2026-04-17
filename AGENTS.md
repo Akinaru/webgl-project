@@ -79,6 +79,15 @@ Objectif: garder les shaders lisibles, ranges par domaine, et eviter les blocs G
   - reutiliser `Common/` avant de creer un nouveau helper,
   - documenter rapidement le role du shader en tete de fichier.
 
+### 2.5 Instancing des objets repetes
+
+Objectif: garder un rendu fluide quand un meme objet est affiche en grande quantite.
+
+- Si un objet visuel identique est rendu en plusieurs exemplaires (buissons, herbe, cailloux, props repetes), utiliser `THREE.InstancedMesh` par defaut.
+- Interdit de creer une grande quantite de `Mesh` individuels pour le meme visuel sans justification explicite.
+- Les variations par instance (position, rotation, echelle, teinte) doivent passer par les matrices/attributs d'instance, pas par une hierarchie de milliers d'objets.
+- Les systemes instancies doivent exposer au moins un reglage debug de densite/quantite (ex: nombre d'instances) pour faciliter le tuning perf/visuel.
+
 ## 3) Boucle de jeu ordonnee
 
 Le projet doit garder une pipeline stable (inspiree de la game loop du folio):

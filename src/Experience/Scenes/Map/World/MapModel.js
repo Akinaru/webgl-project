@@ -1438,6 +1438,17 @@ export default class MapModel
         return meshes.filter((mesh) => this.isPlayerGroundSurface(mesh))
     }
 
+    getReliefMeshes()
+    {
+        const meshes = this.terrainTintMeshes ?? []
+        return meshes.filter((mesh) => mesh instanceof THREE.Mesh)
+    }
+
+    getTerrainWaterlineMinY()
+    {
+        return this.terrainWaterlineSettings?.minY ?? 0
+    }
+
     isPlayerGroundSurface(object)
     {
         return this.isBloomWalkableSurface(object)

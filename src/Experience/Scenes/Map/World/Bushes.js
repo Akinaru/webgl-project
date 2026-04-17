@@ -2,6 +2,9 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import Foliage from './Foliage.js'
 
+const INSTANCE_ATTEMPTS_FACTOR = 120
+const INSTANCE_ATTEMPTS_MIN = 200
+
 export default class Bushes
 {
     constructor({ mapModel = null, spawnPosition = null } = {})
@@ -14,14 +17,20 @@ export default class Bushes
         this.spawnPosition = spawnPosition
 
         this.state = {
-            decalageX: 1.6,
-            decalageZ: -0.55,
-            echelleBuisson: 0.38,
+            nombreBuissons: 220,
+            graineRepartition: 2026,
+            distanceMinimale: 0.55,
+            echelleMin: 0.26,
+            echelleMax: 0.52,
+            hauteurOffset: 0.02,
+            normaleYMin: 0.78,
+            margeHauteurHerbe: 0.08,
             nombreFeuilles: 80,
             tailleFeuille: 0.8,
             seuilAlpha: 0.4,
             melangeNormales: 0.85,
-            rotationAleatoire: 9999
+            rotationAleatoire: 9999,
+            buissonsActifs: 0
         }
 
         this.couleurFeuillage = new THREE.Color('#88a94a')
@@ -29,6 +38,10 @@ export default class Bushes
         this.raycaster = new THREE.Raycaster()
         this.rayOrigin = new THREE.Vector3()
         this.rayDirection = new THREE.Vector3(0, -1, 0)
+        this.worldNormal = new THREE.Vector3()
+        this.tmpBounds = new THREE.Box3()
+        this.tmpMeshBounds = new THREE.Box3()
+        this.dummy = new THREE.Object3D()
 
         this.init()
     }
@@ -39,96 +52,261 @@ export default class Bushes
         this.group.name = '__mapBushesRoot'
         this.foliageAlphaTexture = this.resources?.items?.bushFoliageAlphaTexture ?? null
 
-        this.createFoliage()
-        this.applyPosition()
         this.scene.add(this.group)
+        this.rebuildInstances()
     }
 
-    createFoliage()
+    createSeededRandom(seed)
     {
-        this.foliage = new Foliage({
+        let state = seed >>> 0
+
+        return () =>
+        {
+            state += 0x6D2B79F5
+            let t = state
+            t = Math.imul(t ^ (t >>> 15), t | 1)
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+        }
+    }
+
+    createFoliageTemplate()
+    {
+        this.foliageTemplate = new Foliage({
             planeCount: this.state.nombreFeuilles,
             planeSize: this.state.tailleFeuille,
             color: `#${this.couleurFeuillage.getHexString()}`,
             alphaTexture: this.foliageAlphaTexture,
             alphaTest: this.state.seuilAlpha,
             normalBlend: this.state.melangeNormales,
-            rotationRandomness: this.state.rotationAleatoire
+            rotationRandomness: this.state.rotationAleatoire,
+            createMesh: false
         })
-
-        this.foliage.mesh.scale.setScalar(this.state.echelleBuisson)
-        this.group.add(this.foliage.mesh)
     }
 
-    rebuildFoliage()
+    createInstancedMesh()
     {
-        this.foliage?.destroy?.()
-        this.foliage = null
-        this.createFoliage()
-    }
+        const instanceCount = Math.max(1, Math.floor(this.state.nombreBuissons))
 
-    applyScale()
-    {
-        this.foliage?.mesh?.scale?.setScalar?.(this.state.echelleBuisson)
-    }
-
-    applyPosition()
-    {
-        const bushPosition = this.computeBushPosition()
-        this.group.position.copy(bushPosition)
-    }
-
-    applyFoliageColor()
-    {
-        this.foliage?.setColor?.(this.couleurFeuillage)
-    }
-
-    applyFoliageAlpha()
-    {
-        this.foliage?.setAlphaTest?.(this.state.seuilAlpha)
-    }
-
-    computeBushPosition()
-    {
-        const basePosition = new THREE.Vector3(
-            this.spawnPosition?.x ?? 0,
-            this.spawnPosition?.y ?? 0,
-            this.spawnPosition?.z ?? 0
+        this.instancedMesh = new THREE.InstancedMesh(
+            this.foliageTemplate.geometry,
+            this.foliageTemplate.material,
+            instanceCount
         )
+        this.instancedMesh.name = '__mapBushesInstanced'
+        this.instancedMesh.castShadow = true
+        this.instancedMesh.receiveShadow = true
+        this.instancedMesh.frustumCulled = true
+        this.instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
 
-        basePosition.x += this.state.decalageX
-        basePosition.z += this.state.decalageZ
-
-        const groundedY = this.sampleGroundYAt(basePosition.x, basePosition.z)
-        basePosition.y = groundedY
-
-        return basePosition
+        this.group.add(this.instancedMesh)
     }
 
-    sampleGroundYAt(x, z)
+    computeReliefBounds(reliefMeshes)
     {
-        const groundMeshes = this.mapModel?.getGroundMeshes?.() ?? []
-        if(groundMeshes.length === 0)
+        let hasBounds = false
+
+        for(const reliefMesh of reliefMeshes)
         {
-            return 1.2
+            if(!(reliefMesh instanceof THREE.Mesh))
+            {
+                continue
+            }
+
+            this.tmpMeshBounds.setFromObject(reliefMesh)
+            if(!hasBounds)
+            {
+                this.tmpBounds.copy(this.tmpMeshBounds)
+                hasBounds = true
+                continue
+            }
+
+            this.tmpBounds.union(this.tmpMeshBounds)
         }
 
-        this.rayOrigin.set(x, 60, z)
-        this.raycaster.set(this.rayOrigin, this.rayDirection)
-        this.raycaster.far = 120
-
-        const hit = this.raycaster.intersectObjects(groundMeshes, false)[0]
-        if(!hit)
+        if(!hasBounds)
         {
-            return 1.2
+            return null
         }
 
-        return hit.point.y
+        return this.tmpBounds.clone()
     }
 
-    update(delta)
+    isValidReliefHit(hit, waterlineMinY)
     {
-        this.foliage?.update?.(delta)
+        if(!hit?.point || !(hit.object instanceof THREE.Mesh))
+        {
+            return false
+        }
+
+        if(!this.mapModel?.hasNameInHierarchy?.(hit.object, ['relief']))
+        {
+            return false
+        }
+
+        if(hit.point.y < (waterlineMinY + this.state.margeHauteurHerbe))
+        {
+            return false
+        }
+
+        if(!hit.face?.normal)
+        {
+            return false
+        }
+
+        this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+        if(this.worldNormal.y < this.state.normaleYMin)
+        {
+            return false
+        }
+
+        return true
+    }
+
+    isFarEnoughFromOthers(point, acceptedPoints)
+    {
+        const minimumDistance = Math.max(0, this.state.distanceMinimale)
+        if(minimumDistance <= 0 || acceptedPoints.length === 0)
+        {
+            return true
+        }
+
+        const minimumDistanceSq = minimumDistance * minimumDistance
+        for(const acceptedPoint of acceptedPoints)
+        {
+            const dx = point.x - acceptedPoint.x
+            const dz = point.z - acceptedPoint.z
+            if((dx * dx) + (dz * dz) < minimumDistanceSq)
+            {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    collectInstancePoints(targetCount)
+    {
+        const reliefMeshes = this.mapModel?.getReliefMeshes?.() ?? []
+        if(reliefMeshes.length === 0)
+        {
+            return []
+        }
+
+        const reliefBounds = this.computeReliefBounds(reliefMeshes)
+        if(!reliefBounds)
+        {
+            return []
+        }
+
+        const random = this.createSeededRandom(Math.floor(this.state.graineRepartition) >>> 0)
+        const waterlineMinY = this.mapModel?.getTerrainWaterlineMinY?.() ?? Number.NEGATIVE_INFINITY
+        const topY = reliefBounds.max.y + 18
+        const raycastFar = (topY - reliefBounds.min.y) + 18
+        const maxAttempts = Math.max(INSTANCE_ATTEMPTS_MIN, targetCount * INSTANCE_ATTEMPTS_FACTOR)
+        const acceptedPoints = []
+
+        for(let attempt = 0; attempt < maxAttempts && acceptedPoints.length < targetCount; attempt++)
+        {
+            const x = THREE.MathUtils.lerp(reliefBounds.min.x, reliefBounds.max.x, random())
+            const z = THREE.MathUtils.lerp(reliefBounds.min.z, reliefBounds.max.z, random())
+
+            this.rayOrigin.set(x, topY, z)
+            this.raycaster.set(this.rayOrigin, this.rayDirection)
+            this.raycaster.far = raycastFar
+
+            const hit = this.raycaster.intersectObjects(reliefMeshes, false)[0]
+            if(!this.isValidReliefHit(hit, waterlineMinY))
+            {
+                continue
+            }
+
+            if(!this.isFarEnoughFromOthers(hit.point, acceptedPoints))
+            {
+                continue
+            }
+
+            acceptedPoints.push(hit.point.clone())
+        }
+
+        return acceptedPoints
+    }
+
+    applyInstanceMatrices()
+    {
+        if(!this.instancedMesh)
+        {
+            return
+        }
+
+        const desiredCount = Math.max(1, Math.floor(this.state.nombreBuissons))
+        const points = this.collectInstancePoints(desiredCount)
+        const scaleMin = Math.max(0.01, Math.min(this.state.echelleMin, this.state.echelleMax))
+        const scaleMax = Math.max(scaleMin, Math.max(this.state.echelleMin, this.state.echelleMax))
+        const random = this.createSeededRandom((Math.floor(this.state.graineRepartition) ^ 0x9E3779B9) >>> 0)
+
+        let appliedCount = 0
+        for(const point of points)
+        {
+            const scale = THREE.MathUtils.lerp(scaleMin, scaleMax, random())
+            const yaw = random() * Math.PI * 2
+
+            this.dummy.position.copy(point)
+            this.dummy.position.y += this.state.hauteurOffset
+            this.dummy.rotation.set(0, yaw, 0)
+            this.dummy.scale.setScalar(scale)
+            this.dummy.updateMatrix()
+
+            this.instancedMesh.setMatrixAt(appliedCount, this.dummy.matrix)
+            appliedCount++
+        }
+
+        this.instancedMesh.count = appliedCount
+        this.instancedMesh.instanceMatrix.needsUpdate = true
+        this.instancedMesh.computeBoundingSphere()
+        this.state.buissonsActifs = appliedCount
+    }
+
+    disposeInstancedMesh()
+    {
+        if(!this.instancedMesh)
+        {
+            return
+        }
+
+        this.group.remove(this.instancedMesh)
+        this.instancedMesh = null
+        this.state.buissonsActifs = 0
+    }
+
+    disposeFoliageTemplate()
+    {
+        if(!this.foliageTemplate)
+        {
+            return
+        }
+
+        this.foliageTemplate.destroy?.()
+        this.foliageTemplate = null
+    }
+
+    rebuildInstances()
+    {
+        this.state.nombreBuissons = Math.max(1, Math.floor(this.state.nombreBuissons))
+        this.state.nombreFeuilles = Math.max(4, Math.floor(this.state.nombreFeuilles))
+        this.state.graineRepartition = Math.max(0, Math.floor(this.state.graineRepartition))
+
+        this.disposeInstancedMesh()
+        this.disposeFoliageTemplate()
+
+        this.createFoliageTemplate()
+        this.createInstancedMesh()
+        this.applyInstanceMatrices()
+    }
+
+    update()
+    {
+        // Pas d animation runtime pour l instant, uniquement du placement instancie.
     }
 
     setDebug({ parentFolder = null } = {})
@@ -140,99 +318,116 @@ export default class Bushes
 
         this.debugFolder = parentFolder
 
-        this.debug.addBinding(this.debugFolder, this.state, 'decalageX', {
-            label: 'Decalage X',
-            min: -20,
-            max: 20,
-            step: 0.01
-        }).on('change', () =>
+        const rebuild = () =>
         {
-            this.applyPosition()
-        })
+            this.rebuildInstances()
+        }
 
-        this.debug.addBinding(this.debugFolder, this.state, 'decalageZ', {
-            label: 'Decalage Z',
-            min: -20,
-            max: 20,
+        this.debug.addBinding(this.debugFolder, this.state, 'nombreBuissons', {
+            label: 'Nombre buissons',
+            min: 1,
+            max: 1200,
+            step: 1
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'graineRepartition', {
+            label: 'Graine repartition',
+            min: 0,
+            max: 999999,
+            step: 1
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'distanceMinimale', {
+            label: 'Distance minimale',
+            min: 0,
+            max: 4,
             step: 0.01
-        }).on('change', () =>
-        {
-            this.applyPosition()
-        })
+        }).on('change', rebuild)
 
-        this.debug.addBinding(this.debugFolder, this.state, 'echelleBuisson', {
-            label: 'Echelle buisson',
+        this.debug.addBinding(this.debugFolder, this.state, 'echelleMin', {
+            label: 'Echelle min',
             min: 0.05,
             max: 2,
             step: 0.01
-        }).on('change', () =>
-        {
-            this.applyScale()
-        })
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'echelleMax', {
+            label: 'Echelle max',
+            min: 0.05,
+            max: 2,
+            step: 0.01
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'hauteurOffset', {
+            label: 'Hauteur offset',
+            min: -1,
+            max: 1,
+            step: 0.001
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'normaleYMin', {
+            label: 'Normale Y min',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', rebuild)
+
+        this.debug.addBinding(this.debugFolder, this.state, 'margeHauteurHerbe', {
+            label: 'Marge hauteur herbe',
+            min: -1,
+            max: 3,
+            step: 0.01
+        }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'nombreFeuilles', {
             label: 'Nombre feuilles',
             min: 4,
-            max: 300,
+            max: 400,
             step: 1
-        }).on('change', () =>
-        {
-            this.state.nombreFeuilles = Math.max(1, Math.floor(this.state.nombreFeuilles))
-            this.rebuildFoliage()
-        })
+        }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'tailleFeuille', {
             label: 'Taille feuille',
             min: 0.05,
             max: 3,
             step: 0.01
-        }).on('change', () =>
-        {
-            this.rebuildFoliage()
-        })
+        }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'seuilAlpha', {
             label: 'Seuil alpha',
             min: 0,
             max: 1,
             step: 0.001
-        }).on('change', () =>
-        {
-            this.applyFoliageAlpha()
-        })
+        }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'melangeNormales', {
             label: 'Melange normales',
             min: 0,
             max: 1,
             step: 0.001
-        }).on('change', () =>
-        {
-            this.rebuildFoliage()
-        })
+        }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'rotationAleatoire', {
             label: 'Rotation aleatoire',
             min: 0,
             max: 20000,
             step: 1
-        }).on('change', () =>
-        {
-            this.rebuildFoliage()
-        })
+        }).on('change', rebuild)
 
         this.debug.addColorBinding(this.debugFolder, this, 'couleurFeuillage', {
             label: 'Couleur feuillage'
-        }).on('change', () =>
-        {
-            this.applyFoliageColor()
-        })
+        }).on('change', rebuild)
+
+        this.debug.addManualBinding(this.debugFolder, this.state, 'buissonsActifs', {
+            label: 'Buissons actifs',
+            readonly: true
+        }, 'auto')
     }
 
     destroy()
     {
-        this.foliage?.destroy?.()
-        this.foliage = null
+        this.disposeInstancedMesh()
+        this.disposeFoliageTemplate()
 
         if(this.group)
         {
@@ -242,6 +437,12 @@ export default class Bushes
 
         this.debugFolder = null
         this.raycaster = null
+        this.rayOrigin = null
+        this.rayDirection = null
+        this.worldNormal = null
+        this.tmpBounds = null
+        this.tmpMeshBounds = null
+        this.dummy = null
         this.foliageAlphaTexture = null
         this.resources = null
         this.debug = null
