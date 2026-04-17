@@ -56,6 +56,7 @@ export default class Scene1TubeWaterController
         this.tubeMeshesByTargetUuid = new Map()
         this.flowProgressByTubeUuid = new Map()
         this.activeFlowSourceByTubeUuid = new Map()
+        this.dualInflowByTubeUuid = new Map()
         this.flowShaderMaterialsByTubeUuid = new Map()
         this.flowEntryByTubeUuid = new Map()
         this.rotationTargetUuidByName = new Map()
@@ -409,6 +410,7 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
         const flowUniforms = {
             uFlowProgress: { value: 0 },
             uFlowDirection: { value: 1 },
+            uFlowDualSided: { value: 0 },
             uFlowFeather: { value: 0.05 },
             uFlowMin: { value: min },
             uFlowRange: { value: range },
@@ -427,6 +429,7 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
 
             shader.uniforms.uFlowProgress = flowUniforms.uFlowProgress
             shader.uniforms.uFlowDirection = flowUniforms.uFlowDirection
+            shader.uniforms.uFlowDualSided = flowUniforms.uFlowDualSided
             shader.uniforms.uFlowFeather = flowUniforms.uFlowFeather
             shader.uniforms.uFlowMin = flowUniforms.uFlowMin
             shader.uniforms.uFlowRange = flowUniforms.uFlowRange
@@ -457,6 +460,7 @@ vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);`
                     `varying float vFlowCoord;
 uniform float uFlowProgress;
 uniform float uFlowDirection;
+uniform float uFlowDualSided;
 uniform float uFlowFeather;
 uniform vec3 uFlowDisconnectedColor;
 uniform vec3 uFlowConnectedColor;
@@ -471,8 +475,14 @@ void main() {`
                 flowFragmentShader = flowFragmentShader.replace(
                     'vec4 diffuseColor = vec4( diffuse, opacity );',
                     `float flowEdge = max(0.0001, uFlowFeather);
-float flowCoord = uFlowDirection >= 0.0 ? vFlowCoord : (1.0 - vFlowCoord);
-float flowFill = 1.0 - smoothstep(uFlowProgress - flowEdge, uFlowProgress, flowCoord);
+float flowProgress = clamp(uFlowProgress, 0.0, 1.0);
+float flowCoordSingle = uFlowDirection >= 0.0 ? vFlowCoord : (1.0 - vFlowCoord);
+float flowFillSingle = 1.0 - smoothstep(flowProgress - flowEdge, flowProgress, flowCoordSingle);
+float flowCoordDual = min(vFlowCoord, 1.0 - vFlowCoord);
+float flowFillDual = 1.0 - smoothstep((flowProgress * 0.5) - flowEdge, (flowProgress * 0.5), flowCoordDual);
+float dualFillCompleted = step(0.9999, flowProgress);
+flowFillDual = mix(flowFillDual, 1.0, dualFillCompleted);
+float flowFill = mix(flowFillSingle, flowFillDual, step(0.5, uFlowDualSided));
 vec3 flowBaseColor = mix(uFlowDisconnectedColor, uFlowConnectedColor, flowFill);
 vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 )
@@ -1746,6 +1756,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         const flowPathSet = new Set(flowPathUuids)
         const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
         this.activeFlowSourceByTubeUuid.clear()
+        this.dualInflowByTubeUuid.clear()
 
         for(const target of this.rotationTargets)
         {
@@ -1770,20 +1781,25 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(const tubeUuid of flowPathUuids)
         {
             const currentProgress = this.flowProgressByTubeUuid.get(tubeUuid) ?? 0
-            const fillSource = this.resolveTubeFillSource(tubeUuid)
+            const fillSources = this.resolveTubeFillSources(tubeUuid)
             const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
             const requiresSource = dependencyGroups.length > 0
-            if(requiresSource && !fillSource)
+            if(requiresSource && fillSources.length === 0)
             {
                 this.flowProgressByTubeUuid.set(tubeUuid, 0)
                 continue
             }
-            if(fillSource)
-            {
-                this.activeFlowSourceByTubeUuid.set(tubeUuid, fillSource)
-            }
 
-            const nextProgress = this.moveTowards(currentProgress, 1, stepFill)
+            const primarySource = fillSources[0] ?? null
+            if(primarySource)
+            {
+                this.activeFlowSourceByTubeUuid.set(tubeUuid, primarySource)
+            }
+            const isDualInflow = this.shouldUseDualInflow(tubeUuid, fillSources)
+            this.dualInflowByTubeUuid.set(tubeUuid, isDualInflow)
+
+            const fillStep = isDualInflow ? (stepFill * 2) : stepFill
+            const nextProgress = this.moveTowards(currentProgress, 1, fillStep)
             this.flowProgressByTubeUuid.set(tubeUuid, nextProgress)
         }
     }
@@ -1796,43 +1812,42 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return true
         }
 
-        return Boolean(this.resolveTubeFillSource(tubeUuid))
+        return this.resolveTubeFillSources(tubeUuid).length > 0
     }
 
-    resolveTubeFillSource(tubeUuid)
+    resolveTubeFillSources(tubeUuid)
     {
         const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
         if(requiredWindowName && !this.isBlueWindowFlowComplete(requiredWindowName))
         {
-            return null
+            return []
         }
 
-        const dependencySource = this.getReadyDependencySourceUuid(tubeUuid)
-        if(dependencySource)
+        const dependencySources = this.getReadyDependencySourceUuids(tubeUuid)
+        if(dependencySources.length > 0)
         {
-            return {
+            return dependencySources.map((tubeUuid) => ({
                 type: 'tube',
-                tubeUuid: dependencySource
-            }
+                tubeUuid
+            }))
         }
 
         const windowName = this.windowSourceByTubeUuid.get(tubeUuid)
         if(windowName && this.isBlueWindowFlowComplete(windowName))
         {
-            return {
+            return [{
                 type: 'window',
                 windowName
-            }
+            }]
         }
 
-        return null
+        return []
     }
 
-    getReadyDependencySourceUuid(tubeUuid)
+    getReadyDependencySourceUuids(tubeUuid)
     {
         const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
-        let bestDependencyUuid = null
-        let bestProgress = -1
+        const dependencyUuids = new Set()
 
         for(const group of dependencyGroups)
         {
@@ -1851,16 +1866,32 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 continue
             }
 
-            const candidateUuid = group[0]
-            const candidateProgress = this.flowProgressByTubeUuid.get(candidateUuid) ?? 0
-            if(candidateProgress > bestProgress)
-            {
-                bestProgress = candidateProgress
-                bestDependencyUuid = candidateUuid
-            }
+            dependencyUuids.add(group[0])
         }
 
-        return bestDependencyUuid
+        return Array.from(dependencyUuids).sort((tubeA, tubeB) =>
+        {
+            const progressA = this.flowProgressByTubeUuid.get(tubeA) ?? 0
+            const progressB = this.flowProgressByTubeUuid.get(tubeB) ?? 0
+            return progressB - progressA
+        })
+    }
+
+    shouldUseDualInflow(tubeUuid, fillSources)
+    {
+        if(!this.isBranchTube(tubeUuid))
+        {
+            return false
+        }
+
+        const tubeSourceCount = fillSources.filter((source) => source?.type === 'tube').length
+        return tubeSourceCount >= 2
+    }
+
+    isBranchTube(tubeUuid)
+    {
+        const meta = this.targetMetaByUuid.get(tubeUuid)
+        return Boolean(meta && meta.order === BRANCH_BASE_ORDER && (meta.branchType === 'b' || meta.branchType === 't'))
     }
 
     moveTowards(value, target, maxStep)
@@ -2151,6 +2182,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 {
                     flowUniforms.uFlowDirection.value = flowDirection
                 }
+                if(flowUniforms?.uFlowDualSided)
+                {
+                    flowUniforms.uFlowDualSided.value = this.dualInflowByTubeUuid.get(target.uuid) ? 1 : 0
+                }
             }
 
             const tubeMeshes = this.tubeMeshesByTargetUuid.get(target.uuid) ?? []
@@ -2361,6 +2396,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.flowShaderMaterialsByTubeUuid.clear()
         this.flowEntryByTubeUuid.clear()
         this.activeFlowSourceByTubeUuid.clear()
+        this.dualInflowByTubeUuid.clear()
         this.rotationTargetUuidByName.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
