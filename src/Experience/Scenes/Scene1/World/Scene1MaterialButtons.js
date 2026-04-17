@@ -4,10 +4,18 @@ import Experience from '../../../Experience.js'
 const CURSOR_OWNER_CLASS = 'is-scene1-material-cursor'
 const BUTTON_PRESS_DEPTH = 0.045
 const BUTTON_RELEASE_DURATION = 0.14
+const MATERIAL_COLORS_BY_NAME = Object.freeze({
+    materiau0: '#ff5b5b',
+    materiau1: '#41d67a',
+    materiau2: '#4da6ff'
+})
+const DEFAULT_MATERIAL_COLOR = '#4da6ff'
+const INACTIVE_EMISSIVE_INTENSITY = 0.08
+const ACTIVE_EMISSIVE_INTENSITY = 0.36
 
 export default class Scene1MaterialButtons
 {
-    constructor({ scene1Model, isExternalHoverActive = null } = {})
+    constructor({ scene1Model, isExternalHoverActive = null, onMaterialSelected = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
@@ -17,6 +25,9 @@ export default class Scene1MaterialButtons
         this.scene1Model = scene1Model
         this.isExternalHoverActive = typeof isExternalHoverActive === 'function'
             ? isExternalHoverActive
+            : null
+        this.onMaterialSelected = typeof onMaterialSelected === 'function'
+            ? onMaterialSelected
             : null
         this.clickableMeshes = this.scene1Model?.getClickableMaterialMeshes?.() ?? []
 
@@ -29,6 +40,7 @@ export default class Scene1MaterialButtons
         this.ownsCursor = false
         this.buttonStates = new Map()
         this.createdCursorElement = false
+        this.selectedMaterial = null
 
         this.setButtonStates()
         this.ensureCursorElement()
@@ -46,8 +58,16 @@ export default class Scene1MaterialButtons
                 continue
             }
 
+            const materialKey = this.getMaterialKeyFromMesh(mesh)
+            const colorHex = MATERIAL_COLORS_BY_NAME[materialKey] || DEFAULT_MATERIAL_COLOR
+            const runtimeMaterials = this.cloneAndSetupMeshMaterials(mesh)
+            this.applyMaterialVisualState(runtimeMaterials, colorHex, false)
+
             this.buttonStates.set(mesh.uuid, {
                 mesh,
+                materialKey,
+                colorHex,
+                runtimeMaterials,
                 baseY: mesh.position.y,
                 offsetY: 0,
                 phase: 'idle',
@@ -80,7 +100,16 @@ export default class Scene1MaterialButtons
                 return
             }
 
+            const clickedState = this.activePressedMeshUuid
+                ? this.buttonStates.get(this.activePressedMeshUuid)
+                : null
+            const shouldSelect = Boolean(clickedState && this.hoveredMesh?.uuid === clickedState.mesh?.uuid)
             this.releaseHeldButton()
+
+            if(shouldSelect)
+            {
+                this.selectMaterialMesh(clickedState.mesh)
+            }
         }
 
         this.onWindowBlur = () =>
@@ -259,12 +288,90 @@ export default class Scene1MaterialButtons
         }
     }
 
+    getMaterialKeyFromMesh(mesh)
+    {
+        return String(mesh?.name || '')
+            .toLowerCase()
+            .replace(/[\s_-]+/g, '')
+    }
+
+    cloneAndSetupMeshMaterials(mesh)
+    {
+        const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        const clonedMaterials = sourceMaterials.map((material) => material?.clone?.() ?? material)
+        mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
+        return clonedMaterials
+    }
+
+    applyMaterialVisualState(materials, colorHex, isSelected)
+    {
+        const emissiveIntensity = isSelected ? ACTIVE_EMISSIVE_INTENSITY : INACTIVE_EMISSIVE_INTENSITY
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if(material.color)
+            {
+                material.color.set(colorHex)
+            }
+
+            if(material.emissive)
+            {
+                material.emissive.set(colorHex)
+                material.emissiveIntensity = emissiveIntensity
+            }
+
+            material.needsUpdate = true
+        }
+    }
+
+    selectMaterialMesh(mesh)
+    {
+        if(!mesh)
+        {
+            return
+        }
+
+        const selectedState = this.buttonStates.get(mesh.uuid)
+        if(!selectedState)
+        {
+            return
+        }
+
+        this.selectedMaterial = {
+            meshUuid: selectedState.mesh.uuid,
+            key: selectedState.materialKey,
+            colorHex: selectedState.colorHex
+        }
+
+        for(const state of this.buttonStates.values())
+        {
+            this.applyMaterialVisualState(
+                state.runtimeMaterials,
+                state.colorHex,
+                state.mesh.uuid === selectedState.mesh.uuid
+            )
+        }
+
+        this.onMaterialSelected?.({ ...this.selectedMaterial })
+    }
+
+    getSelectedMaterial()
+    {
+        return this.selectedMaterial ? { ...this.selectedMaterial } : null
+    }
+
     destroy()
     {
         this.inputs?.off?.('mousedown.scene1MaterialButtons')
         this.inputs?.off?.('mouseup.scene1MaterialButtons')
         this.inputs?.off?.('blur.scene1MaterialButtons')
         window.removeEventListener('resize', this.onWindowResize)
+        this.releaseHeldButton()
         this.releaseCursor()
 
         for(const state of this.buttonStates.values())

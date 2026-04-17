@@ -1374,6 +1374,59 @@ export default class MapModel
         return this.collisionBoxes ?? []
     }
 
+    getMapBoundary({ inset = 0 } = {})
+    {
+        const safeInset = Number.isFinite(inset) ? Math.max(0, inset) : 0
+        const bounds = this.buildPlanBounds() ?? this.buildCollisionBounds()
+        if(!bounds)
+        {
+            return null
+        }
+
+        const minX = bounds.min.x + safeInset
+        const maxX = bounds.max.x - safeInset
+        const minZ = bounds.min.z + safeInset
+        const maxZ = bounds.max.z - safeInset
+
+        if(minX >= maxX || minZ >= maxZ)
+        {
+            return null
+        }
+
+        return { minX, maxX, minZ, maxZ }
+    }
+
+    buildCollisionBounds()
+    {
+        const boxes = this.collisionBoxes ?? []
+        if(boxes.length === 0)
+        {
+            return null
+        }
+
+        const bounds = new THREE.Box3()
+        let hasBounds = false
+
+        for(const box of boxes)
+        {
+            if(!(box instanceof THREE.Box3))
+            {
+                continue
+            }
+
+            if(!hasBounds)
+            {
+                bounds.copy(box)
+                hasBounds = true
+                continue
+            }
+
+            bounds.union(box)
+        }
+
+        return hasBounds ? bounds : null
+    }
+
     getCollisionMeshes()
     {
         return this.collisionMeshes ?? []

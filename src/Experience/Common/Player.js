@@ -9,6 +9,7 @@ export default class Player
     constructor({
         groundHeight = 0,
         boundaryRadius = 36,
+        boundaryBox = null,
         collisionBoxes = [],
         collisionMeshes = [],
         groundMeshes = [],
@@ -25,6 +26,7 @@ export default class Player
 
         this.groundHeight = groundHeight
         this.boundaryRadius = boundaryRadius
+        this.boundaryBox = this.normalizeBoundaryBox(boundaryBox)
         this.collisionBoxes = Array.isArray(collisionBoxes) ? collisionBoxes : []
         this.collisionMeshes = Array.isArray(collisionMeshes) ? collisionMeshes : []
         this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
@@ -293,16 +295,81 @@ export default class Player
 
         this.resolveCollisions()
         this.resolveGroundCollision()
+        this.resolveBoundaryCollision()
+    }
+
+    normalizeBoundaryBox(boundaryBox)
+    {
+        if(!boundaryBox || typeof boundaryBox !== 'object')
+        {
+            return null
+        }
+
+        const minX = Number(boundaryBox.minX)
+        const maxX = Number(boundaryBox.maxX)
+        const minZ = Number(boundaryBox.minZ)
+        const maxZ = Number(boundaryBox.maxZ)
+
+        if(
+            !Number.isFinite(minX) ||
+            !Number.isFinite(maxX) ||
+            !Number.isFinite(minZ) ||
+            !Number.isFinite(maxZ) ||
+            minX >= maxX ||
+            minZ >= maxZ
+        )
+        {
+            return null
+        }
+
+        return { minX, maxX, minZ, maxZ }
+    }
+
+    resolveBoundaryCollision()
+    {
+        if(this.boundaryBox)
+        {
+            const minX = this.boundaryBox.minX + this.settings.radius
+            const maxX = this.boundaryBox.maxX - this.settings.radius
+            const minZ = this.boundaryBox.minZ + this.settings.radius
+            const maxZ = this.boundaryBox.maxZ - this.settings.radius
+
+            if(this.position.x < minX)
+            {
+                this.position.x = minX
+                this.velocity.x = 0
+            }
+            else if(this.position.x > maxX)
+            {
+                this.position.x = maxX
+                this.velocity.x = 0
+            }
+
+            if(this.position.z < minZ)
+            {
+                this.position.z = minZ
+                this.velocity.z = 0
+            }
+            else if(this.position.z > maxZ)
+            {
+                this.position.z = maxZ
+                this.velocity.z = 0
+            }
+
+            return
+        }
 
         const horizontalDistance = Math.hypot(this.position.x, this.position.z)
-        if(horizontalDistance > this.boundaryRadius)
+        if(horizontalDistance <= this.boundaryRadius)
         {
-            const clampRatio = this.boundaryRadius / horizontalDistance
-            this.position.x *= clampRatio
-            this.position.z *= clampRatio
-            this.velocity.x = 0
-            this.velocity.z = 0
+            return
         }
+
+        const clampRatio = this.boundaryRadius / horizontalDistance
+        this.position.x *= clampRatio
+        this.position.z *= clampRatio
+        this.velocity.x = 0
+        this.velocity.z = 0
     }
 
     resolveGroundCollision()

@@ -47,9 +47,11 @@ export default class MapWorld
         })
         const bloomMinDistance = 1.2
         const bloomRetreatDistance = bloomMinDistance * 5
+        const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: 120,
+            boundaryBox: mapBoundary,
             collisionBoxes: [],
             collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
