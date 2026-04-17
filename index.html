@@ -30,8 +30,18 @@
       </div>
     </div>
     <div class="hud">
-      <p class="hud__hint">Clique dans la scene puis utilise ZQSD/WASD pour te deplacer, SHIFT pour sprinter, SPACE pour sauter, ESC pour sortir.</p>
+      <p class="hud__hint"></p>
       <div class="hud__crosshair" aria-hidden="true"></div>
+    </div>
+    <div class="pause-menu" id="pauseMenu" aria-hidden="true">
+      <div class="pause-menu__panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
+        <p class="pause-menu__subtitle">Menu pause</p>
+        <h2 class="pause-menu__title" id="pauseMenuTitle">Jeu en pause</h2>
+        <p class="pause-menu__text">Appuie sur Echap ou clique sur reprendre pour continuer.</p>
+        <div class="pause-menu__actions">
+          <button class="pause-menu__button" id="pauseResumeButton" type="button">Reprendre</button>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/script.js"></script>
   </body>

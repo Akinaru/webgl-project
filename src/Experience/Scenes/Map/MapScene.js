@@ -7,7 +7,7 @@ export default class MapScene extends BaseScene
     constructor()
     {
         super(SceneEnum.MAP)
-        this.hudHint = 'Map: clique pour pointer lock, ZQSD/WASD pour te deplacer, Shift pour sprinter, Space pour sauter.'
+        this.hudHint = ''
     }
 
     enter()

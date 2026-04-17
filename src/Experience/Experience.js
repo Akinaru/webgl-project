@@ -69,7 +69,13 @@ export default class Experience
 
     update()
     {
-        this.sceneManager.update(this.time.delta)
+        const hasRuntimeFocus = document.hasFocus?.() ?? true
+
+        if(!this.menu?.isPauseOpen?.() && hasRuntimeFocus)
+        {
+            this.sceneManager.update(this.time.delta)
+        }
+
         this.camera.update()
         this.renderer.update()
         this.debug.update()
