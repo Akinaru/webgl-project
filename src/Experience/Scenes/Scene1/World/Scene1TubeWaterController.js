@@ -87,11 +87,14 @@ export default class Scene1TubeWaterController
         this.endpointDirA = new THREE.Vector3()
         this.endpointDirB = new THREE.Vector3()
         this.disconnectedColor = new THREE.Color(DISCONNECTED_COLOR)
-        this.connectedColor = new THREE.Color(CONNECTED_COLOR)
-        this.connectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
+        this.tubeConnectedColor = new THREE.Color(CONNECTED_COLOR)
+        this.tubeConnectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
+        this.windowConnectedColor = new THREE.Color(CONNECTED_COLOR)
+        this.windowConnectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
         this.emissiveOffColor = new THREE.Color('#000000')
         this.colorMix = new THREE.Color()
         this.emissiveMix = new THREE.Color()
+        this.tmpColor = new THREE.Color()
 
         this.collectJoinTargets()
         this.buildTubeOrder()
@@ -297,8 +300,8 @@ export default class Scene1TubeWaterController
         const windowUniforms = {
             uWindowProgress: { value: 0 },
             uWindowDisconnectedColor: { value: this.disconnectedColor.clone() },
-            uWindowConnectedColor: { value: this.connectedColor.clone() },
-            uWindowConnectedEmissiveColor: { value: this.connectedEmissiveColor.clone() },
+            uWindowConnectedColor: { value: this.windowConnectedColor.clone() },
+            uWindowConnectedEmissiveColor: { value: this.windowConnectedEmissiveColor.clone() },
             uWindowEmissiveIntensity: { value: 0.68 }
         }
         material.userData.windowFlowUniforms = windowUniforms
@@ -406,8 +409,8 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             uFlowMin: { value: min },
             uFlowRange: { value: range },
             uFlowDisconnectedColor: { value: this.disconnectedColor.clone() },
-            uFlowConnectedColor: { value: this.connectedColor.clone() },
-            uFlowConnectedEmissiveColor: { value: this.connectedEmissiveColor.clone() },
+            uFlowConnectedColor: { value: this.tubeConnectedColor.clone() },
+            uFlowConnectedEmissiveColor: { value: this.tubeConnectedEmissiveColor.clone() },
             uFlowEmissiveIntensity: { value: 0.68 }
         }
 
@@ -1307,8 +1310,15 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         for(const [windowName, isReady] of gateReadyByName)
         {
             const current = this.blueWindowFlowProgressByName.get(windowName) ?? 0
-            const target = isReady ? 1 : 0
-            this.blueWindowFlowProgressByName.set(windowName, this.moveTowards(current, target, stepFill))
+            if(isReady)
+            {
+                this.blueWindowFlowProgressByName.set(windowName, this.moveTowards(current, 1, stepFill))
+                continue
+            }
+
+            // Requested UX: water in windows must disappear instantly when the
+            // upstream flow is no longer valid.
+            this.blueWindowFlowProgressByName.set(windowName, 0)
         }
     }
 
@@ -1384,13 +1394,13 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
             if(material.color)
             {
-                this.colorMix.lerpColors(this.disconnectedColor, this.connectedColor, colorLerp)
+                this.colorMix.lerpColors(this.disconnectedColor, this.windowConnectedColor, colorLerp)
                 material.color.copy(this.colorMix)
             }
 
             if(material.emissive)
             {
-                this.emissiveMix.lerpColors(this.emissiveOffColor, this.connectedEmissiveColor, colorLerp)
+                this.emissiveMix.lerpColors(this.emissiveOffColor, this.windowConnectedEmissiveColor, colorLerp)
                 material.emissive.copy(this.emissiveMix)
                 material.emissiveIntensity = 0.68 * colorLerp
             }
@@ -1823,13 +1833,13 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
                     if(material.color)
                     {
-                        this.colorMix.lerpColors(this.disconnectedColor, this.connectedColor, flowProgress)
+                        this.colorMix.lerpColors(this.disconnectedColor, this.tubeConnectedColor, flowProgress)
                         material.color.copy(this.colorMix)
                     }
 
                     if(material.emissive)
                     {
-                        this.emissiveMix.lerpColors(this.emissiveOffColor, this.connectedEmissiveColor, flowProgress)
+                        this.emissiveMix.lerpColors(this.emissiveOffColor, this.tubeConnectedEmissiveColor, flowProgress)
                         material.emissive.copy(this.emissiveMix)
                         material.emissiveIntensity = 0.68 * flowProgress
                     }
@@ -1838,6 +1848,58 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 }
             }
         }
+    }
+
+    setTubeFlowColor(colorValue)
+    {
+        if(colorValue === null || colorValue === undefined)
+        {
+            this.tubeConnectedColor.set(CONNECTED_COLOR)
+            this.tubeConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
+            this.windowConnectedColor.set(CONNECTED_COLOR)
+            this.windowConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
+        }
+        else
+        {
+            this.tmpColor.set(colorValue)
+            this.tubeConnectedColor.copy(this.tmpColor)
+            this.tubeConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
+            this.windowConnectedColor.copy(this.tmpColor)
+            this.windowConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
+        }
+
+        for(const shaderMaterials of this.flowShaderMaterialsByTubeUuid.values())
+        {
+            for(const shaderMaterial of shaderMaterials)
+            {
+                const flowUniforms = shaderMaterial?.userData?.flowUniforms
+                if(!flowUniforms)
+                {
+                    continue
+                }
+
+                flowUniforms.uFlowConnectedColor?.value?.copy?.(this.tubeConnectedColor)
+                flowUniforms.uFlowConnectedEmissiveColor?.value?.copy?.(this.tubeConnectedEmissiveColor)
+            }
+        }
+
+        for(const shaderMaterials of this.blueWindowShaderMaterialsByMeshUuid.values())
+        {
+            for(const shaderMaterial of shaderMaterials)
+            {
+                const windowFlowUniforms = shaderMaterial?.userData?.windowFlowUniforms
+                if(!windowFlowUniforms)
+                {
+                    continue
+                }
+
+                windowFlowUniforms.uWindowConnectedColor?.value?.copy?.(this.windowConnectedColor)
+                windowFlowUniforms.uWindowConnectedEmissiveColor?.value?.copy?.(this.windowConnectedEmissiveColor)
+            }
+        }
+
+        this.applyTubeFlowColors()
+        this.applyBlueWindowColors()
     }
 
     getRotationAxisWorld(target, out)
