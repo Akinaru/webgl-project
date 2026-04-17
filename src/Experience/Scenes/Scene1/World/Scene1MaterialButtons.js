@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
+import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 
 const CURSOR_OWNER_CLASS = 'is-scene1-material-cursor'
 const BUTTON_PRESS_DEPTH = 0.045
@@ -19,7 +20,6 @@ export default class Scene1MaterialButtons
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
-        this.camera = this.experience.camera?.instance
         this.canvas = this.experience.canvas
         this.dialogueManager = this.experience.dialogueManager
         this.scene1Model = scene1Model
@@ -31,8 +31,9 @@ export default class Scene1MaterialButtons
             : null
         this.clickableMeshes = this.scene1Model?.getClickableMaterialMeshes?.() ?? []
 
-        this.raycaster = new THREE.Raycaster()
-        this.centerNdc = new THREE.Vector2(0, 0)
+        this.centerRaycaster = new CenterScreenRaycaster({
+            getCamera: () => this.experience.camera?.instance ?? null
+        })
         this.centerScreen = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
         this.hoveredMesh = null
         this.activePressedMeshUuid = null
@@ -80,7 +81,7 @@ export default class Scene1MaterialButtons
     {
         this.onMouseDown = (event) =>
         {
-            if(event?.button !== 0 || !this.isInteractionActive())
+            if(!this.isInteractionActive())
             {
                 return
             }
@@ -96,11 +97,6 @@ export default class Scene1MaterialButtons
 
         this.onMouseUp = (event) =>
         {
-            if(event?.button !== 0)
-            {
-                return
-            }
-
             const clickedState = this.activePressedMeshUuid
                 ? this.buttonStates.get(this.activePressedMeshUuid)
                 : null
@@ -122,8 +118,8 @@ export default class Scene1MaterialButtons
             this.centerScreen.set(window.innerWidth * 0.5, window.innerHeight * 0.5)
         }
 
-        this.inputs?.on?.('mousedown.scene1MaterialButtons', this.onMouseDown)
-        this.inputs?.on?.('mouseup.scene1MaterialButtons', this.onMouseUp)
+        this.inputs?.on?.('sceneinteractdown.scene1MaterialButtons', this.onMouseDown)
+        this.inputs?.on?.('sceneinteractup.scene1MaterialButtons', this.onMouseUp)
         this.inputs?.on?.('blur.scene1MaterialButtons', this.onWindowBlur)
         window.addEventListener('resize', this.onWindowResize)
     }
@@ -192,7 +188,7 @@ export default class Scene1MaterialButtons
         this.updateButtons(deltaSeconds)
         this.ensureCursorElement()
 
-        if(!this.camera)
+        if(!this.centerRaycaster.hasCamera())
         {
             this.hoveredMesh = null
             this.updateCursor()
@@ -217,14 +213,7 @@ export default class Scene1MaterialButtons
 
     getMaterialMeshAtCenter()
     {
-        if(this.clickableMeshes.length === 0 || !this.camera)
-        {
-            return null
-        }
-
-        this.raycaster.setFromCamera(this.centerNdc, this.camera)
-        const hits = this.raycaster.intersectObjects(this.clickableMeshes, false)
-        return hits[0]?.object ?? null
+        return this.centerRaycaster.intersectFirst(this.clickableMeshes, false)
     }
 
     updateCursor()
@@ -371,8 +360,8 @@ export default class Scene1MaterialButtons
 
     destroy()
     {
-        this.inputs?.off?.('mousedown.scene1MaterialButtons')
-        this.inputs?.off?.('mouseup.scene1MaterialButtons')
+        this.inputs?.off?.('sceneinteractdown.scene1MaterialButtons')
+        this.inputs?.off?.('sceneinteractup.scene1MaterialButtons')
         this.inputs?.off?.('blur.scene1MaterialButtons')
         window.removeEventListener('resize', this.onWindowResize)
         this.releaseHeldButton()
