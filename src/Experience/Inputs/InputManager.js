@@ -10,7 +10,6 @@ export default class InputManager extends EventEmitter
         this.keys = new Set()
         this.buttons = new Set()
         this.pointerLockElement = document.pointerLockElement || null
-        this.traceEnabled = window.location.hash.toLowerCase().includes('debug')
         this.mouse = {
             x: 0,
             y: 0,
@@ -23,15 +22,6 @@ export default class InputManager extends EventEmitter
         this.onKeyDown = (event) =>
         {
             this.keys.add(event.code)
-
-            if(this.traceEnabled && event.code === 'Escape')
-            {
-                this.trace('keydown.escape', {
-                    pointerLock: this.describeElement(this.pointerLockElement),
-                    activeElement: this.describeElement(document.activeElement),
-                    hasFocus: document.hasFocus?.() ?? true
-                })
-            }
 
             this.trigger('keydown', [event])
         }
@@ -87,16 +77,6 @@ export default class InputManager extends EventEmitter
             const previousElement = this.pointerLockElement
             this.pointerLockElement = document.pointerLockElement || null
 
-            if(this.traceEnabled)
-            {
-                this.trace('pointerlockchange', {
-                    previous: this.describeElement(previousElement),
-                    current: this.describeElement(this.pointerLockElement),
-                    activeElement: this.describeElement(document.activeElement),
-                    hasFocus: document.hasFocus?.() ?? true
-                })
-            }
-
             this.trigger('pointerlockchange', [{
                 element: this.pointerLockElement,
                 previousElement
@@ -151,43 +131,13 @@ export default class InputManager extends EventEmitter
         const requestResult = target?.requestPointerLock?.()
         if(requestResult && typeof requestResult.catch === 'function')
         {
-            requestResult.catch((error) =>
-            {
-                if(this.traceEnabled)
-                {
-                    this.trace('pointerlock_request_failed', {
-                        error: error?.message || String(error),
-                        target: this.describeElement(target)
-                    })
-                }
-            })
+            requestResult.catch(() => {})
         }
     }
 
     exitPointerLock()
     {
         document.exitPointerLock?.()
-    }
-
-    describeElement(element)
-    {
-        if(!(element instanceof Element))
-        {
-            return 'none'
-        }
-
-        const tag = element.tagName.toLowerCase()
-        const id = element.id ? `#${element.id}` : ''
-        const className = typeof element.className === 'string' && element.className.trim() !== ''
-            ? `.${element.className.trim().split(/\s+/).join('.')}`
-            : ''
-
-        return `${tag}${id}${className}`
-    }
-
-    trace(label, payload = {})
-    {
-        console.info(`[InputManager] ${label}`, payload)
     }
 
     destroy()
