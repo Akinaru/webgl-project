@@ -1,11 +1,37 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { foliageWindShaderChunks } from './Shaders/Foliage/windShaderChunks.js'
 
 const DEFAULT_PLANE_COUNT = 80
 const DEFAULT_PLANE_SIZE = 0.8
 const DEFAULT_NORMAL_BLEND = 0.85
 const DEFAULT_ALPHA_TEST = 0.4
 const DEFAULT_ROTATION_RANDOMNESS = 9999
+const DEFAULT_WIND_FREQUENCY = 0.2
+const DEFAULT_WIND_TIME_SCALE = 0.1
+const DEFAULT_WIND_STRENGTH = 0.75
+const BEGIN_VERTEX_INCLUDE = '#include <begin_vertex>'
+
+function prependShader(source, header)
+{
+    const trimmedHeader = String(header || '').trim()
+    if(trimmedHeader.length === 0)
+    {
+        return source
+    }
+
+    return `${trimmedHeader}\n${source}`
+}
+
+function replaceOrAppend(source, search, replacement)
+{
+    if(source.includes(search))
+    {
+        return source.replace(search, replacement)
+    }
+
+    return `${source}\n${replacement}`
+}
 
 export default class Foliage
 {
@@ -18,7 +44,11 @@ export default class Foliage
         alphaTest = DEFAULT_ALPHA_TEST,
         normalBlend = DEFAULT_NORMAL_BLEND,
         rotationRandomness = DEFAULT_ROTATION_RANDOMNESS,
-        createMesh = true
+        createMesh = true,
+        windPerlinTexture = null,
+        windFrequency = DEFAULT_WIND_FREQUENCY,
+        windTimeScale = DEFAULT_WIND_TIME_SCALE,
+        windStrength = DEFAULT_WIND_STRENGTH
     } = {})
     {
         this.planeCount = Math.max(1, Math.floor(planeCount))
@@ -30,6 +60,14 @@ export default class Foliage
         this.normalBlend = THREE.MathUtils.clamp(normalBlend, 0, 1)
         this.rotationRandomness = Math.max(0, rotationRandomness)
         this.createMesh = Boolean(createMesh)
+        this.wind = {
+            perlinTexture: windPerlinTexture,
+            frequency: Math.max(0, windFrequency),
+            timeScale: Math.max(0, windTimeScale),
+            strength: Math.max(0, windStrength),
+            localTime: 0
+        }
+        this.windUniforms = null
 
         this.random = this.createSeededRandom(this.seed)
 
@@ -137,12 +175,87 @@ export default class Foliage
 
         this.material.depthWrite = true
         this.material.depthTest = true
+
+        this.setWindMaterialPatch()
+    }
+
+    setWindMaterialPatch()
+    {
+        if(!this.material || !this.wind.perlinTexture)
+        {
+            return
+        }
+
+        this.windUniforms = {
+            perlinTexture: { value: this.wind.perlinTexture },
+            time: { value: this.wind.localTime },
+            frequency: { value: this.wind.frequency },
+            timeScale: { value: this.wind.timeScale },
+            strength: { value: this.wind.strength }
+        }
+
+        const previousOnBeforeCompile = this.material.onBeforeCompile
+        this.material.onBeforeCompile = (shader, renderer) =>
+        {
+            previousOnBeforeCompile?.(shader, renderer)
+
+            shader.uniforms.uBushWindPerlinTexture = this.windUniforms.perlinTexture
+            shader.uniforms.uBushWindTime = this.windUniforms.time
+            shader.uniforms.uBushWindFrequency = this.windUniforms.frequency
+            shader.uniforms.uBushWindTimeScale = this.windUniforms.timeScale
+            shader.uniforms.uBushWindStrength = this.windUniforms.strength
+
+            shader.vertexShader = prependShader(
+                shader.vertexShader,
+                foliageWindShaderChunks.vertexHeader
+            )
+            shader.vertexShader = replaceOrAppend(
+                shader.vertexShader,
+                BEGIN_VERTEX_INCLUDE,
+                `${BEGIN_VERTEX_INCLUDE}\n${String(foliageWindShaderChunks.vertexBegin || '').trim()}`
+            )
+        }
+
+        this.material.customProgramCacheKey = () =>
+        {
+            return '__bushFoliageWindV1'
+        }
+        this.material.needsUpdate = true
     }
 
     setColor(color)
     {
         this.color = color
         this.material?.color?.set?.(color)
+    }
+
+    setWindSettings({
+        frequency,
+        timeScale,
+        strength
+    } = {})
+    {
+        if(typeof frequency === 'number' && Number.isFinite(frequency))
+        {
+            this.wind.frequency = Math.max(0, frequency)
+        }
+
+        if(typeof timeScale === 'number' && Number.isFinite(timeScale))
+        {
+            this.wind.timeScale = Math.max(0, timeScale)
+        }
+
+        if(typeof strength === 'number' && Number.isFinite(strength))
+        {
+            this.wind.strength = Math.max(0, strength)
+        }
+
+        if(this.windUniforms)
+        {
+            this.windUniforms.frequency.value = this.wind.frequency
+            this.windUniforms.timeScale.value = this.wind.timeScale
+            this.windUniforms.strength.value = this.wind.strength
+        }
     }
 
     setAlphaTest(alphaTest)
@@ -163,9 +276,16 @@ export default class Foliage
         this.mesh.receiveShadow = true
     }
 
-    update()
+    update(delta = 0)
     {
-        // Placeholder pour les prochaines etapes (wind/material/shader) du buisson.
+        if(!this.windUniforms)
+        {
+            return
+        }
+
+        const safeDeltaSeconds = Math.max(0, Number(delta) || 0) * 0.001
+        this.wind.localTime += safeDeltaSeconds
+        this.windUniforms.time.value = this.wind.localTime
     }
 
     destroy()
@@ -177,5 +297,7 @@ export default class Foliage
         this.geometry = null
         this.material = null
         this.alphaTexture = null
+        this.wind = null
+        this.windUniforms = null
     }
 }

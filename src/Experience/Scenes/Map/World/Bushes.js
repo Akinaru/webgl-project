@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js'
 import Experience from '../../../Experience.js'
 import Foliage from './Foliage.js'
 
@@ -30,6 +31,9 @@ export default class Bushes
             seuilAlpha: 0.4,
             melangeNormales: 0.85,
             rotationAleatoire: 9999,
+            frequenceVent: 0.2,
+            vitesseVent: 0.1,
+            forceVent: 0.75,
             buissonsActifs: 0
         }
 
@@ -51,6 +55,7 @@ export default class Bushes
         this.group = new THREE.Group()
         this.group.name = '__mapBushesRoot'
         this.foliageAlphaTexture = this.resources?.items?.bushFoliageAlphaTexture ?? null
+        this.windPerlinTexture = this.createWindPerlinTexture()
 
         this.scene.add(this.group)
         this.rebuildInstances()
@@ -70,6 +75,77 @@ export default class Bushes
         }
     }
 
+    createWindPerlinTexture(resolution = 128)
+    {
+        const safeResolution = Math.max(16, Math.floor(resolution))
+        const noiseGenerator = new ImprovedNoise()
+        const pixels = new Uint8Array(safeResolution * safeResolution * 4)
+        const octaves = 4
+        const persistence = 0.5
+        const scale = 6
+        let amplitudeSum = 0
+
+        for(let octave = 0; octave < octaves; octave++)
+        {
+            amplitudeSum += Math.pow(persistence, octave)
+        }
+
+        for(let y = 0; y < safeResolution; y++)
+        {
+            for(let x = 0; x < safeResolution; x++)
+            {
+                const baseX = x / safeResolution
+                const baseY = y / safeResolution
+                let value = 0
+                let amplitude = 1
+                let frequency = 1
+
+                for(let octave = 0; octave < octaves; octave++)
+                {
+                    value += noiseGenerator.noise(
+                        baseX * scale * frequency,
+                        baseY * scale * frequency,
+                        0.37 * frequency
+                    ) * amplitude
+
+                    amplitude *= persistence
+                    frequency *= 2
+                }
+
+                const normalized = THREE.MathUtils.clamp((value / amplitudeSum) * 0.5 + 0.5, 0, 1)
+                const byteValue = Math.round(normalized * 255)
+                const pixelOffset = ((y * safeResolution) + x) * 4
+
+                pixels[pixelOffset] = byteValue
+                pixels[pixelOffset + 1] = byteValue
+                pixels[pixelOffset + 2] = byteValue
+                pixels[pixelOffset + 3] = 255
+            }
+        }
+
+        const texture = new THREE.DataTexture(
+            pixels,
+            safeResolution,
+            safeResolution,
+            THREE.RGBAFormat,
+            THREE.UnsignedByteType
+        )
+        if('NoColorSpace' in THREE)
+        {
+            texture.colorSpace = THREE.NoColorSpace
+        }
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.minFilter = THREE.LinearMipmapLinearFilter
+        texture.magFilter = THREE.LinearFilter
+        texture.generateMipmaps = true
+        const maxAnisotropy = this.experience.renderer?.instance?.capabilities?.getMaxAnisotropy?.() ?? 1
+        texture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy))
+        texture.needsUpdate = true
+
+        return texture
+    }
+
     createFoliageTemplate()
     {
         this.foliageTemplate = new Foliage({
@@ -80,7 +156,20 @@ export default class Bushes
             alphaTest: this.state.seuilAlpha,
             normalBlend: this.state.melangeNormales,
             rotationRandomness: this.state.rotationAleatoire,
+            windPerlinTexture: this.windPerlinTexture,
+            windFrequency: this.state.frequenceVent,
+            windTimeScale: this.state.vitesseVent,
+            windStrength: this.state.forceVent,
             createMesh: false
+        })
+    }
+
+    applyWindSettings()
+    {
+        this.foliageTemplate?.setWindSettings?.({
+            frequency: this.state.frequenceVent,
+            timeScale: this.state.vitesseVent,
+            strength: this.state.forceVent
         })
     }
 
@@ -304,9 +393,9 @@ export default class Bushes
         this.applyInstanceMatrices()
     }
 
-    update()
+    update(delta)
     {
-        // Pas d animation runtime pour l instant, uniquement du placement instancie.
+        this.foliageTemplate?.update?.(delta)
     }
 
     setDebug({ parentFolder = null } = {})
@@ -414,6 +503,36 @@ export default class Bushes
             step: 1
         }).on('change', rebuild)
 
+        this.debug.addBinding(this.debugFolder, this.state, 'frequenceVent', {
+            label: 'Frequence vent',
+            min: 0,
+            max: 2,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWindSettings()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'vitesseVent', {
+            label: 'Vitesse vent',
+            min: 0,
+            max: 2,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWindSettings()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.state, 'forceVent', {
+            label: 'Force vent',
+            min: 0,
+            max: 3,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWindSettings()
+        })
+
         this.debug.addColorBinding(this.debugFolder, this, 'couleurFeuillage', {
             label: 'Couleur feuillage'
         }).on('change', rebuild)
@@ -444,6 +563,8 @@ export default class Bushes
         this.tmpMeshBounds = null
         this.dummy = null
         this.foliageAlphaTexture = null
+        this.windPerlinTexture?.dispose?.()
+        this.windPerlinTexture = null
         this.resources = null
         this.debug = null
         this.mapModel = null
