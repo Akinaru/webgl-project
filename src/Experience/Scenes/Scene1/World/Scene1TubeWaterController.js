@@ -65,6 +65,8 @@ export default class Scene1TubeWaterController
         this.blueWindowFlowProgressByName = new Map()
         this.requiredWindowByTubeUuid = new Map()
         this.windowSourceByTubeUuid = new Map()
+        this.startAlignedTubeUuids = new Set()
+        this.flowAnimationStarted = false
         this.hoveredTubeMesh = null
 
         this.bounds = new THREE.Box3()
@@ -103,8 +105,9 @@ export default class Scene1TubeWaterController
         this.setupTubeMaterials()
         this.setupBlueWindowMeshes()
         this.captureInitialRotations()
+        this.computeStartAlignedTubes()
         this.randomizeInitialRotations()
-        this.updateFlowState()
+        this.resetFlowAnimation()
         this.scene1Model?.refreshCollisionBoxes?.()
         this.setDebug()
         this.setEvents()
@@ -1348,7 +1351,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
             const randomQuarterTurns = Math.floor(Math.random() * 4)
             const isSource = Boolean(sourceTarget && sourceTarget.uuid === target.uuid)
-            if(!isSource && randomQuarterTurns > 0)
+            const shouldStartAligned = this.startAlignedTubeUuids.has(target.uuid)
+            if(!isSource && !shouldStartAligned && randomQuarterTurns > 0)
             {
                 this.rotateTubeAssembly(target, randomQuarterTurns * QUARTER_TURN)
             }
@@ -1356,6 +1360,20 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             const turnDirection = Math.random() >= 0.5 ? 1 : -1
             this.turnDirectionByMeshUuid.set(target.uuid, turnDirection)
         })
+    }
+
+    computeStartAlignedTubes()
+    {
+        this.startAlignedTubeUuids.clear()
+        const mainTargets = this.getTargetsByMeta((meta) => meta.branchType === 'main')
+        const fixedTargets = mainTargets.slice(0, 3)
+        for(const target of fixedTargets)
+        {
+            if(target?.uuid)
+            {
+                this.startAlignedTubeUuids.add(target.uuid)
+            }
+        }
     }
 
     setEvents()
@@ -1394,7 +1412,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     update()
     {
         this.hoveredTubeMesh = this.getTubeMeshAtCenter()
-        this.updateFlowState(this.getDeltaSeconds())
+        if(this.flowAnimationStarted)
+        {
+            this.updateFlowState(this.getDeltaSeconds())
+        }
     }
 
     isHoveringTube()
@@ -1418,7 +1439,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
         this.rotateTubeAssembly(rotationTarget, QUARTER_TURN * direction)
-        this.updateFlowState()
+        if(this.flowAnimationStarted)
+        {
+            this.updateFlowState()
+        }
         this.scene1Model?.refreshCollisionBoxes?.()
     }
 
@@ -1450,6 +1474,40 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.updateBlueWindowFlowProgress(deltaSeconds)
         this.applyTubeFlowColors()
         this.applyBlueWindowColors()
+    }
+
+    resetFlowAnimation()
+    {
+        this.flowAnimationStarted = false
+        this.flowProgressByTubeUuid.clear()
+        this.activeFlowSourceByTubeUuid.clear()
+        this.flowEntryByTubeUuid.clear()
+
+        for(const target of this.rotationTargets)
+        {
+            if(!target?.uuid)
+            {
+                continue
+            }
+            this.flowProgressByTubeUuid.set(target.uuid, 0)
+        }
+
+        this.blueWindowFlowProgressByName.set('fenetre-blue', 0)
+        this.blueWindowFlowProgressByName.set('fenetre-blue_1', 0)
+        this.blueWindowFlowProgressByName.set('fenetre-blue_2', 0)
+
+        this.updateFlowState(0)
+    }
+
+    startFlowAnimation()
+    {
+        if(this.flowAnimationStarted)
+        {
+            return
+        }
+
+        this.flowAnimationStarted = true
+        this.updateFlowState(0)
     }
 
     updateBlueWindowFlowProgress(deltaSeconds)
