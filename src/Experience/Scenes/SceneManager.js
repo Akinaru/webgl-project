@@ -206,7 +206,7 @@ export default class SceneManager
             return
         }
 
-        hintElement.textContent = 'Clique dans la scene puis utilise ZQSD/WASD pour te deplacer.'
+        hintElement.textContent = ''
     }
 
     destroy()

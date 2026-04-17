@@ -1,4 +1,5 @@
 import EventEnum from '../Enum/EventEnum.js'
+import PauseMenu from './PauseMenu.js'
 
 const AUDIO_STORAGE_KEY = 'bloom.audio.enabled'
 const START_CLASS = 'is-starting'
@@ -14,11 +15,16 @@ export default class Menu
     constructor(experience)
     {
         this.experience = experience
+        this.debug = this.experience?.debug
+        this.traceEnabled = Boolean(this.debug?.isDebugEnabled)
         this.hasStartedFlow = false
         this.isInitialized = false
         this.hasResolved = false
         this.isDestroyed = false
         this.loadingRafId = 0
+        this.debugFolder = null
+        this.debugState = null
+        this.debugStateCleanup = null
         this.resourcesReadyEventName = `${EventEnum.READY}.menu`
         this.audioEnabled = true
         this.resolveStartPromise = null
@@ -35,15 +41,28 @@ export default class Menu
 
         this.hasUI = Boolean(this.bootScreen && this.btnStartWithAudio && this.btnStartMuted)
 
+        this.pauseMenu = new PauseMenu({
+            experience: this.experience,
+            isEnabled: () => this.hasResolved && !this.isDestroyed
+        })
+
         this.handleStartWithAudio = () =>
         {
+            this.focusGameCanvas({
+                requestPointerLock: true
+            })
             this.launch(true)
         }
 
         this.handleStartMuted = () =>
         {
+            this.focusGameCanvas({
+                requestPointerLock: true
+            })
             this.launch(false)
         }
+
+        this.setDebug()
     }
 
     start()
@@ -55,10 +74,13 @@ export default class Menu
 
         this.isInitialized = true
         this.applyAudioPreference(this.readStoredAudioPreference())
+        this.pauseMenu?.start?.()
+        this.refreshDebugState()
 
         if(!this.hasUI)
         {
             this.resolveStart({ audioEnabled: this.audioEnabled })
+            this.focusGameCanvas()
             return this.startPromise
         }
 
@@ -80,7 +102,144 @@ export default class Menu
         }
 
         this.hasResolved = true
+        this.refreshDebugState()
         this.resolveStartPromise?.(payload)
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugState = {
+            etatPause: 'closed',
+            pauseOuverte: false,
+            focusDocument: false,
+            focusCanvas: false,
+            pointerLock: false,
+            jeuLance: false,
+            elementActif: 'none'
+        }
+
+        this.debugFolder = this.debug.addFolder('⏸ Menu', { expanded: true })
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'etatPause', {
+            label: 'etatPause',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'pauseOuverte', {
+            label: 'pauseOuverte',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'focusDocument', {
+            label: 'focusDocument',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'focusCanvas', {
+            label: 'focusCanvas',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'pointerLock', {
+            label: 'pointerLock',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'jeuLance', {
+            label: 'jeuLance',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'elementActif', {
+            label: 'elementActif',
+            readonly: true
+        }, 'auto')
+
+        this.debugStateCleanup = this.debug.addAutoRefresh(() =>
+        {
+            this.refreshDebugState()
+        })
+
+        this.refreshDebugState()
+    }
+
+    getPauseStateLabel()
+    {
+        const state = this.pauseMenu?.state
+
+        if(state === PauseMenu.OPEN)
+        {
+            return 'open'
+        }
+        if(state === PauseMenu.OPENING)
+        {
+            return 'opening'
+        }
+        if(state === PauseMenu.CLOSING)
+        {
+            return 'closing'
+        }
+
+        return 'closed'
+    }
+
+    refreshDebugState()
+    {
+        if(!this.debugState)
+        {
+            return
+        }
+
+        const canvas = this.experience?.canvas || null
+        const activeElement = document.activeElement
+        let elementActif = 'none'
+
+        if(activeElement instanceof HTMLElement)
+        {
+            const elementTag = activeElement.tagName.toLowerCase()
+            const elementId = activeElement.id ? `#${activeElement.id}` : ''
+            elementActif = `${elementTag}${elementId}`
+        }
+
+        this.debugState.etatPause = this.getPauseStateLabel()
+        this.debugState.pauseOuverte = this.pauseMenu?.isOpen?.() || false
+        this.debugState.focusDocument = document.hasFocus?.() ?? true
+        this.debugState.focusCanvas = Boolean(canvas && activeElement === canvas)
+        this.debugState.pointerLock = this.experience?.inputs?.isPointerLocked?.(canvas) || false
+        this.debugState.jeuLance = this.hasResolved
+        this.debugState.elementActif = elementActif
+    }
+
+    focusGameCanvas({ requestPointerLock = false } = {})
+    {
+        const canvas = this.experience?.canvas
+        if(!(canvas instanceof HTMLElement))
+        {
+            return
+        }
+
+        if(!canvas.hasAttribute('tabindex'))
+        {
+            canvas.setAttribute('tabindex', '0')
+        }
+
+        canvas.focus({ preventScroll: true })
+
+        if(
+            requestPointerLock &&
+            !this.pauseMenu?.isOpen?.() &&
+            !this.experience?.inputs?.isPointerLocked?.(canvas)
+        )
+        {
+            this.experience?.inputs?.requestPointerLock?.(canvas)
+        }
+
+        this.trace('focus_game_canvas', {
+            requestPointerLock,
+            activeElement: this.describeElement(document.activeElement),
+            hasFocus: document.hasFocus?.() ?? true,
+            pointerLock: this.experience?.inputs?.isPointerLocked?.(canvas) || false
+        })
+
+        this.refreshDebugState()
     }
 
     readStoredAudioPreference()
@@ -214,6 +373,7 @@ export default class Menu
         if(!this.hasUI)
         {
             this.resolveStart({ audioEnabled: this.audioEnabled })
+            this.focusGameCanvas()
             return
         }
 
@@ -236,6 +396,12 @@ export default class Menu
         this.bootScreen.classList.add(FINISHED_CLASS)
         await this.wait(FINISH_DELAY_MS)
         this.bootScreen.remove()
+        this.focusGameCanvas()
+    }
+
+    isPauseOpen()
+    {
+        return this.pauseMenu?.isOpen?.() || false
     }
 
     destroy()
@@ -244,6 +410,13 @@ export default class Menu
         this.stopLoadingProgressLoop()
         this.experience?.resources?.off?.(this.resourcesReadyEventName)
 
+        this.pauseMenu?.destroy?.()
+        this.debugStateCleanup?.()
+        this.debugStateCleanup = null
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
+        this.debugState = null
+
         this.btnStartWithAudio?.removeEventListener('click', this.handleStartWithAudio)
         this.btnStartMuted?.removeEventListener('click', this.handleStartMuted)
 
@@ -251,5 +424,31 @@ export default class Menu
         {
             this.resolveStart({ audioEnabled: this.audioEnabled })
         }
+    }
+
+    describeElement(element)
+    {
+        if(!(element instanceof Element))
+        {
+            return 'none'
+        }
+
+        const tag = element.tagName.toLowerCase()
+        const id = element.id ? `#${element.id}` : ''
+        const className = typeof element.className === 'string' && element.className.trim() !== ''
+            ? `.${element.className.trim().split(/\s+/).join('.')}`
+            : ''
+
+        return `${tag}${id}${className}`
+    }
+
+    trace(label, payload = {})
+    {
+        if(!this.traceEnabled)
+        {
+            return
+        }
+
+        console.info(`[Menu] ${label}`, payload)
     }
 }
