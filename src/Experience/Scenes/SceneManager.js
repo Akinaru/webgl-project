@@ -14,10 +14,16 @@ export default class SceneManager
         this.sceneFactories = new Map()
         this.currentKey = null
         this.currentScene = null
+        this.isSwitchingScene = false
+        this.pendingSceneKey = null
+        this.transitionRafId = 0
+        this.transitionProgress = 0
+        this.transitionStartAt = 0
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.SCENE1, () => new Scene1Scene())
 
+        this.setTransitionOverlay()
         this.setDebug()
         this.switchTo(SceneEnum.MAP)
     }
@@ -28,6 +34,29 @@ export default class SceneManager
     }
 
     switchTo(key)
+    {
+        if(this.currentKey === key)
+        {
+            return
+        }
+
+        if(this.isSwitchingScene)
+        {
+            this.pendingSceneKey = key
+            return
+        }
+
+        const isFirstScene = !this.currentScene
+        if(isFirstScene)
+        {
+            this.performSceneSwitch(key)
+            return
+        }
+
+        this.runSceneSwitchWithTransition(key)
+    }
+
+    performSceneSwitch(key)
     {
         if(this.currentKey === key)
         {
@@ -57,6 +86,156 @@ export default class SceneManager
 
         this.currentScene.enter?.(previousKey)
         this.currentScene.resize?.()
+    }
+
+    async runSceneSwitchWithTransition(key)
+    {
+        this.isSwitchingScene = true
+        this.pendingSceneKey = null
+
+        this.showTransitionOverlay()
+        await this.waitForAnimationFrames(2)
+
+        this.performSceneSwitch(key)
+        this.completeTransitionOverlay()
+        await this.wait(220)
+        this.hideTransitionOverlay()
+
+        this.isSwitchingScene = false
+        const queuedKey = this.pendingSceneKey
+        this.pendingSceneKey = null
+        if(queuedKey && queuedKey !== this.currentKey)
+        {
+            this.switchTo(queuedKey)
+        }
+    }
+
+    setTransitionOverlay()
+    {
+        this.transitionElement = document.querySelector('#sceneTransition')
+        if(this.transitionElement)
+        {
+            this.transitionFillElement = this.transitionElement.querySelector('[data-scene-transition-fill]')
+            this.transitionValueElement = this.transitionElement.querySelector('[data-scene-transition-value]')
+            return
+        }
+
+        const overlay = document.createElement('div')
+        overlay.id = 'sceneTransition'
+        overlay.className = 'scene-transition'
+        overlay.setAttribute('aria-hidden', 'true')
+        overlay.innerHTML = `
+            <div class="scene-transition__panel">
+                <span class="scene-transition__label">Transition de scene</span>
+                <span class="scene-transition__value" data-scene-transition-value>0%</span>
+                <div class="scene-transition__bar">
+                    <span class="scene-transition__fill" data-scene-transition-fill></span>
+                </div>
+            </div>
+        `
+        document.body.appendChild(overlay)
+        this.transitionElement = overlay
+        this.transitionFillElement = overlay.querySelector('[data-scene-transition-fill]')
+        this.transitionValueElement = overlay.querySelector('[data-scene-transition-value]')
+    }
+
+    showTransitionOverlay()
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        this.transitionProgress = 0
+        this.transitionStartAt = performance.now()
+        this.updateTransitionOverlayProgress(0)
+        this.transitionElement.classList.add('is-visible')
+        this.transitionElement.setAttribute('aria-hidden', 'false')
+
+        if(this.transitionRafId)
+        {
+            window.cancelAnimationFrame(this.transitionRafId)
+            this.transitionRafId = 0
+        }
+
+        const tick = () =>
+        {
+            if(!this.isSwitchingScene)
+            {
+                return
+            }
+
+            const elapsedMs = performance.now() - this.transitionStartAt
+            const targetProgress = Math.min(90, 18 + (elapsedMs * 0.08))
+            this.transitionProgress = Math.max(this.transitionProgress, targetProgress)
+            this.updateTransitionOverlayProgress(this.transitionProgress)
+            this.transitionRafId = window.requestAnimationFrame(tick)
+        }
+
+        this.transitionRafId = window.requestAnimationFrame(tick)
+    }
+
+    completeTransitionOverlay()
+    {
+        this.updateTransitionOverlayProgress(100)
+    }
+
+    hideTransitionOverlay()
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        if(this.transitionRafId)
+        {
+            window.cancelAnimationFrame(this.transitionRafId)
+            this.transitionRafId = 0
+        }
+
+        this.transitionElement.classList.remove('is-visible')
+        this.transitionElement.setAttribute('aria-hidden', 'true')
+    }
+
+    updateTransitionOverlayProgress(progress)
+    {
+        const clamped = Math.max(0, Math.min(100, Math.round(progress)))
+        if(this.transitionValueElement)
+        {
+            this.transitionValueElement.textContent = `${clamped}%`
+        }
+        if(this.transitionFillElement)
+        {
+            this.transitionFillElement.style.width = `${clamped}%`
+        }
+    }
+
+    wait(durationMs = 0)
+    {
+        return new Promise((resolve) =>
+        {
+            window.setTimeout(resolve, durationMs)
+        })
+    }
+
+    waitForAnimationFrames(frameCount = 1)
+    {
+        const totalFrames = Math.max(1, frameCount)
+        return new Promise((resolve) =>
+        {
+            let remaining = totalFrames
+            const tick = () =>
+            {
+                remaining--
+                if(remaining <= 0)
+                {
+                    resolve()
+                    return
+                }
+                window.requestAnimationFrame(tick)
+            }
+            window.requestAnimationFrame(tick)
+        })
     }
 
     update(delta)
@@ -211,6 +390,11 @@ export default class SceneManager
 
     destroy()
     {
+        if(this.transitionRafId)
+        {
+            window.cancelAnimationFrame(this.transitionRafId)
+            this.transitionRafId = 0
+        }
         this.currentScene?.destroy?.()
         this.currentScene = null
         this.currentKey = null
