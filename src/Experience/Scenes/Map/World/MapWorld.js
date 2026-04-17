@@ -9,6 +9,10 @@ import MapLight from './MapLight.js'
 import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
+import Bushes from './Bushes.js'
+
+const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
+const MAP_SPAWN_YAW = Math.PI
 
 let mapWorldInstanceIndex = 0
 
@@ -18,6 +22,7 @@ export default class MapWorld
     {
         this.experience = new Experience()
         this.resources = this.experience.resources
+        this.debug = this.experience.debug
         this.readyEventName = `${EventEnum.READY}.mapWorld${mapWorldInstanceIndex++}`
 
         if(this.resources.isReady)
@@ -55,9 +60,17 @@ export default class MapWorld
             collisionBoxes: [],
             collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-            spawnPosition: { x: -2.2, y: 7, z: 0.9 },
-            spawnYaw: Math.PI
+            spawnPosition: MAP_SPAWN_POSITION,
+            spawnYaw: MAP_SPAWN_YAW
         })
+        this.bushes = new Bushes(
+            {
+                mapModel: this.mapModel,
+                spawnPosition: MAP_SPAWN_POSITION
+            }
+        )
+        this.setVegetationDebug()
+
         this.light = new MapLight({
             getFocusPosition: () => this.player?.position ?? null
         })
@@ -96,6 +109,7 @@ export default class MapWorld
     {
         this.light?.update?.(delta)
         this.water?.update?.(delta)
+        this.bushes?.update?.(delta)
         this.bloom?.update?.()
         this.player?.update(delta)
         this.collisionDebug?.update?.()
@@ -209,6 +223,36 @@ export default class MapWorld
         this.experience.sceneManager?.switchTo?.(SceneEnum.SCENE1)
     }
 
+    setVegetationDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.vegetationDebugFolder = this.debug.addFolder('🌿 Vegetation', { expanded: false })
+        this.grassDebugFolder = this.debug.addFolder('Herbe', {
+            parent: this.vegetationDebugFolder,
+            expanded: false
+        })
+        this.bushDebugFolder = this.debug.addFolder('Buisson', {
+            parent: this.vegetationDebugFolder,
+            expanded: false
+        })
+
+        this.grassDebugState = {
+            etatHerbe: 'Systeme herbe a venir'
+        }
+        this.debug.addBinding(this.grassDebugFolder, this.grassDebugState, 'etatHerbe', {
+            label: 'Etat',
+            readonly: true
+        })
+
+        this.bushes?.setDebug?.({
+            parentFolder: this.bushDebugFolder
+        })
+    }
+
     destroy()
     {
         this.resources.off(this.readyEventName)
@@ -218,6 +262,12 @@ export default class MapWorld
             this.player.destroy()
             this.player = null
         }
+
+        this.vegetationDebugFolder?.dispose?.()
+        this.vegetationDebugFolder = null
+        this.grassDebugFolder = null
+        this.bushDebugFolder = null
+        this.grassDebugState = null
 
         if(this.water)
         {
@@ -229,6 +279,12 @@ export default class MapWorld
         {
             this.mapModel.destroy?.()
             this.mapModel = null
+        }
+
+        if(this.bushes)
+        {
+            this.bushes.destroy?.()
+            this.bushes = null
         }
 
         if(this.bloom)

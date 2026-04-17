@@ -15,6 +15,11 @@ export default [
         path: 'models/bloom_opacity.webp'
     },
     {
+        name: 'bushFoliageAlphaTexture',
+        type: 'texture',
+        path: 'textures/foliage/foliageSDF.png'
+    },
+    {
         name: 'mapModel',
         type: 'gltfModel',
         path: 'models/Map.gltf'
