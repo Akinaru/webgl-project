@@ -13,6 +13,20 @@ import Bushes from './Bushes.js'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
+const BLOOM_RAILS = Object.freeze([
+    [
+        { x: -6.8, y: 0, z: -1.5 },
+        { x: -4.8, y: 0, z: 0.4 },
+        { x: -2.5, y: 0, z: 2.6 },
+        { x: -2.2, y: 0, z: 5.9 },
+        { x: 0.8, y: 0, z: 5.1 },
+        { x: 3.3, y: 0, z: 2.8 },
+        { x: 2.4, y: 0, z: -0.1 },
+        { x: -0.6, y: 0, z: -1.8 },
+        { x: -3.8, y: 0, z: -1.2 },
+        { x: -6.8, y: 0, z: -1.5 }
+    ]
+])
 
 let mapWorldInstanceIndex = 0
 
@@ -50,8 +64,6 @@ export default class MapWorld
         this.water = new Water({
             mapModel: this.mapModel
         })
-        const bloomMinDistance = 1.2
-        const bloomRetreatDistance = bloomMinDistance * 5
         const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
@@ -81,20 +93,15 @@ export default class MapWorld
             },
             follow: {
                 target: this.player,
-                camera: this.player.camera,
-                minDistance: bloomMinDistance,
-                maxDistance: 7,
-                preferredDistance: 4.5,
-                retreatDistance: bloomRetreatDistance,
-                retreatDistanceMultiplier: 3,
-                heightOffset: 0.9,
-                speed: 3.8,
-                retreatSpeed: 3.8,
                 groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-                avoidZones: this.mapModel.getBloomAvoidZones?.() ?? [],
-                collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
-                approachDelaySeconds: 0.75,
-                retreatDelaySeconds: 3.5
+                groundMaxSnapUp: 0.65
+            },
+            rails: {
+                lines: BLOOM_RAILS,
+                speed: 3.8,
+                railSwitchDistance: 0.9,
+                endpointSwitchDistance: 1.6,
+                showHelpers: false
             }
         })
         this.collisionDebug = new MapCollisionDebug({

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
+import BloomRailSystem from './BloomRailSystem.js'
 
-const BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y = 0.25
 const BLOOM_FACING_OFFSET_RADIANS = 0.25
 const BLOOM_UV_ZOOM = 1.15
 
@@ -9,7 +9,8 @@ export default class Bloom
 {
     constructor({
         motion = {},
-        follow = {}
+        follow = {},
+        rails = {}
     } = {})
     {
         this.experience = new Experience()
@@ -21,13 +22,21 @@ export default class Bloom
         this.resource = this.resources.items.bloomModel
         this.bloomColorTexture = this.resources.items.bloomColorTexture ?? null
         this.bloomOpacityTexture = this.resources.items.bloomOpacityTexture ?? null
+
         this.tuning = {
-            blockingSurfaceMaxNormalY: follow.collisionBlockingNormalMaxY ?? BLOOM_BLOCKING_SURFACE_MAX_NORMAL_Y,
             facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
-            uvZoom: BLOOM_UV_ZOOM
+            uvZoom: BLOOM_UV_ZOOM,
+            lookTurnSpeed: rails.lookTurnSpeed ?? 11
         }
+
         this.tmpQuaternion = new THREE.Quaternion()
         this.direction = new THREE.Vector3()
+        this.movementDelta = new THREE.Vector3()
+        this.movementDirection = new THREE.Vector3(0, 0, 1)
+        this.followTargetPosition = new THREE.Vector3()
+        this.previousAnchorPosition = new THREE.Vector3()
+        this.railAnchorPosition = new THREE.Vector3()
+
         this.scaleState = {
             visualScale: 0.4
         }
@@ -41,83 +50,40 @@ export default class Bloom
             walkFrequency: motion.walkFrequency ?? 1.7,
             walkFrequencySpeedInfluence: motion.walkFrequencySpeedInfluence ?? 0.8,
             bobAmplitude: motion.bobAmplitude ?? 0.06,
-            swingIntensity: motion.swingIntensity ?? 1
+            swingIntensity: motion.swingIntensity ?? 1,
+            heightOffset: motion.heightOffset ?? 0
         }
+
         this.follow = {
             target: follow.target ?? null,
             getTargetPosition: typeof follow.getTargetPosition === 'function' ? follow.getTargetPosition : null,
-            camera: follow.camera ?? null,
-            minDistance: follow.minDistance ?? 2.8,
-            maxDistance: follow.maxDistance ?? 6.5,
-            preferredDistance: follow.preferredDistance ?? 4.2,
-            retreatDistance: follow.retreatDistance ?? Math.max(follow.preferredDistance ?? 4.2, (follow.minDistance ?? 2.8) + 1),
-            retreatDistanceMultiplier: follow.retreatDistanceMultiplier ?? 3,
-            heightOffset: follow.heightOffset ?? 0.8,
-            speed: follow.speed ?? 4.2,
-            maxSpeed: follow.maxSpeed ?? Math.max(follow.speed ?? 4.2, (follow.speed ?? 4.2) * 2),
-            speedDistanceRange: follow.speedDistanceRange ?? 8,
-            retreatSpeed: follow.retreatSpeed ?? 9,
-            retreatArrivalThreshold: follow.retreatArrivalThreshold ?? 0.15,
-            retreatHoldSeconds: follow.retreatHoldSeconds ?? 2.2,
-            lookTurnSpeed: follow.lookTurnSpeed ?? 11,
-            faceMovementMinSpeed: follow.faceMovementMinSpeed ?? 0.05,
-            contourAngularStepRadians: follow.contourAngularStepRadians ?? 0.35,
-            contourSamplesPerSide: follow.contourSamplesPerSide ?? 8,
-            contourMinProgress: follow.contourMinProgress ?? 0.12,
-            collisionSlideFactor: follow.collisionSlideFactor ?? 0.9,
-            collisionBlockingNormalMaxY: this.tuning.blockingSurfaceMaxNormalY,
-            groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65,
+            enabled: Boolean(follow.target || follow.getTargetPosition),
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
-            avoidZones: Array.isArray(follow.avoidZones) ? follow.avoidZones : [],
-            collisionBoxes: Array.isArray(follow.collisionBoxes) ? follow.collisionBoxes : [],
-            collisionMeshes: Array.isArray(follow.collisionMeshes) ? follow.collisionMeshes : [],
-            colliderRadius: follow.colliderRadius ?? 0.28,
-            colliderHeight: follow.colliderHeight ?? 1.45,
-            touchRetreatBuffer: follow.touchRetreatBuffer ?? 0.02,
-            approachDelaySeconds: follow.approachDelaySeconds ?? 0.6,
-            retreatDelaySeconds: follow.retreatDelaySeconds ?? 3.5,
-            behindReturnDelaySeconds: follow.behindReturnDelaySeconds ?? 2.6,
-            behindThresholdDot: follow.behindThresholdDot ?? -0.2,
-            repositionAngularSpeed: follow.repositionAngularSpeed ?? 2.25,
-            repositionCompleteDot: follow.repositionCompleteDot ?? 0.94,
-            repositionDistance: follow.repositionDistance ?? Math.max(follow.preferredDistance ?? 4.2, (follow.minDistance ?? 2.8) + 0.9),
-            returnCooldownSeconds: follow.returnCooldownSeconds ?? 1.2,
-            enabled: Boolean(follow.target || follow.getTargetPosition)
+            groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65
         }
-        this.followDirection = new THREE.Vector3(1, 0, 0)
-        this.followTargetPosition = new THREE.Vector3()
-        this.followDesiredPosition = new THREE.Vector3()
-        this.followPreviousPosition = new THREE.Vector3()
-        this.followCameraForward = new THREE.Vector3()
-        this.followCameraToBloom = new THREE.Vector3()
-        this.followToBloom = new THREE.Vector3()
-        this.followReturnPosition = new THREE.Vector3()
-        this.followGroundRayDirection = new THREE.Vector3(0, -1, 0)
-        this.followCollisionDirection = new THREE.Vector3()
-        this.followRaycastOrigin = new THREE.Vector3()
-        this.followWorldNormal = new THREE.Vector3()
-        this.followCollisionRaycaster = new THREE.Raycaster()
-        this.followCollisionHitNormal = new THREE.Vector3()
-        this.followCollisionSlideNormal = new THREE.Vector3()
-        this.followCollisionSlide = new THREE.Vector3()
-        this.contourDirectionCandidate = new THREE.Vector3()
-        this.contourCandidatePosition = new THREE.Vector3()
-        this.movementDelta = new THREE.Vector3()
-        this.movementDirection = new THREE.Vector3(0, 0, 1)
-        this.followState = {
-            tooFarDuration: 0,
-            nearDuration: 0,
-            isRetreating: false,
-            retreatHoldTimer: 0,
-            behindDuration: 0,
-            returnCooldown: 0,
-            isRepositioning: false
+
+        this.rails = new BloomRailSystem({
+            scene: this.scene,
+            rails: rails.lines ?? rails.rails ?? [],
+            speed: rails.speed ?? 3.8,
+            railSwitchDistance: rails.railSwitchDistance ?? 0.7,
+            endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.4,
+            helperPointRadius: rails.helperPointRadius ?? 0.08,
+            showHelpers: rails.showHelpers ?? false
+        })
+
+        this.railEditor = {
+            addPointAtPlayer: () => this.addRailPointFromTarget(),
+            startNewLineAtPlayer: () => this.startRailLineFromTarget(),
+            clearLines: () => this.rails.clearRails(),
+            exportLinesToConsole: () => this.rails.logRailsToConsole()
         }
+
         this.groundRaycaster = new THREE.Raycaster()
         this.groundNormal = new THREE.Vector3()
+
         this.locomotionSpeed = 0
         this.walkCyclePhase = 0
-
         this.armNodes = []
 
         if(this.resource?.scene)
@@ -132,7 +98,9 @@ export default class Bloom
 
         if(this.model)
         {
-            this.followPreviousPosition.copy(this.model.position)
+            this.railAnchorPosition.copy(this.model.position)
+            this.railAnchorPosition.y -= this.baseY
+            this.previousAnchorPosition.copy(this.railAnchorPosition)
         }
 
         this.setDebug()
@@ -164,7 +132,6 @@ export default class Bloom
             child.receiveShadow = true
         })
 
-        let appliedCount = 0
         this.model.traverse((child) =>
         {
             if(!child?.isMesh)
@@ -178,7 +145,6 @@ export default class Bloom
             }
 
             this.applyBloomColorTexture(child)
-            appliedCount++
         })
 
         this.scene.add(this.model)
@@ -278,7 +244,7 @@ export default class Bloom
         {
             if(forceRegenerate && geometry.userData?.bloomGeneratedUv)
             {
-                // continue and recompute with latest tuning.uvZoom
+                // recompute with latest tuning.uvZoom
             }
             else
             {
@@ -451,6 +417,7 @@ export default class Bloom
         }
 
         this.debugFolder = this.debug.addFolder('💧 Bloom', { expanded: false })
+
         this.debug.addBinding(this.debugFolder, this.scaleState, 'visualScale', {
             label: 'size',
             min: 0.15,
@@ -460,16 +427,7 @@ export default class Bloom
         {
             this.applyVisualScale()
         })
-        this.debug.addBinding(this.debugFolder, this.tuning, 'blockingSurfaceMaxNormalY', {
-            label: 'blockNormalY',
-            min: -1,
-            max: 1,
-            step: 0.01
-        }).on('change', ({ value }) =>
-        {
-            this.tuning.blockingSurfaceMaxNormalY = value
-            this.follow.collisionBlockingNormalMaxY = value
-        })
+
         this.debug.addBinding(this.debugFolder, this.tuning, 'facingOffsetRadians', {
             label: 'facingOffset',
             min: -Math.PI,
@@ -483,6 +441,14 @@ export default class Bloom
                 this.baseYaw = this.model.rotation.y + value
             }
         })
+
+        this.debug.addBinding(this.debugFolder, this.tuning, 'lookTurnSpeed', {
+            label: 'turnSpeed',
+            min: 0.1,
+            max: 30,
+            step: 0.1
+        })
+
         this.debug.addBinding(this.debugFolder, this.tuning, 'uvZoom', {
             label: 'uvZoom',
             min: 0.2,
@@ -495,173 +461,80 @@ export default class Bloom
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
-            label: 'motionRadius',
+            label: 'idleRadius',
             min: 0,
             max: 20,
             step: 0.05
         })
+
         this.debug.addBinding(this.debugFolder, this.motion, 'bobAmplitude', {
             label: 'bobAmp',
             min: 0,
             max: 0.5,
             step: 0.005
         })
-        this.debug.addBinding(this.debugFolder, this.motion, 'turnSpeed', {
-            label: 'turnSpeed',
-            min: 0,
-            max: 3,
-            step: 0.01
-        })
+
         this.debug.addBinding(this.debugFolder, this.motion, 'walkFrequency', {
             label: 'walkFreq',
             min: 0,
-            max: 6,
+            max: 8,
             step: 0.01
         })
+
         this.debug.addBinding(this.debugFolder, this.motion, 'walkFrequencySpeedInfluence', {
-            label: 'walkFreqBySpeed',
+            label: 'walkBySpeed',
             min: 0,
             max: 3,
             step: 0.01
         })
 
-        this.debug.addBinding(this.debugFolder, this.follow, 'minDistance', {
-            label: 'minDist',
+        this.railsFolder = this.debug.addFolder('Bloom Rails', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.railsFolder, this.rails.settings, 'speed', {
+            label: 'railSpeed',
             min: 0.1,
-            max: 8,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'maxDistance', {
-            label: 'maxDist',
-            min: 0.2,
             max: 20,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'preferredDistance', {
-            label: 'prefDist',
-            min: 0.2,
-            max: 20,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatDistance', {
-            label: 'retreatDist',
-            min: 0.2,
-            max: 120,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatDistanceMultiplier', {
-            label: 'retreatX',
-            min: 1,
-            max: 8,
             step: 0.1
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'heightOffset', {
-            label: 'heightOffset',
-            min: 0,
+
+        this.debug.addBinding(this.railsFolder, this.rails.settings, 'railSwitchDistance', {
+            label: 'switchDist',
+            min: 0.1,
             max: 4,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'colliderRadius', {
-            label: 'colliderR',
-            min: 0.05,
-            max: 1,
-            step: 0.005
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'colliderHeight', {
-            label: 'colliderH',
-            min: 0.2,
-            max: 3,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'touchRetreatBuffer', {
-            label: 'touchBuffer',
-            min: 0,
-            max: 1,
-            step: 0.005
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'groundMaxSnapUp', {
-            label: 'groundSnapUp',
-            min: 0,
-            max: 4,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'speed', {
-            label: 'followSpeed',
-            min: 0.1,
-            max: 20,
-            step: 0.1
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'maxSpeed', {
-            label: 'maxSpeed',
-            min: 0.1,
-            max: 35,
-            step: 0.1
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'speedDistanceRange', {
-            label: 'speedDistRange',
-            min: 0.1,
-            max: 40,
-            step: 0.1
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatSpeed', {
-            label: 'retreatSpeed',
-            min: 0.1,
-            max: 30,
-            step: 0.1
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatArrivalThreshold', {
-            label: 'retreatStopTol',
-            min: 0.01,
-            max: 3,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatHoldSeconds', {
-            label: 'retreatHold',
-            min: 0,
-            max: 12,
             step: 0.05
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'lookTurnSpeed', {
-            label: 'lookTurnSpeed',
+
+        this.debug.addBinding(this.railsFolder, this.rails.settings, 'endpointSwitchDistance', {
+            label: 'endSwitchDist',
             min: 0.1,
-            max: 30,
-            step: 0.1
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'faceMovementMinSpeed', {
-            label: 'faceMoveMin',
-            min: 0,
-            max: 4,
-            step: 0.01
-        })
-        this.debug.addBinding(this.debugFolder, this.follow, 'approachDelaySeconds', {
-            label: 'approachDelay',
-            min: 0,
-            max: 10,
+            max: 6,
             step: 0.05
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'retreatDelaySeconds', {
-            label: 'retreatDelay',
-            min: 0,
-            max: 10,
-            step: 0.05
+
+        this.debug.addBinding(this.railsFolder, this.rails.settings, 'showHelpers', {
+            label: 'showRails'
+        }).on('change', ({ value }) =>
+        {
+            this.rails.setHelpersVisible(value)
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'behindReturnDelaySeconds', {
-            label: 'behindDelay',
-            min: 0,
-            max: 12,
-            step: 0.05
+
+        this.debug.addBinding(this.railsFolder, this.railEditor, 'addPointAtPlayer', {
+            label: 'Add Point @Player'
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'repositionDistance', {
-            label: 'repositionDist',
-            min: 0.2,
-            max: 20,
-            step: 0.01
+
+        this.debug.addBinding(this.railsFolder, this.railEditor, 'startNewLineAtPlayer', {
+            label: 'New Line @Player'
         })
-        this.debug.addBinding(this.debugFolder, this.follow, 'returnCooldownSeconds', {
-            label: 'returnCooldown',
-            min: 0,
-            max: 10,
-            step: 0.05
+
+        this.debug.addBinding(this.railsFolder, this.railEditor, 'clearLines', {
+            label: 'Clear Rails'
+        })
+
+        this.debug.addBinding(this.railsFolder, this.railEditor, 'exportLinesToConsole', {
+            label: 'Export JSON'
         })
     }
 
@@ -686,29 +559,89 @@ export default class Bloom
     updateMotion(deltaSeconds)
     {
         const elapsed = this.time.elapsed * 0.001
-        const angle = elapsed * this.motion.turnSpeed
         const walkFrequency = this.getDynamicWalkFrequency()
         this.walkCyclePhase += deltaSeconds * walkFrequency * Math.PI * 2
         const bobOffset = Math.sin(this.walkCyclePhase) * this.motion.bobAmplitude
 
-        if(this.follow.enabled && this.resolveFollowTargetPosition())
+        if(this.follow.enabled && this.resolveFollowTargetPosition() && this.rails.hasRails())
         {
-            this.updateFollowMotion(deltaSeconds, bobOffset)
+            this.updateRailMotion(deltaSeconds, bobOffset)
             return
         }
 
-        this.followPreviousPosition.copy(this.model.position)
-        this.model.position.x = this.motion.center.x + Math.cos(angle) * this.motion.radius
-        this.model.position.z = this.motion.center.z + Math.sin(angle) * this.motion.radius
-        const baseGroundY = this.resolveGroundYAt(
-            this.model.position.x,
-            this.model.position.z,
+        this.updateIdleMotion(elapsed, deltaSeconds, bobOffset)
+    }
+
+    updateRailMotion(deltaSeconds, bobOffset)
+    {
+        this.previousAnchorPosition.copy(this.railAnchorPosition)
+
+        const didMove = this.rails.moveAnchorTowards(
+            this.railAnchorPosition,
+            this.followTargetPosition,
+            deltaSeconds
+        )
+
+        const fallbackGroundY = this.railAnchorPosition.y
+        const groundY = this.resolveGroundYAt(
+            this.railAnchorPosition.x,
+            this.railAnchorPosition.z,
+            fallbackGroundY
+        )
+        this.railAnchorPosition.y = groundY + this.motion.heightOffset
+
+        this.model.position.x = this.railAnchorPosition.x
+        this.model.position.z = this.railAnchorPosition.z
+        this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
+
+        this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
+
+        if(this.movementDirection.lengthSq() > 1e-8)
+        {
+            this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
+            return
+        }
+
+        if(didMove)
+        {
+            return
+        }
+
+        this.direction
+            .set(
+                this.followTargetPosition.x - this.model.position.x,
+                0,
+                this.followTargetPosition.z - this.model.position.z
+            )
+
+        if(this.direction.lengthSq() > 1e-8)
+        {
+            this.direction.normalize()
+            this.updateFacingFromDirection(this.direction, deltaSeconds)
+        }
+    }
+
+    updateIdleMotion(elapsed, deltaSeconds, bobOffset)
+    {
+        const angle = elapsed * this.motion.turnSpeed
+
+        this.previousAnchorPosition.copy(this.railAnchorPosition)
+        this.railAnchorPosition.x = this.motion.center.x + Math.cos(angle) * this.motion.radius
+        this.railAnchorPosition.z = this.motion.center.z + Math.sin(angle) * this.motion.radius
+
+        const groundY = this.resolveGroundYAt(
+            this.railAnchorPosition.x,
+            this.railAnchorPosition.z,
             this.motion.center.y
         )
-        this.model.position.y = baseGroundY + this.baseY + bobOffset
+        this.railAnchorPosition.y = groundY + this.motion.heightOffset
+
+        this.model.position.x = this.railAnchorPosition.x
+        this.model.position.z = this.railAnchorPosition.z
+        this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
         this.direction.set(-Math.sin(angle), 0, Math.cos(angle))
-        this.updateLocomotionState(this.followPreviousPosition, deltaSeconds)
+        this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
         this.updateFacingFromDirection(this.direction, deltaSeconds)
     }
 
@@ -739,648 +672,62 @@ export default class Bloom
         return false
     }
 
-    updateFollowMotion(deltaSeconds, bobOffset)
+    addRailPointFromTarget()
     {
-        const current = this.model.position
-        this.followState.returnCooldown = Math.max(0, this.followState.returnCooldown - deltaSeconds)
-        this.followState.retreatHoldTimer = Math.max(0, this.followState.retreatHoldTimer - deltaSeconds)
-        this.followPreviousPosition.copy(current)
-        this.direction
-            .set(
-                this.followTargetPosition.x - current.x,
-                0,
-                this.followTargetPosition.z - current.z
-            )
-
-        const horizontalDistance = this.direction.length()
-        if(horizontalDistance > 1e-4)
+        if(!this.resolveFollowTargetPosition())
         {
-            this.direction.multiplyScalar(1 / horizontalDistance)
-            this.followDirection.copy(this.direction)
-        }
-        else
-        {
-            this.direction.copy(this.followDirection)
+            return
         }
 
-        this.followToBloom.copy(this.direction).multiplyScalar(-1)
-        this.updateRepositionState(deltaSeconds, this.followToBloom)
-
-        const shouldMoveCloser = horizontalDistance > this.follow.maxDistance
-        if(shouldMoveCloser)
-        {
-            this.followState.tooFarDuration += deltaSeconds
-        }
-        else
-        {
-            this.followState.tooFarDuration = 0
-        }
-
-        const playerRadius = this.follow.target?.settings?.radius ?? 0.3
-        const touchDistance = playerRadius + this.follow.colliderRadius + this.follow.touchRetreatBuffer
-        const isTouchingPlayer = horizontalDistance <= touchDistance
-        const shouldRetreat = horizontalDistance < this.follow.minDistance
-        if(shouldRetreat)
-        {
-            this.followState.nearDuration += deltaSeconds
-        }
-        else
-        {
-            this.followState.nearDuration = 0
-        }
-
-        const canRetreat = this.followState.nearDuration >= this.follow.retreatDelaySeconds
-        const retreatDistance = Math.max(
-            this.follow.retreatDistance,
-            this.follow.minDistance * this.follow.retreatDistanceMultiplier
+        const y = this.resolveGroundYAt(
+            this.followTargetPosition.x,
+            this.followTargetPosition.z,
+            this.followTargetPosition.y
         )
-        const shouldStartRetreat = isTouchingPlayer || (shouldRetreat && canRetreat)
-        if(shouldStartRetreat)
+
+        this.rails.appendPoint(new THREE.Vector3(
+            this.followTargetPosition.x,
+            y,
+            this.followTargetPosition.z
+        ))
+    }
+
+    startRailLineFromTarget()
+    {
+        if(!this.resolveFollowTargetPosition())
         {
-            this.followState.isRetreating = true
-            this.followState.retreatHoldTimer = 0
+            this.rails.startNewRail()
+            return
         }
-        const retreatCompletionDistance = Math.max(
-            this.follow.minDistance,
-            retreatDistance - this.follow.retreatArrivalThreshold
+
+        const y = this.resolveGroundYAt(
+            this.followTargetPosition.x,
+            this.followTargetPosition.z,
+            this.followTargetPosition.y
         )
-        if(this.followState.isRetreating && horizontalDistance >= retreatCompletionDistance)
-        {
-            this.followState.isRetreating = false
-            this.followState.nearDuration = 0
-            this.followState.retreatHoldTimer = this.follow.retreatHoldSeconds
-        }
-        const shouldRetreatNow = this.followState.isRetreating
-        const canApproach = this.followState.tooFarDuration >= this.follow.approachDelaySeconds
-            && this.followState.retreatHoldTimer <= 0
-        let shouldAdjust = shouldRetreatNow || (shouldMoveCloser && canApproach)
-        let desiredDistance = shouldRetreatNow
-            ? retreatDistance
-            : this.follow.preferredDistance
-        let desiredDirectionFromTarget = this.followToBloom
 
-        if(this.followState.isRepositioning && !shouldRetreatNow)
-        {
-            desiredDirectionFromTarget = this.rotateHorizontalDirectionTowards(
-                this.followToBloom,
-                this.followCameraForward,
-                this.follow.repositionAngularSpeed * deltaSeconds
-            )
-            desiredDistance = Math.max(this.follow.repositionDistance, this.follow.minDistance + 1)
-            shouldAdjust = true
-        }
-
-        this.followDesiredPosition.copy(current)
-
-        if(shouldAdjust)
-        {
-            this.followDesiredPosition
-                .copy(this.followTargetPosition)
-                .addScaledVector(desiredDirectionFromTarget, desiredDistance)
-        }
-
-        this.applyAvoidZones(this.followDesiredPosition, current)
-
-        const fallbackGroundY = current.y - this.baseY
-        const groundY = this.resolveGroundYAt(
-            this.followDesiredPosition.x,
-            this.followDesiredPosition.z,
-            fallbackGroundY
-        )
-        this.followDesiredPosition.y = groundY + this.baseY + bobOffset
-
-        if(shouldAdjust)
-        {
-            this.resolveFollowContourTarget({
-                currentPosition: current,
-                targetPosition: this.followTargetPosition,
-                desiredDistance,
-                preferredDirectionFromTarget: desiredDirectionFromTarget,
-                bobOffset
-            })
-        }
-
-        const distanceFromPreferred = Math.max(0, horizontalDistance - this.follow.preferredDistance)
-        const adaptiveSpeedFactor = THREE.MathUtils.clamp(
-            distanceFromPreferred / Math.max(0.001, this.follow.speedDistanceRange),
-            0,
-            1
-        )
-        const followSpeed = THREE.MathUtils.lerp(this.follow.speed, this.follow.maxSpeed, adaptiveSpeedFactor)
-        const movementSpeed = shouldRetreatNow ? this.follow.retreatSpeed : followSpeed
-        this.moveTowardsPosition(current, this.followDesiredPosition, movementSpeed, deltaSeconds)
-        this.resolveFollowCollisions()
-        this.resolveFollowGroundCollision(bobOffset)
-        this.updateLocomotionState(this.followPreviousPosition, deltaSeconds)
-
-        this.direction
-            .set(
-                this.followTargetPosition.x - current.x,
-                0,
-                this.followTargetPosition.z - current.z
-            )
-
-        const shouldFaceMovement = this.locomotionSpeed > this.follow.faceMovementMinSpeed
-        if(shouldFaceMovement && this.movementDirection.lengthSq() > 1e-8)
-        {
-            this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
-            return
-        }
-
-        if(this.direction.lengthSq() > 1e-8)
-        {
-            this.direction.normalize()
-            this.updateFacingFromDirection(this.direction, deltaSeconds)
-        }
-    }
-
-    updateRepositionState(deltaSeconds, directionFromTarget)
-    {
-        const camera = this.follow.camera ?? this.experience.camera?.instance
-        if(!camera)
-        {
-            this.followState.behindDuration = 0
-            this.followState.isRepositioning = false
-            return
-        }
-
-        this.followCameraForward.set(0, 0, -1).applyQuaternion(camera.quaternion)
-        this.followCameraForward.y = 0
-        if(this.followCameraForward.lengthSq() <= 1e-8)
-        {
-            this.followState.behindDuration = 0
-            this.followState.isRepositioning = false
-            return
-        }
-        this.followCameraForward.normalize()
-
-        let directionForBehindCheck = directionFromTarget
-        this.followCameraToBloom.copy(this.model.position).sub(camera.position)
-        this.followCameraToBloom.y = 0
-        if(this.followCameraToBloom.lengthSq() > 1e-8)
-        {
-            this.followCameraToBloom.normalize()
-            directionForBehindCheck = this.followCameraToBloom
-        }
-
-        if(directionForBehindCheck.lengthSq() <= 1e-8)
-        {
-            this.followState.behindDuration = 0
-            this.followState.isRepositioning = false
-            return
-        }
-
-        const dot = this.followCameraForward.dot(directionForBehindCheck)
-        const isBehind = dot < this.follow.behindThresholdDot
-
-        if(this.followState.isRepositioning)
-        {
-            if(dot >= this.follow.repositionCompleteDot)
-            {
-                this.followState.isRepositioning = false
-                this.followState.returnCooldown = this.follow.returnCooldownSeconds
-            }
-            return
-        }
-
-        if(this.followState.returnCooldown > 0)
-        {
-            this.followState.behindDuration = 0
-            return
-        }
-
-        if(isBehind)
-        {
-            this.followState.behindDuration += deltaSeconds
-        }
-        else
-        {
-            this.followState.behindDuration = 0
-        }
-
-        if(this.followState.behindDuration >= this.follow.behindReturnDelaySeconds)
-        {
-            this.followState.isRepositioning = true
-            this.followState.behindDuration = 0
-        }
-    }
-
-    rotateHorizontalDirectionTowards(currentDirection, targetDirection, maxAngle)
-    {
-        const currentYaw = Math.atan2(currentDirection.x, currentDirection.z)
-        const targetYaw = Math.atan2(targetDirection.x, targetDirection.z)
-        const deltaYaw = Math.atan2(Math.sin(targetYaw - currentYaw), Math.cos(targetYaw - currentYaw))
-        const stepYaw = THREE.MathUtils.clamp(deltaYaw, -Math.max(0, maxAngle), Math.max(0, maxAngle))
-        const nextYaw = currentYaw + stepYaw
-        this.followReturnPosition.set(Math.sin(nextYaw), 0, Math.cos(nextYaw))
-        return this.followReturnPosition
-    }
-
-    rotateHorizontalDirection(direction, angle, output)
-    {
-        const yaw = Math.atan2(direction.x, direction.z) + angle
-        output.set(Math.sin(yaw), 0, Math.cos(yaw))
-        return output
-    }
-
-    resolveFollowContourTarget({
-        currentPosition,
-        targetPosition,
-        desiredDistance,
-        preferredDirectionFromTarget,
-        bobOffset
-    } = {})
-    {
-        const directPathBlocked = this.isFollowPathBlocked(currentPosition, this.followDesiredPosition)
-        if(!directPathBlocked)
-        {
-            return
-        }
-
-        const contourStep = Math.max(0.05, this.follow.contourAngularStepRadians)
-        const contourSamples = Math.max(1, Math.floor(this.follow.contourSamplesPerSide))
-        const minimumProgress = Math.max(0, this.follow.contourMinProgress)
-
-        for(let sampleIndex = 1; sampleIndex <= contourSamples; sampleIndex++)
-        {
-            const angleOffset = contourStep * sampleIndex
-
-            for(const side of [1, -1])
-            {
-                this.rotateHorizontalDirection(
-                    preferredDirectionFromTarget,
-                    angleOffset * side,
-                    this.contourDirectionCandidate
-                )
-
-                this.contourCandidatePosition
-                    .copy(targetPosition)
-                    .addScaledVector(this.contourDirectionCandidate, desiredDistance)
-
-                this.applyAvoidZones(this.contourCandidatePosition, currentPosition)
-
-                const fallbackGroundY = currentPosition.y - this.baseY
-                const groundY = this.resolveGroundYAt(
-                    this.contourCandidatePosition.x,
-                    this.contourCandidatePosition.z,
-                    fallbackGroundY
-                )
-                this.contourCandidatePosition.y = groundY + this.baseY + bobOffset
-
-                const candidateProgress = this.contourCandidatePosition.distanceTo(currentPosition)
-                if(candidateProgress < minimumProgress)
-                {
-                    continue
-                }
-
-                if(this.isFollowPathBlocked(currentPosition, this.contourCandidatePosition))
-                {
-                    continue
-                }
-
-                this.followDesiredPosition.copy(this.contourCandidatePosition)
-                return
-            }
-        }
-    }
-
-    isFollowPathBlocked(fromPosition, toPosition)
-    {
-        const meshes = this.follow.collisionMeshes
-        if(!Array.isArray(meshes) || meshes.length === 0)
-        {
-            return false
-        }
-
-        this.followCollisionDirection
-            .set(
-                toPosition.x - fromPosition.x,
-                0,
-                toPosition.z - fromPosition.z
-            )
-
-        const travelDistance = this.followCollisionDirection.length()
-        if(travelDistance < 1e-5)
-        {
-            return false
-        }
-
-        this.followCollisionDirection.multiplyScalar(1 / travelDistance)
-        const raycastFar = travelDistance + this.follow.colliderRadius
-        const feetY = fromPosition.y - this.follow.colliderHeight + 0.02
-        const sampleHeights = [feetY + 0.3, feetY + 0.85, fromPosition.y - 0.15]
-
-        for(const sampleY of sampleHeights)
-        {
-            this.followRaycastOrigin.set(fromPosition.x, sampleY, fromPosition.z)
-            this.followCollisionRaycaster.set(this.followRaycastOrigin, this.followCollisionDirection)
-            this.followCollisionRaycaster.near = 0
-            this.followCollisionRaycaster.far = raycastFar
-
-            const hits = this.followCollisionRaycaster.intersectObjects(meshes, false)
-            for(const hit of hits)
-            {
-                if(!hit.face)
-                {
-                    continue
-                }
-
-                this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
-                {
-                    continue
-                }
-
-                return true
-            }
-        }
-
-        return false
-    }
-
-    resolveFollowCollisions()
-    {
-        this.resolveFollowMeshCollisions()
-        this.resolveFollowBoxCollisions()
-    }
-
-    resolveFollowMeshCollisions()
-    {
-        const meshes = this.follow.collisionMeshes
-        if(!Array.isArray(meshes) || meshes.length === 0)
-        {
-            return
-        }
-
-        this.followCollisionDirection
-            .set(
-                this.model.position.x - this.followPreviousPosition.x,
-                0,
-                this.model.position.z - this.followPreviousPosition.z
-            )
-
-        const travelDistance = this.followCollisionDirection.length()
-        if(travelDistance < 1e-5)
-        {
-            return
-        }
-
-        this.followCollisionDirection.multiplyScalar(1 / travelDistance)
-        const raycastFar = travelDistance + this.follow.colliderRadius
-        const feetY = this.model.position.y - this.follow.colliderHeight + 0.02
-        const sampleHeights = [feetY + 0.3, feetY + 0.85, this.model.position.y - 0.15]
-
-        let hasBlockingHit = false
-        let closestBlockingDistance = Infinity
-
-        for(const sampleY of sampleHeights)
-        {
-            this.followRaycastOrigin.set(this.followPreviousPosition.x, sampleY, this.followPreviousPosition.z)
-            this.followCollisionRaycaster.set(this.followRaycastOrigin, this.followCollisionDirection)
-            this.followCollisionRaycaster.near = 0
-            this.followCollisionRaycaster.far = raycastFar
-
-            const hits = this.followCollisionRaycaster.intersectObjects(meshes, false)
-            for(const hit of hits)
-            {
-                if(!hit.face)
-                {
-                    continue
-                }
-
-                this.followWorldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                if(this.followWorldNormal.y > this.follow.collisionBlockingNormalMaxY)
-                {
-                    continue
-                }
-
-                if(hit.distance < closestBlockingDistance)
-                {
-                    closestBlockingDistance = hit.distance
-                    this.followCollisionHitNormal.copy(this.followWorldNormal)
-                }
-                hasBlockingHit = true
-                break
-            }
-        }
-
-        if(!hasBlockingHit)
-        {
-            return
-        }
-
-        this.followCollisionSlide
-            .set(
-                this.model.position.x - this.followPreviousPosition.x,
-                0,
-                this.model.position.z - this.followPreviousPosition.z
-            )
-
-        this.followCollisionSlideNormal
-            .set(this.followCollisionHitNormal.x, 0, this.followCollisionHitNormal.z)
-
-        if(this.followCollisionSlideNormal.lengthSq() > 1e-8)
-        {
-            this.followCollisionSlideNormal.normalize()
-            const projection = this.followCollisionSlide.x * this.followCollisionSlideNormal.x
-                + this.followCollisionSlide.z * this.followCollisionSlideNormal.z
-
-            this.followCollisionSlide.x -= this.followCollisionSlideNormal.x * projection
-            this.followCollisionSlide.z -= this.followCollisionSlideNormal.z * projection
-        }
-
-        if(this.followCollisionSlide.lengthSq() <= 1e-8)
-        {
-            this.model.position.x = this.followPreviousPosition.x
-            this.model.position.z = this.followPreviousPosition.z
-            return
-        }
-
-        this.model.position.x = this.followPreviousPosition.x + (this.followCollisionSlide.x * this.follow.collisionSlideFactor)
-        this.model.position.z = this.followPreviousPosition.z + (this.followCollisionSlide.z * this.follow.collisionSlideFactor)
-    }
-
-    resolveFollowBoxCollisions()
-    {
-        const boxes = this.follow.collisionBoxes
-        if(!Array.isArray(boxes) || boxes.length === 0)
-        {
-            return
-        }
-
-        const radius = this.follow.colliderRadius
-        const radiusSq = radius * radius
-        const feetY = this.model.position.y - this.follow.colliderHeight + 0.05
-        const headY = this.model.position.y - 0.1
-
-        for(let iteration = 0; iteration < 3; iteration++)
-        {
-            let hasCollision = false
-
-            for(const box of boxes)
-            {
-                if(!box)
-                {
-                    continue
-                }
-
-                if(box.max.y <= feetY || box.min.y >= headY)
-                {
-                    continue
-                }
-
-                const closestX = THREE.MathUtils.clamp(this.model.position.x, box.min.x, box.max.x)
-                const closestZ = THREE.MathUtils.clamp(this.model.position.z, box.min.z, box.max.z)
-
-                let dx = this.model.position.x - closestX
-                let dz = this.model.position.z - closestZ
-                let distanceSq = (dx * dx) + (dz * dz)
-
-                if(distanceSq >= radiusSq)
-                {
-                    continue
-                }
-
-                hasCollision = true
-
-                if(distanceSq < 1e-8)
-                {
-                    const distanceToMinX = Math.abs(this.model.position.x - box.min.x)
-                    const distanceToMaxX = Math.abs(box.max.x - this.model.position.x)
-                    const distanceToMinZ = Math.abs(this.model.position.z - box.min.z)
-                    const distanceToMaxZ = Math.abs(box.max.z - this.model.position.z)
-                    const minDistance = Math.min(distanceToMinX, distanceToMaxX, distanceToMinZ, distanceToMaxZ)
-
-                    if(minDistance === distanceToMinX)
-                    {
-                        dx = -1
-                        dz = 0
-                    }
-                    else if(minDistance === distanceToMaxX)
-                    {
-                        dx = 1
-                        dz = 0
-                    }
-                    else if(minDistance === distanceToMinZ)
-                    {
-                        dx = 0
-                        dz = -1
-                    }
-                    else
-                    {
-                        dx = 0
-                        dz = 1
-                    }
-
-                    distanceSq = 1
-                }
-
-                const distance = Math.sqrt(distanceSq)
-                const normalX = dx / distance
-                const normalZ = dz / distance
-                const penetration = radius - distance
-
-                this.model.position.x += normalX * penetration
-                this.model.position.z += normalZ * penetration
-            }
-
-            if(!hasCollision)
-            {
-                break
-            }
-        }
-    }
-
-    applyAvoidZones(position, currentPosition)
-    {
-        const zones = this.follow.avoidZones
-        if(!Array.isArray(zones) || zones.length === 0)
-        {
-            return
-        }
-
-        for(const zone of zones)
-        {
-            const radius = Math.max(0, zone.radius ?? 0)
-            if(radius === 0)
-            {
-                continue
-            }
-
-            let dx = position.x - zone.x
-            let dz = position.z - zone.z
-            let distance = Math.hypot(dx, dz)
-
-            if(distance >= radius)
-            {
-                continue
-            }
-
-            if(distance < 1e-5)
-            {
-                dx = currentPosition.x - zone.x
-                dz = currentPosition.z - zone.z
-                distance = Math.hypot(dx, dz)
-            }
-
-            if(distance < 1e-5)
-            {
-                dx = this.followDirection.x
-                dz = this.followDirection.z
-                distance = Math.hypot(dx, dz)
-            }
-
-            if(distance < 1e-5)
-            {
-                continue
-            }
-
-            const invDistance = 1 / distance
-            position.x = zone.x + (dx * invDistance * radius)
-            position.z = zone.z + (dz * invDistance * radius)
-        }
+        this.rails.startNewRail(new THREE.Vector3(
+            this.followTargetPosition.x,
+            y,
+            this.followTargetPosition.z
+        ))
     }
 
     getDynamicWalkFrequency()
     {
-        const referenceSpeed = Math.max(0.001, this.follow.speed)
+        const referenceSpeed = Math.max(0.001, this.rails.settings.speed)
         const normalizedSpeed = THREE.MathUtils.clamp(this.locomotionSpeed / referenceSpeed, 0, 3)
         const frequencyMultiplier = 1 + (normalizedSpeed * this.motion.walkFrequencySpeedInfluence)
         return this.motion.walkFrequency * frequencyMultiplier
     }
 
-    moveTowardsPosition(currentPosition, desiredPosition, speed, deltaSeconds)
-    {
-        const maxStep = Math.max(0, speed) * Math.max(0, deltaSeconds)
-        this.movementDelta.copy(desiredPosition).sub(currentPosition)
-        const distanceToTarget = this.movementDelta.length()
-
-        if(distanceToTarget <= 1e-6)
-        {
-            return
-        }
-
-        if(maxStep <= 1e-8)
-        {
-            return
-        }
-
-        if(distanceToTarget <= maxStep)
-        {
-            currentPosition.copy(desiredPosition)
-            return
-        }
-
-        currentPosition.addScaledVector(this.movementDelta, maxStep / distanceToTarget)
-    }
-
-    updateLocomotionState(previousPosition, deltaSeconds)
+    updateLocomotionState(previousPosition, currentPosition, deltaSeconds)
     {
         this.movementDelta
             .set(
-                this.model.position.x - previousPosition.x,
+                currentPosition.x - previousPosition.x,
                 0,
-                this.model.position.z - previousPosition.z
+                currentPosition.z - previousPosition.z
             )
 
         const horizontalStep = this.movementDelta.length()
@@ -1404,7 +751,7 @@ export default class Bloom
         const targetYaw = Math.atan2(direction.x, direction.z)
         const currentYaw = this.model.rotation.y - this.baseYaw
         const deltaYaw = Math.atan2(Math.sin(targetYaw - currentYaw), Math.cos(targetYaw - currentYaw))
-        const rotationAlpha = 1 - Math.exp(-this.follow.lookTurnSpeed * Math.max(0, deltaSeconds))
+        const rotationAlpha = 1 - Math.exp(-this.tuning.lookTurnSpeed * Math.max(0, deltaSeconds))
         this.model.rotation.y = this.baseYaw + currentYaw + (deltaYaw * rotationAlpha)
     }
 
@@ -1417,7 +764,7 @@ export default class Bloom
         }
 
         const origin = new THREE.Vector3(x, fallbackY + this.baseY + 2, z)
-        this.groundRaycaster.set(origin, this.followGroundRayDirection)
+        this.groundRaycaster.set(origin, new THREE.Vector3(0, -1, 0))
         this.groundRaycaster.near = 0
         this.groundRaycaster.far = 20
 
@@ -1425,6 +772,7 @@ export default class Bloom
         const maxStepHeight = Number.isFinite(playerStepHeight)
             ? playerStepHeight
             : this.follow.groundMaxSnapUp
+
         const hits = this.groundRaycaster.intersectObjects(groundMeshes, false)
         for(const hit of hits)
         {
@@ -1454,62 +802,6 @@ export default class Bloom
         }
 
         return fallbackY
-    }
-
-    resolveFollowGroundCollision(bobOffset = 0)
-    {
-        const groundMeshes = this.follow.groundMeshes
-        if(!Array.isArray(groundMeshes) || groundMeshes.length === 0)
-        {
-            return
-        }
-
-        const currentGroundY = this.model.position.y - this.baseY - bobOffset
-        let resolvedGroundY = currentGroundY
-        const origin = new THREE.Vector3(this.model.position.x, this.model.position.y + 2, this.model.position.z)
-        this.groundRaycaster.set(origin, this.followGroundRayDirection)
-        this.groundRaycaster.near = 0
-        this.groundRaycaster.far = 20
-
-        const playerStepHeight = this.follow.target?.settings?.stepHeight
-        const maxStepHeight = Number.isFinite(playerStepHeight)
-            ? playerStepHeight
-            : this.follow.groundMaxSnapUp
-        const hits = this.groundRaycaster.intersectObjects(groundMeshes, false)
-
-        for(const hit of hits)
-        {
-            if(this.follow.target?.isGroundIgnoredMesh?.(hit.object))
-            {
-                continue
-            }
-
-            if(!hit.face)
-            {
-                continue
-            }
-
-            this.groundNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-            if(this.groundNormal.y < 0.45)
-            {
-                continue
-            }
-
-            const stepDelta = hit.point.y - currentGroundY
-            if(stepDelta > maxStepHeight)
-            {
-                continue
-            }
-
-            resolvedGroundY = Math.max(resolvedGroundY, hit.point.y)
-            break
-        }
-
-        const resolvedModelY = resolvedGroundY + this.baseY + bobOffset
-        if(this.model.position.y <= resolvedModelY + 0.08)
-        {
-            this.model.position.y = resolvedModelY
-        }
     }
 
     updateArms()
@@ -1547,6 +839,7 @@ export default class Bloom
             this.fallback = null
         }
 
+        this.rails?.destroy?.()
         this.armNodes = []
     }
 }
