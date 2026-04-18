@@ -7,6 +7,14 @@ uniform float uMapPlanNoiseFrequency;
 uniform float uMapPlanRippleThreshold;
 uniform vec3 uMapPlanBackgroundColor;
 uniform float uMapPlanBackgroundOpacity;
+uniform float uMapPlanFoamEdgeWidth;
+uniform float uMapPlanFoamEdgeSoftness;
+uniform float uMapPlanFoamNoiseFrequency;
+uniform float uMapPlanFoamThreshold;
+uniform float uMapPlanFoamIntensity;
+uniform float uMapPlanFoamOpacity;
+uniform vec3 uMapPlanFoamColor;
+uniform float uMapPlanOnlyFoam;
 uniform float uMapPlanLocalTime;
 uniform vec4 uMapPlanBounds;
 uniform vec2 uMapPlanHeightRange;
@@ -41,6 +49,34 @@ ripple -= (1.0 - terrainData.b);
 float noise = texture2D(uMapPlanNoiseTexture, vMapPlanWorldPosition.xz * uMapPlanNoiseFrequency).r;
 ripple += noise;
 float waveVisibleMask = 1.0 - step(uMapPlanRippleThreshold, ripple);
-vec3 finalColor = mix(uMapPlanBackgroundColor, vec3(1.0), waveVisibleMask);
-float finalOpacity = mix(uMapPlanBackgroundOpacity, 1.0, waveVisibleMask);
-vec4 diffuseColor = vec4(finalColor, finalOpacity);
+
+float foamEdgeWidth = max(0.0001, uMapPlanFoamEdgeWidth);
+float foamEdgeSoftness = max(0.0001, uMapPlanFoamEdgeSoftness);
+
+vec2 foamNoiseUv = (vMapPlanWorldPosition.xz * uMapPlanFoamNoiseFrequency) + vec2(uMapPlanLocalTime * 0.17);
+float foamNoise = texture2D(uMapPlanNoiseTexture, foamNoiseUv).r;
+vec2 foamDriftUv = (vMapPlanWorldPosition.xz * (uMapPlanFoamNoiseFrequency * 1.7 + 0.0001)) + vec2(-uMapPlanLocalTime * 0.23, uMapPlanLocalTime * 0.31);
+float foamDrift = texture2D(uMapPlanNoiseTexture, foamDriftUv).r;
+float foamEdgeTravel = (foamDrift - 0.5) * (foamEdgeWidth * 0.9);
+foamEdgeTravel += sin((uMapPlanLocalTime * 5.0) + (vMapPlanWorldPosition.x * 0.35) - (vMapPlanWorldPosition.z * 0.27)) * (foamEdgeWidth * 0.28);
+float foamShoreDistance = terrainData.b + foamEdgeTravel;
+float foamEdgeMask = 1.0 - smoothstep(foamEdgeWidth, foamEdgeWidth + foamEdgeSoftness, foamShoreDistance);
+
+float foamPulse = (sin((terrainData.b * 24.0) - (uMapPlanLocalTime * 8.0) + (foamDrift * 6.28318530718)) * 0.5) + 0.5;
+float foamBreakup = step(uMapPlanFoamThreshold, (foamNoise * 0.45) + (foamDrift * 0.3) + (foamPulse * 0.25));
+float foamMask = clamp(foamEdgeMask * foamBreakup * uMapPlanFoamIntensity, 0.0, 1.0);
+float foamMaskBinary = step(0.5, foamMask);
+
+vec3 waterColor = mix(uMapPlanBackgroundColor, vec3(1.0), waveVisibleMask);
+float waterOpacity = mix(uMapPlanBackgroundOpacity, 1.0, waveVisibleMask);
+waterOpacity *= (1.0 - step(0.5, uMapPlanOnlyFoam));
+
+vec3 finalColor = mix(waterColor, uMapPlanFoamColor, foamMaskBinary);
+float finalOpacityRaw = max(waterOpacity, foamMaskBinary * uMapPlanFoamOpacity);
+float finalOpacity = clamp(finalOpacityRaw, 0.0, 1.0);
+if(finalOpacity <= 0.001)
+{
+    discard;
+}
+
+vec4 diffuseColor = vec4(finalColor, clamp(finalOpacity, 0.0, 1.0));

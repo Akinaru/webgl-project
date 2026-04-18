@@ -23,6 +23,13 @@ export default class Water
             noiseFrequency: 0.304,
             rippleThreshold: -0.315,
             backgroundOpacity: 0.45,
+            largeurMousseBord: 0.032,
+            douceurMousseBord: 0.044,
+            frequenceMousse: 0.5,
+            seuilMousse: 0.293,
+            intensiteMousse: 2,
+            opaciteMousse: 1,
+            eauTransparenteMousseSeulement: false,
             rippleTimeSpeed: RIPPLE_TIME_SPEED_DEFAULT,
             showPlan: true
         }
@@ -31,6 +38,7 @@ export default class Water
         this.couleurBleuSurface = new THREE.Color('#1c6972')
         this.couleurBleuFond = new THREE.Color('#031d26')
         this.backgroundColor = new THREE.Color('#124f69')
+        this.couleurMousse = new THREE.Color('#ffffff')
         this.applyWaterline()
         this.applyPlanVisibility()
         this.update()
@@ -72,7 +80,15 @@ export default class Water
             noiseFrequency: this.state.noiseFrequency,
             rippleThreshold: this.state.rippleThreshold,
             backgroundColor: this.backgroundColor,
-            backgroundOpacity: this.state.backgroundOpacity
+            backgroundOpacity: this.state.backgroundOpacity,
+            foamEdgeWidth: this.state.largeurMousseBord,
+            foamEdgeSoftness: this.state.douceurMousseBord,
+            foamNoiseFrequency: this.state.frequenceMousse,
+            foamThreshold: this.state.seuilMousse,
+            foamIntensity: this.state.intensiteMousse,
+            foamOpacity: this.state.opaciteMousse,
+            foamColor: this.couleurMousse,
+            onlyFoam: this.state.eauTransparenteMousseSeulement
         })
     }
 
@@ -100,6 +116,10 @@ export default class Water
             expanded: false
         })
         this.wavesFolder = this.debug.addFolder('Vagues', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        this.foamFolder = this.debug.addFolder('Mousse', {
             parent: this.debugFolder,
             expanded: false
         })
@@ -207,6 +227,80 @@ export default class Water
         }).on('change', () =>
         {
             this.update()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'largeurMousseBord', {
+            label: 'Largeur mousse',
+            min: 0.01,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'douceurMousseBord', {
+            label: 'Douceur mousse',
+            min: 0.001,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'frequenceMousse', {
+            label: 'Frequence mousse',
+            min: 0,
+            max: 4,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'seuilMousse', {
+            label: 'Seuil mousse',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'intensiteMousse', {
+            label: 'Intensite mousse',
+            min: 0,
+            max: 2,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'opaciteMousse', {
+            label: 'Opacite mousse',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addColorBinding(this.foamFolder, this, 'couleurMousse', {
+            label: 'Couleur mousse'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
+        })
+
+        this.debug.addBinding(this.foamFolder, this.state, 'eauTransparenteMousseSeulement', {
+            label: 'Eau transparente'
+        }).on('change', () =>
+        {
+            this.applyWaterline()
         })
 
         this.debug.addColorBinding(this.waterColorFolder, this, 'backgroundColor', {

@@ -38,6 +38,14 @@ export default class MapModel
             rippleThreshold: -0.315,
             backgroundColor: new THREE.Color('#124f69'),
             backgroundOpacity: 0.45,
+            foamEdgeWidth: 0.032,
+            foamEdgeSoftness: 0.044,
+            foamNoiseFrequency: 0.5,
+            foamThreshold: 0.293,
+            foamIntensity: 2,
+            foamOpacity: 1,
+            foamColor: new THREE.Color('#ffffff'),
+            onlyFoam: 0,
             localTime: 0
         }
         this.planWaterMaskContext = null
@@ -879,6 +887,14 @@ export default class MapModel
             rippleThreshold: { value: this.planWaterMaskSettings.rippleThreshold },
             backgroundColor: { value: this.planWaterMaskSettings.backgroundColor.clone() },
             backgroundOpacity: { value: this.planWaterMaskSettings.backgroundOpacity },
+            foamEdgeWidth: { value: this.planWaterMaskSettings.foamEdgeWidth },
+            foamEdgeSoftness: { value: this.planWaterMaskSettings.foamEdgeSoftness },
+            foamNoiseFrequency: { value: this.planWaterMaskSettings.foamNoiseFrequency },
+            foamThreshold: { value: this.planWaterMaskSettings.foamThreshold },
+            foamIntensity: { value: this.planWaterMaskSettings.foamIntensity },
+            foamOpacity: { value: this.planWaterMaskSettings.foamOpacity },
+            foamColor: { value: this.planWaterMaskSettings.foamColor.clone() },
+            onlyFoam: { value: this.planWaterMaskSettings.onlyFoam },
             localTime: { value: this.planWaterMaskSettings.localTime },
             bounds: { value: new THREE.Vector4(0, 0, 1, 1) },
             heightRange: { value: new THREE.Vector2(0, 1) },
@@ -896,6 +912,14 @@ export default class MapModel
             shader.uniforms.uMapPlanRippleThreshold = uniforms.rippleThreshold
             shader.uniforms.uMapPlanBackgroundColor = uniforms.backgroundColor
             shader.uniforms.uMapPlanBackgroundOpacity = uniforms.backgroundOpacity
+            shader.uniforms.uMapPlanFoamEdgeWidth = uniforms.foamEdgeWidth
+            shader.uniforms.uMapPlanFoamEdgeSoftness = uniforms.foamEdgeSoftness
+            shader.uniforms.uMapPlanFoamNoiseFrequency = uniforms.foamNoiseFrequency
+            shader.uniforms.uMapPlanFoamThreshold = uniforms.foamThreshold
+            shader.uniforms.uMapPlanFoamIntensity = uniforms.foamIntensity
+            shader.uniforms.uMapPlanFoamOpacity = uniforms.foamOpacity
+            shader.uniforms.uMapPlanFoamColor = uniforms.foamColor
+            shader.uniforms.uMapPlanOnlyFoam = uniforms.onlyFoam
             shader.uniforms.uMapPlanLocalTime = uniforms.localTime
             shader.uniforms.uMapPlanBounds = uniforms.bounds
             shader.uniforms.uMapPlanHeightRange = uniforms.heightRange
@@ -911,7 +935,7 @@ export default class MapModel
             const parentKey = typeof baseMaterial.customProgramCacheKey === 'function'
                 ? baseMaterial.customProgramCacheKey()
                 : ''
-            return `${parentKey}__mapPlanWaterMaskV1`
+            return `${parentKey}__mapPlanWaterMaskV2`
         }
 
         this.runtimeMaterials.push(material)
@@ -956,17 +980,29 @@ export default class MapModel
             uniforms.backgroundColor,
             this.planWaterMaskSettings.backgroundColor
         )
+        const foamColorUniform = this.ensureColorUniformValue(
+            uniforms.foamColor,
+            this.planWaterMaskSettings.foamColor
+        )
 
         uniforms.waterLevel.value = this.planWaterMaskSettings.waterLevel
         uniforms.slopeFrequency.value = this.planWaterMaskSettings.slopeFrequency
         uniforms.noiseFrequency.value = this.planWaterMaskSettings.noiseFrequency
         uniforms.rippleThreshold.value = this.planWaterMaskSettings.rippleThreshold
         uniforms.backgroundOpacity.value = this.planWaterMaskSettings.backgroundOpacity
+        uniforms.foamEdgeWidth.value = this.planWaterMaskSettings.foamEdgeWidth
+        uniforms.foamEdgeSoftness.value = this.planWaterMaskSettings.foamEdgeSoftness
+        uniforms.foamNoiseFrequency.value = this.planWaterMaskSettings.foamNoiseFrequency
+        uniforms.foamThreshold.value = this.planWaterMaskSettings.foamThreshold
+        uniforms.foamIntensity.value = this.planWaterMaskSettings.foamIntensity
+        uniforms.foamOpacity.value = this.planWaterMaskSettings.foamOpacity
+        uniforms.onlyFoam.value = this.planWaterMaskSettings.onlyFoam
         uniforms.localTime.value = this.planWaterMaskSettings.localTime
         boundsUniform.copy(this.planWaterMaskContext.bounds)
         heightRangeUniform.copy(this.planWaterMaskContext.heightRange)
         terrainDataTexelSizeUniform.copy(this.planWaterMaskContext.terrainDataTexelSize)
         backgroundColorUniform.copy(this.planWaterMaskSettings.backgroundColor)
+        foamColorUniform.copy(this.planWaterMaskSettings.foamColor)
         uniforms.terrainDataTexture.value = this.planWaterMaskContext.terrainDataTexture
         uniforms.noiseTexture.value = this.planWaterMaskContext.noiseTexture
     }
@@ -1112,6 +1148,14 @@ export default class MapModel
         rippleThreshold,
         backgroundColor,
         backgroundOpacity,
+        foamEdgeWidth,
+        foamEdgeSoftness,
+        foamNoiseFrequency,
+        foamThreshold,
+        foamIntensity,
+        foamOpacity,
+        foamColor,
+        onlyFoam,
         color,
         opacity,
         localTime
@@ -1159,6 +1203,62 @@ export default class MapModel
         if(Number.isFinite(resolvedOpacity))
         {
             this.planWaterMaskSettings.backgroundOpacity = THREE.MathUtils.clamp(resolvedOpacity, 0, 1)
+        }
+
+        if(typeof foamEdgeWidth === 'number' && Number.isFinite(foamEdgeWidth))
+        {
+            this.planWaterMaskSettings.foamEdgeWidth = THREE.MathUtils.clamp(foamEdgeWidth, 0.0001, 1)
+        }
+
+        if(typeof foamEdgeSoftness === 'number' && Number.isFinite(foamEdgeSoftness))
+        {
+            this.planWaterMaskSettings.foamEdgeSoftness = THREE.MathUtils.clamp(foamEdgeSoftness, 0.0001, 1)
+        }
+
+        if(typeof foamNoiseFrequency === 'number' && Number.isFinite(foamNoiseFrequency))
+        {
+            this.planWaterMaskSettings.foamNoiseFrequency = Math.max(0, foamNoiseFrequency)
+        }
+
+        if(typeof foamThreshold === 'number' && Number.isFinite(foamThreshold))
+        {
+            this.planWaterMaskSettings.foamThreshold = THREE.MathUtils.clamp(foamThreshold, 0, 1)
+        }
+
+        if(typeof foamIntensity === 'number' && Number.isFinite(foamIntensity))
+        {
+            this.planWaterMaskSettings.foamIntensity = Math.max(0, foamIntensity)
+        }
+
+        if(typeof foamOpacity === 'number' && Number.isFinite(foamOpacity))
+        {
+            this.planWaterMaskSettings.foamOpacity = THREE.MathUtils.clamp(foamOpacity, 0, 1)
+        }
+
+        if(foamColor instanceof THREE.Color)
+        {
+            this.planWaterMaskSettings.foamColor.copy(foamColor)
+        }
+        else if(typeof foamColor === 'string')
+        {
+            this.planWaterMaskSettings.foamColor.set(foamColor)
+        }
+        else if(foamColor && typeof foamColor === 'object')
+        {
+            this.planWaterMaskSettings.foamColor.setRGB(
+                foamColor.r ?? this.planWaterMaskSettings.foamColor.r,
+                foamColor.g ?? this.planWaterMaskSettings.foamColor.g,
+                foamColor.b ?? this.planWaterMaskSettings.foamColor.b
+            )
+        }
+
+        if(typeof onlyFoam === 'boolean')
+        {
+            this.planWaterMaskSettings.onlyFoam = onlyFoam ? 1 : 0
+        }
+        else if(typeof onlyFoam === 'number' && Number.isFinite(onlyFoam))
+        {
+            this.planWaterMaskSettings.onlyFoam = onlyFoam >= 0.5 ? 1 : 0
         }
 
         if(typeof localTime === 'number' && Number.isFinite(localTime))
