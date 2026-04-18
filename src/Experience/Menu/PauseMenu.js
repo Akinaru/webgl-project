@@ -328,6 +328,7 @@ export default class PauseMenu extends EventEmitter
 
         document.body.classList.add(PAUSED_BODY_CLASS)
         this.trigger('open')
+        this.experience?.sound?.playPauseOpen?.()
     }
 
     close({

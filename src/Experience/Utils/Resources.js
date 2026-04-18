@@ -30,6 +30,7 @@ export default class Resources extends EventEmitter
         this.loaders.gltfLoader = new GLTFLoader()
         this.loaders.textureLoader = new THREE.TextureLoader()
         this.loaders.cubeTextureLoader = new THREE.CubeTextureLoader()
+        this.loaders.audioLoader = new THREE.AudioLoader()
     }
 
     startLoading()
@@ -88,6 +89,22 @@ export default class Resources extends EventEmitter
             else if(source.type === 'cubeTexture')
             {
                 this.loaders.cubeTextureLoader.load(
+                    source.path,
+                    (file) =>
+                    {
+                        this.sourceLoaded(source, file)
+                    },
+                    undefined,
+                    (error) =>
+                    {
+                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
+                        this.sourceLoaded(source, null)
+                    }
+                )
+            }
+            else if(source.type === 'audioBuffer')
+            {
+                this.loaders.audioLoader.load(
                     source.path,
                     (file) =>
                     {

@@ -47,6 +47,11 @@ export default class Menu
 
         this.handleStartWithAudio = () =>
         {
+            this.experience?.sound?.setEnabled?.(true)
+            this.experience?.sound?.unlock?.()
+            this.experience?.sound?.playMenuClick?.({
+                force: true
+            })
             this.focusGameCanvas({
                 requestPointerLock: true
             })
@@ -55,6 +60,7 @@ export default class Menu
 
         this.handleStartMuted = () =>
         {
+            this.experience?.sound?.setEnabled?.(false)
             this.focusGameCanvas({
                 requestPointerLock: true
             })
@@ -149,6 +155,7 @@ export default class Menu
     {
         this.audioEnabled = Boolean(audioEnabled)
         this.experience.audioEnabled = this.audioEnabled
+        this.experience?.sound?.setEnabled?.(this.audioEnabled)
         document.documentElement.dataset.audio = this.audioEnabled ? 'enabled' : 'muted'
 
         try

@@ -13,6 +13,7 @@ import MetierEnum from './Enum/MetierEnum.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
+import SoundManager from './Audio/SoundManager.js'
 
 let instance = null
 
@@ -46,6 +47,8 @@ export default class Experience
         this.resources = new Resources(sources, {
             autoStart: false
         })
+        this.sound = new SoundManager(this)
+        this.sound.init?.()
         this.camera = new Camera()
         this.renderer = new Renderer()
         this.sceneManager = new SceneManager()
@@ -78,6 +81,7 @@ export default class Experience
             this.sceneManager.update(this.time.delta)
         }
 
+        this.sound?.update?.(this.time.delta)
         this.camera.update()
         this.renderer.update()
         this.debug.update()
@@ -91,6 +95,7 @@ export default class Experience
         this.metierManager.destroy?.()
         this.dialogueManager.destroy?.()
         this.menu?.destroy?.()
+        this.sound?.destroy?.()
         this.debug.destroy()
         this.inputs?.destroy?.()
         this.camera.destroy?.()
