@@ -120,6 +120,12 @@
         color: #2a4350;
       }
 
+      .field-help {
+        font-size: 0.74rem;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
       .text-input,
       .file-input,
       .btn {
@@ -412,7 +418,11 @@
             </div>
             <div class="field" style="margin-top: 10px">
               <label for="modelFile">Fichier local</label>
-              <input id="modelFile" class="file-input" type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" />
+              <input id="modelFile" class="file-input" type="file" accept=".glb,.gltf,.bin,image/*,model/gltf-binary,model/gltf+json" multiple />
+              <div id="modelFileInfo" class="field-help">Selectionne un `.glb` ou un `.gltf` avec ses fichiers `.bin` / textures, puis clique sur Importer.</div>
+              <div class="row">
+                <button id="loadFile" class="btn primary" disabled>Importer fichier</button>
+              </div>
             </div>
           </section>
 
@@ -501,6 +511,8 @@
         status: document.getElementById('status'),
         modelUrl: document.getElementById('modelUrl'),
         modelFile: document.getElementById('modelFile'),
+        modelFileInfo: document.getElementById('modelFileInfo'),
+        loadFile: document.getElementById('loadFile'),
         loadUrl: document.getElementById('loadUrl'),
         fitModel: document.getElementById('fitModel'),
         clearModel: document.getElementById('clearModel'),
@@ -533,6 +545,8 @@
         entriesByUuid: new Map(),
         selectedEntry: null,
         currentObjectUrl: null,
+        currentFileObjectUrls: [],
+        pendingFiles: [],
         disposedMaterials: new Set()
       }
 
@@ -1186,6 +1200,12 @@
           state.currentObjectUrl = null
         }
 
+        for(const objectUrl of state.currentFileObjectUrls)
+        {
+          URL.revokeObjectURL(objectUrl)
+        }
+        state.currentFileObjectUrls = []
+
         state.treeRoots = []
         state.entriesByUuid.clear()
         renderTree()
@@ -1267,32 +1287,95 @@
         )
       }
 
-      function loadFromFile(file)
+      function releasePendingFileUrls()
       {
-        if(!file)
+        for(const objectUrl of state.currentFileObjectUrls)
         {
+          URL.revokeObjectURL(objectUrl)
+        }
+
+        state.currentFileObjectUrls = []
+      }
+
+      function updatePendingFiles(files = [])
+      {
+        state.pendingFiles = Array.from(files)
+
+        const modelFiles = state.pendingFiles.filter((file) => /\.(glb|gltf)$/i.test(file.name))
+        const hasModelFile = modelFiles.length > 0
+
+        refs.loadFile.disabled = !hasModelFile
+
+        if(state.pendingFiles.length === 0)
+        {
+          refs.modelFileInfo.textContent = 'Selectionne un `.glb` ou un `.gltf` avec ses fichiers `.bin` / textures, puis clique sur Importer.'
           return
         }
 
-        if(state.currentObjectUrl)
+        if(!hasModelFile)
         {
-          URL.revokeObjectURL(state.currentObjectUrl)
-          state.currentObjectUrl = null
+          refs.modelFileInfo.textContent = 'Aucun fichier `.glb` ou `.gltf` detecte dans la selection.'
+          return
         }
 
-        const objectUrl = URL.createObjectURL(file)
-        state.currentObjectUrl = objectUrl
-        setStatus(`Chargement fichier: ${file.name}`)
+        const names = state.pendingFiles.map((file) => file.name).join(', ')
+        refs.modelFileInfo.textContent = `${state.pendingFiles.length} fichier(s) selectionne(s): ${names}`
+      }
 
-        state.loader.load(
-          objectUrl,
+      function resolveFileAlias(url = '')
+      {
+        const normalized = String(url).replace(/\\/g, '/')
+        const segments = normalized.split('/')
+        return decodeURIComponent(segments[segments.length - 1] || normalized)
+      }
+
+      function loadFromFiles(files)
+      {
+        const selectedFiles = Array.from(files || []).filter(Boolean)
+        if(selectedFiles.length === 0)
+        {
+          setStatus('Aucun fichier selectionne.')
+          return
+        }
+
+        const mainFile = selectedFiles.find((file) => /\.(glb|gltf)$/i.test(file.name))
+        if(!mainFile)
+        {
+          setStatus('Selectionne au moins un fichier .glb ou .gltf.')
+          return
+        }
+
+        releasePendingFileUrls()
+
+        const fileUrlByName = new Map()
+        for(const file of selectedFiles)
+        {
+          const objectUrl = URL.createObjectURL(file)
+          state.currentFileObjectUrls.push(objectUrl)
+          fileUrlByName.set(file.name, objectUrl)
+        }
+
+        const loadingManager = new THREE.LoadingManager()
+        loadingManager.setURLModifier((url) =>
+        {
+          const alias = resolveFileAlias(url)
+          return fileUrlByName.get(alias) || url
+        })
+
+        const loader = new GLTFLoader(loadingManager)
+        const mainUrl = fileUrlByName.get(mainFile.name)
+
+        setStatus(`Chargement fichier: ${mainFile.name}`)
+
+        loader.load(
+          mainUrl,
           (gltf) => {
-            onModelLoaded(gltf.scene, file.name)
+            onModelLoaded(gltf.scene, mainFile.name)
           },
           undefined,
           (error) => {
             console.error(error)
-            setStatus(`Echec chargement fichier: ${file.name}`)
+            setStatus(`Echec chargement fichier: ${mainFile.name}`)
           }
         )
       }
@@ -1345,7 +1428,11 @@
         })
 
         refs.modelFile.addEventListener('change', (event) => {
-          loadFromFile(event.target.files?.[0] ?? null)
+          updatePendingFiles(event.target.files ?? [])
+        })
+
+        refs.loadFile.addEventListener('click', () => {
+          loadFromFiles(state.pendingFiles)
         })
 
         refs.fitModel.addEventListener('click', () => {
@@ -1419,6 +1506,7 @@
       setupEvents()
       renderTree()
       refreshSummary()
+      updatePendingFiles([])
       resize()
       animate()
       loadFromUrl(refs.modelUrl.value)
