@@ -194,13 +194,13 @@
           <section class="section">
             <h2>Edition</h2>
             <p class="help">
-              Mode dessin: clic gauche pour ajouter un point. Clic droit + glisser pour deplacer la vue. Molette pour zoom.
+              Mode dessin: clique un node puis clique le sol pour ajouter un node connecte. Clique 2 nodes pour les relier. Clic droit + glisser pour deplacer la vue, molette pour zoom.
             </p>
             <div class="row" style="margin-top:10px">
               <button class="btn active" id="toggleDraw">Mode dessin ON</button>
-              <button class="btn" id="newRail">Nouvelle ligne</button>
+              <button class="btn" id="newRail">Vider selection</button>
               <button class="btn warn" id="undoPoint">Undo point</button>
-              <button class="btn danger" id="deleteRail">Suppr ligne</button>
+              <button class="btn danger" id="deleteRail">Suppr node</button>
               <button class="btn danger" id="clearAll">Clear tout</button>
             </div>
           </section>
@@ -224,15 +224,15 @@
               <button class="btn" id="copyJson">Copier</button>
               <button class="btn" id="importRails">Importer JSON</button>
             </div>
-            <textarea id="jsonOutput" spellcheck="false" placeholder="Clique sur Generer JSON pour exporter tes rails...\n\nFormat attendu:\n[\n  [{\"x\":0,\"y\":0,\"z\":0},{\"x\":1,\"y\":0,\"z\":1}]\n]"></textarea>
+            <textarea id="jsonOutput" spellcheck="false" placeholder="Clique sur Generer JSON pour exporter ton reseau...\n\nFormat attendu:\n{\n  \"nodes\": [{\"id\":\"n1\",\"x\":0,\"y\":0,\"z\":0}],\n  \"edges\": [{\"a\":\"n1\",\"b\":\"n2\"}]\n}"></textarea>
           </section>
         </aside>
 
         <main class="viewer-wrap">
           <canvas id="view"></canvas>
           <div class="hud">
-            <div class="hud-card" id="hudInfo">Rails: 0 | Ligne active: - | Points: 0</div>
-            <div class="hud-card">Astuce: active <strong>Mode dessin</strong> puis clique sur la map pour poser les points de tes rails.</div>
+            <div class="hud-card" id="hudInfo">Nodes: 0 | Edges: 0 | Selection: -</div>
+            <div class="hud-card">Astuce: clique un node puis le sol pour etendre le reseau, ou clique 2 nodes pour creer une connexion.</div>
           </div>
         </main>
       </div>
@@ -259,8 +259,10 @@
 
       const state = {
         drawMode: true,
-        rails: [[]],
-        activeRailIndex: 0,
+        graph: { nodes: [], edges: [] },
+        selectedNodeId: null,
+        history: [],
+        nextNodeIndex: 1,
         showPoints: true,
         snapToGround: true,
         pointerDown: null,
@@ -310,6 +312,7 @@
       const pointer = new THREE.Vector2()
       const mapRaycastMeshes = []
       const walkableRaycastMeshes = []
+      const nodePickMeshes = []
       let mapRoot = null
       let mapRaycastTopY = 400
       const fallbackPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -324,20 +327,209 @@
         statusNode.textContent = text
       }
 
-      function normalizeRails()
+      function normalizeGraph()
       {
-        return state.rails
-          .filter((rail) => rail.length > 0)
-          .map((rail) => rail.map((point) => ({
-            x: round3(point.x),
-            y: round3(point.y),
-            z: round3(point.z)
-          })))
+        const nodes = state.graph.nodes.map((node) => ({
+          id: String(node.id),
+          x: round3(node.x),
+          y: round3(node.y),
+          z: round3(node.z)
+        }))
+
+        const nodeIds = new Set(nodes.map((node) => node.id))
+        const seenEdges = new Set()
+
+        const edges = state.graph.edges
+          .map((edge) => ({ a: String(edge.a), b: String(edge.b) }))
+          .filter((edge) => edge.a && edge.b && edge.a !== edge.b && nodeIds.has(edge.a) && nodeIds.has(edge.b))
+          .filter((edge) => {
+            const key = edge.a < edge.b ? `${edge.a}:${edge.b}` : `${edge.b}:${edge.a}`
+            if(seenEdges.has(key))
+            {
+              return false
+            }
+            seenEdges.add(key)
+            return true
+          })
+
+        return { nodes, edges }
+      }
+
+      function sanitizeGraph(input)
+      {
+        if(Array.isArray(input))
+        {
+          const nodes = []
+          const edges = []
+          const nodeByKey = new Map()
+
+          const getOrCreateNodeId = (point) =>
+          {
+            const key = `${round3(Number(point.x ?? 0))}:${round3(Number(point.y ?? 0))}:${round3(Number(point.z ?? 0))}`
+            if(nodeByKey.has(key))
+            {
+              return nodeByKey.get(key)
+            }
+
+            const id = `n${nodes.length + 1}`
+            nodeByKey.set(key, id)
+            nodes.push({
+              id,
+              x: round3(Number(point.x ?? 0)),
+              y: round3(Number(point.y ?? 0)),
+              z: round3(Number(point.z ?? 0))
+            })
+            return id
+          }
+
+          for(const line of input)
+          {
+            if(!Array.isArray(line) || line.length < 2)
+            {
+              continue
+            }
+
+            for(let index = 0; index < line.length - 1; index++)
+            {
+              const start = line[index]
+              const end = line[index + 1]
+              if(!start || !end || typeof start !== 'object' || typeof end !== 'object')
+              {
+                continue
+              }
+
+              const a = getOrCreateNodeId(start)
+              const b = getOrCreateNodeId(end)
+              if(a !== b)
+              {
+                edges.push({ a, b })
+              }
+            }
+          }
+
+          return sanitizeGraph({ nodes, edges })
+        }
+
+        const rawNodes = Array.isArray(input?.nodes) ? input.nodes : []
+        const rawEdges = Array.isArray(input?.edges) ? input.edges : []
+
+        const nodes = []
+        const nodeIds = new Set()
+
+        for(const rawNode of rawNodes)
+        {
+          if(!rawNode || typeof rawNode !== 'object')
+          {
+            continue
+          }
+
+          const id = String(rawNode.id ?? '').trim()
+          const x = Number(rawNode.x)
+          const y = Number(rawNode.y)
+          const z = Number(rawNode.z)
+          if(!id || nodeIds.has(id) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z))
+          {
+            continue
+          }
+
+          nodeIds.add(id)
+          nodes.push({ id, x: round3(x), y: round3(y), z: round3(z) })
+        }
+
+        const edges = []
+        const edgeKeys = new Set()
+
+        for(const rawEdge of rawEdges)
+        {
+          if(!rawEdge)
+          {
+            continue
+          }
+
+          const a = String(rawEdge.a ?? rawEdge[0] ?? '').trim()
+          const b = String(rawEdge.b ?? rawEdge[1] ?? '').trim()
+          if(!a || !b || a === b || !nodeIds.has(a) || !nodeIds.has(b))
+          {
+            continue
+          }
+
+          const key = a < b ? `${a}:${b}` : `${b}:${a}`
+          if(edgeKeys.has(key))
+          {
+            continue
+          }
+
+          edgeKeys.add(key)
+          edges.push({ a, b })
+        }
+
+        return { nodes, edges }
+      }
+
+      function getNodeById(nodeId)
+      {
+        return state.graph.nodes.find((node) => node.id === nodeId) ?? null
+      }
+
+      function getConnectedEdges(nodeId)
+      {
+        return state.graph.edges.filter((edge) => edge.a === nodeId || edge.b === nodeId)
+      }
+
+      function hasEdge(a, b)
+      {
+        return state.graph.edges.some((edge) =>
+          (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a)
+        )
+      }
+
+      function saveNodeIndexCounter()
+      {
+        let maxValue = 0
+        for(const node of state.graph.nodes)
+        {
+          const match = String(node.id).match(/n(\d+)/)
+          if(!match)
+          {
+            continue
+          }
+          maxValue = Math.max(maxValue, Number(match[1] ?? 0))
+        }
+        state.nextNodeIndex = Math.max(1, maxValue + 1)
+      }
+
+      function createNode(point)
+      {
+        const node = {
+          id: `n${state.nextNodeIndex++}`,
+          x: round3(point.x),
+          y: round3(point.y),
+          z: round3(point.z)
+        }
+
+        state.graph.nodes.push(node)
+        return node
+      }
+
+      function connectNodes(a, b)
+      {
+        if(!a || !b || a === b || hasEdge(a, b))
+        {
+          return false
+        }
+
+        if(!getNodeById(a) || !getNodeById(b))
+        {
+          return false
+        }
+
+        state.graph.edges.push({ a, b })
+        return true
       }
 
       async function saveRailsToProject()
       {
-        const rails = normalizeRails()
+        const rails = normalizeGraph()
         const response = await fetch('/__rails/save', {
           method: 'POST',
           headers: {
@@ -372,7 +564,7 @@
           try
           {
             const result = await saveRailsToProject()
-            updateStatus(`Rails sauvegardes dans le fichier (${result?.railsCount ?? normalizeRails().length} lignes)`)
+            updateStatus(`Reseau sauvegarde (nodes: ${result?.nodesCount ?? state.graph.nodes.length}, edges: ${result?.edgesCount ?? state.graph.edges.length})`)
           }
           catch(error)
           {
@@ -391,51 +583,9 @@
         }
 
         const parsed = await response.json()
-        state.rails = sanitizeRails(parsed)
-        state.activeRailIndex = 0
-      }
-
-      function sanitizeRails(input)
-      {
-        if(!Array.isArray(input))
-        {
-          return [[]]
-        }
-
-        const rails = input
-          .map((rail) => {
-            if(!Array.isArray(rail))
-            {
-              return []
-            }
-
-            return rail
-              .map((point) => {
-                if(!point || typeof point !== 'object')
-                {
-                  return null
-                }
-
-                const x = Number(point.x)
-                const y = Number(point.y)
-                const z = Number(point.z)
-                if(!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z))
-                {
-                  return null
-                }
-
-                return { x, y, z }
-              })
-              .filter(Boolean)
-          })
-          .filter((rail) => rail.length > 0)
-
-        if(rails.length === 0)
-        {
-          return [[]]
-        }
-
-        return rails
+        state.graph = sanitizeGraph(parsed)
+        saveNodeIndexCounter()
+        state.selectedNodeId = state.graph.nodes[0]?.id ?? null
       }
 
       function hasNameInHierarchy(object, tokens = [])
@@ -475,8 +625,7 @@
           return true
         }
 
-        const isRelief = hasNameInHierarchy(object, ['relief'])
-        return isRelief
+        return hasNameInHierarchy(object, ['relief'])
       }
 
       function projectDownOnWalkable(x, z)
@@ -497,34 +646,10 @@
         return null
       }
 
-      function countPoints(rails)
-      {
-        let count = 0
-        for(const rail of rails)
-        {
-          count += rail.length
-        }
-        return count
-      }
-
       function updateHud()
       {
-        const activeRail = state.rails[state.activeRailIndex]
-        const activeLabel = state.activeRailIndex >= 0 ? state.activeRailIndex + 1 : '-'
-        const activePoints = Array.isArray(activeRail) ? activeRail.length : 0
-        hudInfoNode.textContent = `Rails: ${state.rails.length} | Ligne active: ${activeLabel} | Points ligne: ${activePoints} | Points total: ${countPoints(state.rails)}`
-      }
-
-      function ensureActiveRail()
-      {
-        if(state.rails.length === 0)
-        {
-          state.rails = [[]]
-          state.activeRailIndex = 0
-          return
-        }
-
-        state.activeRailIndex = Math.max(0, Math.min(state.activeRailIndex, state.rails.length - 1))
+        const selected = state.selectedNodeId || '-'
+        hudInfoNode.textContent = `Nodes: ${state.graph.nodes.length} | Edges: ${state.graph.edges.length} | Selection: ${selected}`
       }
 
       function setDrawMode(enabled)
@@ -545,88 +670,69 @@
           child.material?.dispose?.()
         }
 
-        state.rails.forEach((rail, railIndex) => {
-          const isActive = railIndex === state.activeRailIndex
-          const lineColor = isActive ? '#15bf70' : '#1492ff'
-          const pointColor = isActive ? '#b5ffd9' : '#d4e9ff'
+        nodePickMeshes.length = 0
 
-          if(rail.length >= 2)
+        for(const edge of state.graph.edges)
+        {
+          const start = getNodeById(edge.a)
+          const end = getNodeById(edge.b)
+          if(!start || !end)
           {
-            const points = rail.map((point) => new THREE.Vector3(point.x, point.y + 0.05, point.z))
-            const geometry = new THREE.BufferGeometry().setFromPoints(points)
-            const material = new THREE.LineBasicMaterial({ color: lineColor })
-            const line = new THREE.Line(geometry, material)
-            railGroup.add(line)
+            continue
           }
 
-          if(state.showPoints)
-          {
-            rail.forEach((point, pointIndex) => {
-              const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(pointIndex === 0 ? 0.22 : 0.15, 12, 12),
-                new THREE.MeshBasicMaterial({ color: pointColor })
-              )
-              sphere.position.set(point.x, point.y + 0.08, point.z)
-              railGroup.add(sphere)
-            })
-          }
-        })
+          const points = [
+            new THREE.Vector3(start.x, start.y + 0.05, start.z),
+            new THREE.Vector3(end.x, end.y + 0.05, end.z)
+          ]
+          const geometry = new THREE.BufferGeometry().setFromPoints(points)
+          const material = new THREE.LineBasicMaterial({ color: '#1492ff' })
+          railGroup.add(new THREE.Line(geometry, material))
+        }
+
+        if(!state.showPoints)
+        {
+          return
+        }
+
+        for(const node of state.graph.nodes)
+        {
+          const isSelected = node.id === state.selectedNodeId
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(isSelected ? 0.24 : 0.17, 12, 12),
+            new THREE.MeshBasicMaterial({ color: isSelected ? '#30e27c' : '#d4e9ff' })
+          )
+          sphere.position.set(node.x, node.y + 0.08, node.z)
+          sphere.userData.nodeId = node.id
+          railGroup.add(sphere)
+          nodePickMeshes.push(sphere)
+        }
       }
 
       function renderRailList()
       {
         railListNode.innerHTML = ''
-        state.rails.forEach((rail, railIndex) => {
+
+        const summary = document.createElement('div')
+        summary.className = 'rail-item active'
+        summary.innerHTML = `<div class="rail-head"><div class="rail-name">Reseau</div><div class="rail-meta">${state.graph.nodes.length} nodes / ${state.graph.edges.length} edges</div></div>`
+        railListNode.appendChild(summary)
+
+        for(const node of state.graph.nodes)
+        {
           const item = document.createElement('div')
-          item.className = 'rail-item' + (railIndex === state.activeRailIndex ? ' active' : '')
-
-          const head = document.createElement('div')
-          head.className = 'rail-head'
-
-          const name = document.createElement('div')
-          name.className = 'rail-name'
-          name.textContent = `Ligne ${railIndex + 1}`
-
-          const meta = document.createElement('div')
-          meta.className = 'rail-meta'
-          meta.textContent = `${rail.length} point${rail.length > 1 ? 's' : ''}`
-
-          head.appendChild(name)
-          head.appendChild(meta)
-          item.appendChild(head)
-
-          const row = document.createElement('div')
-          row.className = 'row'
-          row.style.marginTop = '8px'
-
-          const selectBtn = document.createElement('button')
-          selectBtn.className = 'btn'
-          selectBtn.textContent = 'Activer'
-          selectBtn.onclick = () => {
-            state.activeRailIndex = railIndex
+          item.className = 'rail-item' + (node.id === state.selectedNodeId ? ' active' : '')
+          item.innerHTML = `<div class="rail-head"><div class="rail-name">${node.id}</div><div class="rail-meta">deg ${getConnectedEdges(node.id).length}</div></div>`
+          item.onclick = () => {
+            state.selectedNodeId = node.id
             refreshUI()
           }
-
-          const delBtn = document.createElement('button')
-          delBtn.className = 'btn danger'
-          delBtn.textContent = 'Suppr'
-          delBtn.onclick = () => {
-            state.rails.splice(railIndex, 1)
-            ensureActiveRail()
-            refreshUI()
-          }
-
-          row.appendChild(selectBtn)
-          row.appendChild(delBtn)
-          item.appendChild(row)
-
           railListNode.appendChild(item)
-        })
+        }
       }
 
       function refreshUI()
       {
-        ensureActiveRail()
         buildRailVisuals()
         renderRailList()
         updateHud()
@@ -668,8 +774,54 @@
         return null
       }
 
+      function getNodeFromClient(clientX, clientY)
+      {
+        if(nodePickMeshes.length === 0)
+        {
+          return null
+        }
+
+        const rect = canvas.getBoundingClientRect()
+        pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1
+        pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1
+        raycaster.setFromCamera(pointer, camera)
+        const hits = raycaster.intersectObjects(nodePickMeshes, false)
+        const nodeId = hits[0]?.object?.userData?.nodeId
+        return nodeId ? String(nodeId) : null
+      }
+
       function addPointFromClient(clientX, clientY)
       {
+        const clickedNodeId = getNodeFromClient(clientX, clientY)
+        if(clickedNodeId)
+        {
+          if(!state.selectedNodeId)
+          {
+            state.selectedNodeId = clickedNodeId
+            updateStatus(`Node selectionne: ${clickedNodeId}`)
+            refreshUI()
+            return
+          }
+
+          if(state.selectedNodeId === clickedNodeId)
+          {
+            state.selectedNodeId = null
+            updateStatus('Selection retiree')
+            refreshUI()
+            return
+          }
+
+          if(connectNodes(state.selectedNodeId, clickedNodeId))
+          {
+            state.history.push({ type: 'addEdge', a: state.selectedNodeId, b: clickedNodeId })
+            updateStatus(`Connexion creee: ${state.selectedNodeId} -> ${clickedNodeId}`)
+          }
+
+          state.selectedNodeId = clickedNodeId
+          refreshUI()
+          return
+        }
+
         const point = projectPointFromClient(clientX, clientY)
         if(!point)
         {
@@ -677,22 +829,31 @@
           return
         }
 
-        ensureActiveRail()
-        const rail = state.rails[state.activeRailIndex]
-        rail.push({
-          x: round3(point.x),
-          y: round3(point.y),
-          z: round3(point.z)
-        })
+        if(state.graph.nodes.length > 0 && !state.selectedNodeId)
+        {
+          updateStatus('Selectionne un node existant avant de poser un nouveau point')
+          return
+        }
 
+        const node = createNode(point)
+        if(state.selectedNodeId)
+        {
+          connectNodes(state.selectedNodeId, node.id)
+          state.history.push({ type: 'addNode', nodeId: node.id, connectedTo: state.selectedNodeId })
+        }
+        else
+        {
+          state.history.push({ type: 'addNode', nodeId: node.id, connectedTo: null })
+        }
+
+        state.selectedNodeId = node.id
         refreshUI()
       }
 
       function exportRails()
       {
-        const rails = normalizeRails()
-
-        const output = JSON.stringify(rails, null, 4)
+        const graph = normalizeGraph()
+        const output = JSON.stringify(graph, null, 4)
         jsonOutputNode.value = output
         return output
       }
@@ -785,35 +946,57 @@
         }
 
         document.getElementById('newRail').onclick = () => {
-          state.rails.push([])
-          state.activeRailIndex = state.rails.length - 1
+          state.selectedNodeId = null
+          updateStatus('Selection videe. Clique un node pour continuer le reseau.')
           refreshUI()
         }
 
         document.getElementById('undoPoint').onclick = () => {
-          ensureActiveRail()
-          const rail = state.rails[state.activeRailIndex]
-          rail.pop()
+          const action = state.history.pop()
+          if(!action)
+          {
+            return
+          }
+
+          if(action.type === 'addEdge')
+          {
+            state.graph.edges = state.graph.edges.filter((edge) =>
+              !((edge.a === action.a && edge.b === action.b) || (edge.a === action.b && edge.b === action.a))
+            )
+          }
+
+          if(action.type === 'addNode')
+          {
+            state.graph.nodes = state.graph.nodes.filter((node) => node.id !== action.nodeId)
+            state.graph.edges = state.graph.edges.filter((edge) => edge.a !== action.nodeId && edge.b !== action.nodeId)
+            if(state.selectedNodeId === action.nodeId)
+            {
+              state.selectedNodeId = action.connectedTo
+            }
+          }
+
           refreshUI()
         }
 
         document.getElementById('deleteRail').onclick = () => {
-          if(state.rails.length <= 1)
+          if(!state.selectedNodeId)
           {
-            state.rails = [[]]
-            state.activeRailIndex = 0
-            refreshUI()
+            updateStatus('Selectionne un node a supprimer')
             return
           }
 
-          state.rails.splice(state.activeRailIndex, 1)
-          ensureActiveRail()
+          const nodeId = state.selectedNodeId
+          state.graph.nodes = state.graph.nodes.filter((node) => node.id !== nodeId)
+          state.graph.edges = state.graph.edges.filter((edge) => edge.a !== nodeId && edge.b !== nodeId)
+          state.selectedNodeId = null
           refreshUI()
         }
 
         document.getElementById('clearAll').onclick = () => {
-          state.rails = [[]]
-          state.activeRailIndex = 0
+          state.graph = { nodes: [], edges: [] }
+          state.selectedNodeId = null
+          state.history = []
+          saveNodeIndexCounter()
           refreshUI()
         }
 
@@ -854,8 +1037,10 @@
           try
           {
             const parsed = JSON.parse(jsonOutputNode.value)
-            state.rails = sanitizeRails(parsed)
-            state.activeRailIndex = 0
+            state.graph = sanitizeGraph(parsed)
+            state.selectedNodeId = state.graph.nodes[0]?.id ?? null
+            state.history = []
+            saveNodeIndexCounter()
             refreshUI()
             updateStatus('Import JSON reussi (sauvegarde auto en cours)')
           }
@@ -963,13 +1148,17 @@
         await loadRailsFromProject()
         refreshUI()
         state.projectSyncReady = true
-        updateStatus('Rails charges depuis le fichier projet')
+        updateStatus('Reseau de rails charge depuis le fichier projet')
       }
       catch(error)
       {
+        state.graph = { nodes: [], edges: [] }
+        state.selectedNodeId = null
+        state.history = []
+        saveNodeIndexCounter()
         refreshUI()
         state.projectSyncReady = true
-        updateStatus('Rails fichier non lisibles: edition locale active')
+        updateStatus('Fichier rails non lisible: edition locale active')
         console.error(error)
       }
     </script>

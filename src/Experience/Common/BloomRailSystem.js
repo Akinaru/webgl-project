@@ -1,5 +1,7 @@
 import * as THREE from 'three'
 
+const EPSILON = 1e-6
+
 function toVector3(point)
 {
     if(point instanceof THREE.Vector3)
@@ -28,48 +30,120 @@ function toVector3(point)
     return null
 }
 
-function sanitizeRails(rawRails = [])
+function createGraphFromLegacyLines(lines = [])
 {
-    const normalized = []
+    const nodes = []
+    const edges = []
+    const nodeByKey = new Map()
 
-    const railsInput = Array.isArray(rawRails)
-        ? rawRails
-        : []
-
-    const hasNestedRails = railsInput.some((entry) => Array.isArray(entry))
-
-    if(hasNestedRails)
+    const getOrCreateNode = (point) =>
     {
-        for(const rail of railsInput)
+        const key = `${point.x.toFixed(3)}:${point.y.toFixed(3)}:${point.z.toFixed(3)}`
+        if(nodeByKey.has(key))
         {
-            if(!Array.isArray(rail))
+            return nodeByKey.get(key)
+        }
+
+        const id = `n${nodes.length + 1}`
+        const node = { id, x: point.x, y: point.y, z: point.z }
+        nodes.push(node)
+        nodeByKey.set(key, id)
+        return id
+    }
+
+    for(const line of Array.isArray(lines) ? lines : [])
+    {
+        if(!Array.isArray(line) || line.length < 2)
+        {
+            continue
+        }
+
+        for(let index = 0; index < line.length - 1; index++)
+        {
+            const start = toVector3(line[index])
+            const end = toVector3(line[index + 1])
+            if(!(start instanceof THREE.Vector3) || !(end instanceof THREE.Vector3))
             {
                 continue
             }
 
-            const points = rail
-                .map((point) => toVector3(point))
-                .filter((point) => point instanceof THREE.Vector3)
+            const startId = getOrCreateNode(start)
+            const endId = getOrCreateNode(end)
+            edges.push({ a: startId, b: endId })
+        }
+    }
 
-            if(points.length >= 1)
-            {
-                normalized.push(points)
-            }
+    return { nodes, edges }
+}
+
+function sanitizeGraph(input)
+{
+    if(Array.isArray(input))
+    {
+        return sanitizeGraph(createGraphFromLegacyLines(input))
+    }
+
+    const rawNodes = Array.isArray(input?.nodes) ? input.nodes : []
+    const rawEdges = Array.isArray(input?.edges) ? input.edges : []
+
+    const nodes = []
+    const nodeIds = new Set()
+
+    for(const rawNode of rawNodes)
+    {
+        if(!rawNode || typeof rawNode !== 'object')
+        {
+            continue
         }
 
-        return normalized
+        const id = String(rawNode.id ?? '').trim()
+        const x = Number(rawNode.x)
+        const y = Number(rawNode.y)
+        const z = Number(rawNode.z)
+
+        if(!id || nodeIds.has(id) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z))
+        {
+            continue
+        }
+
+        nodeIds.add(id)
+        nodes.push({
+            id,
+            x,
+            y,
+            z
+        })
     }
 
-    const singleRail = railsInput
-        .map((point) => toVector3(point))
-        .filter((point) => point instanceof THREE.Vector3)
+    const edges = []
+    const edgeKeys = new Set()
 
-    if(singleRail.length >= 1)
+    for(const rawEdge of rawEdges)
     {
-        normalized.push(singleRail)
+        if(!rawEdge)
+        {
+            continue
+        }
+
+        const a = String(rawEdge.a ?? rawEdge[0] ?? '').trim()
+        const b = String(rawEdge.b ?? rawEdge[1] ?? '').trim()
+
+        if(!a || !b || a === b || !nodeIds.has(a) || !nodeIds.has(b))
+        {
+            continue
+        }
+
+        const key = a < b ? `${a}:${b}` : `${b}:${a}`
+        if(edgeKeys.has(key))
+        {
+            continue
+        }
+
+        edgeKeys.add(key)
+        edges.push({ a, b })
     }
 
-    return normalized
+    return { nodes, edges }
 }
 
 export default class BloomRailSystem
@@ -85,7 +159,6 @@ export default class BloomRailSystem
     } = {})
     {
         this.scene = scene
-
         this.settings = {
             speed,
             railSwitchDistance,
@@ -94,12 +167,17 @@ export default class BloomRailSystem
             showHelpers
         }
 
-        this.activeRailIndex = -1
-        this.rails = []
-        this.railData = []
+        this.graph = {
+            nodes: [],
+            edges: []
+        }
+
+        this.nodesById = new Map()
+        this.adjacency = new Map()
+        this.edgeSegments = []
+        this.lastInsertedNodeId = null
 
         this.closestPoint = new THREE.Vector3()
-        this.closestSegment = new THREE.Vector3()
 
         this.helperGroup = new THREE.Group()
         this.helperGroup.name = '__bloomRailsDebug'
@@ -117,74 +195,58 @@ export default class BloomRailSystem
 
     setRails(rawRails = [])
     {
-        this.rails = sanitizeRails(rawRails)
-        this.buildRailData()
-
-        if(this.rails.length === 0)
-        {
-            this.activeRailIndex = -1
-        }
-        else
-        {
-            this.activeRailIndex = THREE.MathUtils.clamp(this.activeRailIndex, 0, this.rails.length - 1)
-            if(this.activeRailIndex < 0)
-            {
-                this.activeRailIndex = 0
-            }
-
-            if(this.railData[this.activeRailIndex]?.segments?.length === 0)
-            {
-                const firstNavigableRail = this.railData.findIndex((rail) => rail.segments.length > 0)
-                this.activeRailIndex = firstNavigableRail >= 0 ? firstNavigableRail : 0
-            }
-        }
-
+        this.graph = sanitizeGraph(rawRails)
+        this.rebuildRuntimeData()
         this.rebuildHelpers()
+
+        const firstNode = this.graph.nodes[0]
+        this.lastInsertedNodeId = firstNode ? firstNode.id : null
     }
 
     hasRails()
     {
-        return this.railData.some((rail) => rail.segments.length > 0)
+        return this.edgeSegments.length > 0
     }
 
-    buildRailData()
+    rebuildRuntimeData()
     {
-        this.railData = this.rails.map((railPoints) =>
+        this.nodesById = new Map()
+        this.adjacency = new Map()
+        this.edgeSegments = []
+
+        for(const node of this.graph.nodes)
         {
-            const segments = []
-            let cursorDistance = 0
+            const position = new THREE.Vector3(node.x, node.y, node.z)
+            this.nodesById.set(node.id, position)
+            this.adjacency.set(node.id, [])
+        }
 
-            for(let index = 0; index < railPoints.length - 1; index++)
+        for(const edge of this.graph.edges)
+        {
+            const start = this.nodesById.get(edge.a)
+            const end = this.nodesById.get(edge.b)
+            if(!start || !end)
             {
-                const start = railPoints[index]
-                const end = railPoints[index + 1]
-                const segmentLength = start.distanceTo(end)
-
-                if(segmentLength <= 1e-5)
-                {
-                    continue
-                }
-
-                const segment = {
-                    startIndex: index,
-                    endIndex: index + 1,
-                    start,
-                    end,
-                    length: segmentLength,
-                    startDistance: cursorDistance,
-                    endDistance: cursorDistance + segmentLength
-                }
-
-                segments.push(segment)
-                cursorDistance += segmentLength
+                continue
             }
 
-            return {
-                points: railPoints,
-                segments,
-                totalLength: cursorDistance
+            const length = start.distanceTo(end)
+            if(length <= EPSILON)
+            {
+                continue
             }
-        })
+
+            this.edgeSegments.push({
+                a: edge.a,
+                b: edge.b,
+                start,
+                end,
+                length
+            })
+
+            this.adjacency.get(edge.a).push({ id: edge.b, cost: length })
+            this.adjacency.get(edge.b).push({ id: edge.a, cost: length })
+        }
     }
 
     moveAnchorTowards(anchor, targetPosition, deltaSeconds)
@@ -194,180 +256,260 @@ export default class BloomRailSystem
             return false
         }
 
-        this.ensureActiveRail(anchor, targetPosition)
-        if(this.activeRailIndex < 0)
+        const route = this.buildBestRoute(anchor, targetPosition)
+        if(route.length === 0)
         {
             return false
         }
 
-        let currentProjection = this.getClosestProjectionOnRail(this.activeRailIndex, anchor)
-        if(!currentProjection)
-        {
-            return false
-        }
-
-        const switched = this.trySwitchRail(anchor, targetPosition, currentProjection)
-        if(switched)
-        {
-            currentProjection = this.getClosestProjectionOnRail(this.activeRailIndex, anchor)
-            if(!currentProjection)
-            {
-                return false
-            }
-        }
-
-        const goalProjection = this.getClosestProjectionOnRail(this.activeRailIndex, targetPosition)
-        if(!goalProjection)
+        let remainingStep = Math.max(0, this.settings.speed) * Math.max(0, deltaSeconds)
+        if(remainingStep <= EPSILON)
         {
             return false
         }
 
         const before = anchor.clone()
-        anchor.copy(currentProjection.point)
+        let waypointIndex = 0
 
-        const maxStep = Math.max(0, this.settings.speed) * Math.max(0, deltaSeconds)
-        if(maxStep <= 1e-8)
+        while(remainingStep > EPSILON && waypointIndex < route.length)
         {
-            return anchor.distanceToSquared(before) > 1e-8
+            const waypoint = route[waypointIndex]
+            const distance = anchor.distanceTo(waypoint)
+
+            if(distance <= EPSILON)
+            {
+                waypointIndex++
+                continue
+            }
+
+            if(distance <= remainingStep)
+            {
+                anchor.copy(waypoint)
+                remainingStep -= distance
+                waypointIndex++
+                continue
+            }
+
+            anchor.lerp(waypoint, remainingStep / distance)
+            remainingStep = 0
         }
 
-        const distanceToGoal = goalProjection.distanceAlong - currentProjection.distanceAlong
-        if(Math.abs(distanceToGoal) <= 1e-5)
-        {
-            return anchor.distanceToSquared(before) > 1e-8
-        }
-
-        const step = Math.sign(distanceToGoal) * Math.min(Math.abs(distanceToGoal), maxStep)
-        const nextDistance = currentProjection.distanceAlong + step
-        const nextPoint = this.getPointAtDistance(this.activeRailIndex, nextDistance)
-
-        if(nextPoint)
-        {
-            anchor.copy(nextPoint)
-        }
-
-        return anchor.distanceToSquared(before) > 1e-8
+        return anchor.distanceToSquared(before) > EPSILON
     }
 
-    ensureActiveRail(anchor, targetPosition)
+    buildBestRoute(anchor, targetPosition)
     {
-        if(this.rails.length === 0)
-        {
-            this.activeRailIndex = -1
-            return
-        }
-
-        const hasActiveRail = this.activeRailIndex >= 0
-            && this.activeRailIndex < this.rails.length
-            && this.railData[this.activeRailIndex]?.segments?.length > 0
-
-        if(hasActiveRail)
-        {
-            return
-        }
-
         const anchorProjection = this.getClosestProjection(anchor)
-        if(anchorProjection)
-        {
-            this.activeRailIndex = anchorProjection.railIndex
-            this.updateHelperColors()
-            return
-        }
-
         const targetProjection = this.getClosestProjection(targetPosition)
-        if(targetProjection)
+
+        if(!anchorProjection || !targetProjection)
         {
-            this.activeRailIndex = targetProjection.railIndex
-            this.updateHelperColors()
-            return
+            return []
         }
 
-        this.activeRailIndex = 0
-        this.updateHelperColors()
-    }
-
-    trySwitchRail(anchor, targetPosition, currentProjection)
-    {
-        const targetAny = this.getClosestProjection(targetPosition)
-        if(!targetAny || targetAny.railIndex === this.activeRailIndex)
+        const startId = '__start__'
+        const targetId = '__target__'
+        const tempAdjacency = this.buildTemporaryAdjacency({
+            startId,
+            targetId,
+            anchorProjection,
+            targetProjection
+        })
+        const shortest = this.computeShortestPaths(startId, tempAdjacency)
+        const totalDistance = shortest.distances.get(targetId)
+        if(!Number.isFinite(totalDistance))
         {
-            return false
+            return []
         }
 
-        const currentRail = this.railData[this.activeRailIndex]
-        if(!currentRail)
+        const pathNodeIds = this.reconstructPath(
+            shortest.previous,
+            startId,
+            targetId
+        )
+
+        const route = []
+        for(let index = 1; index < pathNodeIds.length; index++)
         {
-            return false
-        }
+            const nodeId = pathNodeIds[index]
+            if(nodeId === targetId)
+            {
+                route.push(targetProjection.point.clone())
+                continue
+            }
 
-        const distanceToRailStart = currentProjection.distanceAlong
-        const distanceToRailEnd = Math.max(0, currentRail.totalLength - currentProjection.distanceAlong)
-        const nearEndpoint = distanceToRailStart <= this.settings.endpointSwitchDistance
-            || distanceToRailEnd <= this.settings.endpointSwitchDistance
-
-        if(!nearEndpoint)
-        {
-            return false
-        }
-
-        const anchorToTargetRail = this.getClosestProjectionOnRail(targetAny.railIndex, anchor)
-        if(!anchorToTargetRail || anchorToTargetRail.distance > this.settings.railSwitchDistance)
-        {
-            return false
-        }
-
-        this.activeRailIndex = targetAny.railIndex
-        this.updateHelperColors()
-        return true
-    }
-
-    getClosestProjection(position, { railIndex = null } = {})
-    {
-        if(!(position instanceof THREE.Vector3))
-        {
-            return null
-        }
-
-        if(Number.isInteger(railIndex) && railIndex >= 0)
-        {
-            return this.getClosestProjectionOnRail(railIndex, position)
-        }
-
-        let best = null
-
-        for(let index = 0; index < this.railData.length; index++)
-        {
-            const projection = this.getClosestProjectionOnRail(index, position)
-            if(!projection)
+            if(nodeId === startId)
             {
                 continue
             }
 
-            if(!best || projection.distance < best.distance)
+            const nodePosition = this.nodesById.get(nodeId)
+            if(nodePosition)
             {
-                best = projection
+                route.push(nodePosition.clone())
             }
         }
 
-        return best
+        return route
     }
 
-    getClosestProjectionOnRail(railIndex, position)
+    buildTemporaryAdjacency({
+        startId,
+        targetId,
+        anchorProjection,
+        targetProjection
+    })
     {
-        const rail = this.railData[railIndex]
-        if(!rail || rail.segments.length === 0)
+        const temp = new Map()
+        for(const [nodeId, neighbors] of this.adjacency.entries())
+        {
+            temp.set(nodeId, neighbors.map((neighbor) => ({ id: neighbor.id, cost: neighbor.cost })))
+        }
+
+        const ensure = (nodeId) =>
+        {
+            if(!temp.has(nodeId))
+            {
+                temp.set(nodeId, [])
+            }
+            return temp.get(nodeId)
+        }
+
+        const link = (a, b, cost) =>
+        {
+            if(!Number.isFinite(cost) || cost < 0)
+            {
+                return
+            }
+
+            const neighborsA = ensure(a)
+            const neighborsB = ensure(b)
+
+            neighborsA.push({ id: b, cost })
+            neighborsB.push({ id: a, cost })
+        }
+
+        ensure(startId)
+        ensure(targetId)
+
+        link(startId, anchorProjection.a, anchorProjection.distanceToA)
+        link(startId, anchorProjection.b, anchorProjection.distanceToB)
+        link(targetId, targetProjection.a, targetProjection.distanceToA)
+        link(targetId, targetProjection.b, targetProjection.distanceToB)
+
+        if(anchorProjection.a === targetProjection.a && anchorProjection.b === targetProjection.b)
+        {
+            const directCost = Math.abs(anchorProjection.t - targetProjection.t) * anchorProjection.length
+            link(startId, targetId, directCost)
+        }
+        else if(anchorProjection.a === targetProjection.b && anchorProjection.b === targetProjection.a)
+        {
+            const targetParamOnAnchor = 1 - targetProjection.t
+            const directCost = Math.abs(anchorProjection.t - targetParamOnAnchor) * anchorProjection.length
+            link(startId, targetId, directCost)
+        }
+
+        return temp
+    }
+
+    computeShortestPaths(startId, adjacency = this.adjacency)
+    {
+        const distances = new Map()
+        const previous = new Map()
+        const visited = new Set()
+
+        for(const nodeId of adjacency.keys())
+        {
+            distances.set(nodeId, Infinity)
+        }
+        if(!distances.has(startId))
+        {
+            distances.set(startId, Infinity)
+        }
+        distances.set(startId, 0)
+
+        while(visited.size < distances.size)
+        {
+            let currentId = null
+            let currentDistance = Infinity
+
+            for(const [nodeId, distance] of distances.entries())
+            {
+                if(visited.has(nodeId))
+                {
+                    continue
+                }
+
+                if(distance < currentDistance)
+                {
+                    currentId = nodeId
+                    currentDistance = distance
+                }
+            }
+
+            if(!currentId)
+            {
+                break
+            }
+
+            visited.add(currentId)
+            const neighbors = adjacency.get(currentId) ?? []
+
+            for(const neighbor of neighbors)
+            {
+                const nextDistance = currentDistance + neighbor.cost
+                if(nextDistance >= distances.get(neighbor.id))
+                {
+                    continue
+                }
+
+                distances.set(neighbor.id, nextDistance)
+                previous.set(neighbor.id, currentId)
+            }
+        }
+
+        return { distances, previous }
+    }
+
+    reconstructPath(previous, startId, targetId)
+    {
+        if(startId === targetId)
+        {
+            return [startId]
+        }
+
+        const result = [targetId]
+        let cursor = targetId
+
+        while(cursor !== startId)
+        {
+            const parent = previous.get(cursor)
+            if(!parent)
+            {
+                return [startId, targetId]
+            }
+
+            result.push(parent)
+            cursor = parent
+        }
+
+        result.reverse()
+        return result
+    }
+
+    getClosestProjection(position)
+    {
+        if(!(position instanceof THREE.Vector3) || this.edgeSegments.length === 0)
         {
             return null
         }
 
+        let best = null
         let bestDistanceSq = Infinity
-        let bestProjection = null
 
-        for(let segmentIndex = 0; segmentIndex < rail.segments.length; segmentIndex++)
+        for(const segment of this.edgeSegments)
         {
-            const segment = rail.segments[segmentIndex]
             const projection = this.projectPointOnSegmentXZ(position, segment.start, segment.end)
-
             if(!projection)
             {
                 continue
@@ -380,50 +522,18 @@ export default class BloomRailSystem
             }
 
             bestDistanceSq = distanceSq
-            bestProjection = {
-                railIndex,
-                segmentIndex,
+            best = {
+                a: segment.a,
+                b: segment.b,
+                point: projection.point.clone(),
                 t: projection.t,
-                point: projection.point,
-                distanceAlong: segment.startDistance + (segment.length * projection.t),
-                distance: Math.sqrt(distanceSq)
+                length: segment.length,
+                distanceToA: segment.length * projection.t,
+                distanceToB: segment.length * (1 - projection.t)
             }
         }
 
-        return bestProjection
-    }
-
-    getPointAtDistance(railIndex, distanceAlong)
-    {
-        const rail = this.railData[railIndex]
-        if(!rail || rail.segments.length === 0)
-        {
-            return null
-        }
-
-        if(distanceAlong <= 0)
-        {
-            return rail.points[0].clone()
-        }
-
-        if(distanceAlong >= rail.totalLength)
-        {
-            return rail.points[rail.points.length - 1].clone()
-        }
-
-        for(const segment of rail.segments)
-        {
-            if(distanceAlong < segment.startDistance || distanceAlong > segment.endDistance)
-            {
-                continue
-            }
-
-            const localDistance = distanceAlong - segment.startDistance
-            const t = THREE.MathUtils.clamp(localDistance / segment.length, 0, 1)
-            return this.closestSegment.copy(segment.start).lerp(segment.end, t).clone()
-        }
-
-        return rail.points[rail.points.length - 1].clone()
+        return best
     }
 
     projectPointOnSegmentXZ(position, start, end)
@@ -432,7 +542,7 @@ export default class BloomRailSystem
         const abZ = end.z - start.z
         const abLenSq = (abX * abX) + (abZ * abZ)
 
-        if(abLenSq <= 1e-8)
+        if(abLenSq <= EPSILON)
         {
             return null
         }
@@ -441,66 +551,109 @@ export default class BloomRailSystem
         const apZ = position.z - start.z
         const t = THREE.MathUtils.clamp(((apX * abX) + (apZ * abZ)) / abLenSq, 0, 1)
 
-        this.closestPoint
-            .copy(start)
-            .lerp(end, t)
-
+        this.closestPoint.copy(start).lerp(end, t)
         return {
             t,
-            point: this.closestPoint.clone()
+            point: this.closestPoint
         }
     }
 
-    appendPoint(point)
+    addNode(point, { connectTo = null } = {})
     {
         const vector = toVector3(point)
         if(!(vector instanceof THREE.Vector3))
         {
+            return null
+        }
+
+        const nodeId = `n${Date.now()}_${Math.floor(Math.random() * 100000)}`
+        this.graph.nodes.push({ id: nodeId, x: vector.x, y: vector.y, z: vector.z })
+
+        if(connectTo && this.nodesById.has(connectTo))
+        {
+            this.graph.edges.push({ a: connectTo, b: nodeId })
+        }
+
+        this.setRails(this.graph)
+        this.lastInsertedNodeId = nodeId
+        return nodeId
+    }
+
+    connectNodes(a, b)
+    {
+        if(!a || !b || a === b || !this.nodesById.has(a) || !this.nodesById.has(b))
+        {
             return false
         }
 
-        if(this.rails.length === 0)
+        const exists = this.graph.edges.some((edge) =>
+            (edge.a === a && edge.b === b) || (edge.a === b && edge.b === a)
+        )
+
+        if(exists)
         {
-            this.rails.push([vector])
-        }
-        else
-        {
-            const lastRail = this.rails[this.rails.length - 1]
-            lastRail.push(vector)
+            return false
         }
 
-        this.setRails(this.rails)
+        this.graph.edges.push({ a, b })
+        this.setRails(this.graph)
+        return true
+    }
+
+    appendPoint(point)
+    {
+        if(this.graph.nodes.length === 0)
+        {
+            this.addNode(point)
+            return true
+        }
+
+        const anchorId = this.lastInsertedNodeId ?? this.graph.nodes[this.graph.nodes.length - 1]?.id
+        if(!anchorId)
+        {
+            return false
+        }
+
+        this.addNode(point, { connectTo: anchorId })
         return true
     }
 
     startNewRail(point = null)
     {
-        const vector = point ? toVector3(point) : null
-        this.rails.push(vector ? [vector] : [])
-        this.setRails(this.rails)
+        if(point)
+        {
+            this.lastInsertedNodeId = this.addNode(point)
+            return
+        }
+
+        this.lastInsertedNodeId = null
     }
 
     clearRails()
     {
-        this.setRails([])
+        this.setRails({ nodes: [], edges: [] })
     }
 
     toSerializableRails({ decimals = 3 } = {})
     {
         const factor = Math.pow(10, Math.max(0, Math.floor(decimals)))
+        const nodes = this.graph.nodes.map((node) => ({
+            id: node.id,
+            x: Math.round(node.x * factor) / factor,
+            y: Math.round(node.y * factor) / factor,
+            z: Math.round(node.z * factor) / factor
+        }))
 
-        return this.rails.map((rail) => rail.map((point) => ({
-            x: Math.round(point.x * factor) / factor,
-            y: Math.round(point.y * factor) / factor,
-            z: Math.round(point.z * factor) / factor
-        })))
+        return {
+            nodes,
+            edges: this.graph.edges.map((edge) => ({ a: edge.a, b: edge.b }))
+        }
     }
 
     logRailsToConsole()
     {
-        const payload = this.toSerializableRails()
-        const content = JSON.stringify(payload, null, 4)
-        console.log('BLOOM_RAILS =', content)
+        const content = JSON.stringify(this.toSerializableRails(), null, 4)
+        console.log('BLOOM_RAIL_GRAPH =', content)
         return content
     }
 
@@ -514,11 +667,6 @@ export default class BloomRailSystem
     {
         for(const line of this.helperLines)
         {
-            if(!line)
-            {
-                continue
-            }
-
             this.helperGroup.remove(line)
             line.geometry?.dispose?.()
             line.material?.dispose?.()
@@ -533,46 +681,24 @@ export default class BloomRailSystem
         this.helperLines = []
         this.helperPoints = []
 
-        for(let railIndex = 0; railIndex < this.rails.length; railIndex++)
+        for(const segment of this.edgeSegments)
         {
-            const rail = this.rails[railIndex]
-            this.helperLines[railIndex] = null
-
-            if(rail.length >= 2)
-            {
-                const lineGeometry = new THREE.BufferGeometry().setFromPoints(rail)
-                const lineMaterial = new THREE.LineBasicMaterial({ color: '#2ec4ff' })
-                const line = new THREE.Line(lineGeometry, lineMaterial)
-                this.helperGroup.add(line)
-                this.helperLines[railIndex] = line
-            }
-
-            for(const point of rail)
-            {
-                const pointMesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(this.settings.helperPointRadius, 10, 10),
-                    new THREE.MeshBasicMaterial({ color: '#8be9ff' })
-                )
-                pointMesh.position.copy(point)
-                this.helperGroup.add(pointMesh)
-                this.helperPoints.push(pointMesh)
-            }
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([segment.start, segment.end])
+            const lineMaterial = new THREE.LineBasicMaterial({ color: '#2ec4ff' })
+            const line = new THREE.Line(lineGeometry, lineMaterial)
+            this.helperGroup.add(line)
+            this.helperLines.push(line)
         }
 
-        this.updateHelperColors()
-    }
-
-    updateHelperColors()
-    {
-        for(let railIndex = 0; railIndex < this.helperLines.length; railIndex++)
+        for(const node of this.graph.nodes)
         {
-            const line = this.helperLines[railIndex]
-            if(!line)
-            {
-                continue
-            }
-            const isActive = railIndex === this.activeRailIndex
-            line.material.color.set(isActive ? '#3cff88' : '#2ec4ff')
+            const pointMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(this.settings.helperPointRadius, 10, 10),
+                new THREE.MeshBasicMaterial({ color: '#8be9ff' })
+            )
+            pointMesh.position.set(node.x, node.y, node.z)
+            this.helperGroup.add(pointMesh)
+            this.helperPoints.push(pointMesh)
         }
     }
 
@@ -580,11 +706,6 @@ export default class BloomRailSystem
     {
         for(const line of this.helperLines)
         {
-            if(!line)
-            {
-                continue
-            }
-
             line.geometry?.dispose?.()
             line.material?.dispose?.()
         }
@@ -603,8 +724,10 @@ export default class BloomRailSystem
             this.scene.remove(this.helperGroup)
         }
 
-        this.rails = []
-        this.railData = []
-        this.activeRailIndex = -1
+        this.graph = { nodes: [], edges: [] }
+        this.nodesById.clear()
+        this.adjacency.clear()
+        this.edgeSegments = []
+        this.lastInsertedNodeId = null
     }
 }

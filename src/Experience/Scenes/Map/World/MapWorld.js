@@ -14,7 +14,53 @@ import bloomRails from './bloomRails.json'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
-const BLOOM_RAILS = Object.freeze(Array.isArray(bloomRails) ? bloomRails : [])
+
+function isRailsGraph(value)
+{
+    return Boolean(value)
+        && typeof value === 'object'
+        && Array.isArray(value.nodes)
+        && Array.isArray(value.edges)
+}
+
+function hasRails(value)
+{
+    if(Array.isArray(value))
+    {
+        return value.length > 0
+    }
+
+    if(isRailsGraph(value))
+    {
+        return value.nodes.length > 0 && value.edges.length > 0
+    }
+
+    return false
+}
+
+function normalizeRails(value)
+{
+    if(Array.isArray(value) || isRailsGraph(value))
+    {
+        return value
+    }
+
+    return []
+}
+
+function getWindowRailsOverride()
+{
+    if(typeof window === 'undefined')
+    {
+        return null
+    }
+
+    return window.__BLOOM_RAILS ?? window.BLOOM_RAILS ?? null
+}
+
+const importedRails = normalizeRails(bloomRails)
+const windowRailsOverride = normalizeRails(getWindowRailsOverride())
+const BLOOM_RAILS = Object.freeze(hasRails(windowRailsOverride) ? windowRailsOverride : importedRails)
 
 let mapWorldInstanceIndex = 0
 
