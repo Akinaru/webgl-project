@@ -25,12 +25,12 @@ export default class Menu
         this.resolveStartPromise = null
         this.startPromise = new Promise((resolve) =>
         {
-            this.resolveStartPromise = resolve
+        this.resolveStartPromise = resolve
         })
 
         this.bootScreen = document.querySelector('#bootScreen')
-        this.btnStartWithAudio = document.querySelector('#btnStartWithAudio')
-        this.btnStartMuted = document.querySelector('#btnStartMuted')
+        this.btnStartExperience = document.querySelector('#btnStartExperience')
+        this.bootAudioToggle = document.querySelector('#bootAudioToggle')
         this.bootLoadingValue = document.querySelector('#bootLoadingValue')
         this.bootLoadingFill = document.querySelector('#bootLoadingFill')
         this.transitionOverlay = document.querySelector('#sceneTransition')
@@ -38,33 +38,42 @@ export default class Menu
         this.transitionValue = this.transitionOverlay?.querySelector?.('[data-scene-transition-value]') ?? null
         this.transitionFill = this.transitionOverlay?.querySelector?.('[data-scene-transition-fill]') ?? null
 
-        this.hasUI = Boolean(this.bootScreen && this.btnStartWithAudio && this.btnStartMuted)
+        this.hasUI = Boolean(this.bootScreen && this.btnStartExperience && this.bootAudioToggle)
 
         this.pauseMenu = new PauseMenu({
             experience: this.experience,
             isEnabled: () => this.hasResolved && !this.isDestroyed
         })
 
-        this.handleStartWithAudio = () =>
+        this.handleStartExperience = () =>
         {
-            this.experience?.sound?.setEnabled?.(true)
-            this.experience?.sound?.unlock?.()
-            this.experience?.sound?.playMenuClick?.({
-                force: true
-            })
+            const audioEnabled = this.bootAudioToggle?.checked !== false
+
+            this.experience?.sound?.setEnabled?.(audioEnabled)
+
+            if(audioEnabled)
+            {
+                this.experience?.sound?.unlock?.()
+                this.experience?.sound?.playMenuClick?.({
+                    force: true
+                })
+            }
+
             this.focusGameCanvas({
                 requestPointerLock: true
             })
-            this.launch(true)
+            this.launch(audioEnabled)
         }
 
-        this.handleStartMuted = () =>
+        this.handleBootAudioToggleChange = (event) =>
         {
-            this.experience?.sound?.setEnabled?.(false)
-            this.focusGameCanvas({
-                requestPointerLock: true
-            })
-            this.launch(false)
+            const audioEnabled = Boolean(event?.target?.checked)
+            this.setAudioPreference(audioEnabled)
+
+            if(audioEnabled)
+            {
+                this.experience?.sound?.unlock?.()
+            }
         }
     }
 
@@ -93,8 +102,8 @@ export default class Menu
 
     bindEvents()
     {
-        this.btnStartWithAudio.addEventListener('click', this.handleStartWithAudio)
-        this.btnStartMuted.addEventListener('click', this.handleStartMuted)
+        this.btnStartExperience.addEventListener('click', this.handleStartExperience)
+        this.bootAudioToggle.addEventListener('change', this.handleBootAudioToggleChange)
     }
 
     resolveStart(payload)
@@ -156,6 +165,10 @@ export default class Menu
         this.audioEnabled = Boolean(audioEnabled)
         this.experience.audioEnabled = this.audioEnabled
         this.experience?.sound?.setEnabled?.(this.audioEnabled)
+        if(this.bootAudioToggle)
+        {
+            this.bootAudioToggle.checked = this.audioEnabled
+        }
         document.documentElement.dataset.audio = this.audioEnabled ? 'enabled' : 'muted'
 
         try
@@ -299,8 +312,8 @@ export default class Menu
 
         this.hasStartedFlow = true
         this.setAudioPreference(audioEnabled)
-        this.btnStartWithAudio?.setAttribute('disabled', 'disabled')
-        this.btnStartMuted?.setAttribute('disabled', 'disabled')
+        this.btnStartExperience?.setAttribute('disabled', 'disabled')
+        this.bootAudioToggle?.setAttribute('disabled', 'disabled')
 
         if(!this.hasUI)
         {
@@ -348,8 +361,8 @@ export default class Menu
 
         this.pauseMenu?.destroy?.()
 
-        this.btnStartWithAudio?.removeEventListener('click', this.handleStartWithAudio)
-        this.btnStartMuted?.removeEventListener('click', this.handleStartMuted)
+        this.btnStartExperience?.removeEventListener('click', this.handleStartExperience)
+        this.bootAudioToggle?.removeEventListener('change', this.handleBootAudioToggleChange)
 
         if(!this.hasResolved)
         {

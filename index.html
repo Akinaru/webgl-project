@@ -9,10 +9,16 @@
     <canvas class="webgl"></canvas>
     <div class="boot" id="bootScreen">
       <div class="boot__home" id="bootHome">
-        <h1 class="boot__title">BLOOM</h1>
-        <div class="boot__actions">
-          <button class="boot__btn" id="btnStartWithAudio" type="button">Lancer le jeu</button>
-          <button class="boot__btn boot__btn--ghost" id="btnStartMuted" type="button">Lancer le jeu sans son</button>
+        <div class="boot__panel" role="dialog" aria-modal="true" aria-labelledby="bootMenuTitle">
+          <h1 class="boot__title" id="bootMenuTitle">Pour une expérience optimale,<br />nous vous recommandons d’activer le son</h1>
+          <label class="boot__sound-toggle" for="bootAudioToggle">
+            <input class="boot__checkbox" id="bootAudioToggle" type="checkbox" />
+            <span class="boot__checkbox-ui" aria-hidden="true"></span>
+            <span class="boot__sound-label">Activer le son</span>
+          </label>
+          <div class="boot__actions">
+            <button class="boot__btn" id="btnStartExperience" type="button">Démarrer l'expérience</button>
+          </div>
         </div>
       </div>
 
@@ -27,11 +33,10 @@
     </div>
     <div class="pause-menu" id="pauseMenu" aria-hidden="true">
       <div class="pause-menu__panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
-        <p class="pause-menu__subtitle">Menu pause</p>
-        <h2 class="pause-menu__title" id="pauseMenuTitle">Jeu en pause</h2>
-        <p class="pause-menu__text">Appuie sur Echap ou clique sur reprendre pour continuer.</p>
+        <h2 class="pause-menu__title" id="pauseMenuTitle">Menu principal</h2>
         <div class="pause-menu__actions">
-          <button class="pause-menu__button" id="pauseResumeButton" type="button">Reprendre</button>
+          <button class="pause-menu__button" id="pauseResumeButton" type="button">Reprendre l'expérience</button>
+          <button class="pause-menu__button pause-menu__button--secondary" id="pauseSettingsButton" type="button">Paramètres</button>
         </div>
       </div>
     </div>

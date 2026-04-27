@@ -2,7 +2,6 @@ import EventEmitter from '../Utils/EventEmitter.js'
 
 const DISPLAYED_CLASS = 'is-displayed'
 const VISIBLE_CLASS = 'is-visible'
-const PAUSED_BODY_CLASS = 'is-game-paused'
 const TRANSITION_DURATION_MS = 180
 
 export default class PauseMenu extends EventEmitter
@@ -38,8 +37,9 @@ export default class PauseMenu extends EventEmitter
 
         this.root = document.querySelector('#pauseMenu')
         this.resumeButton = document.querySelector('#pauseResumeButton')
+        this.settingsButton = document.querySelector('#pauseSettingsButton')
 
-        this.hasUI = Boolean(this.root && this.resumeButton)
+        this.hasUI = Boolean(this.root && this.resumeButton && this.settingsButton)
 
         this.onKeyDown = (event) =>
         {
@@ -123,6 +123,13 @@ export default class PauseMenu extends EventEmitter
                 restorePointerLock: true,
                 source: 'resume_button'
             })
+        }
+
+        this.onSettingsClick = (event) =>
+        {
+            event.preventDefault()
+            this.experience?.sound?.playMenuClick?.()
+            this.trigger('settings')
         }
 
         this.onRootClick = (event) =>
@@ -273,6 +280,7 @@ export default class PauseMenu extends EventEmitter
         this.inputs?.on?.('mousedown.pauseMenu', this.onMouseDown)
         this.inputs?.on?.('pointerlockchange.pauseMenu', this.onPointerLockChange)
         this.resumeButton.addEventListener('click', this.onResumeClick)
+        this.settingsButton.addEventListener('click', this.onSettingsClick)
         this.root.addEventListener('click', this.onRootClick)
         this.root.addEventListener('transitionend', this.onRootTransitionEnd)
     }
@@ -326,7 +334,6 @@ export default class PauseMenu extends EventEmitter
             this.visibilityRafId = 0
         })
 
-        document.body.classList.add(PAUSED_BODY_CLASS)
         this.trigger('open')
         this.experience?.sound?.playPauseOpen?.()
     }
@@ -370,7 +377,6 @@ export default class PauseMenu extends EventEmitter
         this.state = PauseMenu.CLOSING
         this.root.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(VISIBLE_CLASS)
-        document.body.classList.remove(PAUSED_BODY_CLASS)
         this.trigger('close')
 
         this.closeTimeoutId = window.setTimeout(() =>
@@ -417,13 +423,13 @@ export default class PauseMenu extends EventEmitter
         this.inputs?.off?.('mousedown.pauseMenu')
         this.inputs?.off?.('pointerlockchange.pauseMenu')
         this.resumeButton.removeEventListener('click', this.onResumeClick)
+        this.settingsButton.removeEventListener('click', this.onSettingsClick)
         this.root.removeEventListener('click', this.onRootClick)
         this.root.removeEventListener('transitionend', this.onRootTransitionEnd)
 
         this.root.classList.remove(VISIBLE_CLASS)
         this.root.classList.remove(DISPLAYED_CLASS)
         this.root.setAttribute('aria-hidden', 'true')
-        document.body.classList.remove(PAUSED_BODY_CLASS)
 
         if(this.visibilityRafId)
         {
