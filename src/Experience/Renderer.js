@@ -53,7 +53,7 @@ export default class Renderer
 
     setRenderingDebug()
     {
-        this.debugRenderingFolder = this.debug.addFolder('📸 Rendering', { expanded: true })
+        this.debugRenderingFolder = this.debug.addFolder('📸 Rendering', { expanded: false })
         this.debugBloomFolder = this.debug.addFolder('Bloom', {
             parent: this.debugRenderingFolder,
             expanded: false
@@ -145,7 +145,7 @@ export default class Renderer
         }
 
         this.debugStatsFolder = this.debug.addFolder('📊 Renderer Stats', {
-            expanded: true
+            expanded: false
         })
 
         this.debug.addManualBinding(this.debugStatsFolder, this.rendererStats, 'drawCalls', {

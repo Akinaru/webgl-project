@@ -167,7 +167,7 @@ export default class Player
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🕹 Player', { expanded: true })
+        this.debugFolder = this.debug.addFolder('🕹 Player', { expanded: false })
         this.debug.addBinding(this.debugFolder, this.settings, 'height', {
             label: 'height',
             min: 0.7,
