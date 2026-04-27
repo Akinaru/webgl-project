@@ -30,7 +30,10 @@ export default class CollisionDebug
             showCollisionBoxes: false,
             showRays: false,
             showPlayerCollider: false,
-            showHit: false
+            showHit: false,
+            showOctreeZone: false,
+            showOctreeCandidates: false,
+            showOctreeCells: false
         }
 
         this.group = new THREE.Group()
@@ -40,6 +43,7 @@ export default class CollisionDebug
         this.setCollisionBoxes()
         this.setPlayerVisuals()
         this.setRayVisuals()
+        this.setOctreeVisuals()
         this.setDebugUI()
     }
 
@@ -132,6 +136,76 @@ export default class CollisionDebug
         }
     }
 
+    setOctreeVisuals()
+    {
+        this.queryBox = new THREE.Box3()
+        this.queryBoxHelper = new THREE.Box3Helper(this.queryBox, new THREE.Color('#ffd400'))
+        this.queryBoxHelper.visible = false
+        this.queryBoxHelper.material.depthTest = false
+        this.group.add(this.queryBoxHelper)
+
+        this.candidateHelpers = []
+        this.cellHelpers = []
+    }
+
+    syncOctreeCandidates(candidateBoxes = [])
+    {
+        const maxHelpers = 300
+        const helperCount = Math.min(candidateBoxes.length, maxHelpers)
+
+        while(this.candidateHelpers.length > helperCount)
+        {
+            const helper = this.candidateHelpers.pop()
+            this.group.remove(helper)
+            helper?.geometry?.dispose?.()
+            helper?.material?.dispose?.()
+        }
+
+        while(this.candidateHelpers.length < helperCount)
+        {
+            const box = candidateBoxes[this.candidateHelpers.length] ?? new THREE.Box3()
+            const helper = new THREE.Box3Helper(box, new THREE.Color('#ff00aa'))
+            helper.visible = false
+            helper.material.depthTest = false
+            this.candidateHelpers.push(helper)
+            this.group.add(helper)
+        }
+
+        for(let index = 0; index < helperCount; index++)
+        {
+            this.candidateHelpers[index].box = candidateBoxes[index]
+        }
+    }
+
+    syncOctreeCells(cellBoxes = [])
+    {
+        const maxHelpers = 1200
+        const helperCount = Math.min(cellBoxes.length, maxHelpers)
+
+        while(this.cellHelpers.length > helperCount)
+        {
+            const helper = this.cellHelpers.pop()
+            this.group.remove(helper)
+            helper?.geometry?.dispose?.()
+            helper?.material?.dispose?.()
+        }
+
+        while(this.cellHelpers.length < helperCount)
+        {
+            const box = cellBoxes[this.cellHelpers.length] ?? new THREE.Box3()
+            const helper = new THREE.Box3Helper(box, new THREE.Color('#8dfc3c'))
+            helper.visible = false
+            helper.material.depthTest = false
+            this.cellHelpers.push(helper)
+            this.group.add(helper)
+        }
+
+        for(let index = 0; index < helperCount; index++)
+        {
+            this.cellHelpers[index].box = cellBoxes[index]
+        }
+    }
+
     setDebugUI()
     {
         this.folder = this.debug.addFolder(this.folderLabel, { expanded: false })
@@ -139,6 +213,9 @@ export default class CollisionDebug
         this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'rays' })
         this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'player' })
         this.debug.addBinding(this.folder, this.state, 'showHit', { label: 'hit' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeZone', { label: 'octreeZone' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeCandidates', { label: 'octreeCandidates' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeCells', { label: 'octreeCells' })
     }
 
     update()
@@ -165,6 +242,68 @@ export default class CollisionDebug
         const collisionDebugState = this.player.getCollisionDebugState?.()
         const rays = collisionDebugState?.rays ?? []
         const hasHit = Boolean(collisionDebugState?.hit)
+        const playerRadius = Number(this.player?.settings?.radius ?? 0.3)
+        const playerHeight = Number(this.player?.settings?.height ?? 1.45)
+        const playerFeetY = playerPosition.y - playerHeight
+        const playerHeadY = playerPosition.y + 0.04
+        const queryPadding = 0.35
+
+        const fallbackQueryBox = new THREE.Box3(
+            new THREE.Vector3(
+                playerPosition.x - playerRadius - queryPadding,
+                playerFeetY - queryPadding,
+                playerPosition.z - playerRadius - queryPadding
+            ),
+            new THREE.Vector3(
+                playerPosition.x + playerRadius + queryPadding,
+                playerHeadY + queryPadding,
+                playerPosition.z + playerRadius + queryPadding
+            )
+        )
+
+        const octreeQueryBox = collisionDebugState?.octreeQueryBox instanceof THREE.Box3
+            ? collisionDebugState.octreeQueryBox
+            : fallbackQueryBox
+
+        const rawCandidates = Array.isArray(collisionDebugState?.octreeCandidateBoxes)
+            ? collisionDebugState.octreeCandidateBoxes
+            : []
+        const octreeCandidateBoxes = rawCandidates.length > 0
+            ? rawCandidates
+            : (this.getCollisionBoxes?.() ?? []).filter((box) => box instanceof THREE.Box3 && box.intersectsBox(octreeQueryBox))
+        const candidateBoxSet = new Set(octreeCandidateBoxes)
+
+        for(const helper of this.boxHelpers)
+        {
+            if(!helper?.material?.color)
+            {
+                continue
+            }
+
+            const isCandidate = candidateBoxSet.has(helper.box)
+            helper.material.color.set(isCandidate ? '#ff7a00' : '#00c8ff')
+        }
+
+        if(octreeQueryBox instanceof THREE.Box3)
+        {
+            this.queryBox.copy(octreeQueryBox)
+        }
+        this.queryBoxHelper.visible = Boolean(this.state.showOctreeZone && octreeQueryBox instanceof THREE.Box3)
+
+        this.syncOctreeCandidates(octreeCandidateBoxes)
+        for(const helper of this.candidateHelpers)
+        {
+            helper.visible = this.state.showOctreeCandidates
+        }
+
+        const octreeCellBoxes = Array.isArray(collisionDebugState?.octreeNodeBounds)
+            ? collisionDebugState.octreeNodeBounds
+            : []
+        this.syncOctreeCells(octreeCellBoxes)
+        for(const helper of this.cellHelpers)
+        {
+            helper.visible = this.state.showOctreeCells
+        }
 
         for(let index = 0; index < this.rayLines.length; index++)
         {
@@ -207,6 +346,19 @@ export default class CollisionDebug
         {
             line.geometry?.dispose?.()
             line.material?.dispose?.()
+        }
+
+        this.queryBoxHelper?.geometry?.dispose?.()
+        this.queryBoxHelper?.material?.dispose?.()
+        for(const helper of this.candidateHelpers ?? [])
+        {
+            helper?.geometry?.dispose?.()
+            helper?.material?.dispose?.()
+        }
+        for(const helper of this.cellHelpers ?? [])
+        {
+            helper?.geometry?.dispose?.()
+            helper?.material?.dispose?.()
         }
 
         this.colliderMesh?.geometry?.dispose?.()

@@ -1,8 +1,15 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
+import SpatialBoxOctree from '../Utils/SpatialBoxOctree.js'
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0)
 const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
+const COLLISION_OCTREE_MARGIN = 0.35
+const PLAYER_HEAD_TOP_OFFSET = 0.04
+const CEILING_HIT_EPSILON = 0.02
+const COLLISION_CONTACT_EPSILON = 0.002
+const COLLISION_MIN_DISTANCE = 0.0001
+const WALL_NORMAL_MAX_Y = 0.65
 
 export default class Player
 {
@@ -32,6 +39,9 @@ export default class Player
         this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
             ? groundMeshes
             : this.collisionMeshes
+        this.ceilingMeshes = this.collisionMeshes.length > 0
+            ? this.collisionMeshes
+            : this.groundMeshes
 
         this.settings = {
             height: 1.45,
@@ -64,13 +74,27 @@ export default class Player
         this.collisionDirection = new THREE.Vector3()
         this.raycastOrigin = new THREE.Vector3()
         this.worldNormal = new THREE.Vector3()
+        this.collisionQueryBox = new THREE.Box3()
+        this.collisionOctree = new SpatialBoxOctree()
+        this.collisionOctreePayloads = []
+        this.collisionOctreeVersion = {
+            length: -1,
+            first: null,
+            mid: null,
+            last: null
+        }
         this.collisionDebugState = {
             hit: false,
             rays: [],
             hitPoint: null,
-            hitNormal: null
+            hitNormal: null,
+            octreeQueryBox: null,
+            octreeCandidateBoxes: [],
+            octreeNodeBounds: []
         }
         this.groundRaycaster = new THREE.Raycaster()
+        this.ceilingRaycaster = new THREE.Raycaster()
+        this.ceilingRayDirection = new THREE.Vector3(0, 1, 0)
         this.headBobPhase = 0
         this.headBobOffset = 0
         this.cameraSmoothPosition = this.position.clone()
@@ -294,6 +318,7 @@ export default class Player
         this.position.addScaledVector(this.velocity, deltaSeconds)
 
         this.resolveCollisions()
+        this.resolveCeilingCollision()
         this.resolveGroundCollision()
         this.resolveBoundaryCollision()
     }
@@ -379,7 +404,9 @@ export default class Player
 
         if(this.groundMeshes.length > 0)
         {
-            const rayOrigin = new THREE.Vector3(this.position.x, this.position.y + 2, this.position.z)
+            // Start the ground probe just above the player head, not far above.
+            // This prevents snapping to a bridge top while the player is still under it.
+            const rayOrigin = new THREE.Vector3(this.position.x, this.position.y + 0.12, this.position.z)
             this.groundRaycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0))
             this.groundRaycaster.near = 0
             this.groundRaycaster.far = 20
@@ -429,6 +456,67 @@ export default class Player
         this.isOnGround = false
     }
 
+    resolveCeilingCollision()
+    {
+        if(this.velocity.y <= 0 || this.ceilingMeshes.length === 0)
+        {
+            return
+        }
+
+        const previousHeadY = this.previousPosition.y + PLAYER_HEAD_TOP_OFFSET
+        const currentHeadY = this.position.y + PLAYER_HEAD_TOP_OFFSET
+        const upwardTravel = currentHeadY - previousHeadY
+        if(upwardTravel <= 1e-5)
+        {
+            return
+        }
+
+        const rayFar = upwardTravel + CEILING_HIT_EPSILON
+        const sampleOffset = this.settings.radius * 0.58
+        const sampleOffsets = [
+            [0, 0],
+            [sampleOffset, 0],
+            [-sampleOffset, 0],
+            [0, sampleOffset],
+            [0, -sampleOffset]
+        ]
+
+        let closestCeilingY = Infinity
+        for(const [offsetX, offsetZ] of sampleOffsets)
+        {
+            this.raycastOrigin.set(
+                this.previousPosition.x + offsetX,
+                previousHeadY - CEILING_HIT_EPSILON,
+                this.previousPosition.z + offsetZ
+            )
+
+            this.ceilingRaycaster.set(this.raycastOrigin, this.ceilingRayDirection)
+            this.ceilingRaycaster.near = 0
+            this.ceilingRaycaster.far = rayFar
+
+            const hits = this.ceilingRaycaster.intersectObjects(this.ceilingMeshes, false)
+            const firstHit = hits[0]
+            if(!firstHit)
+            {
+                continue
+            }
+
+            closestCeilingY = Math.min(closestCeilingY, firstHit.point.y)
+        }
+
+        if(!Number.isFinite(closestCeilingY))
+        {
+            return
+        }
+
+        const maxAllowedPlayerY = closestCeilingY - PLAYER_HEAD_TOP_OFFSET - CEILING_HIT_EPSILON
+        if(this.position.y > maxAllowedPlayerY)
+        {
+            this.position.y = maxAllowedPlayerY
+            this.velocity.y = 0
+        }
+    }
+
     isGroundIgnoredMesh(object)
     {
         return this.hasNameInHierarchy(object, GROUND_IGNORED_TOKENS)
@@ -454,12 +542,102 @@ export default class Player
         return false
     }
 
+    ensureCollisionOctree()
+    {
+        const boxes = this.collisionBoxes
+        if(!Array.isArray(boxes) || boxes.length === 0)
+        {
+            this.collisionOctree.build([])
+            this.collisionOctreePayloads = []
+            this.collisionOctreeVersion.length = 0
+            this.collisionOctreeVersion.first = null
+            this.collisionOctreeVersion.mid = null
+            this.collisionOctreeVersion.last = null
+            this.collisionDebugState = {
+                ...(this.collisionDebugState || {}),
+                octreeNodeBounds: []
+            }
+            return
+        }
+
+        const first = boxes[0] ?? null
+        const mid = boxes[Math.floor(boxes.length * 0.5)] ?? null
+        const last = boxes[boxes.length - 1] ?? null
+
+        const isSameVersion = this.collisionOctreeVersion.length === boxes.length
+            && this.collisionOctreeVersion.first === first
+            && this.collisionOctreeVersion.mid === mid
+            && this.collisionOctreeVersion.last === last
+
+        if(isSameVersion)
+        {
+            return
+        }
+
+        const entries = []
+        const payloads = []
+        for(let index = 0; index < boxes.length; index++)
+        {
+            const box = boxes[index]
+            if(!(box instanceof THREE.Box3) || box.isEmpty())
+            {
+                continue
+            }
+
+            const payload = {
+                box,
+                mesh: this.collisionMeshes[index] ?? null
+            }
+
+            entries.push({
+                bounds: box,
+                payload
+            })
+            payloads.push(payload)
+        }
+
+        this.collisionOctree.build(entries)
+        this.collisionOctreePayloads = payloads
+        this.collisionOctreeVersion.length = boxes.length
+        this.collisionOctreeVersion.first = first
+        this.collisionOctreeVersion.mid = mid
+        this.collisionOctreeVersion.last = last
+        this.collisionDebugState = {
+            ...(this.collisionDebugState || {}),
+            octreeNodeBounds: this.collisionOctree.collectNodeBounds({ leavesOnly: true })
+        }
+    }
+
+    getCollisionCandidates(queryBounds)
+    {
+        if(!(queryBounds instanceof THREE.Box3))
+        {
+            return this.collisionOctreePayloads
+        }
+
+        this.ensureCollisionOctree()
+
+        const candidates = this.collisionOctree.queryBox(queryBounds, [])
+        if(candidates.length > 0)
+        {
+            return candidates
+        }
+
+        return this.collisionOctreePayloads
+    }
+
     resolveCollisions()
     {
         this.resolveMeshCollisions()
 
         if(this.collisionBoxes.length === 0)
         {
+            this.collisionDebugState = {
+                ...(this.collisionDebugState || {}),
+                octreeQueryBox: null,
+                octreeCandidateBoxes: [],
+                octreeNodeBounds: []
+            }
             return
         }
 
@@ -469,13 +647,33 @@ export default class Player
         // (e.g. straight pipes) are still considered for collision.
         const feetY = this.position.y - this.settings.height
         const headY = this.position.y + 0.04
+        this.collisionQueryBox.min.set(
+            this.position.x - radius - COLLISION_OCTREE_MARGIN,
+            feetY - COLLISION_OCTREE_MARGIN,
+            this.position.z - radius - COLLISION_OCTREE_MARGIN
+        )
+        this.collisionQueryBox.max.set(
+            this.position.x + radius + COLLISION_OCTREE_MARGIN,
+            headY + COLLISION_OCTREE_MARGIN,
+            this.position.z + radius + COLLISION_OCTREE_MARGIN
+        )
+        const collisionCandidates = this.getCollisionCandidates(this.collisionQueryBox)
+        this.collisionDebugState = {
+            ...(this.collisionDebugState || {}),
+            octreeQueryBox: this.collisionQueryBox.clone(),
+            octreeCandidateBoxes: collisionCandidates
+                .map((candidate) => candidate?.box)
+                .filter((box) => box instanceof THREE.Box3),
+            octreeNodeBounds: this.collisionDebugState?.octreeNodeBounds ?? []
+        }
 
-        for(let iteration = 0; iteration < 3; iteration++)
+        for(let iteration = 0; iteration < 6; iteration++)
         {
             let hasCollision = false
 
-            for(const box of this.collisionBoxes)
+            for(const candidate of collisionCandidates)
             {
+                const box = candidate?.box
                 if(!box)
                 {
                     continue
@@ -529,14 +727,12 @@ export default class Player
                         dx = 0
                         dz = 1
                     }
-
-                    distanceSq = 1
                 }
 
-                const distance = Math.sqrt(distanceSq)
+                const distance = Math.max(Math.sqrt(distanceSq), COLLISION_MIN_DISTANCE)
                 const normalX = dx / distance
                 const normalZ = dz / distance
-                const penetration = radius - distance
+                const penetration = Math.max(0, radius - distance + COLLISION_CONTACT_EPSILON)
 
                 this.position.x += normalX * penetration
                 this.position.z += normalZ * penetration
@@ -588,42 +784,86 @@ export default class Player
         const raycastFar = travelDistance + this.settings.radius
         const feetY = this.position.y - this.settings.height
         const sampleHeights = [feetY + 0.35, feetY + 0.9, this.position.y - 0.2, this.position.y + 0.02]
+        const sideOffset = this.settings.radius * 0.65
+        const lateralDirection = new THREE.Vector3(
+            -this.collisionDirection.z,
+            0,
+            this.collisionDirection.x
+        )
+        const lateralOffsets = [0, sideOffset, -sideOffset]
+        const minSampleY = Math.min(...sampleHeights)
+        const maxSampleY = Math.max(...sampleHeights)
+
+        this.collisionQueryBox.min.set(
+            Math.min(this.previousPosition.x, this.position.x) - this.settings.radius - COLLISION_OCTREE_MARGIN,
+            minSampleY - COLLISION_OCTREE_MARGIN,
+            Math.min(this.previousPosition.z, this.position.z) - this.settings.radius - COLLISION_OCTREE_MARGIN
+        )
+        this.collisionQueryBox.max.set(
+            Math.max(this.previousPosition.x, this.position.x) + this.settings.radius + COLLISION_OCTREE_MARGIN,
+            maxSampleY + COLLISION_OCTREE_MARGIN,
+            Math.max(this.previousPosition.z, this.position.z) + this.settings.radius + COLLISION_OCTREE_MARGIN
+        )
+
+        const collisionCandidates = this.getCollisionCandidates(this.collisionQueryBox)
+        const candidateMeshes = []
+        for(const candidate of collisionCandidates)
+        {
+            if(candidate?.mesh)
+            {
+                candidateMeshes.push(candidate.mesh)
+            }
+        }
+
+        const raycastTargets = candidateMeshes.length > 0 ? candidateMeshes : this.collisionMeshes
 
         let hasHit = false
 
         for(const sampleY of sampleHeights)
         {
-            this.raycastOrigin.set(this.previousPosition.x, sampleY, this.previousPosition.z)
-            const rayEnd = this.raycastOrigin.clone().addScaledVector(this.collisionDirection, raycastFar)
-            debugState.rays.push({
-                origin: this.raycastOrigin.clone(),
-                end: rayEnd
-            })
-
-            this.collisionRaycaster.set(this.raycastOrigin, this.collisionDirection)
-            this.collisionRaycaster.near = 0
-            this.collisionRaycaster.far = raycastFar
-
-            const hits = this.collisionRaycaster.intersectObjects(this.collisionMeshes, false)
-            for(const hit of hits)
+            for(const lateralOffset of lateralOffsets)
             {
-                if(!hit.face)
+                this.raycastOrigin.set(
+                    this.previousPosition.x + (lateralDirection.x * lateralOffset),
+                    sampleY,
+                    this.previousPosition.z + (lateralDirection.z * lateralOffset)
+                )
+                const rayEnd = this.raycastOrigin.clone().addScaledVector(this.collisionDirection, raycastFar)
+                debugState.rays.push({
+                    origin: this.raycastOrigin.clone(),
+                    end: rayEnd
+                })
+
+                this.collisionRaycaster.set(this.raycastOrigin, this.collisionDirection)
+                this.collisionRaycaster.near = 0
+                this.collisionRaycaster.far = raycastFar
+
+                const hits = this.collisionRaycaster.intersectObjects(raycastTargets, false)
+                for(const hit of hits)
                 {
-                    continue
+                    if(!hit.face)
+                    {
+                        continue
+                    }
+
+                    this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                    // Keep angled modules collidable while still ignoring near-horizontal surfaces.
+                    if(this.worldNormal.y > WALL_NORMAL_MAX_Y)
+                    {
+                        continue
+                    }
+
+                    hasHit = true
+                    debugState.hit = true
+                    debugState.hitPoint = hit.point.clone()
+                    debugState.hitNormal = this.worldNormal.clone()
+                    break
                 }
 
-                this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                // Ignore floor-like slopes so bridges/fountain tops don't behave like walls.
-                if(this.worldNormal.y > 0.25)
+                if(hasHit)
                 {
-                    continue
+                    break
                 }
-
-                hasHit = true
-                debugState.hit = true
-                debugState.hitPoint = hit.point.clone()
-                debugState.hitNormal = this.worldNormal.clone()
-                break
             }
 
             if(hasHit)
@@ -713,5 +953,6 @@ export default class Player
         const isCanvasStillPointerLocked = this.inputs?.isPointerLocked?.(this.canvas) || false
         document.body.classList.toggle('is-pointer-locked', isCanvasStillPointerLocked)
         this.debugFolder?.dispose?.()
+        this.collisionOctreePayloads = []
     }
 }

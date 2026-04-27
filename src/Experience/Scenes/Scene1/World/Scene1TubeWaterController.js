@@ -17,7 +17,12 @@ const DISCONNECTED_COLOR = '#4a5665'
 const CONNECTED_COLOR = '#4ea7ff'
 const CONNECTED_EMISSIVE = '#2d7bc2'
 const FLOW_FILL_SPEED_PER_SECOND = 0.45
+const ROTATION_SPEED_PER_SECOND = Math.PI * 2
 const FLOW_PROGRESS_EPSILON = 1e-4
+const EMPTY_TUBE_OPACITY = 0.25
+const FILLED_TUBE_OPACITY = 1
+const EMPTY_WINDOW_OPACITY = 0.25
+const FILLED_WINDOW_OPACITY = 1
 const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
@@ -41,6 +46,9 @@ export default class Scene1TubeWaterController
         this.rotationTargets = this.scene1Model?.getTubeWaterRotationTargets?.() ?? []
         this.flow = {
             fillSpeed: FLOW_FILL_SPEED_PER_SECOND
+        }
+        this.rotation = {
+            speed: ROTATION_SPEED_PER_SECOND
         }
 
         this.centerRaycaster = new CenterScreenRaycaster({
@@ -68,6 +76,7 @@ export default class Scene1TubeWaterController
         this.requiredWindowByTubeUuid = new Map()
         this.windowSourceByTubeUuid = new Map()
         this.startAlignedTubeUuids = new Set()
+        this.activeTubeRotationsByUuid = new Map()
         this.flowAnimationStarted = false
         this.hoveredTubeMesh = null
 
@@ -86,6 +95,8 @@ export default class Scene1TubeWaterController
         this.targetQuaternionWorld = new THREE.Quaternion()
         this.targetScale = new THREE.Vector3()
         this.targetWorldPosition = new THREE.Vector3()
+        this.rotationPivotScratch = new THREE.Vector3()
+        this.rotationAxisScratch = new THREE.Vector3()
         this.endpointA = new THREE.Vector3()
         this.endpointB = new THREE.Vector3()
         this.endpointDirA = new THREE.Vector3()
@@ -127,6 +138,12 @@ export default class Scene1TubeWaterController
             label: 'fillSpeed',
             min: 0.1,
             max: 8,
+            step: 0.05
+        })
+        this.debug.addBinding(this.debugFolder, this.rotation, 'speed', {
+            label: 'rotSpeed',
+            min: Math.PI * 0.25,
+            max: Math.PI * 8,
             step: 0.05
         })
     }
@@ -1411,6 +1428,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
     update()
     {
         this.hoveredTubeMesh = this.getTubeMeshAtCenter()
+        this.updateTubeRotations(this.getDeltaSeconds())
         if(this.flowAnimationStarted)
         {
             this.updateFlowState(this.getDeltaSeconds())
@@ -1437,12 +1455,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
 
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
-        this.rotateTubeAssembly(rotationTarget, QUARTER_TURN * direction)
-        if(this.flowAnimationStarted)
-        {
-            this.updateFlowState()
-        }
-        this.scene1Model?.refreshCollisionBoxes?.()
+        this.queueTubeRotation(rotationTarget, QUARTER_TURN * direction)
     }
 
     rotateTubeAssembly(tubeTarget, angle)
@@ -1456,13 +1469,104 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
         this.getWorldCenter(tubeTarget, this.rotationPivotWorld)
         this.getRotationAxisWorld(tubeTarget, this.rotationAxisWorld)
-        this.rotateObjectAroundWorldAxis(tubeTarget, this.rotationPivotWorld, this.rotationAxisWorld, angle)
+        this.rotateTubeAssemblyAroundAxis(tubeTarget, this.rotationPivotWorld, this.rotationAxisWorld, angle)
+    }
+
+    rotateTubeAssemblyAroundAxis(tubeTarget, pivotWorld, axisWorld, angle)
+    {
+        this.rotateObjectAroundWorldAxis(tubeTarget, pivotWorld, axisWorld, angle)
 
         const joinTargets = this.joinTargetsByTubeUuid.get(tubeTarget.uuid) ?? []
         for(const joinTarget of joinTargets)
         {
-            this.rotateObjectAroundWorldAxis(joinTarget, this.rotationPivotWorld, this.rotationAxisWorld, angle)
+            this.rotateObjectAroundWorldAxis(joinTarget, pivotWorld, axisWorld, angle)
         }
+    }
+
+    queueTubeRotation(tubeTarget, angle)
+    {
+        if(!tubeTarget || !Number.isFinite(angle) || Math.abs(angle) <= 1e-6)
+        {
+            return
+        }
+
+        const existing = this.activeTubeRotationsByUuid.get(tubeTarget.uuid)
+        if(existing)
+        {
+            existing.remainingAngle += angle
+            existing.pendingQuarterTurns += Math.round(angle / QUARTER_TURN)
+            return
+        }
+
+        this.getWorldCenter(tubeTarget, this.rotationPivotScratch)
+        this.getRotationAxisWorld(tubeTarget, this.rotationAxisScratch)
+
+        this.activeTubeRotationsByUuid.set(tubeTarget.uuid, {
+            tubeTarget,
+            pivotWorld: this.rotationPivotScratch.clone(),
+            axisWorld: this.rotationAxisScratch.clone(),
+            remainingAngle: angle,
+            pendingQuarterTurns: Math.round(angle / QUARTER_TURN)
+        })
+    }
+
+    updateTubeRotations(deltaSeconds)
+    {
+        if(this.activeTubeRotationsByUuid.size === 0)
+        {
+            return
+        }
+
+        const speed = Math.max(0.1, this.rotation.speed || ROTATION_SPEED_PER_SECOND)
+        const maxStep = Math.max(0, deltaSeconds) * speed
+        let hasAppliedStep = false
+
+        for(const [tubeUuid, rotationState] of this.activeTubeRotationsByUuid.entries())
+        {
+            if(!rotationState?.tubeTarget)
+            {
+                this.activeTubeRotationsByUuid.delete(tubeUuid)
+                continue
+            }
+
+            const remaining = rotationState.remainingAngle
+            if(Math.abs(remaining) <= 1e-6 || maxStep <= 1e-6)
+            {
+                continue
+            }
+
+            const step = Math.sign(remaining) * Math.min(Math.abs(remaining), maxStep)
+            this.rotateTubeAssemblyAroundAxis(
+                rotationState.tubeTarget,
+                rotationState.pivotWorld,
+                rotationState.axisWorld,
+                step
+            )
+            rotationState.remainingAngle -= step
+            hasAppliedStep = true
+
+            if(Math.abs(rotationState.remainingAngle) > 1e-4)
+            {
+                continue
+            }
+
+            if(rotationState.pendingQuarterTurns !== 0)
+            {
+                this.trackQuarterTurnOffset(
+                    rotationState.tubeTarget,
+                    rotationState.pendingQuarterTurns * QUARTER_TURN
+                )
+            }
+
+            this.activeTubeRotationsByUuid.delete(tubeUuid)
+        }
+
+        if(!hasAppliedStep)
+        {
+            return
+        }
+
+        this.scene1Model?.refreshCollisionBoxes?.()
     }
 
     updateFlowState(deltaSeconds = this.getDeltaSeconds())
@@ -1598,6 +1702,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 continue
             }
 
+            this.applyWindowMaterialTransparency(material, colorLerp)
+
             if(material.userData?.windowFlowUniforms)
             {
                 continue
@@ -1618,6 +1724,30 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
             material.needsUpdate = true
         }
+    }
+
+    applyWindowMaterialTransparency(material, flowProgress)
+    {
+        if(typeof material.opacity !== 'number')
+        {
+            return
+        }
+
+        const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
+        const nextOpacity = THREE.MathUtils.lerp(EMPTY_WINDOW_OPACITY, FILLED_WINDOW_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (FILLED_WINDOW_OPACITY - FLOW_PROGRESS_EPSILON)
+
+        if(material.userData?.windowDepthWriteDefault === undefined)
+        {
+            material.userData = material.userData || {}
+            material.userData.windowDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        material.transparent = shouldBeTransparent
+        material.opacity = nextOpacity
+        material.depthWrite = shouldBeTransparent
+            ? false
+            : Boolean(material.userData.windowDepthWriteDefault)
     }
 
     getModuleFlowProgress(moduleName)
@@ -2188,6 +2318,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                         continue
                     }
 
+                    this.applyTubeMaterialTransparency(material, flowProgress)
+
                     // Fallback path for materials where onBeforeCompile shader hook
                     // is not available.
                     const usesFlowShader = Boolean(material.userData?.flowUniforms)
@@ -2213,6 +2345,30 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 }
             }
         }
+    }
+
+    applyTubeMaterialTransparency(material, flowProgress)
+    {
+        if(typeof material.opacity !== 'number')
+        {
+            return
+        }
+
+        const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
+        const nextOpacity = THREE.MathUtils.lerp(EMPTY_TUBE_OPACITY, FILLED_TUBE_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (FILLED_TUBE_OPACITY - FLOW_PROGRESS_EPSILON)
+
+        if(material.userData?.tubeDepthWriteDefault === undefined)
+        {
+            material.userData = material.userData || {}
+            material.userData.tubeDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        material.transparent = shouldBeTransparent
+        material.opacity = nextOpacity
+        material.depthWrite = shouldBeTransparent
+            ? false
+            : Boolean(material.userData.tubeDepthWriteDefault)
     }
 
     setTubeFlowColor(colorValue)
@@ -2387,6 +2543,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         this.activeFlowSourceByTubeUuid.clear()
         this.dualInflowByTubeUuid.clear()
         this.rotationTargetUuidByName.clear()
+        this.activeTubeRotationsByUuid.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
         this.blueWindowShaderMaterialsByMeshUuid.clear()
