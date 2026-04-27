@@ -292,7 +292,8 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Petit point d etape: tu peux me reparler quand tu veux.",
-          "next": "f2"
+          "next": "f2",
+          "actions": []
         },
         "f2": {
           "type": "choice",
@@ -305,10 +306,12 @@
               "actions": [
                 {
                   "type": "startMiniGame",
-                  "key": "training.loop"
+                  "key": "training.loop",
+                  "payload": null
                 }
               ],
-              "next": "f3"
+              "next": "action_1",
+              "conditions": []
             },
             {
               "id": "scene",
@@ -319,24 +322,30 @@
                   "scene": "complexe"
                 }
               ],
-              "next": "f3"
+              "next": "action_1",
+              "conditions": []
             },
             {
               "id": "nothing",
               "text": "Rien, on continue.",
-              "next": "f3"
+              "next": "action_1",
+              "conditions": [],
+              "actions": []
             }
           ]
         },
-        "f3": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Nickel, je reste en support.",
-          "next": "fend"
-        },
-        "fend": {
-          "type": "end",
-          "actions": []
+        "action_1": {
+          "type": "action",
+          "run": [
+            {
+              "type": "moveBloomToRailNode",
+              "key": "",
+              "value": true,
+              "nodeId": "n9",
+              "lockToNode": false
+            }
+          ],
+          "next": ""
         }
       }
     },

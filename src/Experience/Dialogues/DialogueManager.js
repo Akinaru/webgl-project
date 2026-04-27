@@ -227,9 +227,6 @@ export default class DialogueManager extends EventEmitter
             return
         }
 
-        this.actionExecutor.executeMany(choice.actions, this.createActionContext({
-            choiceId: choice.id
-        }))
         this.state.waitingChoice = false
         this.state.choices = []
         this.goToNode(choice.next)

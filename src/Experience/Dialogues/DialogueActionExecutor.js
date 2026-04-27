@@ -70,6 +70,10 @@ export default class DialogueActionExecutor
                 break
             }
 
+            case 'moveBloomToRailNode':
+                this.moveBloomToRailNode(action)
+                break
+
             case 'emit':
                 if(typeof action.event === 'string' && action.event.trim() !== '')
                 {
@@ -100,5 +104,31 @@ export default class DialogueActionExecutor
         }
 
         return metierRef
+    }
+
+    moveBloomToRailNode(action = {})
+    {
+        const nodeId = typeof action.nodeId === 'string' ? action.nodeId.trim() : ''
+        if(!nodeId)
+        {
+            return
+        }
+
+        const currentWorld = this.experience.sceneManager?.currentScene?.world
+        const bloom = currentWorld?.bloom
+        if(!bloom || typeof bloom.moveToRailNode !== 'function')
+        {
+            console.warn(`[Dialogue] Bloom indisponible pour moveBloomToRailNode(${nodeId})`)
+            return
+        }
+
+        const didStartMove = bloom.moveToRailNode(nodeId, {
+            lockToNode: Boolean(action.lockToNode)
+        })
+
+        if(!didStartMove)
+        {
+            console.warn(`[Dialogue] Node rail introuvable pour Bloom: ${nodeId}`)
+        }
     }
 }

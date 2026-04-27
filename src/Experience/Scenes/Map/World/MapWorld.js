@@ -11,9 +11,57 @@ import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
+import bloomRails from './bloomRails.json'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
+
+function isRailsGraph(value)
+{
+    return Boolean(value)
+        && typeof value === 'object'
+        && Array.isArray(value.nodes)
+        && Array.isArray(value.edges)
+}
+
+function hasRails(value)
+{
+    if(Array.isArray(value))
+    {
+        return value.length > 0
+    }
+
+    if(isRailsGraph(value))
+    {
+        return value.nodes.length > 0 && value.edges.length > 0
+    }
+
+    return false
+}
+
+function normalizeRails(value)
+{
+    if(Array.isArray(value) || isRailsGraph(value))
+    {
+        return value
+    }
+
+    return []
+}
+
+function getWindowRailsOverride()
+{
+    if(typeof window === 'undefined')
+    {
+        return null
+    }
+
+    return window.__BLOOM_RAILS ?? window.BLOOM_RAILS ?? null
+}
+
+const importedRails = normalizeRails(bloomRails)
+const windowRailsOverride = normalizeRails(getWindowRailsOverride())
+const BLOOM_RAILS = Object.freeze(hasRails(windowRailsOverride) ? windowRailsOverride : importedRails)
 
 let mapWorldInstanceIndex = 0
 
@@ -51,8 +99,6 @@ export default class MapWorld
         this.water = new Water({
             mapModel: this.mapModel
         })
-        const bloomMinDistance = 1.2
-        const bloomRetreatDistance = bloomMinDistance * 5
         const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
@@ -87,20 +133,15 @@ export default class MapWorld
             },
             follow: {
                 target: this.player,
-                camera: this.player.camera,
-                minDistance: bloomMinDistance,
-                maxDistance: 7,
-                preferredDistance: 4.5,
-                retreatDistance: bloomRetreatDistance,
-                retreatDistanceMultiplier: 3,
-                heightOffset: 0.9,
-                speed: 3.8,
-                retreatSpeed: 3.8,
                 groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-                avoidZones: this.mapModel.getBloomAvoidZones?.() ?? [],
-                collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
-                approachDelaySeconds: 0.75,
-                retreatDelaySeconds: 3.5
+                groundMaxSnapUp: 0.65
+            },
+            rails: {
+                lines: BLOOM_RAILS,
+                speed: 3.8,
+                railSwitchDistance: 0.9,
+                endpointSwitchDistance: 1.6,
+                showHelpers: true
             }
         })
         this.collisionDebug = new MapCollisionDebug({

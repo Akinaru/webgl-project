@@ -63,7 +63,7 @@ export default class Experience
             }
 
             this.hasStartedIntroDialogue = true
-            this.dialogueManager?.startByKey?.('bloom.intro')
+            this.dialogueManager?.startByKey?.('bloom.followup')
         })
 
         this.time.on(`${EventEnum.TICK}.experience`, () =>
