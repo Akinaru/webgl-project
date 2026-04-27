@@ -1,0 +1,1427 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Model Optimizer Viewer</title>
+    <style>
+      :root {
+        --bg: #eef3f6;
+        --panel: rgba(248, 251, 253, 0.96);
+        --panel-strong: #ffffff;
+        --line: #d4dde3;
+        --line-strong: #b8c8d1;
+        --text: #12232c;
+        --muted: #5e707a;
+        --accent: #0c84ff;
+        --accent-soft: rgba(12, 132, 255, 0.12);
+        --danger: #cb2f2f;
+        --success: #12835a;
+        --viewer-a: #dceaf5;
+        --viewer-b: #c8d6de;
+        --viewer-c: #a9bcc7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: "Manrope", "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 42%),
+          linear-gradient(180deg, #f5f8fa, #e7eef2 42%, #dee7ed);
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #0d1419;
+        color: #eef6fb;
+        border-bottom: 1px solid #22313a;
+      }
+
+      .title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .status {
+        margin-left: auto;
+        font-size: 0.8rem;
+        color: #bfd3e1;
+      }
+
+      .layout {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 390px 1fr;
+      }
+
+      .panel {
+        min-height: 0;
+        overflow: auto;
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        backdrop-filter: blur(10px);
+      }
+
+      .section {
+        padding: 14px;
+        border-bottom: 1px solid rgba(18, 35, 44, 0.08);
+      }
+
+      .section h2 {
+        margin: 0 0 10px;
+        font-size: 0.78rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #26404d;
+      }
+
+      .help {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.78rem;
+        line-height: 1.5;
+      }
+
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #2a4350;
+      }
+
+      .text-input,
+      .file-input,
+      .btn {
+        font: inherit;
+      }
+
+      .text-input {
+        width: 100%;
+        border: 1px solid var(--line-strong);
+        border-radius: 11px;
+        padding: 10px 12px;
+        background: #ffffff;
+        color: var(--text);
+        font-size: 0.82rem;
+      }
+
+      .file-input {
+        width: 100%;
+        border: 1px dashed var(--line-strong);
+        border-radius: 11px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .btn {
+        border: 1px solid #19303b;
+        background: #ffffff;
+        color: #18323f;
+        border-radius: 11px;
+        padding: 9px 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn:hover {
+        filter: brightness(0.98);
+      }
+
+      .btn.primary {
+        background: #18323f;
+        color: #ffffff;
+      }
+
+      .btn.warn {
+        border-color: #a64d4d;
+        color: #8f2020;
+      }
+
+      .btn.ok {
+        border-color: #1f845c;
+        color: #106c49;
+      }
+
+      .btn.full {
+        width: 100%;
+      }
+
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: #27404d;
+      }
+
+      .check input {
+        width: 16px;
+        height: 16px;
+      }
+
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .kpi {
+        background: var(--panel-strong);
+        border: 1px solid rgba(18, 35, 44, 0.08);
+        border-radius: 12px;
+        padding: 10px;
+      }
+
+      .kpi-label {
+        font-size: 0.72rem;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .kpi-value {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #12303d;
+      }
+
+      .selected-card {
+        display: grid;
+        gap: 8px;
+        background: var(--panel-strong);
+        border: 1px solid rgba(18, 35, 44, 0.08);
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .selected-title {
+        font-size: 0.86rem;
+        font-weight: 800;
+        color: #163645;
+      }
+
+      .selected-meta {
+        font-size: 0.78rem;
+        color: var(--muted);
+      }
+
+      .tree {
+        display: grid;
+        gap: 6px;
+      }
+
+      .tree-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 30px;
+        padding: 4px 6px;
+        border-radius: 10px;
+        background: transparent;
+      }
+
+      .tree-row.selected {
+        background: var(--accent-soft);
+        box-shadow: inset 0 0 0 1px rgba(12, 132, 255, 0.22);
+      }
+
+      .tree-row:hover {
+        background: rgba(18, 35, 44, 0.05);
+      }
+
+      .tree-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
+
+      .tree-label {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: #163746;
+        text-align: left;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        display: grid;
+        gap: 2px;
+      }
+
+      .tree-name {
+        font-size: 0.8rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tree-meta {
+        font-size: 0.7rem;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tree-fit {
+        border: 1px solid rgba(25, 48, 59, 0.18);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #26424f;
+        padding: 5px 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      details.tree-branch {
+        border-radius: 12px;
+      }
+
+      details.tree-branch > summary {
+        list-style: none;
+        cursor: default;
+      }
+
+      details.tree-branch > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .tree-children {
+        margin-left: 16px;
+        padding-left: 12px;
+        border-left: 1px solid rgba(38, 64, 77, 0.12);
+        display: grid;
+        gap: 6px;
+      }
+
+      .viewer-wrap {
+        position: relative;
+        min-height: 0;
+        background:
+          radial-gradient(circle at top left, var(--viewer-a), transparent 28%),
+          radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.22), transparent 22%),
+          linear-gradient(180deg, var(--viewer-a), var(--viewer-b) 46%, var(--viewer-c));
+      }
+
+      #view {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .hud {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        display: grid;
+        gap: 8px;
+        width: min(520px, calc(100% - 24px));
+        pointer-events: none;
+      }
+
+      .hud-card {
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid rgba(17, 38, 50, 0.14);
+        background: rgba(248, 252, 255, 0.82);
+        color: #143240;
+        font-size: 0.78rem;
+        line-height: 1.45;
+        backdrop-filter: blur(8px);
+      }
+
+      .hud-card strong {
+        color: #0f4667;
+      }
+
+      @media (max-width: 980px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .panel {
+          max-height: 46vh;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="title">Model Opti Viewer</div>
+        <div class="status" id="status">Pret a charger un modele.</div>
+      </header>
+
+      <div class="layout">
+        <aside class="panel">
+          <section class="section">
+            <h2>Chargement</h2>
+            <p class="help">
+              Charge un modele GLTF/GLB pour inspecter sa hierarchie, masquer ses branches et estimer les drawcalls.
+              Pour un `.gltf` avec fichiers externes, prefere un chemin dans `public/` comme `./models/Map.gltf`.
+            </p>
+            <div class="field" style="margin-top: 10px">
+              <label for="modelUrl">Chemin public</label>
+              <input id="modelUrl" class="text-input" type="text" value="./models/Map.gltf" />
+            </div>
+            <div class="row" style="margin-top: 10px">
+              <button id="loadUrl" class="btn primary">Charger URL</button>
+              <button id="fitModel" class="btn">Fit model</button>
+              <button id="clearModel" class="btn warn">Vider</button>
+            </div>
+            <div class="field" style="margin-top: 10px">
+              <label for="modelFile">Fichier local</label>
+              <input id="modelFile" class="file-input" type="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json" />
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Viewer</h2>
+            <div class="row">
+              <button id="showAll" class="btn ok">Show all</button>
+              <button id="hideAll" class="btn warn">Hide all</button>
+              <button id="syncTree" class="btn">Sync tree</button>
+            </div>
+            <div class="field" style="margin-top: 12px">
+              <label class="check"><input id="toggleGrid" type="checkbox" checked />Afficher grille</label>
+              <label class="check"><input id="toggleAxes" type="checkbox" />Afficher axes</label>
+              <label class="check"><input id="toggleWireframe" type="checkbox" />Wireframe visible</label>
+              <label class="check"><input id="toggleAutoRotate" type="checkbox" />Auto rotate</label>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Modele</h2>
+            <div class="kpi-grid">
+              <div class="kpi"><div class="kpi-label">Nodes</div><div id="kpiNodes" class="kpi-value">0</div></div>
+              <div class="kpi"><div class="kpi-label">Meshes</div><div id="kpiMeshes" class="kpi-value">0</div></div>
+              <div class="kpi"><div class="kpi-label">Triangles</div><div id="kpiTriangles" class="kpi-value">0</div></div>
+              <div class="kpi"><div class="kpi-label">Drawcalls est.</div><div id="kpiDrawcalls" class="kpi-value">0</div></div>
+              <div class="kpi"><div class="kpi-label">Visible meshes</div><div id="kpiVisibleMeshes" class="kpi-value">0</div></div>
+              <div class="kpi"><div class="kpi-label">Visible dc est.</div><div id="kpiVisibleDrawcalls" class="kpi-value">0</div></div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Selection</h2>
+            <div class="selected-card">
+              <div id="selectedTitle" class="selected-title">Aucune selection</div>
+              <div id="selectedMeta" class="selected-meta">Clique une branche dans l arbre pour voir ses stats.</div>
+              <div class="row">
+                <button id="fitSelection" class="btn" disabled>Fit selection</button>
+                <button id="isolateSelection" class="btn" disabled>Isolate</button>
+                <button id="showSelection" class="btn" disabled>Show branch</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h2>Hierarchie</h2>
+            <div id="tree" class="tree"></div>
+          </section>
+        </aside>
+
+        <main id="viewerWrap" class="viewer-wrap">
+          <canvas id="view"></canvas>
+          <div class="hud">
+            <div id="renderHud" class="hud-card">
+              <strong>Frame</strong><br />
+              Drawcalls: 0<br />
+              Triangles: 0<br />
+              Geometries: 0<br />
+              Textures: 0
+            </div>
+            <div class="hud-card">
+              <strong>Controles</strong><br />
+              Souris gauche: orbite<br />
+              Souris droite: pan<br />
+              Molette: zoom
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/node_modules/three/build/three.module.js",
+          "three/examples/jsm/": "/node_modules/three/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from 'three'
+      import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+      import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+
+      const refs = {
+        status: document.getElementById('status'),
+        modelUrl: document.getElementById('modelUrl'),
+        modelFile: document.getElementById('modelFile'),
+        loadUrl: document.getElementById('loadUrl'),
+        fitModel: document.getElementById('fitModel'),
+        clearModel: document.getElementById('clearModel'),
+        showAll: document.getElementById('showAll'),
+        hideAll: document.getElementById('hideAll'),
+        syncTree: document.getElementById('syncTree'),
+        toggleGrid: document.getElementById('toggleGrid'),
+        toggleAxes: document.getElementById('toggleAxes'),
+        toggleWireframe: document.getElementById('toggleWireframe'),
+        toggleAutoRotate: document.getElementById('toggleAutoRotate'),
+        fitSelection: document.getElementById('fitSelection'),
+        isolateSelection: document.getElementById('isolateSelection'),
+        showSelection: document.getElementById('showSelection'),
+        selectedTitle: document.getElementById('selectedTitle'),
+        selectedMeta: document.getElementById('selectedMeta'),
+        tree: document.getElementById('tree'),
+        renderHud: document.getElementById('renderHud'),
+        kpiNodes: document.getElementById('kpiNodes'),
+        kpiMeshes: document.getElementById('kpiMeshes'),
+        kpiTriangles: document.getElementById('kpiTriangles'),
+        kpiDrawcalls: document.getElementById('kpiDrawcalls'),
+        kpiVisibleMeshes: document.getElementById('kpiVisibleMeshes'),
+        kpiVisibleDrawcalls: document.getElementById('kpiVisibleDrawcalls')
+      }
+
+      const state = {
+        loader: new GLTFLoader(),
+        modelRoot: null,
+        treeRoots: [],
+        entriesByUuid: new Map(),
+        selectedEntry: null,
+        currentObjectUrl: null,
+        disposedMaterials: new Set()
+      }
+
+      const canvas = document.getElementById('view')
+      const viewerWrap = document.getElementById('viewerWrap')
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true
+      })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setSize(window.innerWidth, window.innerHeight)
+
+      const scene = new THREE.Scene()
+      const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 4000)
+      camera.position.set(28, 22, 28)
+      scene.add(camera)
+
+      const controls = new OrbitControls(camera, canvas)
+      controls.enableDamping = true
+      controls.dampingFactor = 0.06
+      controls.target.set(0, 5, 0)
+      controls.update()
+
+      const ambientLight = new THREE.AmbientLight('#ffffff', 1.5)
+      scene.add(ambientLight)
+
+      const keyLight = new THREE.DirectionalLight('#fff4d8', 1.8)
+      keyLight.position.set(30, 42, 26)
+      scene.add(keyLight)
+
+      const fillLight = new THREE.DirectionalLight('#c9e3ff', 0.65)
+      fillLight.position.set(-24, 16, -18)
+      scene.add(fillLight)
+
+      const grid = new THREE.GridHelper(220, 44, '#6e8797', '#9fb4c0')
+      grid.position.y = 0
+      scene.add(grid)
+
+      const axes = new THREE.AxesHelper(8)
+      axes.visible = false
+      scene.add(axes)
+
+      const selectionHelper = new THREE.Box3Helper(new THREE.Box3(), 0x0c84ff)
+      selectionHelper.visible = false
+      scene.add(selectionHelper)
+
+      const tempBox = new THREE.Box3()
+      const tempCenter = new THREE.Vector3()
+      const tempSize = new THREE.Vector3()
+
+      function setStatus(message)
+      {
+        refs.status.textContent = message
+      }
+
+      function formatCount(value)
+      {
+        const safeValue = Number.isFinite(value) ? value : 0
+
+        if(safeValue >= 1000000)
+        {
+          return `${(safeValue / 1000000).toFixed(2)}M`
+        }
+
+        if(safeValue >= 1000)
+        {
+          return `${(safeValue / 1000).toFixed(1)}k`
+        }
+
+        return `${Math.round(safeValue)}`
+      }
+
+      function getObjectName(object)
+      {
+        const rawName = String(object?.name || '').trim()
+        return rawName || object?.type || 'Object3D'
+      }
+
+      function getMeshDrawcallEstimate(mesh)
+      {
+        if(!mesh?.isMesh)
+        {
+          return 0
+        }
+
+        return Array.isArray(mesh.material)
+          ? mesh.material.filter(Boolean).length
+          : (mesh.material ? 1 : 0)
+      }
+
+      function getMeshTriangleCount(mesh)
+      {
+        const geometry = mesh?.geometry
+        if(!geometry)
+        {
+          return 0
+        }
+
+        if(geometry.index)
+        {
+          return Math.max(0, Math.floor(geometry.index.count / 3))
+        }
+
+        const position = geometry.attributes?.position
+        if(!position)
+        {
+          return 0
+        }
+
+        return Math.max(0, Math.floor(position.count / 3))
+      }
+
+      function clearSelection()
+      {
+        if(state.selectedEntry?.domRow)
+        {
+          state.selectedEntry.domRow.classList.remove('selected')
+        }
+
+        state.selectedEntry = null
+        refs.selectedTitle.textContent = 'Aucune selection'
+        refs.selectedMeta.textContent = 'Clique une branche dans l arbre pour voir ses stats.'
+        refs.fitSelection.disabled = true
+        refs.isolateSelection.disabled = true
+        refs.showSelection.disabled = true
+        selectionHelper.visible = false
+      }
+
+      function setSelectedEntry(entry)
+      {
+        if(state.selectedEntry?.domRow)
+        {
+          state.selectedEntry.domRow.classList.remove('selected')
+        }
+
+        state.selectedEntry = entry
+
+        if(!entry)
+        {
+          clearSelection()
+          return
+        }
+
+        entry.domRow?.classList.add('selected')
+        refs.fitSelection.disabled = false
+        refs.isolateSelection.disabled = false
+        refs.showSelection.disabled = false
+
+        updateSelectedPanel()
+        updateSelectionHelper()
+      }
+
+      function updateSelectionHelper()
+      {
+        const entry = state.selectedEntry
+        if(!entry?.object)
+        {
+          selectionHelper.visible = false
+          return
+        }
+
+        entry.object.updateWorldMatrix(true, true)
+        tempBox.setFromObject(entry.object)
+
+        if(tempBox.isEmpty())
+        {
+          selectionHelper.visible = false
+          return
+        }
+
+        selectionHelper.box.copy(tempBox)
+        selectionHelper.visible = true
+      }
+
+      function computeStaticStats(object)
+      {
+        const stats = {
+          nodes: 1,
+          meshes: object?.isMesh ? 1 : 0,
+          triangles: object?.isMesh ? getMeshTriangleCount(object) : 0,
+          drawcalls: object?.isMesh ? getMeshDrawcallEstimate(object) : 0
+        }
+
+        for(const child of object.children || [])
+        {
+          const childStats = computeStaticStats(child)
+          stats.nodes += childStats.nodes
+          stats.meshes += childStats.meshes
+          stats.triangles += childStats.triangles
+          stats.drawcalls += childStats.drawcalls
+        }
+
+        return stats
+      }
+
+      function computeVisibleStats(object)
+      {
+        const stats = {
+          meshes: 0,
+          triangles: 0,
+          drawcalls: 0
+        }
+
+        object.traverseVisible((child) => {
+          if(!child.isMesh)
+          {
+            return
+          }
+
+          stats.meshes += 1
+          stats.triangles += getMeshTriangleCount(child)
+          stats.drawcalls += getMeshDrawcallEstimate(child)
+        })
+
+        return stats
+      }
+
+      function createEntry(object, parentEntry = null)
+      {
+        const entry = {
+          object,
+          parentEntry,
+          children: [],
+          domRow: null,
+          domCheckbox: null,
+          domContainer: null,
+          childrenBuilt: false,
+          staticStats: computeStaticStats(object)
+        }
+
+        state.entriesByUuid.set(object.uuid, entry)
+
+        for(const child of object.children || [])
+        {
+          entry.children.push(createEntry(child, entry))
+        }
+
+        return entry
+      }
+
+      function buildEntriesFromModel()
+      {
+        state.entriesByUuid.clear()
+
+        if(!state.modelRoot)
+        {
+          state.treeRoots = []
+          return
+        }
+
+        const roots = state.modelRoot.children.length > 0
+          ? state.modelRoot.children
+          : [state.modelRoot]
+
+        state.treeRoots = roots.map((object) => createEntry(object, null))
+      }
+
+      function createMetaLabel(entry)
+      {
+        return `${entry.object.type} | nodes ${formatCount(entry.staticStats.nodes)} | meshes ${formatCount(entry.staticStats.meshes)} | tris ${formatCount(entry.staticStats.triangles)} | dc est ${formatCount(entry.staticStats.drawcalls)}`
+      }
+
+      function applyBranchVisibility(entry, visible)
+      {
+        entry.object.traverse((child) => {
+          child.visible = visible
+        })
+
+        refreshTreeStates()
+        refreshSummary()
+        updateSelectedPanel()
+        updateSelectionHelper()
+      }
+
+      function setAllVisibility(visible)
+      {
+        for(const entry of state.treeRoots)
+        {
+          entry.object.traverse((child) => {
+            child.visible = visible
+          })
+        }
+
+        refreshTreeStates()
+        refreshSummary()
+        updateSelectedPanel()
+        updateSelectionHelper()
+      }
+
+      function computeCheckboxState(entry)
+      {
+        let visibleCount = 0
+        let totalCount = 1
+
+        if(entry.object.visible)
+        {
+          visibleCount += 1
+        }
+
+        for(const childEntry of entry.children)
+        {
+          const childState = computeCheckboxState(childEntry)
+          visibleCount += childState.visibleCount
+          totalCount += childState.totalCount
+        }
+
+        return {
+          visibleCount,
+          totalCount
+        }
+      }
+
+      function refreshEntryState(entry)
+      {
+        const checkboxState = computeCheckboxState(entry)
+
+        if(entry.domCheckbox)
+        {
+          entry.domCheckbox.checked = checkboxState.visibleCount === checkboxState.totalCount
+          entry.domCheckbox.indeterminate =
+            checkboxState.visibleCount > 0 &&
+            checkboxState.visibleCount < checkboxState.totalCount
+        }
+
+        for(const childEntry of entry.children)
+        {
+          refreshEntryState(childEntry)
+        }
+      }
+
+      function refreshTreeStates()
+      {
+        for(const rootEntry of state.treeRoots)
+        {
+          refreshEntryState(rootEntry)
+        }
+      }
+
+      function buildTreeRow(entry)
+      {
+        const row = document.createElement('div')
+        row.className = 'tree-row'
+
+        const checkbox = document.createElement('input')
+        checkbox.type = 'checkbox'
+        checkbox.checked = Boolean(entry.object.visible)
+        checkbox.addEventListener('click', (event) => {
+          event.stopPropagation()
+        })
+        checkbox.addEventListener('change', (event) => {
+          applyBranchVisibility(entry, Boolean(event.target.checked))
+        })
+
+        const label = document.createElement('button')
+        label.className = 'tree-label'
+        label.type = 'button'
+        label.innerHTML = `
+          <span class="tree-name">${getObjectName(entry.object)}</span>
+          <span class="tree-meta">${createMetaLabel(entry)}</span>
+        `
+        label.addEventListener('click', (event) => {
+          event.stopPropagation()
+          setSelectedEntry(entry)
+        })
+
+        const fitButton = document.createElement('button')
+        fitButton.className = 'tree-fit'
+        fitButton.type = 'button'
+        fitButton.textContent = 'Fit'
+        fitButton.addEventListener('click', (event) => {
+          event.stopPropagation()
+          setSelectedEntry(entry)
+          fitCameraToObject(entry.object)
+        })
+
+        row.append(checkbox, label, fitButton)
+
+        entry.domRow = row
+        entry.domCheckbox = checkbox
+        return row
+      }
+
+      function buildTreeBranch(entry)
+      {
+        if(entry.children.length === 0)
+        {
+          return buildTreeRow(entry)
+        }
+
+        const details = document.createElement('details')
+        details.className = 'tree-branch'
+
+        const summary = document.createElement('summary')
+        summary.append(buildTreeRow(entry))
+        details.append(summary)
+
+        const childrenContainer = document.createElement('div')
+        childrenContainer.className = 'tree-children'
+        details.append(childrenContainer)
+
+        details.addEventListener('toggle', () => {
+          if(!details.open || entry.childrenBuilt)
+          {
+            return
+          }
+
+          for(const childEntry of entry.children)
+          {
+            childrenContainer.append(buildTreeBranch(childEntry))
+          }
+
+          entry.childrenBuilt = true
+          refreshTreeStates()
+        })
+
+        entry.domContainer = childrenContainer
+        return details
+      }
+
+      function renderTree()
+      {
+        refs.tree.innerHTML = ''
+
+        if(state.treeRoots.length === 0)
+        {
+          refs.tree.innerHTML = '<p class="help">Aucun modele charge.</p>'
+          return
+        }
+
+        for(const rootEntry of state.treeRoots)
+        {
+          refs.tree.append(buildTreeBranch(rootEntry))
+        }
+
+        refreshTreeStates()
+      }
+
+      function refreshSummary()
+      {
+        if(!state.modelRoot)
+        {
+          refs.kpiNodes.textContent = '0'
+          refs.kpiMeshes.textContent = '0'
+          refs.kpiTriangles.textContent = '0'
+          refs.kpiDrawcalls.textContent = '0'
+          refs.kpiVisibleMeshes.textContent = '0'
+          refs.kpiVisibleDrawcalls.textContent = '0'
+          return
+        }
+
+        let totals = {
+          nodes: 0,
+          meshes: 0,
+          triangles: 0,
+          drawcalls: 0,
+          visibleMeshes: 0,
+          visibleTriangles: 0,
+          visibleDrawcalls: 0
+        }
+
+        for(const rootEntry of state.treeRoots)
+        {
+          totals.nodes += rootEntry.staticStats.nodes
+          totals.meshes += rootEntry.staticStats.meshes
+          totals.triangles += rootEntry.staticStats.triangles
+          totals.drawcalls += rootEntry.staticStats.drawcalls
+
+          const visibleStats = computeVisibleStats(rootEntry.object)
+          totals.visibleMeshes += visibleStats.meshes
+          totals.visibleTriangles += visibleStats.triangles
+          totals.visibleDrawcalls += visibleStats.drawcalls
+        }
+
+        refs.kpiNodes.textContent = formatCount(totals.nodes)
+        refs.kpiMeshes.textContent = formatCount(totals.meshes)
+        refs.kpiTriangles.textContent = formatCount(totals.triangles)
+        refs.kpiDrawcalls.textContent = formatCount(totals.drawcalls)
+        refs.kpiVisibleMeshes.textContent = formatCount(totals.visibleMeshes)
+        refs.kpiVisibleDrawcalls.textContent = formatCount(totals.visibleDrawcalls)
+      }
+
+      function updateSelectedPanel()
+      {
+        const entry = state.selectedEntry
+        if(!entry)
+        {
+          refs.selectedTitle.textContent = 'Aucune selection'
+          refs.selectedMeta.textContent = 'Clique une branche dans l arbre pour voir ses stats.'
+          return
+        }
+
+        const visibleStats = computeVisibleStats(entry.object)
+        refs.selectedTitle.textContent = getObjectName(entry.object)
+        refs.selectedMeta.textContent = `${entry.object.type} | nodes ${formatCount(entry.staticStats.nodes)} | meshes ${formatCount(entry.staticStats.meshes)} | tris ${formatCount(entry.staticStats.triangles)} | dc est ${formatCount(entry.staticStats.drawcalls)} | visible meshes ${formatCount(visibleStats.meshes)} | visible tris ${formatCount(visibleStats.triangles)} | visible dc est ${formatCount(visibleStats.drawcalls)}`
+      }
+
+      function fitCameraToObject(object)
+      {
+        if(!object)
+        {
+          return
+        }
+
+        object.updateWorldMatrix(true, true)
+        tempBox.setFromObject(object)
+        if(tempBox.isEmpty())
+        {
+          return
+        }
+
+        tempBox.getCenter(tempCenter)
+        tempBox.getSize(tempSize)
+
+        const maxSize = Math.max(tempSize.x, tempSize.y, tempSize.z)
+        const fitDistance = Math.max(6, maxSize / (2 * Math.tan((Math.PI * camera.fov) / 360)))
+        const direction = new THREE.Vector3(1, 0.65, 1).normalize()
+        const nextPosition = tempCenter.clone().add(direction.multiplyScalar(fitDistance * 1.55))
+
+        camera.near = Math.max(0.1, fitDistance / 200)
+        camera.far = Math.max(4000, fitDistance * 10)
+        camera.updateProjectionMatrix()
+
+        camera.position.copy(nextPosition)
+        controls.target.copy(tempCenter)
+        controls.update()
+      }
+
+      function isolateSelection()
+      {
+        const selected = state.selectedEntry
+        if(!selected)
+        {
+          return
+        }
+
+        setAllVisibility(false)
+        applyBranchVisibility(selected, true)
+        setSelectedEntry(selected)
+      }
+
+      function showSelectionBranch()
+      {
+        const selected = state.selectedEntry
+        if(!selected)
+        {
+          return
+        }
+
+        applyBranchVisibility(selected, true)
+        setSelectedEntry(selected)
+      }
+
+      function setWireframeEnabled(enabled)
+      {
+        if(!state.modelRoot)
+        {
+          return
+        }
+
+        state.modelRoot.traverse((object) => {
+          if(!object.isMesh || !object.material)
+          {
+            return
+          }
+
+          const materials = Array.isArray(object.material)
+            ? object.material
+            : [object.material]
+
+          for(const material of materials)
+          {
+            if(material && 'wireframe' in material)
+            {
+              material.wireframe = enabled
+            }
+          }
+        })
+      }
+
+      function disposeMaterial(material)
+      {
+        if(!material || state.disposedMaterials.has(material))
+        {
+          return
+        }
+
+        state.disposedMaterials.add(material)
+
+        const textureKeys = [
+          'map',
+          'alphaMap',
+          'aoMap',
+          'bumpMap',
+          'displacementMap',
+          'emissiveMap',
+          'envMap',
+          'lightMap',
+          'metalnessMap',
+          'normalMap',
+          'roughnessMap'
+        ]
+
+        for(const key of textureKeys)
+        {
+          material[key]?.dispose?.()
+        }
+
+        material.dispose?.()
+      }
+
+      function disposeModel(object)
+      {
+        if(!object)
+        {
+          return
+        }
+
+        state.disposedMaterials.clear()
+
+        object.traverse((child) => {
+          child.geometry?.dispose?.()
+
+          if(Array.isArray(child.material))
+          {
+            for(const material of child.material)
+            {
+              disposeMaterial(material)
+            }
+            return
+          }
+
+          disposeMaterial(child.material)
+        })
+      }
+
+      function clearCurrentModel()
+      {
+        clearSelection()
+
+        if(state.modelRoot)
+        {
+          scene.remove(state.modelRoot)
+          disposeModel(state.modelRoot)
+          state.modelRoot = null
+        }
+
+        if(state.currentObjectUrl)
+        {
+          URL.revokeObjectURL(state.currentObjectUrl)
+          state.currentObjectUrl = null
+        }
+
+        state.treeRoots = []
+        state.entriesByUuid.clear()
+        renderTree()
+        refreshSummary()
+      }
+
+      function onModelLoaded(root, sourceLabel)
+      {
+        clearCurrentModel()
+
+        state.modelRoot = root
+        state.modelRoot.name = state.modelRoot.name || '__optiRoot'
+
+        state.modelRoot.traverse((object) => {
+          if(!object.isMesh)
+          {
+            return
+          }
+
+          object.castShadow = false
+          object.receiveShadow = false
+          if(object.material)
+          {
+            const materials = Array.isArray(object.material)
+              ? object.material
+              : [object.material]
+
+            for(const material of materials)
+            {
+              if(material && 'wireframe' in material)
+              {
+                material.wireframe = refs.toggleWireframe.checked
+              }
+            }
+          }
+        })
+
+        scene.add(state.modelRoot)
+        buildEntriesFromModel()
+        renderTree()
+        refreshSummary()
+        fitCameraToObject(state.modelRoot)
+        setStatus(`Modele charge: ${sourceLabel}`)
+      }
+
+      function loadFromUrl(url)
+      {
+        const trimmedUrl = String(url || '').trim()
+        if(trimmedUrl.length === 0)
+        {
+          setStatus('Entre un chemin de modele valide.')
+          return
+        }
+
+        setStatus(`Chargement: ${trimmedUrl}`)
+
+        state.loader.load(
+          trimmedUrl,
+          (gltf) => {
+            onModelLoaded(gltf.scene, trimmedUrl)
+          },
+          (event) => {
+            const loaded = Number(event?.loaded ?? 0)
+            const total = Number(event?.total ?? 0)
+
+            if(Number.isFinite(loaded) && Number.isFinite(total) && total > 0)
+            {
+              const progress = Math.round((loaded / total) * 100)
+              setStatus(`Chargement: ${trimmedUrl} (${progress}%)`)
+              return
+            }
+
+            setStatus(`Chargement: ${trimmedUrl}`)
+          },
+          (error) => {
+            console.error(error)
+            setStatus(`Echec chargement: ${trimmedUrl}`)
+          }
+        )
+      }
+
+      function loadFromFile(file)
+      {
+        if(!file)
+        {
+          return
+        }
+
+        if(state.currentObjectUrl)
+        {
+          URL.revokeObjectURL(state.currentObjectUrl)
+          state.currentObjectUrl = null
+        }
+
+        const objectUrl = URL.createObjectURL(file)
+        state.currentObjectUrl = objectUrl
+        setStatus(`Chargement fichier: ${file.name}`)
+
+        state.loader.load(
+          objectUrl,
+          (gltf) => {
+            onModelLoaded(gltf.scene, file.name)
+          },
+          undefined,
+          (error) => {
+            console.error(error)
+            setStatus(`Echec chargement fichier: ${file.name}`)
+          }
+        )
+      }
+
+      function syncTreeFromScene()
+      {
+        refreshTreeStates()
+        refreshSummary()
+        updateSelectedPanel()
+        updateSelectionHelper()
+      }
+
+      function updateRenderHud()
+      {
+        const info = renderer.info
+        refs.renderHud.innerHTML = `
+          <strong>Frame</strong><br />
+          Drawcalls: ${formatCount(info.render.calls)}<br />
+          Triangles: ${formatCount(info.render.triangles)}<br />
+          Geometries: ${formatCount(info.memory.geometries)}<br />
+          Textures: ${formatCount(info.memory.textures)}
+        `
+      }
+
+      function resize()
+      {
+        const width = Math.max(1, viewerWrap.clientWidth)
+        const height = Math.max(1, viewerWrap.clientHeight)
+
+        renderer.setSize(width, height)
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        camera.aspect = width / height
+        camera.updateProjectionMatrix()
+      }
+
+      function setupEvents()
+      {
+        window.addEventListener('resize', resize)
+
+        refs.loadUrl.addEventListener('click', () => {
+          loadFromUrl(refs.modelUrl.value)
+        })
+
+        refs.modelUrl.addEventListener('keydown', (event) => {
+          if(event.key === 'Enter')
+          {
+            event.preventDefault()
+            loadFromUrl(refs.modelUrl.value)
+          }
+        })
+
+        refs.modelFile.addEventListener('change', (event) => {
+          loadFromFile(event.target.files?.[0] ?? null)
+        })
+
+        refs.fitModel.addEventListener('click', () => {
+          if(state.modelRoot)
+          {
+            fitCameraToObject(state.modelRoot)
+          }
+        })
+
+        refs.clearModel.addEventListener('click', () => {
+          clearCurrentModel()
+          setStatus('Modele vide.')
+        })
+
+        refs.showAll.addEventListener('click', () => {
+          setAllVisibility(true)
+        })
+
+        refs.hideAll.addEventListener('click', () => {
+          setAllVisibility(false)
+        })
+
+        refs.syncTree.addEventListener('click', () => {
+          syncTreeFromScene()
+        })
+
+        refs.toggleGrid.addEventListener('change', (event) => {
+          grid.visible = Boolean(event.target.checked)
+        })
+
+        refs.toggleAxes.addEventListener('change', (event) => {
+          axes.visible = Boolean(event.target.checked)
+        })
+
+        refs.toggleWireframe.addEventListener('change', (event) => {
+          setWireframeEnabled(Boolean(event.target.checked))
+        })
+
+        refs.toggleAutoRotate.addEventListener('change', (event) => {
+          controls.autoRotate = Boolean(event.target.checked)
+          controls.autoRotateSpeed = 0.9
+        })
+
+        refs.fitSelection.addEventListener('click', () => {
+          if(state.selectedEntry)
+          {
+            fitCameraToObject(state.selectedEntry.object)
+          }
+        })
+
+        refs.isolateSelection.addEventListener('click', () => {
+          isolateSelection()
+        })
+
+        refs.showSelection.addEventListener('click', () => {
+          showSelectionBranch()
+        })
+      }
+
+      function animate()
+      {
+        controls.update()
+        selectionHelper.visible = Boolean(state.selectedEntry) && !selectionHelper.box.isEmpty()
+
+        renderer.render(scene, camera)
+        updateRenderHud()
+
+        requestAnimationFrame(animate)
+      }
+
+      setupEvents()
+      renderTree()
+      refreshSummary()
+      resize()
+      animate()
+      loadFromUrl(refs.modelUrl.value)
+    </script>
+  </body>
+</html>
