@@ -10,6 +10,7 @@ import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
+import CloudLayer from './CloudLayer.js'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
@@ -75,6 +76,10 @@ export default class MapWorld
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
+        this.clouds = new CloudLayer({
+            light: this.light,
+            getFocusPosition: () => this.player?.position ?? null
+        })
         this.bloom = new Bloom({
             motion: {
                 center: { x: 2.5, y: 2.0, z: 2.5 },
@@ -109,6 +114,7 @@ export default class MapWorld
     update(delta = this.experience.time.delta)
     {
         this.light?.update?.(delta)
+        this.clouds?.update?.(delta)
         this.water?.update?.(delta)
         this.bushes?.update?.(delta)
         this.bloom?.update?.()
@@ -304,6 +310,12 @@ export default class MapWorld
         {
             this.environment.destroy?.()
             this.environment = null
+        }
+
+        if(this.clouds)
+        {
+            this.clouds.destroy?.()
+            this.clouds = null
         }
 
         if(this.light)
