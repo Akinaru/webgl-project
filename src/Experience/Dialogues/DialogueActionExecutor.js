@@ -35,10 +35,19 @@ export default class DialogueActionExecutor
                 break
 
             case 'addMetier':
+                if(this.tryRecordAction(action, context))
+                {
+                    break
+                }
+
                 this.experience.metierManager.addToMetier(
                     this.resolveMetierId(action.metier),
                     Number(action.amount ?? 0)
                 )
+                break
+
+            case 'recordAction':
+                this.tryRecordAction(action, context)
                 break
 
             case 'switchScene':
@@ -104,6 +113,23 @@ export default class DialogueActionExecutor
         }
 
         return metierRef
+    }
+
+    tryRecordAction(action = {}, context = {})
+    {
+        const actionId = typeof action.actionId === 'string'
+            ? action.actionId.trim()
+            : ''
+
+        if(!actionId)
+        {
+            return false
+        }
+
+        return Boolean(this.experience.actionTracker?.record?.(actionId, {
+            ...context,
+            source: 'dialogue'
+        }))
     }
 
     moveBloomToRailNode(action = {})

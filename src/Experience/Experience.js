@@ -10,6 +10,8 @@ import EventEnum from './Enum/EventEnum.js'
 import SceneManager from './Scenes/SceneManager.js'
 import MetierManager from './Metiers/MetierManager.js'
 import MetierEnum from './Enum/MetierEnum.js'
+import ActionId from './Actions/ActionId.js'
+import ActionTracker from './Actions/ActionTracker.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
@@ -39,10 +41,12 @@ export default class Experience
 
         this.debug = new Debug({ inputs: this.inputs })
         this.metierEnum = MetierEnum
+        this.actionId = ActionId
         this.metierManager = new MetierManager()
-        this.dialogueManager = new DialogueManager()
         this.sizes = new Sizes()
         this.time = new Time()
+        this.actionTracker = new ActionTracker()
+        this.dialogueManager = new DialogueManager()
         this.scene = new THREE.Scene()
         this.resources = new Resources(sources, {
             autoStart: false
@@ -93,6 +97,7 @@ export default class Experience
 
         this.sceneManager.destroy?.()
         this.metierManager.destroy?.()
+        this.actionTracker.destroy?.()
         this.dialogueManager.destroy?.()
         this.menu?.destroy?.()
         this.sound?.destroy?.()

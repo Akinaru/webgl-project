@@ -11,6 +11,7 @@ import MapCollisionDebug from './MapCollisionDebug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
+import MapVisibilityDebug from './MapVisibilityDebug.js'
 import bloomRails from './bloomRails.json'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
@@ -95,6 +96,9 @@ export default class MapWorld
         this.isSetUp = true
 
         this.mapModel = new MapModel()
+        this.visibilityDebug = new MapVisibilityDebug({
+            mapModel: this.mapModel
+        })
         this.environment = new MapEnvironment()
         this.water = new Water({
             mapModel: this.mapModel
@@ -321,6 +325,12 @@ export default class MapWorld
         {
             this.water.destroy?.()
             this.water = null
+        }
+
+        if(this.visibilityDebug)
+        {
+            this.visibilityDebug.destroy?.()
+            this.visibilityDebug = null
         }
 
         if(this.mapModel)

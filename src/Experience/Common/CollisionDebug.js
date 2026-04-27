@@ -208,7 +208,7 @@ export default class CollisionDebug
 
     setDebugUI()
     {
-        this.folder = this.debug.addFolder(this.folderLabel, { expanded: true })
+        this.folder = this.debug.addFolder(this.folderLabel, { expanded: false })
         this.debug.addBinding(this.folder, this.state, 'showCollisionBoxes', { label: 'boxes' })
         this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'rays' })
         this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'player' })

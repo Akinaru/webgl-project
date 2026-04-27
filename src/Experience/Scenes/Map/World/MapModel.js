@@ -1532,6 +1532,21 @@ export default class MapModel
         return this.collisionMeshes ?? []
     }
 
+    getDebugVisibilityRoots()
+    {
+        if(this.model?.children?.length > 0)
+        {
+            return this.model.children.filter((child) => Boolean(child))
+        }
+
+        if(this.fallback)
+        {
+            return [this.fallback]
+        }
+
+        return []
+    }
+
     getGroundMeshes()
     {
         const meshes = this.collisionMeshes ?? []

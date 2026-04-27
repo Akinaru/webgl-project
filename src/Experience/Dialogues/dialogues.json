@@ -27,9 +27,8 @@
               "text": "J observe, je teste, j invente.",
               "actions": [
                 {
-                  "type": "addMetier",
-                  "metier": "INVENTEUR",
-                  "amount": 3
+                  "type": "recordAction",
+                  "actionId": "bloom.role.inventeur.chosen"
                 },
                 {
                   "type": "setFlag",
@@ -44,9 +43,8 @@
               "text": "Je prends les decisions et je motive.",
               "actions": [
                 {
-                  "type": "addMetier",
-                  "metier": "MENEUR",
-                  "amount": 3
+                  "type": "recordAction",
+                  "actionId": "bloom.role.meneur.chosen"
                 },
                 {
                   "type": "setFlag",
@@ -61,9 +59,8 @@
               "text": "Je fonce et j execute proprement.",
               "actions": [
                 {
-                  "type": "addMetier",
-                  "metier": "TRAVAILLEUR",
-                  "amount": 3
+                  "type": "recordAction",
+                  "actionId": "bloom.role.travailleur.chosen"
                 },
                 {
                   "type": "setFlag",
@@ -78,9 +75,8 @@
               "text": "Je protege le vivant et je cultive.",
               "actions": [
                 {
-                  "type": "addMetier",
-                  "metier": "BOTANISTE",
-                  "amount": 3
+                  "type": "recordAction",
+                  "actionId": "bloom.role.botaniste.chosen"
                 },
                 {
                   "type": "setFlag",
@@ -216,9 +212,8 @@
           "next": "end",
           "actions": [
             {
-              "type": "addMetier",
-              "metier": "BOTANISTE",
-              "amount": 1
+              "type": "recordAction",
+              "actionId": "bloom.bonus.botaniste.granted"
             }
           ]
         },
@@ -229,9 +224,8 @@
           "next": "end",
           "actions": [
             {
-              "type": "addMetier",
-              "metier": "TRAVAILLEUR",
-              "amount": 1
+              "type": "recordAction",
+              "actionId": "bloom.bonus.travailleur.granted"
             }
           ]
         },
@@ -242,9 +236,8 @@
           "next": "end",
           "actions": [
             {
-              "type": "addMetier",
-              "metier": "MENEUR",
-              "amount": 1
+              "type": "recordAction",
+              "actionId": "bloom.bonus.meneur.granted"
             }
           ]
         },
@@ -255,9 +248,8 @@
           "next": "end",
           "actions": [
             {
-              "type": "addMetier",
-              "metier": "INVENTEUR",
-              "amount": 1
+              "type": "recordAction",
+              "actionId": "bloom.bonus.inventeur.granted"
             }
           ]
         },

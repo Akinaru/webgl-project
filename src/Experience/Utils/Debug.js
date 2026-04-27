@@ -28,6 +28,8 @@ export default class Debug
         this.inspectorContext = null
         this.inspectorInstance = null
         this.inspectorInitPromise = null
+        this.folderPaths = new WeakMap()
+        this.exportEntries = new Set()
 
         if(!this.panelActive)
         {
@@ -61,11 +63,13 @@ export default class Debug
             title: `🛠 Debug v${packageInfo.version}`,
             expanded: true
         })
+        this.folderPaths.set(this.ui, [])
 
         this.ui.registerPlugin(EssentialsPlugin)
         this.ui.registerPlugin(CamerakitPlugin)
 
         this.styleUI()
+        this.setClipboardExportButton()
     }
 
     styleUI()
@@ -92,10 +96,15 @@ export default class Debug
             return null
         }
 
-        return parent.addFolder({
+        const folder = parent.addFolder({
             title,
             expanded
         })
+
+        const parentPath = this.folderPaths.get(parent) ?? []
+        this.folderPaths.set(folder, [...parentPath, title])
+
+        return folder
     }
 
     addButton(container, { title, onClick } = {})
@@ -124,10 +133,15 @@ export default class Debug
             return null
         }
 
+        const {
+            export: shouldExport = true,
+            ...bindingOptions
+        } = options
+
         if(typeof object[key] === 'function')
         {
             return this.addButton(container, {
-                title: options.label || key,
+                title: bindingOptions.label || key,
                 onClick: () =>
                 {
                     object[key]()
@@ -135,7 +149,17 @@ export default class Debug
             })
         }
 
-        return container.addBinding(object, key, options)
+        const binding = container.addBinding(object, key, bindingOptions)
+        if(shouldExport)
+        {
+            this.registerExportEntry(binding, {
+                container,
+                label: bindingOptions.label || key,
+                getValue: () => this.serializeValue(object[key]),
+                readonly: Boolean(bindingOptions.readonly)
+            })
+        }
+        return binding
     }
 
     addManualBinding(container, object, key, options = {}, mode = 'manual')
@@ -212,12 +236,20 @@ export default class Debug
         const colorState = { value: `#${color.getHexString()}` }
         const binding = this.addBinding(container, colorState, 'value', {
             label: options.label || key,
+            export: false,
             ...options
         })
 
         binding?.on?.('change', (event) =>
         {
             color.set(event.value)
+        })
+
+        this.registerExportEntry(binding, {
+            container,
+            label: options.label || key,
+            getValue: () => `#${color.getHexString()}`,
+            readonly: Boolean(options.readonly)
         })
 
         return binding
@@ -282,6 +314,117 @@ export default class Debug
 
             this.physicsState.wireframe = Boolean(this.physicsWireframeProvider.get())
         })
+    }
+
+    setClipboardExportButton()
+    {
+        if(!this.ui)
+        {
+            return
+        }
+
+        this.addButton(this.ui, {
+            title: 'Save To Clipboard',
+            onClick: async () =>
+            {
+                await this.copyDebugValuesToClipboard()
+            }
+        })
+    }
+
+    registerExportEntry(binding, {
+        container = this.ui,
+        label = '',
+        getValue = () => null,
+        readonly = false
+    } = {})
+    {
+        if(readonly || !binding || typeof getValue !== 'function')
+        {
+            return binding
+        }
+
+        const entry = {
+            container,
+            label,
+            getValue
+        }
+        this.exportEntries.add(entry)
+
+        const originalDispose = binding.dispose?.bind(binding)
+        binding.dispose = () =>
+        {
+            this.exportEntries.delete(entry)
+            originalDispose?.()
+        }
+
+        return binding
+    }
+
+    buildDebugExportPayload()
+    {
+        const payload = {}
+
+        for(const entry of this.exportEntries)
+        {
+            const folderPath = this.folderPaths.get(entry.container) ?? []
+            let cursor = payload
+
+            for(const segment of folderPath)
+            {
+                if(!cursor[segment] || typeof cursor[segment] !== 'object' || Array.isArray(cursor[segment]))
+                {
+                    cursor[segment] = {}
+                }
+
+                cursor = cursor[segment]
+            }
+
+            cursor[entry.label] = entry.getValue()
+        }
+
+        return payload
+    }
+
+    async copyDebugValuesToClipboard()
+    {
+        const payload = this.buildDebugExportPayload()
+        const text = JSON.stringify(payload, null, 2)
+
+        try
+        {
+            await navigator.clipboard.writeText(text)
+            console.info('[Debug] Valeurs copiees dans le presse-papiers')
+        }
+        catch(error)
+        {
+            console.warn('[Debug] Impossible de copier les valeurs debug:', error)
+        }
+    }
+
+    serializeValue(value)
+    {
+        if(value instanceof THREE.Color)
+        {
+            return `#${value.getHexString()}`
+        }
+
+        if(Array.isArray(value))
+        {
+            return value.map((item) => this.serializeValue(item))
+        }
+
+        if(value && typeof value === 'object')
+        {
+            const output = {}
+            for(const [key, nestedValue] of Object.entries(value))
+            {
+                output[key] = this.serializeValue(nestedValue)
+            }
+            return output
+        }
+
+        return value
     }
 
     syncInspectorContext(context)
@@ -356,6 +499,7 @@ export default class Debug
     destroy()
     {
         this.autoRefreshCallbacks.clear()
+        this.exportEntries.clear()
         this.physicsSyncCleanup?.()
 
         if(this.inspectorInstance?.unmountInspector)
