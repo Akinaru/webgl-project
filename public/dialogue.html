@@ -890,6 +890,7 @@
         { value: 'switchScene', label: 'Changer de scene' },
         { value: 'startMiniGame', label: 'Lancer un mini-jeu' },
         { value: 'startDialogue', label: 'Lancer un autre dialogue' },
+        { value: 'moveBloomToRailNode', label: 'Deplacer Bloom vers un node rail' },
         { value: 'setHudHint', label: 'Afficher un message HUD' },
         { value: 'emit', label: 'Declencher un evenement' },
         { value: 'log', label: 'Log debug (console)' }
@@ -2025,9 +2026,7 @@
             slot = {
               id: `choice_${source.choices.length + 1}`,
               text: 'Nouvelle reponse',
-              next: '',
-              conditions: [],
-              actions: []
+              next: ''
             }
             source.choices.push(slot)
           }
@@ -2163,6 +2162,9 @@
           action.payload = action.payload ?? null
         } else if(type === 'startDialogue') {
           action.key = action.key ?? ''
+        } else if(type === 'moveBloomToRailNode') {
+          action.nodeId = action.nodeId ?? ''
+          action.lockToNode = action.lockToNode ?? false
         } else if(type === 'setHudHint') {
           action.text = action.text ?? ''
         } else if(type === 'emit') {
@@ -2263,6 +2265,27 @@
               action.key = value
               commit()
             }, { placeholder: 'ex: bloom.second_acte' })
+          }))
+          return
+        }
+
+        if(action.type === 'moveBloomToRailNode') {
+          parent.appendChild(createField({
+            label: 'Node rail cible',
+            element: createControlInput(action.nodeId, (value) => {
+              action.nodeId = value
+              commit()
+            }, { placeholder: 'ex: n4' })
+          }))
+          parent.appendChild(createField({
+            label: 'Rester fixe sur ce node',
+            element: createControlSelect([
+              { value: 'false', label: 'Non (reprendre le follow ensuite)' },
+              { value: 'true', label: 'Oui (garder ce node en cible)' }
+            ], String(Boolean(action.lockToNode)), (value) => {
+              action.lockToNode = value === 'true'
+              commit()
+            })
           }))
           return
         }
@@ -2943,6 +2966,10 @@
           help: '',
           tone: 'red'
         })
+        const flowHint = document.createElement('div')
+        flowHint.className = 'field-help'
+        flowHint.textContent = 'Actions et logique avancee: utilise des blocs "action" et "branch" relies apres ce choix.'
+        answersSection.appendChild(flowHint)
 
         if(node.choices.length > 0) {
           const overview = document.createElement('div')
@@ -3006,42 +3033,6 @@
             element: next
           }))
 
-          const advancedDetails = createPersistentDetails(`choice.advanced.${choiceKey}`, {
-            className: 'plain'
-          })
-          const advancedSummary = document.createElement('summary')
-          advancedSummary.textContent = 'Options avancees'
-          advancedDetails.appendChild(advancedSummary)
-
-          const id = document.createElement('input')
-          id.className = 'control'
-          id.value = choice.id
-          id.addEventListener('input', () => {
-            choice.id = id.value
-            syncGraphFromDialogue()
-          })
-          advancedDetails.appendChild(createField({
-            label: 'Identifiant technique de la reponse',
-            element: id
-          }))
-
-          appendConditionListEditor(advancedDetails, {
-            title: 'Conditions',
-            conditions: choice.conditions || [],
-            onUpdate: (nextConditions) => {
-              choice.conditions = nextConditions
-            }
-          })
-
-          appendActionListEditor(advancedDetails, {
-            title: 'Actions',
-            actions: choice.actions || [],
-            onUpdate: (nextActions) => {
-              choice.actions = nextActions
-            }
-          })
-          item.appendChild(advancedDetails)
-
           const del = document.createElement('button')
           del.className = 'btn tiny tone-red'
           setButtonVisual(del, { label: 'Supprimer cette reponse', icon: 'trash', tone: 'red' })
@@ -3062,9 +3053,7 @@
           node.choices.push({
             id: `choice_${node.choices.length + 1}`,
             text: '',
-            next: '',
-            conditions: [],
-            actions: []
+            next: ''
           })
           renderNodeInspector()
         })

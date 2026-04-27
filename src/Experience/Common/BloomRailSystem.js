@@ -634,6 +634,17 @@ export default class BloomRailSystem
         this.setRails({ nodes: [], edges: [] })
     }
 
+    getNodePosition(nodeId)
+    {
+        if(typeof nodeId !== 'string' || nodeId.trim() === '')
+        {
+            return null
+        }
+
+        const position = this.nodesById.get(nodeId)
+        return position ? position.clone() : null
+    }
+
     toSerializableRails({ decimals = 3 } = {})
     {
         const factor = Math.pow(10, Math.max(0, Math.floor(decimals)))

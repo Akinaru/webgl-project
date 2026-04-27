@@ -61,6 +61,11 @@ export default class Bloom
             groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
             groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65
         }
+        this.followOverride = {
+            nodeId: null,
+            lockToNode: false,
+            arrivalDistance: 0.08
+        }
 
         this.rails = new BloomRailSystem({
             scene: this.scene,
@@ -563,7 +568,7 @@ export default class Bloom
         this.walkCyclePhase += deltaSeconds * walkFrequency * Math.PI * 2
         const bobOffset = Math.sin(this.walkCyclePhase) * this.motion.bobAmplitude
 
-        if(this.follow.enabled && this.resolveFollowTargetPosition() && this.rails.hasRails())
+        if((this.follow.enabled || this.followOverride.nodeId) && this.resolveFollowTargetPosition() && this.rails.hasRails())
         {
             this.updateRailMotion(deltaSeconds, bobOffset)
             return
@@ -647,6 +652,31 @@ export default class Bloom
 
     resolveFollowTargetPosition()
     {
+        if(this.followOverride.nodeId)
+        {
+            const nodePosition = this.rails.getNodePosition(this.followOverride.nodeId)
+            if(nodePosition instanceof THREE.Vector3)
+            {
+                this.followTargetPosition.copy(nodePosition)
+
+                if(!this.followOverride.lockToNode)
+                {
+                    const dx = this.railAnchorPosition.x - nodePosition.x
+                    const dz = this.railAnchorPosition.z - nodePosition.z
+                    const arrivalDistance = Math.max(0.01, this.followOverride.arrivalDistance)
+                    const arrivalDistanceSq = arrivalDistance * arrivalDistance
+                    if((dx * dx) + (dz * dz) <= arrivalDistanceSq)
+                    {
+                        this.clearFollowOverride()
+                    }
+                }
+
+                return true
+            }
+
+            this.clearFollowOverride()
+        }
+
         if(this.follow.getTargetPosition)
         {
             const result = this.follow.getTargetPosition()
@@ -670,6 +700,32 @@ export default class Bloom
         }
 
         return false
+    }
+
+    moveToRailNode(nodeId, { lockToNode = false } = {})
+    {
+        if(typeof nodeId !== 'string' || nodeId.trim() === '')
+        {
+            return false
+        }
+
+        const normalizedNodeId = nodeId.trim()
+        const nodePosition = this.rails.getNodePosition(normalizedNodeId)
+        if(!(nodePosition instanceof THREE.Vector3))
+        {
+            return false
+        }
+
+        this.followOverride.nodeId = normalizedNodeId
+        this.followOverride.lockToNode = Boolean(lockToNode)
+        this.followTargetPosition.copy(nodePosition)
+        return true
+    }
+
+    clearFollowOverride()
+    {
+        this.followOverride.nodeId = null
+        this.followOverride.lockToNode = false
     }
 
     addRailPointFromTarget()
