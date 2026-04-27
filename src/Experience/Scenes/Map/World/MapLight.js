@@ -8,9 +8,16 @@ const SHADOW_MAP_SIZE_OPTIONS = {
     '4096': 4096
 }
 
+const SUN_VISUAL_CORE_SCALE = 0.06
+const SUN_VISUAL_HALO_SCALE = 0.24
+const SUN_VISUAL_MIN_CORE_SIZE = 1.8
+const SUN_VISUAL_MIN_HALO_SIZE = 8
+const SUN_VISUAL_HALO_OPACITY = 0.85
+
 export default class MapLight
 {
     constructor({
+        environment = null,
         getFocusPosition = null,
         debugParentFolder = null
     } = {})
@@ -18,6 +25,7 @@ export default class MapLight
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.debug = this.experience.debug
+        this.environment = environment
         this.debugParentFolder = debugParentFolder
         this.getFocusPosition = typeof getFocusPosition === 'function'
             ? getFocusPosition
@@ -65,7 +73,12 @@ export default class MapLight
         this.debugBindings = []
 
         this.setLights()
+        this.setSunVisual()
         this.updateCoordinates()
+        this.updateFocusPosition()
+        this.sunLight.position.setFromSpherical(this.spherical).add(this.focusPosition)
+        this.sunTarget.position.copy(this.focusPosition)
+        this.updateSunVisual()
         this.updateShadow()
         this.setHelpers()
         this.applyHelpersVisibility()
@@ -92,6 +105,64 @@ export default class MapLight
         this.sunTarget.name = '__mapSunTarget'
         this.scene.add(this.sunTarget)
         this.sunLight.target = this.sunTarget
+    }
+
+    setSunVisual()
+    {
+        this.sunVisual = new THREE.Group()
+        this.sunVisual.name = '__mapSunVisual'
+
+        this.sunCoreGeometry = new THREE.SphereGeometry(1, 24, 24)
+        this.sunCoreMaterial = new THREE.MeshBasicMaterial({
+            color: this.sunColor,
+            toneMapped: false
+        })
+        this.sunCore = new THREE.Mesh(this.sunCoreGeometry, this.sunCoreMaterial)
+        this.sunVisual.add(this.sunCore)
+
+        this.sunHaloTexture = this.createSunHaloTexture()
+        this.sunHaloMaterial = new THREE.SpriteMaterial({
+            map: this.sunHaloTexture,
+            color: this.sunColor,
+            transparent: true,
+            opacity: SUN_VISUAL_HALO_OPACITY,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            toneMapped: false
+        })
+        this.sunHalo = new THREE.Sprite(this.sunHaloMaterial)
+        this.sunVisual.add(this.sunHalo)
+
+        this.scene.add(this.sunVisual)
+        this.updateSunVisualAppearance()
+    }
+
+    createSunHaloTexture()
+    {
+        const canvas = document.createElement('canvas')
+        canvas.width = 128
+        canvas.height = 128
+
+        const context = canvas.getContext('2d')
+        if(!context)
+        {
+            const fallbackTexture = new THREE.Texture(canvas)
+            fallbackTexture.needsUpdate = true
+            return fallbackTexture
+        }
+
+        const gradient = context.createRadialGradient(64, 64, 4, 64, 64, 64)
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
+        gradient.addColorStop(0.2, 'rgba(255, 244, 214, 0.95)')
+        gradient.addColorStop(0.45, 'rgba(255, 226, 154, 0.5)')
+        gradient.addColorStop(1, 'rgba(255, 214, 120, 0)')
+
+        context.fillStyle = gradient
+        context.fillRect(0, 0, canvas.width, canvas.height)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        return texture
     }
 
     setHelpers()
@@ -135,6 +206,21 @@ export default class MapLight
         this.hemiLight.color.copy(this.skyColor)
         this.hemiLight.groundColor.copy(this.groundColor)
         this.sunLight.color.copy(this.sunColor)
+        this.updateSunVisualAppearance()
+    }
+
+    updateSunVisualAppearance()
+    {
+        if(this.sunCoreMaterial)
+        {
+            this.sunCoreMaterial.color.copy(this.sunColor)
+        }
+
+        if(this.sunHaloMaterial)
+        {
+            this.sunHaloMaterial.color.copy(this.sunColor)
+            this.sunHaloMaterial.opacity = SUN_VISUAL_HALO_OPACITY
+        }
     }
 
     sanitizeShadowState()
@@ -263,8 +349,24 @@ export default class MapLight
         this.sunLight.position.setFromSpherical(this.spherical).add(this.focusPosition)
         this.sunTarget.position.copy(this.focusPosition)
         this.sunTarget.updateMatrixWorld(true)
+        this.updateSunVisual()
 
         this.updateHelpers()
+    }
+
+    updateSunVisual()
+    {
+        if(!this.sunVisual)
+        {
+            return
+        }
+
+        const coreScale = Math.max(SUN_VISUAL_MIN_CORE_SIZE, this.state.distance * SUN_VISUAL_CORE_SCALE)
+        const haloScale = Math.max(SUN_VISUAL_MIN_HALO_SIZE, this.state.distance * SUN_VISUAL_HALO_SCALE)
+
+        this.sunVisual.position.copy(this.sunLight.position)
+        this.sunCore.scale.setScalar(coreScale)
+        this.sunHalo.scale.setScalar(haloScale)
     }
 
     setDebug()
@@ -355,6 +457,12 @@ export default class MapLight
         this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'skyColor', { label: 'skyColor' }))
         this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'groundColor', { label: 'groundColor' }))
         this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'sunColor', { label: 'sunColor' }))
+        if(this.environment?.backgroundColor)
+        {
+            this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this.environment, 'backgroundColor', {
+                label: 'skyBgColor'
+            }))
+        }
 
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'castShadow', {
             label: 'enabled'
@@ -476,6 +584,22 @@ export default class MapLight
         {
             this.scene.remove(this.sunLight)
             this.sunLight = null
+        }
+
+        if(this.sunVisual)
+        {
+            this.scene.remove(this.sunVisual)
+            this.sunCoreGeometry?.dispose?.()
+            this.sunCoreMaterial?.dispose?.()
+            this.sunHaloMaterial?.dispose?.()
+            this.sunHaloTexture?.dispose?.()
+            this.sunVisual = null
+            this.sunCore = null
+            this.sunHalo = null
+            this.sunCoreGeometry = null
+            this.sunCoreMaterial = null
+            this.sunHaloMaterial = null
+            this.sunHaloTexture = null
         }
 
         if(this.sunTarget)

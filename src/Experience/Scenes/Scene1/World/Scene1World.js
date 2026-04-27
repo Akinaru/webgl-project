@@ -61,6 +61,7 @@ export default class Scene1World
             spawnYaw: 0
         })
         this.light = new MapLight({
+            environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
 

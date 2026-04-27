@@ -16,8 +16,8 @@ export default class MapEnvironment
             fogDensity: 0.012
         }
 
-        this.backgroundColor = new THREE.Color('#dbe7f3')
-        this.fogColor = new THREE.Color('#dbe7f3')
+        this.backgroundColor = new THREE.Color('#81b9f2')
+        this.fogColor = new THREE.Color('#81b9f2')
 
         this.setFog()
         this.setDebug()
@@ -53,7 +53,6 @@ export default class MapEnvironment
             expanded: false
         })
 
-        this.debug.addColorBinding(this.debugFolder, this, 'backgroundColor', { label: 'bg' })
         this.debug.addColorBinding(this.fogFolder, this, 'fogColor', { label: 'color' })
 
         this.debug.addBinding(this.fogFolder, this.state, 'fogMode', {

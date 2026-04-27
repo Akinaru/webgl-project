@@ -72,6 +72,7 @@ export default class MapWorld
         this.setVegetationDebug()
 
         this.light = new MapLight({
+            environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
         this.bloom = new Bloom({
