@@ -5,6 +5,8 @@ import SpatialBoxOctree from '../Utils/SpatialBoxOctree.js'
 const UP_AXIS = new THREE.Vector3(0, 1, 0)
 const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
 const COLLISION_OCTREE_MARGIN = 0.35
+const PLAYER_HEAD_TOP_OFFSET = 0.04
+const CEILING_HIT_EPSILON = 0.02
 
 export default class Player
 {
@@ -34,6 +36,9 @@ export default class Player
         this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
             ? groundMeshes
             : this.collisionMeshes
+        this.ceilingMeshes = this.collisionMeshes.length > 0
+            ? this.collisionMeshes
+            : this.groundMeshes
 
         this.settings = {
             height: 1.45,
@@ -85,6 +90,8 @@ export default class Player
             octreeNodeBounds: []
         }
         this.groundRaycaster = new THREE.Raycaster()
+        this.ceilingRaycaster = new THREE.Raycaster()
+        this.ceilingRayDirection = new THREE.Vector3(0, 1, 0)
         this.headBobPhase = 0
         this.headBobOffset = 0
         this.cameraSmoothPosition = this.position.clone()
@@ -308,6 +315,7 @@ export default class Player
         this.position.addScaledVector(this.velocity, deltaSeconds)
 
         this.resolveCollisions()
+        this.resolveCeilingCollision()
         this.resolveGroundCollision()
         this.resolveBoundaryCollision()
     }
@@ -393,7 +401,9 @@ export default class Player
 
         if(this.groundMeshes.length > 0)
         {
-            const rayOrigin = new THREE.Vector3(this.position.x, this.position.y + 2, this.position.z)
+            // Start the ground probe just above the player head, not far above.
+            // This prevents snapping to a bridge top while the player is still under it.
+            const rayOrigin = new THREE.Vector3(this.position.x, this.position.y + 0.12, this.position.z)
             this.groundRaycaster.set(rayOrigin, new THREE.Vector3(0, -1, 0))
             this.groundRaycaster.near = 0
             this.groundRaycaster.far = 20
@@ -441,6 +451,67 @@ export default class Player
         }
 
         this.isOnGround = false
+    }
+
+    resolveCeilingCollision()
+    {
+        if(this.velocity.y <= 0 || this.ceilingMeshes.length === 0)
+        {
+            return
+        }
+
+        const previousHeadY = this.previousPosition.y + PLAYER_HEAD_TOP_OFFSET
+        const currentHeadY = this.position.y + PLAYER_HEAD_TOP_OFFSET
+        const upwardTravel = currentHeadY - previousHeadY
+        if(upwardTravel <= 1e-5)
+        {
+            return
+        }
+
+        const rayFar = upwardTravel + CEILING_HIT_EPSILON
+        const sampleOffset = this.settings.radius * 0.58
+        const sampleOffsets = [
+            [0, 0],
+            [sampleOffset, 0],
+            [-sampleOffset, 0],
+            [0, sampleOffset],
+            [0, -sampleOffset]
+        ]
+
+        let closestCeilingY = Infinity
+        for(const [offsetX, offsetZ] of sampleOffsets)
+        {
+            this.raycastOrigin.set(
+                this.previousPosition.x + offsetX,
+                previousHeadY - CEILING_HIT_EPSILON,
+                this.previousPosition.z + offsetZ
+            )
+
+            this.ceilingRaycaster.set(this.raycastOrigin, this.ceilingRayDirection)
+            this.ceilingRaycaster.near = 0
+            this.ceilingRaycaster.far = rayFar
+
+            const hits = this.ceilingRaycaster.intersectObjects(this.ceilingMeshes, false)
+            const firstHit = hits[0]
+            if(!firstHit)
+            {
+                continue
+            }
+
+            closestCeilingY = Math.min(closestCeilingY, firstHit.point.y)
+        }
+
+        if(!Number.isFinite(closestCeilingY))
+        {
+            return
+        }
+
+        const maxAllowedPlayerY = closestCeilingY - PLAYER_HEAD_TOP_OFFSET - CEILING_HIT_EPSILON
+        if(this.position.y > maxAllowedPlayerY)
+        {
+            this.position.y = maxAllowedPlayerY
+            this.velocity.y = 0
+        }
     }
 
     isGroundIgnoredMesh(object)
