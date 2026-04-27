@@ -19,6 +19,10 @@ const CONNECTED_EMISSIVE = '#2d7bc2'
 const FLOW_FILL_SPEED_PER_SECOND = 0.45
 const ROTATION_SPEED_PER_SECOND = Math.PI * 2
 const FLOW_PROGRESS_EPSILON = 1e-4
+const EMPTY_TUBE_OPACITY = 0.25
+const FILLED_TUBE_OPACITY = 1
+const EMPTY_WINDOW_OPACITY = 0.25
+const FILLED_WINDOW_OPACITY = 1
 const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
 const FLOW_COORD_EPSILON = 1e-5
 const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
@@ -1698,6 +1702,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 continue
             }
 
+            this.applyWindowMaterialTransparency(material, colorLerp)
+
             if(material.userData?.windowFlowUniforms)
             {
                 continue
@@ -1718,6 +1724,30 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
             material.needsUpdate = true
         }
+    }
+
+    applyWindowMaterialTransparency(material, flowProgress)
+    {
+        if(typeof material.opacity !== 'number')
+        {
+            return
+        }
+
+        const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
+        const nextOpacity = THREE.MathUtils.lerp(EMPTY_WINDOW_OPACITY, FILLED_WINDOW_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (FILLED_WINDOW_OPACITY - FLOW_PROGRESS_EPSILON)
+
+        if(material.userData?.windowDepthWriteDefault === undefined)
+        {
+            material.userData = material.userData || {}
+            material.userData.windowDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        material.transparent = shouldBeTransparent
+        material.opacity = nextOpacity
+        material.depthWrite = shouldBeTransparent
+            ? false
+            : Boolean(material.userData.windowDepthWriteDefault)
     }
 
     getModuleFlowProgress(moduleName)
@@ -2288,6 +2318,8 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                         continue
                     }
 
+                    this.applyTubeMaterialTransparency(material, flowProgress)
+
                     // Fallback path for materials where onBeforeCompile shader hook
                     // is not available.
                     const usesFlowShader = Boolean(material.userData?.flowUniforms)
@@ -2313,6 +2345,30 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 }
             }
         }
+    }
+
+    applyTubeMaterialTransparency(material, flowProgress)
+    {
+        if(typeof material.opacity !== 'number')
+        {
+            return
+        }
+
+        const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
+        const nextOpacity = THREE.MathUtils.lerp(EMPTY_TUBE_OPACITY, FILLED_TUBE_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (FILLED_TUBE_OPACITY - FLOW_PROGRESS_EPSILON)
+
+        if(material.userData?.tubeDepthWriteDefault === undefined)
+        {
+            material.userData = material.userData || {}
+            material.userData.tubeDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        material.transparent = shouldBeTransparent
+        material.opacity = nextOpacity
+        material.depthWrite = shouldBeTransparent
+            ? false
+            : Boolean(material.userData.tubeDepthWriteDefault)
     }
 
     setTubeFlowColor(colorValue)
