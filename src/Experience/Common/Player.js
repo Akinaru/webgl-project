@@ -7,6 +7,9 @@ const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenê
 const COLLISION_OCTREE_MARGIN = 0.35
 const PLAYER_HEAD_TOP_OFFSET = 0.04
 const CEILING_HIT_EPSILON = 0.02
+const COLLISION_CONTACT_EPSILON = 0.002
+const COLLISION_MIN_DISTANCE = 0.0001
+const WALL_NORMAL_MAX_Y = 0.65
 
 export default class Player
 {
@@ -664,7 +667,7 @@ export default class Player
             octreeNodeBounds: this.collisionDebugState?.octreeNodeBounds ?? []
         }
 
-        for(let iteration = 0; iteration < 3; iteration++)
+        for(let iteration = 0; iteration < 6; iteration++)
         {
             let hasCollision = false
 
@@ -724,14 +727,12 @@ export default class Player
                         dx = 0
                         dz = 1
                     }
-
-                    distanceSq = 1
                 }
 
-                const distance = Math.sqrt(distanceSq)
+                const distance = Math.max(Math.sqrt(distanceSq), COLLISION_MIN_DISTANCE)
                 const normalX = dx / distance
                 const normalZ = dz / distance
-                const penetration = radius - distance
+                const penetration = Math.max(0, radius - distance + COLLISION_CONTACT_EPSILON)
 
                 this.position.x += normalX * penetration
                 this.position.z += normalZ * penetration
@@ -783,6 +784,13 @@ export default class Player
         const raycastFar = travelDistance + this.settings.radius
         const feetY = this.position.y - this.settings.height
         const sampleHeights = [feetY + 0.35, feetY + 0.9, this.position.y - 0.2, this.position.y + 0.02]
+        const sideOffset = this.settings.radius * 0.65
+        const lateralDirection = new THREE.Vector3(
+            -this.collisionDirection.z,
+            0,
+            this.collisionDirection.x
+        )
+        const lateralOffsets = [0, sideOffset, -sideOffset]
         const minSampleY = Math.min(...sampleHeights)
         const maxSampleY = Math.max(...sampleHeights)
 
@@ -813,37 +821,49 @@ export default class Player
 
         for(const sampleY of sampleHeights)
         {
-            this.raycastOrigin.set(this.previousPosition.x, sampleY, this.previousPosition.z)
-            const rayEnd = this.raycastOrigin.clone().addScaledVector(this.collisionDirection, raycastFar)
-            debugState.rays.push({
-                origin: this.raycastOrigin.clone(),
-                end: rayEnd
-            })
-
-            this.collisionRaycaster.set(this.raycastOrigin, this.collisionDirection)
-            this.collisionRaycaster.near = 0
-            this.collisionRaycaster.far = raycastFar
-
-            const hits = this.collisionRaycaster.intersectObjects(raycastTargets, false)
-            for(const hit of hits)
+            for(const lateralOffset of lateralOffsets)
             {
-                if(!hit.face)
+                this.raycastOrigin.set(
+                    this.previousPosition.x + (lateralDirection.x * lateralOffset),
+                    sampleY,
+                    this.previousPosition.z + (lateralDirection.z * lateralOffset)
+                )
+                const rayEnd = this.raycastOrigin.clone().addScaledVector(this.collisionDirection, raycastFar)
+                debugState.rays.push({
+                    origin: this.raycastOrigin.clone(),
+                    end: rayEnd
+                })
+
+                this.collisionRaycaster.set(this.raycastOrigin, this.collisionDirection)
+                this.collisionRaycaster.near = 0
+                this.collisionRaycaster.far = raycastFar
+
+                const hits = this.collisionRaycaster.intersectObjects(raycastTargets, false)
+                for(const hit of hits)
                 {
-                    continue
+                    if(!hit.face)
+                    {
+                        continue
+                    }
+
+                    this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                    // Keep angled modules collidable while still ignoring near-horizontal surfaces.
+                    if(this.worldNormal.y > WALL_NORMAL_MAX_Y)
+                    {
+                        continue
+                    }
+
+                    hasHit = true
+                    debugState.hit = true
+                    debugState.hitPoint = hit.point.clone()
+                    debugState.hitNormal = this.worldNormal.clone()
+                    break
                 }
 
-                this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
-                // Ignore floor-like slopes so bridges/fountain tops don't behave like walls.
-                if(this.worldNormal.y > 0.25)
+                if(hasHit)
                 {
-                    continue
+                    break
                 }
-
-                hasHit = true
-                debugState.hit = true
-                debugState.hitPoint = hit.point.clone()
-                debugState.hitNormal = this.worldNormal.clone()
-                break
             }
 
             if(hasHit)
