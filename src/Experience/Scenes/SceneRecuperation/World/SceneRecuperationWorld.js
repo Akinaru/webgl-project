@@ -49,9 +49,11 @@ export default class SceneRecuperationWorld
         }
         this.isSetUp = true
 
-        this.environment = new MapEnvironment()
-        this.recuperationModel = new SceneRecuperationModel()
         this.setDebug()
+        this.environment = new MapEnvironment()
+        this.recuperationModel = new SceneRecuperationModel({
+            debugParentFolder: this.debugFolder
+        })
 
         this.player = new Player({
             groundHeight: 0,
