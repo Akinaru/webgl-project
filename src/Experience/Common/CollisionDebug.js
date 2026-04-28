@@ -7,7 +7,8 @@ export default class CollisionDebug
         player,
         getCollisionBoxes = null,
         folderLabel = '🧱 Collision Debug',
-        groupName = '__collisionDebug'
+        groupName = '__collisionDebug',
+        debugParentFolder = null
     } = {})
     {
         this.experience = new Experience()
@@ -19,6 +20,7 @@ export default class CollisionDebug
             : null
         this.folderLabel = folderLabel
         this.groupName = groupName
+        this.debugParentFolder = debugParentFolder
 
         this.enabled = Boolean(this.debug?.isDebugEnabled && this.player && this.getCollisionBoxes)
         if(!this.enabled)
@@ -208,7 +210,10 @@ export default class CollisionDebug
 
     setDebugUI()
     {
-        this.folder = this.debug.addFolder(this.folderLabel, { expanded: false })
+        this.folder = this.debug.addFolder(this.folderLabel, {
+            parent: this.debugParentFolder || this.debug.ui,
+            expanded: false
+        })
         this.debug.addBinding(this.folder, this.state, 'showCollisionBoxes', { label: 'boxes' })
         this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'rays' })
         this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'player' })

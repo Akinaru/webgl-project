@@ -275,7 +275,7 @@ export default class MapWorld
         this.isTeleporting = false
 
         this.teleportGroup = new THREE.Group()
-        this.teleportGroup.name = '__mapScene1TeleportZone'
+        this.teleportGroup.name = '__mapRecuperationTeleportZone'
         this.teleportGroup.position.set(this.teleportZone.x, this.teleportZone.y ?? 0.08, this.teleportZone.z)
 
         this.teleportPad = new THREE.Mesh(
@@ -289,7 +289,7 @@ export default class MapWorld
             })
         )
         this.teleportPad.position.y = 0.03
-        this.teleportPad.name = '__mapScene1TeleportPad'
+        this.teleportPad.name = '__mapRecuperationTeleportPad'
 
         this.teleportRing = new THREE.Mesh(
             new THREE.TorusGeometry(this.teleportZone.radius, 0.08, 12, 64),
@@ -364,7 +364,7 @@ export default class MapWorld
         }
 
         this.isTeleporting = true
-        this.experience.sceneManager?.switchTo?.(SceneEnum.SCENE1)
+        this.experience.sceneManager?.switchTo?.(SceneEnum.RECUPERATION)
     }
 
     setVegetationDebug()

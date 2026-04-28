@@ -5,24 +5,25 @@ import SceneEnum from '../../../Enum/SceneEnum.js'
 import Player from '../../../Common/Player.js'
 import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
-import Scene1Model from './Scene1Model.js'
-import Scene1MaterialButtons from './Scene1MaterialButtons.js'
-import Scene1TubeWaterController from './Scene1TubeWaterController.js'
-import Scene1CollisionDebug from './Scene1CollisionDebug.js'
+import SceneRecuperationModel from './SceneRecuperationModel.js'
+import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
+import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons.js'
+import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
+import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 
 const SCREEN_INACTIVE_COLOR = '#0e131d'
 const EXIT_TELEPORT_INACTIVE_COLOR = '#2f3d50'
 const FINAL_TUBE_MODULE_NAME = 'module-straight_24'
 
-let scene1WorldInstanceIndex = 0
+let recuperationWorldInstanceIndex = 0
 
-export default class Scene1World
+export default class SceneRecuperationWorld
 {
     constructor()
     {
         this.experience = new Experience()
         this.resources = this.experience.resources
-        this.readyEventName = `${EventEnum.READY}.scene1World${scene1WorldInstanceIndex++}`
+        this.readyEventName = `${EventEnum.READY}.recuperationWorld${recuperationWorldInstanceIndex++}`
 
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
@@ -49,31 +50,38 @@ export default class Scene1World
         this.isSetUp = true
 
         this.environment = new MapEnvironment()
-        this.scene1Model = new Scene1Model()
+        this.recuperationModel = new SceneRecuperationModel()
+        this.setDebug()
 
         this.player = new Player({
             groundHeight: 0,
-            boundaryRadius: this.scene1Model.getBoundaryRadius?.() ?? 48,
+            boundaryRadius: this.recuperationModel.getBoundaryRadius?.() ?? 48,
             collisionBoxes: [],
-            collisionMeshes: this.scene1Model.getCollisionMeshes?.() ?? [],
-            groundMeshes: this.scene1Model.getGroundMeshes?.() ?? [],
-            spawnPosition: this.scene1Model.getSpawnPosition?.(),
+            collisionMeshes: this.recuperationModel.getCollisionMeshes?.() ?? [],
+            groundMeshes: this.recuperationModel.getGroundMeshes?.() ?? [],
+            spawnPosition: this.recuperationModel.getSpawnPosition?.(),
             spawnYaw: 0
         })
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
+        this.windTurbine = new SceneRecuperationWindTurbine({
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
+        })
 
-        this.tubeWaterController = new Scene1TubeWaterController({
-            scene1Model: this.scene1Model
+        this.tubeWaterController = new SceneRecuperationTubeWaterController({
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
         })
-        this.collisionDebug = new Scene1CollisionDebug({
+        this.collisionDebug = new SceneRecuperationCollisionDebug({
             player: this.player,
-            scene1Model: this.scene1Model
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
         })
-        this.materialButtons = new Scene1MaterialButtons({
-            scene1Model: this.scene1Model,
+        this.materialButtons = new SceneRecuperationMaterialButtons({
+            recuperationModel: this.recuperationModel,
             isExternalHoverActive: () => this.tubeWaterController?.isHoveringTube?.() ?? false,
             onMaterialSelected: (selection) => this.handleMaterialSelection(selection)
         })
@@ -85,9 +93,20 @@ export default class Scene1World
         this.setExitTeleportActive(false)
     }
 
+    setDebug()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || this.debugFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.experience.debug.addFolder('♻️ Recuperation', { expanded: false })
+    }
+
     update(delta = this.experience.time.delta)
     {
         this.light?.update?.(delta)
+        this.windTurbine?.update?.(delta)
         this.player?.update(delta)
         this.checkRoom2FlowTrigger()
         this.tubeWaterController?.update?.()
@@ -112,8 +131,8 @@ export default class Scene1World
     {
         this.screenIndicatorEntries = []
 
-        const exactScreenMeshes = this.scene1Model?.getMeshesForNameTokens?.(['screen_1'], { exact: true }) ?? []
-        const fallbackScreenMeshes = this.scene1Model?.getMeshesForNameTokens?.(['screen'], { exact: false }) ?? []
+        const exactScreenMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen_1'], { exact: true }) ?? []
+        const fallbackScreenMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen'], { exact: false }) ?? []
         const screenMeshes = exactScreenMeshes.length > 0 ? exactScreenMeshes : fallbackScreenMeshes
 
         for(const mesh of screenMeshes)
@@ -166,8 +185,8 @@ export default class Scene1World
 
     setRoom2FlowTrigger()
     {
-        const room2Bounds = this.scene1Model?.getBoundsForNameTokens?.(['room2'], { exact: false })
-            ?? this.scene1Model?.getBoundsForNameTokens?.(['sol-room2'], { exact: false })
+        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(['room2'], { exact: false })
+            ?? this.recuperationModel?.getBoundsForNameTokens?.(['sol-room2'], { exact: false })
         if(!room2Bounds)
         {
             this.room2FlowTrigger = null
@@ -224,7 +243,7 @@ export default class Scene1World
 
     setWallCrossTeleport()
     {
-        const exitBounds = this.scene1Model?.getBoundsForNameTokens?.(['chemin-sortie'], { exact: true })
+        const exitBounds = this.recuperationModel?.getBoundsForNameTokens?.(['chemin-sortie'], { exact: true })
         if(!exitBounds)
         {
             this.wallCrossTeleport = null
@@ -274,7 +293,7 @@ export default class Scene1World
         const center = this.wallCrossTeleport.visualCenter
 
         this.teleportVisualGroup = new THREE.Group()
-        this.teleportVisualGroup.name = '__scene1ExitTeleportVisual'
+        this.teleportVisualGroup.name = '__recuperationExitTeleportVisual'
         this.teleportVisualGroup.position.set(center.x, this.wallCrossTeleport.visualFloorY, center.z)
 
         this.teleportVisualPad = new THREE.Mesh(
@@ -475,12 +494,18 @@ export default class Scene1World
             this.collisionDebug = null
         }
 
+        if(this.windTurbine)
+        {
+            this.windTurbine.destroy?.()
+            this.windTurbine = null
+        }
+
         this.clearWallCrossTeleportVisual()
 
-        if(this.scene1Model)
+        if(this.recuperationModel)
         {
-            this.scene1Model.destroy?.()
-            this.scene1Model = null
+            this.recuperationModel.destroy?.()
+            this.recuperationModel = null
         }
 
         if(this.environment)
@@ -503,6 +528,8 @@ export default class Scene1World
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
         this.isReturningToMap = false
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
 
         this.isSetUp = false
     }

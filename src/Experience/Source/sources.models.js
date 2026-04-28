@@ -10,8 +10,8 @@ export default [
         path: 'models/Map.gltf'
     },
     {
-        name: 'scene1Model',
+        name: 'recuperationModel',
         type: 'gltfModel',
-        path: 'models/Scene1.gltf'
+        path: 'models/SceneRecuperation.gltf'
     }
 ]

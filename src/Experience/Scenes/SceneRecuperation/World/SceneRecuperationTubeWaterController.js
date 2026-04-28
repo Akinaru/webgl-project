@@ -34,16 +34,17 @@ const PRIMARY_WINDOW_KEY = 'fenetre-blue'
 const BRANCH_WINDOW_KEY = 'fenetre-blue_1'
 const AFTER_20_WINDOW_KEY = 'fenetre-blue_2'
 
-export default class Scene1TubeWaterController
+export default class SceneRecuperationTubeWaterController
 {
-    constructor({ scene1Model } = {})
+    constructor({ recuperationModel, debugParentFolder = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.debug = this.experience.debug
-        this.scene1Model = scene1Model
-        this.tubeMeshes = this.scene1Model?.getTubeWaterMeshes?.() ?? []
-        this.rotationTargets = this.scene1Model?.getTubeWaterRotationTargets?.() ?? []
+        this.debugParentFolder = debugParentFolder
+        this.recuperationModel = recuperationModel
+        this.tubeMeshes = this.recuperationModel?.getTubeWaterMeshes?.() ?? []
+        this.rotationTargets = this.recuperationModel?.getTubeWaterRotationTargets?.() ?? []
         this.flow = {
             fillSpeed: FLOW_FILL_SPEED_PER_SECOND
         }
@@ -121,7 +122,7 @@ export default class Scene1TubeWaterController
         this.computeStartAlignedTubes()
         this.randomizeInitialRotations()
         this.resetFlowAnimation()
-        this.scene1Model?.refreshCollisionBoxes?.()
+        this.recuperationModel?.refreshCollisionBoxes?.()
         this.setDebug()
         this.setEvents()
     }
@@ -133,7 +134,10 @@ export default class Scene1TubeWaterController
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🧩 Scene1 Tube Flow', { expanded: false })
+        this.debugFolder = this.debug.addFolder('Tube Flow', {
+            parent: this.debugParentFolder || this.debug.ui,
+            expanded: false
+        })
         this.debug.addBinding(this.debugFolder, this.flow, 'fillSpeed', {
             label: 'fillSpeed',
             min: 0.1,
@@ -179,7 +183,7 @@ export default class Scene1TubeWaterController
                 continue
             }
 
-            const target = this.scene1Model?.getTubeWaterRotationTargetFromObject?.(mesh) ?? mesh
+            const target = this.recuperationModel?.getTubeWaterRotationTargetFromObject?.(mesh) ?? mesh
             if(!target)
             {
                 continue
@@ -215,7 +219,7 @@ export default class Scene1TubeWaterController
         this.blueWindowShaderMaterialsByMeshUuid.clear()
         this.blueWindowFlowProgressByName.clear()
 
-        const root = this.scene1Model?.model
+        const root = this.recuperationModel?.model
         if(!root)
         {
             return
@@ -521,7 +525,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         material.customProgramCacheKey = () =>
         {
             const previousKey = previousProgramCacheKey ? previousProgramCacheKey() : ''
-            return `${previousKey}|scene1-flow-fill-v2`
+            return `${previousKey}|recuperation-flow-fill-v2`
         }
 
         material.needsUpdate = true
@@ -1417,7 +1421,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             this.rotateTubeByQuarterTurn(tubeMesh)
         }
 
-        this.inputs?.on?.('sceneinteractdown.scene1TubeWater', this.onMouseDown)
+        this.inputs?.on?.('sceneinteractdown.recuperationTubeWater', this.onMouseDown)
     }
 
     getTubeMeshAtCenter()
@@ -1442,7 +1446,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     rotateTubeByQuarterTurn(mesh)
     {
-        const rotationTarget = this.scene1Model?.getTubeWaterRotationTargetFromObject?.(mesh) ?? mesh
+        const rotationTarget = this.recuperationModel?.getTubeWaterRotationTargetFromObject?.(mesh) ?? mesh
         if(!rotationTarget)
         {
             return
@@ -1566,7 +1570,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return
         }
 
-        this.scene1Model?.refreshCollisionBoxes?.()
+        this.recuperationModel?.refreshCollisionBoxes?.()
     }
 
     updateFlowState(deltaSeconds = this.getDeltaSeconds())
@@ -2526,7 +2530,7 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
 
     destroy()
     {
-        this.inputs?.off?.('sceneinteractdown.scene1TubeWater')
+        this.inputs?.off?.('sceneinteractdown.recuperationTubeWater')
         this.debugFolder?.dispose?.()
         this.debugFolder = null
         this.hoveredTubeMesh = null

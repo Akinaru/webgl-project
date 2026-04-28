@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 
-const CURSOR_OWNER_CLASS = 'is-scene1-material-cursor'
+const CURSOR_OWNER_CLASS = 'is-recuperation-material-cursor'
 const BUTTON_PRESS_DEPTH = 0.045
 const BUTTON_RELEASE_DURATION = 0.14
 const MATERIAL_COLORS_BY_NAME = Object.freeze({
@@ -14,22 +14,22 @@ const DEFAULT_MATERIAL_COLOR = '#4da6ff'
 const INACTIVE_EMISSIVE_INTENSITY = 0.08
 const ACTIVE_EMISSIVE_INTENSITY = 0.36
 
-export default class Scene1MaterialButtons
+export default class SceneRecuperationMaterialButtons
 {
-    constructor({ scene1Model, isExternalHoverActive = null, onMaterialSelected = null } = {})
+    constructor({ recuperationModel, isExternalHoverActive = null, onMaterialSelected = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.canvas = this.experience.canvas
         this.dialogueManager = this.experience.dialogueManager
-        this.scene1Model = scene1Model
+        this.recuperationModel = recuperationModel
         this.isExternalHoverActive = typeof isExternalHoverActive === 'function'
             ? isExternalHoverActive
             : null
         this.onMaterialSelected = typeof onMaterialSelected === 'function'
             ? onMaterialSelected
             : null
-        this.clickableMeshes = this.scene1Model?.getClickableMaterialMeshes?.() ?? []
+        this.clickableMeshes = this.recuperationModel?.getClickableMaterialMeshes?.() ?? []
 
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
@@ -118,9 +118,9 @@ export default class Scene1MaterialButtons
             this.centerScreen.set(window.innerWidth * 0.5, window.innerHeight * 0.5)
         }
 
-        this.inputs?.on?.('sceneinteractdown.scene1MaterialButtons', this.onMouseDown)
-        this.inputs?.on?.('sceneinteractup.scene1MaterialButtons', this.onMouseUp)
-        this.inputs?.on?.('blur.scene1MaterialButtons', this.onWindowBlur)
+        this.inputs?.on?.('sceneinteractdown.recuperationMaterialButtons', this.onMouseDown)
+        this.inputs?.on?.('sceneinteractup.recuperationMaterialButtons', this.onMouseUp)
+        this.inputs?.on?.('blur.recuperationMaterialButtons', this.onWindowBlur)
         window.addEventListener('resize', this.onWindowResize)
     }
 
@@ -360,9 +360,9 @@ export default class Scene1MaterialButtons
 
     destroy()
     {
-        this.inputs?.off?.('sceneinteractdown.scene1MaterialButtons')
-        this.inputs?.off?.('sceneinteractup.scene1MaterialButtons')
-        this.inputs?.off?.('blur.scene1MaterialButtons')
+        this.inputs?.off?.('sceneinteractdown.recuperationMaterialButtons')
+        this.inputs?.off?.('sceneinteractup.recuperationMaterialButtons')
+        this.inputs?.off?.('blur.recuperationMaterialButtons')
         window.removeEventListener('resize', this.onWindowResize)
         this.releaseHeldButton()
         this.releaseCursor()

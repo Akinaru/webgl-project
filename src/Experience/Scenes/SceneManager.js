@@ -1,7 +1,7 @@
 import Experience from '../Experience.js'
 import SceneEnum from '../Enum/SceneEnum.js'
 import MapScene from './Map/MapScene.js'
-import Scene1Scene from './Scene1/Scene1Scene.js'
+import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
 
 export default class SceneManager
 {
@@ -21,7 +21,7 @@ export default class SceneManager
         this.transitionStartAt = 0
 
         this.register(SceneEnum.MAP, () => new MapScene())
-        this.register(SceneEnum.SCENE1, () => new Scene1Scene())
+        this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
 
         this.setTransitionOverlay()
         this.setDebug()
@@ -263,9 +263,9 @@ export default class SceneManager
             {
                 this.switchTo(SceneEnum.MAP)
             },
-            goScene1: () =>
+            goRecuperation: () =>
             {
-                this.switchTo(SceneEnum.SCENE1)
+                this.switchTo(SceneEnum.RECUPERATION)
             }
         }
 
@@ -278,8 +278,8 @@ export default class SceneManager
                     onClick: debugActions.goMap
                 },
                 {
-                    label: 'Scene1',
-                    onClick: debugActions.goScene1
+                    label: 'Recuperation',
+                    onClick: debugActions.goRecuperation
                 }
             ]
         })
