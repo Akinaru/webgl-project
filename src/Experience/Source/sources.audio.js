@@ -18,5 +18,15 @@ export default [
         name: 'voice_2',
         type: 'audioBuffer',
         path: 'sounds/dialogues/voice_2.mp3'
+    },
+    {
+        name: 'waterSplash4Sound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/water-splash-4.mp3'
+    },
+    {
+        name: 'waterUnderSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/water-under.mp3'
     }
 ]

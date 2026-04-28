@@ -74,6 +74,27 @@ waterOpacity *= (1.0 - step(0.5, uMapPlanOnlyFoam));
 vec3 finalColor = mix(waterColor, uMapPlanFoamColor, foamMaskBinary);
 float finalOpacityRaw = max(waterOpacity, foamMaskBinary * uMapPlanFoamOpacity);
 float finalOpacity = clamp(finalOpacityRaw, 0.0, 1.0);
+
+// Very strong underside "frosted" look to heavily hide/blur what is behind
+// the plan when looking from below (back faces).
+float undersideMask = gl_FrontFacing ? 0.0 : 1.0;
+if(undersideMask > 0.5)
+{
+    float frostNoiseA = texture2D(
+        uMapPlanNoiseTexture,
+        (vMapPlanWorldPosition.xz * (uMapPlanFoamNoiseFrequency * 3.2 + 0.0001)) + vec2(uMapPlanLocalTime * 0.11, -uMapPlanLocalTime * 0.09)
+    ).r;
+    float frostNoiseB = texture2D(
+        uMapPlanNoiseTexture,
+        (vMapPlanWorldPosition.xz * (uMapPlanFoamNoiseFrequency * 6.8 + 0.0001)) + vec2(-uMapPlanLocalTime * 0.17, uMapPlanLocalTime * 0.14)
+    ).r;
+    float frostNoise = mix(frostNoiseA, frostNoiseB, 0.55);
+    float frostMix = 0.7 + (frostNoise * 0.25);
+    vec3 frostedTint = mix(uMapPlanBackgroundColor, vec3(0.95, 0.985, 1.0), frostMix);
+    finalColor = mix(finalColor, frostedTint, 0.94);
+    finalOpacity = max(finalOpacity, 0.985);
+}
+
 if(finalOpacity <= 0.001)
 {
     discard;
