@@ -21,12 +21,16 @@ export default class Bloom
 
         this.resource = this.resources.items.bloomModel
         this.bloomColorTexture = this.resources.items.bloomColorTexture ?? null
-        this.bloomOpacityTexture = this.resources.items.bloomOpacityTexture ?? null
+        this.bloomColorTexture2 = this.resources.items.bloomColorTexture2 ?? null
+        this.bloomTransmissionTexture = this.resources.items.bloomTransmissionTexture ?? null
+        this.bloomTransmissionTexture2 = this.resources.items.bloomTransmissionTexture2 ?? null
+        this.bloomReflectionEnvTexture = this.resources.items.bloomReflectionEnvTexture ?? null
 
         this.tuning = {
             facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
             uvZoom: BLOOM_UV_ZOOM,
-            lookTurnSpeed: rails.lookTurnSpeed ?? 11
+            lookTurnSpeed: rails.lookTurnSpeed ?? 11,
+            envMapIntensity: 1
         }
 
         this.tmpQuaternion = new THREE.Quaternion()
@@ -170,7 +174,7 @@ export default class Bloom
 
     applyBloomColorTexture(mesh)
     {
-        if(!this.bloomColorTexture && !this.bloomOpacityTexture)
+        if(!this.bloomColorTexture && !this.bloomTransmissionTexture)
         {
             return
         }
@@ -186,27 +190,69 @@ export default class Bloom
             this.bloomColorTexture.needsUpdate = true
         }
 
-        if(this.bloomOpacityTexture)
+        if(this.bloomColorTexture2)
         {
-            this.bloomOpacityTexture.flipY = false
-            if('NoColorSpace' in THREE)
-            {
-                this.bloomOpacityTexture.colorSpace = THREE.NoColorSpace
-            }
-            this.bloomOpacityTexture.needsUpdate = true
+            this.bloomColorTexture2.flipY = false
+            this.bloomColorTexture2.colorSpace = THREE.SRGBColorSpace
+            this.bloomColorTexture2.needsUpdate = true
         }
 
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-        for(const material of materials)
+        if(this.bloomTransmissionTexture)
         {
-            if(!material)
+            this.bloomTransmissionTexture.flipY = false
+            if('NoColorSpace' in THREE)
             {
+                this.bloomTransmissionTexture.colorSpace = THREE.NoColorSpace
+            }
+            this.bloomTransmissionTexture.needsUpdate = true
+        }
+
+        if(this.bloomTransmissionTexture2)
+        {
+            this.bloomTransmissionTexture2.flipY = false
+            if('NoColorSpace' in THREE)
+            {
+                this.bloomTransmissionTexture2.colorSpace = THREE.NoColorSpace
+            }
+            this.bloomTransmissionTexture2.needsUpdate = true
+        }
+
+        if(this.bloomReflectionEnvTexture)
+        {
+            this.bloomReflectionEnvTexture.mapping = THREE.EquirectangularReflectionMapping
+            if('NoColorSpace' in THREE)
+            {
+                this.bloomReflectionEnvTexture.colorSpace = THREE.NoColorSpace
+            }
+            this.bloomReflectionEnvTexture.needsUpdate = true
+        }
+
+        const transmissionTexture = this.getTransmissionTextureForMesh(mesh)
+        const colorTexture = this.getColorTextureForMesh(mesh)
+
+        const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        const nextMaterials = []
+
+        for(const sourceMaterial of sourceMaterials)
+        {
+            if(!sourceMaterial)
+            {
+                nextMaterials.push(sourceMaterial)
                 continue
             }
 
-            if(this.bloomColorTexture)
+            const material = sourceMaterial instanceof THREE.MeshPhysicalMaterial
+                ? sourceMaterial
+                : new THREE.MeshPhysicalMaterial({
+                    name: sourceMaterial.name,
+                    color: sourceMaterial.color?.clone?.() ?? new THREE.Color('#ffffff'),
+                    roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : 0.25,
+                    metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : 0.05
+                })
+
+            if(colorTexture)
             {
-                material.map = this.bloomColorTexture
+                material.map = colorTexture
             }
 
             material.color?.set?.('#ffffff')
@@ -216,16 +262,22 @@ export default class Bloom
                 material.emissiveIntensity = 1
             }
 
-            if(this.bloomOpacityTexture && hasUv)
+            if(transmissionTexture && hasUv)
             {
-                material.alphaMap = this.bloomOpacityTexture
-                material.alphaTest = 0.5
+                material.transmission = 1
+                material.transmissionMap = transmissionTexture
+                material.thickness = 0.25
+                material.ior = 1.18
+                material.alphaMap = null
+                material.alphaTest = 0
                 material.transparent = true
                 material.opacity = 1
                 material.side = THREE.DoubleSide
             }
             else
             {
+                material.transmission = 0
+                material.transmissionMap = null
                 material.alphaMap = null
                 material.alphaTest = 0
                 material.transparent = false
@@ -233,8 +285,54 @@ export default class Bloom
                 material.side = THREE.FrontSide
             }
 
+            if(transmissionTexture && hasUv)
+            {
+                material.specularIntensityMap = transmissionTexture
+                material.specularIntensity = 1
+            }
+            else
+            {
+                material.specularIntensityMap = null
+            }
+
+            if(this.bloomReflectionEnvTexture)
+            {
+                material.envMap = this.bloomReflectionEnvTexture
+                material.envMapIntensity = this.tuning.envMapIntensity
+            }
+
             material.needsUpdate = true
+            nextMaterials.push(material)
         }
+
+        mesh.material = Array.isArray(mesh.material) ? nextMaterials : nextMaterials[0]
+    }
+
+    getTransmissionTextureForMesh(mesh)
+    {
+        const meshName = String(mesh?.name || '').trim().toLowerCase()
+        if((meshName === 'bras' || meshName === 'bras 1') && this.bloomTransmissionTexture2)
+        {
+            return this.bloomTransmissionTexture2
+        }
+
+        return this.bloomTransmissionTexture
+    }
+
+    getColorTextureForMesh(mesh)
+    {
+        const meshName = String(mesh?.name || '').trim().toLowerCase()
+        if((meshName === 'bras' || meshName === 'bras 1') && this.bloomColorTexture2)
+        {
+            return this.bloomColorTexture2
+        }
+
+        if(meshName === 'bloom' && this.bloomColorTexture)
+        {
+            return this.bloomColorTexture
+        }
+
+        return null
     }
 
     ensureMeshUvAttribute(mesh, forceRegenerate = false)
@@ -334,6 +432,34 @@ export default class Bloom
                 this.ensureMeshUvAttribute(child, true)
             }
             this.applyBloomColorTexture(child)
+        })
+    }
+
+    refreshBloomEnvMapIntensity()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.traverse((child) =>
+        {
+            if(!child?.isMesh || !this.isBloomTargetMesh(child))
+            {
+                return
+            }
+
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+            for(const material of materials)
+            {
+                if(!(material instanceof THREE.MeshPhysicalMaterial))
+                {
+                    continue
+                }
+
+                material.envMapIntensity = this.tuning.envMapIntensity
+                material.needsUpdate = true
+            }
         })
     }
 
@@ -465,6 +591,17 @@ export default class Bloom
             this.refreshBloomTargetMaterials({ forceRegenerateUv: true })
         })
 
+        this.debug.addBinding(this.debugFolder, this.tuning, 'envMapIntensity', {
+            label: 'envMap',
+            min: 0,
+            max: 5,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.envMapIntensity = value
+            this.refreshBloomEnvMapIntensity()
+        })
+
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
             label: 'idleRadius',
             min: 0,
@@ -550,6 +687,7 @@ export default class Bloom
         if(this.model)
         {
             this.updateMotion(deltaSeconds)
+            this.updateFacingTowardsPlayer(deltaSeconds)
             this.updateArms()
             return
         }
@@ -610,6 +748,24 @@ export default class Bloom
         if(didMove)
         {
             return
+        }
+
+        const playerPosition = this.follow.target?.position
+        if(playerPosition instanceof THREE.Vector3)
+        {
+            this.direction
+                .set(
+                    playerPosition.x - this.model.position.x,
+                    0,
+                    playerPosition.z - this.model.position.z
+                )
+
+            if(this.direction.lengthSq() > 1e-8)
+            {
+                this.direction.normalize()
+                this.updateFacingFromDirection(this.direction, deltaSeconds)
+                return
+            }
         }
 
         this.direction
@@ -809,6 +965,30 @@ export default class Bloom
         const deltaYaw = Math.atan2(Math.sin(targetYaw - currentYaw), Math.cos(targetYaw - currentYaw))
         const rotationAlpha = 1 - Math.exp(-this.tuning.lookTurnSpeed * Math.max(0, deltaSeconds))
         this.model.rotation.y = this.baseYaw + currentYaw + (deltaYaw * rotationAlpha)
+    }
+
+    updateFacingTowardsPlayer(deltaSeconds)
+    {
+        if(!this.model || !(this.follow.target?.position instanceof THREE.Vector3))
+        {
+            return false
+        }
+
+        this.direction
+            .set(
+                this.follow.target.position.x - this.model.position.x,
+                0,
+                this.follow.target.position.z - this.model.position.z
+            )
+
+        if(this.direction.lengthSq() <= 1e-8)
+        {
+            return false
+        }
+
+        this.direction.normalize()
+        this.updateFacingFromDirection(this.direction, deltaSeconds)
+        return true
     }
 
     resolveGroundYAt(x, z, fallbackY = 0)
