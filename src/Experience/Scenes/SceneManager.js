@@ -2,6 +2,7 @@ import Experience from '../Experience.js'
 import SceneEnum from '../Enum/SceneEnum.js'
 import MapScene from './Map/MapScene.js'
 import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
+import SceneDistributionScene from './SceneDistribution/SceneDistributionScene.js'
 
 export default class SceneManager
 {
@@ -22,6 +23,7 @@ export default class SceneManager
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
+        this.register(SceneEnum.DISTRIBUTION, () => new SceneDistributionScene())
 
         this.setTransitionOverlay()
         this.setDebug()
@@ -266,12 +268,16 @@ export default class SceneManager
             goRecuperation: () =>
             {
                 this.switchTo(SceneEnum.RECUPERATION)
+            },
+            goDistribution: () =>
+            {
+                this.switchTo(SceneEnum.DISTRIBUTION)
             }
         }
 
         this.debug.addButtons(this.debugFolder, {
             label: 'Liste des scenes',
-            columns: 2,
+            columns: 3,
             buttons: [
                 {
                     label: 'Map',
@@ -280,6 +286,10 @@ export default class SceneManager
                 {
                     label: 'Recuperation',
                     onClick: debugActions.goRecuperation
+                },
+                {
+                    label: 'Distribution',
+                    onClick: debugActions.goDistribution
                 }
             ]
         })
