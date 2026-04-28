@@ -3,6 +3,7 @@ import soundDefinitionsJson from './soundDefinitions.json'
 const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
+const NOW_PLAYING_LINE_LIMIT = 6
 
 export default class SoundManager
 {
@@ -151,13 +152,20 @@ export default class SoundManager
 
         if(hasPlayedBufferSound)
         {
+            this.markSoundPlayed(soundName)
             return true
         }
 
-        return this.playFallbackSound(soundName, definition, {
+        const hasPlayedFallbackSound = this.playFallbackSound(soundName, definition, {
             volume,
             playbackRate
         })
+        if(hasPlayedFallbackSound)
+        {
+            this.markSoundPlayed(soundName)
+        }
+
+        return hasPlayedFallbackSound
     }
 
     playBufferSound(soundName, definition, {
@@ -458,7 +466,14 @@ export default class SoundManager
             forcePlay: true,
             contextState: 'not-created',
             activeVoices: 0,
-            activeVoicesList: 'none'
+            activeVoicesList: 'none',
+            nowPlayingLine1: 'none',
+            nowPlayingLine2: '',
+            nowPlayingLine3: '',
+            nowPlayingLine4: '',
+            nowPlayingLine5: '',
+            nowPlayingLine6: '',
+            lastPlayed: 'none'
         }
 
         this.debugFolder = this.debug.addFolder('🔊 Audio', { expanded: false })
@@ -509,6 +524,21 @@ export default class SoundManager
             label: 'voices',
             readonly: true
         }, 'auto')
+
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine1', {
+            label: 'now1',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine2', { label: 'now2', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine3', { label: 'now3', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine4', { label: 'now4', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine5', { label: 'now5', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine6', { label: 'now6', readonly: true }, 'auto')
+
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'lastPlayed', {
+            label: 'lastPlayed',
+            readonly: true
+        }, 'auto')
     }
 
     getDebugSoundOptions()
@@ -535,6 +565,23 @@ export default class SoundManager
         this.debugState.contextState = this.context?.state || 'not-created'
         this.debugState.activeVoices = this.activeVoices.size
         this.debugState.activeVoicesList = this.getActiveVoicesDebugLabel()
+        const nowPlayingLines = this.getNowPlayingLineValues()
+        this.debugState.nowPlayingLine1 = nowPlayingLines[0] || 'none'
+        this.debugState.nowPlayingLine2 = nowPlayingLines[1] || ''
+        this.debugState.nowPlayingLine3 = nowPlayingLines[2] || ''
+        this.debugState.nowPlayingLine4 = nowPlayingLines[3] || ''
+        this.debugState.nowPlayingLine5 = nowPlayingLines[4] || ''
+        this.debugState.nowPlayingLine6 = nowPlayingLines[5] || ''
+    }
+
+    markSoundPlayed(soundName)
+    {
+        if(!this.debugState)
+        {
+            return
+        }
+
+        this.debugState.lastPlayed = String(soundName || 'unknown')
     }
 
     getActiveVoicesDebugLabel()
@@ -556,6 +603,25 @@ export default class SoundManager
         }
 
         return `${label} | +${voices.length - ACTIVE_SOUNDS_LABEL_LIMIT} more`
+    }
+
+    getNowPlayingLineValues()
+    {
+        if(this.activeVoices.size === 0)
+        {
+            return []
+        }
+
+        const countsByName = new Map()
+        for(const voice of this.activeVoices.values())
+        {
+            const soundName = voice.soundName || 'unknown'
+            countsByName.set(soundName, (countsByName.get(soundName) ?? 0) + 1)
+        }
+
+        return Array.from(countsByName.entries())
+            .slice(0, NOW_PLAYING_LINE_LIMIT)
+            .map(([soundName, count]) => (count > 1 ? `${soundName} x${count}` : soundName))
     }
 
     ensureContext()
