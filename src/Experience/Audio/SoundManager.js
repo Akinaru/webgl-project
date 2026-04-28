@@ -1,56 +1,6 @@
-const SOUND_DEFINITIONS = Object.freeze({
-    menuClick: {
-        label: 'Menu click',
-        resourceKey: 'menuClickSound',
-        fallbackPath: 'sounds/ui/menu-click.mp3',
-        volume: 0.34,
-        playbackRate: 1.02,
-        channel: 'ui'
-    },
-    pauseOpen: {
-        label: 'Pause open',
-        resourceKey: 'pauseOpenSound',
-        fallbackPath: 'sounds/ui/pause-open.mp3',
-        volume: 0.28,
-        playbackRate: 1,
-        channel: 'ui'
-    },
-    waterSplash4: {
-        label: 'Water splash 4',
-        resourceKey: 'waterSplash4Sound',
-        fallbackPath: 'sounds/effects/water-splash-4.mp3',
-        volume: 0.72,
-        playbackRate: 1,
-        channel: 'sfx'
-    },
-    waterSplash: {
-        label: 'Water splash',
-        resourceKey: 'waterSplashSound',
-        fallbackPath: 'sounds/effects/water-splash.mp3',
-        volume: 1,
-        playbackRate: 1,
-        channel: 'sfx'
-    },
-    waterSplash2: {
-        label: 'Water splash 2',
-        resourceKey: 'waterSplash2Sound',
-        fallbackPath: 'sounds/effects/water-splash-2.mp3',
-        volume: 0.4,
-        playbackRate: 1,
-        channel: 'sfx'
-    },
-    waterUnder: {
-        label: 'Water under',
-        resourceKey: 'waterUnderSound',
-        fallbackPath: 'sounds/effects/water-under.mp3',
-        volume: 0.5,
-        playbackRate: 1,
-        loop: true,
-        fadeInMs: 180,
-        fadeOutMs: 220,
-        channel: 'underwater'
-    }
-})
+import soundDefinitionsJson from './soundDefinitions.json'
+
+const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
 
