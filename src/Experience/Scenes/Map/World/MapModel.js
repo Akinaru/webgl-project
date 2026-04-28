@@ -865,6 +865,7 @@ export default class MapModel
         const material = baseMaterial.clone()
         material.userData = material.userData || {}
         material.userData.isMapPlanWaterMaskMaterial = true
+        material.side = THREE.DoubleSide
         material.transparent = true
         material.depthWrite = false
         // Eau de debug visuelle: rendu mat sans reflets speculaires.

@@ -44,7 +44,7 @@ export default class Player
             : this.groundMeshes
 
         this.settings = {
-            height: 1.45,
+            height: 0.8,
             radius: 0.3,
             stepHeight: 0.58,
             walkSpeed: 4.2,

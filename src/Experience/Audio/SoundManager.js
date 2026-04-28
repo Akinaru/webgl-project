@@ -1,21 +1,6 @@
-const SOUND_DEFINITIONS = Object.freeze({
-    menuClick: {
-        label: 'Menu click',
-        resourceKey: 'menuClickSound',
-        fallbackPath: 'sounds/ui/menu-click.mp3',
-        volume: 0.34,
-        playbackRate: 1.02,
-        channel: 'ui'
-    },
-    pauseOpen: {
-        label: 'Pause open',
-        resourceKey: 'pauseOpenSound',
-        fallbackPath: 'sounds/ui/pause-open.mp3',
-        volume: 0.28,
-        playbackRate: 1,
-        channel: 'ui'
-    }
-})
+import soundDefinitionsJson from './soundDefinitions.json'
+
+const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
 
@@ -198,17 +183,53 @@ export default class SoundManager
         sourceNode.playbackRate.value = Math.max(0.05, playbackRate * definition.playbackRate)
 
         const gainNode = context.createGain()
-        gainNode.gain.value = Math.max(0, definition.volume * volume)
+        const targetGain = Math.max(0, definition.volume * volume)
+        const fadeInMs = Number.isFinite(definition.fadeInMs) ? Math.max(0, definition.fadeInMs) : 0
+        const now = context.currentTime
+        gainNode.gain.cancelScheduledValues(now)
+        gainNode.gain.setValueAtTime(fadeInMs > 0 ? 0 : targetGain, now)
+        if(fadeInMs > 0)
+        {
+            gainNode.gain.linearRampToValueAtTime(targetGain, now + (fadeInMs / 1000))
+        }
 
         sourceNode.connect(gainNode)
         gainNode.connect(this.masterGain)
+
+        let stopAlreadyScheduled = false
 
         const voiceId = this.registerVoice({
             soundName,
             channel: definition.channel || 'default',
             sourceType: 'buffer',
-            stop: () =>
+            defaultFadeOutMs: Number.isFinite(definition.fadeOutMs) ? Math.max(0, definition.fadeOutMs) : 0,
+            stop: ({ fadeOutMs = 0 } = {}) =>
             {
+                if(stopAlreadyScheduled)
+                {
+                    return true
+                }
+
+                const safeFadeOutMs = Number.isFinite(fadeOutMs) ? Math.max(0, fadeOutMs) : 0
+                if(safeFadeOutMs > 0)
+                {
+                    stopAlreadyScheduled = true
+                    const currentTime = context.currentTime
+                    const currentGain = gainNode.gain.value
+                    gainNode.gain.cancelScheduledValues(currentTime)
+                    gainNode.gain.setValueAtTime(currentGain, currentTime)
+                    gainNode.gain.linearRampToValueAtTime(0, currentTime + (safeFadeOutMs / 1000))
+                    try
+                    {
+                        sourceNode.stop(currentTime + (safeFadeOutMs / 1000) + 0.02)
+                    }
+                    catch(error)
+                    {
+                        // Source potentiellement deja terminee.
+                    }
+                    return true
+                }
+
                 sourceNode.onended = null
                 try
                 {
@@ -218,6 +239,7 @@ export default class SoundManager
                 {
                     // Source potentiellement deja terminee.
                 }
+                return false
             },
             cleanup: () =>
             {
@@ -307,6 +329,7 @@ export default class SoundManager
         soundName,
         channel = 'default',
         sourceType,
+        defaultFadeOutMs = 0,
         stop,
         cleanup
     } = {})
@@ -318,6 +341,7 @@ export default class SoundManager
             soundName,
             channel,
             sourceType,
+            defaultFadeOutMs,
             stop,
             cleanup
         })
@@ -357,8 +381,12 @@ export default class SoundManager
                 continue
             }
 
-            voice.stop?.()
-            this.removeVoice(voice.id)
+            const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
+            const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
+            if(!handledAsync)
+            {
+                this.removeVoice(voice.id)
+            }
             stoppedCount += 1
         }
 

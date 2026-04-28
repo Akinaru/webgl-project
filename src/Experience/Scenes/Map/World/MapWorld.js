@@ -16,6 +16,11 @@ import bloomRails from './bloomRails.json'
 
 const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
 const MAP_SPAWN_YAW = Math.PI
+const WATER_ENTRY_EPSILON = 0.02
+const PLAYER_HEAD_TOP_OFFSET = 0.04
+const SHALLOW_WATER_MOVE_SPEED_THRESHOLD = 0.08
+const SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS = 220
+const SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS = 520
 
 function isRailsGraph(value)
 {
@@ -74,6 +79,9 @@ export default class MapWorld
         this.resources = this.experience.resources
         this.debug = this.experience.debug
         this.readyEventName = `${EventEnum.READY}.mapWorld${mapWorldInstanceIndex++}`
+        this.wasPlayerBottomUnderWater = false
+        this.isUnderwaterLoopPlaying = false
+        this.shallowWaterSplashCooldownMs = 0
 
         if(this.resources.isReady)
         {
@@ -165,8 +173,78 @@ export default class MapWorld
         this.bloom?.update?.()
         this.player?.update(delta)
         this.collisionDebug?.update?.()
+        this.updateWaterEntrySound()
         this.updateTeleportZoneVisual()
         this.checkTeleportTrigger()
+    }
+
+    updateWaterEntrySound()
+    {
+        const playerY = this.player?.position?.y
+        const playerHeight = this.player?.settings?.height
+        const playerVelocity = this.player?.velocity
+        const waterLevel = this.water?.state?.hauteurEau
+        if(
+            !Number.isFinite(playerY)
+            || !Number.isFinite(playerHeight)
+            || !Number.isFinite(waterLevel)
+        )
+        {
+            return
+        }
+
+        const deltaMs = Number.isFinite(this.experience?.time?.delta) ? this.experience.time.delta : 16
+        const playerBottomY = playerY - playerHeight
+        const playerTopY = playerY + PLAYER_HEAD_TOP_OFFSET
+        const isBottomUnderWater = playerBottomY < (waterLevel - WATER_ENTRY_EPSILON)
+        const isFullyUnderWater = playerTopY < (waterLevel - WATER_ENTRY_EPSILON)
+        const isPartiallyUnderWater = isBottomUnderWater && !isFullyUnderWater
+        const horizontalSpeed = Number.isFinite(playerVelocity?.x) && Number.isFinite(playerVelocity?.z)
+            ? Math.hypot(playerVelocity.x, playerVelocity.z)
+            : 0
+        const isMovingInShallowWater = isPartiallyUnderWater && horizontalSpeed > SHALLOW_WATER_MOVE_SPEED_THRESHOLD
+
+        if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
+        {
+            this.experience.sound?.play?.('waterSplash4')
+        }
+
+        if(isMovingInShallowWater)
+        {
+            this.shallowWaterSplashCooldownMs -= deltaMs
+            if(this.shallowWaterSplashCooldownMs <= 0)
+            {
+                const splashKey = Math.random() < 0.75 ? 'waterSplash' : 'waterSplash2'
+                this.experience.sound?.play?.(splashKey)
+                this.shallowWaterSplashCooldownMs = THREE.MathUtils.randFloat(
+                    SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS,
+                    SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS
+                )
+            }
+        }
+        else
+        {
+            this.shallowWaterSplashCooldownMs = 0
+        }
+
+        if(isFullyUnderWater)
+        {
+            if(!this.isUnderwaterLoopPlaying)
+            {
+                const didPlayLoop = this.experience.sound?.play?.('waterUnder')
+                if(didPlayLoop)
+                {
+                    this.isUnderwaterLoopPlaying = true
+                }
+            }
+        }
+        else if(this.isUnderwaterLoopPlaying)
+        {
+            this.experience.sound?.stopChannel?.('underwater')
+            this.isUnderwaterLoopPlaying = false
+        }
+
+        this.wasPlayerBottomUnderWater = isBottomUnderWater
     }
 
     setTeleportZone()
@@ -308,6 +386,9 @@ export default class MapWorld
     destroy()
     {
         this.resources.off(this.readyEventName)
+        this.experience.sound?.stopChannel?.('underwater')
+        this.isUnderwaterLoopPlaying = false
+        this.wasPlayerBottomUnderWater = false
 
         if(this.player)
         {
