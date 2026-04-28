@@ -110,5 +110,10 @@ export default class Experience
         this.time.destroy()
 
         this.renderer.instance.dispose()
+        instance = null
+        if(window.experience === this)
+        {
+            delete window.experience
+        }
     }
 }

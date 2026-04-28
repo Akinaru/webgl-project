@@ -1565,6 +1565,13 @@ export default class MapModel
         return this.terrainWaterlineSettings?.minY ?? 0
     }
 
+    getTerrainWaterlineSableMaxY()
+    {
+        const minY = this.terrainWaterlineSettings?.minY ?? 0
+        const sableExtraHeight = this.terrainWaterlineSettings?.sableExtraHeight ?? 0
+        return minY + sableExtraHeight
+    }
+
     isPlayerGroundSurface(object)
     {
         return this.isBloomWalkableSurface(object)

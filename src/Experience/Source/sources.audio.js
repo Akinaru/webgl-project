@@ -38,5 +38,15 @@ export default [
         name: 'waterUnderSound',
         type: 'audioBuffer',
         path: 'sounds/effects/water/water-under.mp3'
+    },
+    {
+        name: 'walkingGrassSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/walking/walking-grass.mp3'
+    },
+    {
+        name: 'walkingSandSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/walking/walking-sand.mp3'
     }
 ]

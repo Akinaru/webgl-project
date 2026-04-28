@@ -49,5 +49,27 @@
     "fadeInMs": 180,
     "fadeOutMs": 220,
     "channel": "underwater"
+  },
+  "walkingGrass": {
+    "label": "Walking grass",
+    "resourceKey": "walkingGrassSound",
+    "fallbackPath": "sounds/effects/walking/walking-grass.mp3",
+    "volume": 1,
+    "playbackRate": 2,
+    "loop": true,
+    "fadeInMs": 70,
+    "fadeOutMs": 120,
+    "channel": "footsteps"
+  },
+  "walkingSand": {
+    "label": "Walking sand",
+    "resourceKey": "walkingSandSound",
+    "fallbackPath": "sounds/effects/walking/walking-sand.mp3",
+    "volume": 1,
+    "playbackRate": 2,
+    "loop": true,
+    "fadeInMs": 60,
+    "fadeOutMs": 100,
+    "channel": "footsteps"
   }
 }
