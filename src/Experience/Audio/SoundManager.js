@@ -23,6 +23,22 @@ const SOUND_DEFINITIONS = Object.freeze({
         playbackRate: 1,
         channel: 'sfx'
     },
+    waterSplash: {
+        label: 'Water splash',
+        resourceKey: 'waterSplashSound',
+        fallbackPath: 'sounds/effects/water-splash.mp3',
+        volume: 1,
+        playbackRate: 1,
+        channel: 'sfx'
+    },
+    waterSplash2: {
+        label: 'Water splash 2',
+        resourceKey: 'waterSplash2Sound',
+        fallbackPath: 'sounds/effects/water-splash-2.mp3',
+        volume: 0.4,
+        playbackRate: 1,
+        channel: 'sfx'
+    },
     waterUnder: {
         label: 'Water under',
         resourceKey: 'waterUnderSound',

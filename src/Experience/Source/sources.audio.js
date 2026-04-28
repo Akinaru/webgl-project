@@ -25,6 +25,16 @@ export default [
         path: 'sounds/effects/water-splash-4.mp3'
     },
     {
+        name: 'waterSplashSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/water-splash.mp3'
+    },
+    {
+        name: 'waterSplash2Sound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/water-splash-2.mp3'
+    },
+    {
         name: 'waterUnderSound',
         type: 'audioBuffer',
         path: 'sounds/effects/water-under.mp3'
