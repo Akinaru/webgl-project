@@ -23,6 +23,7 @@ const SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS = 220
 const SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS = 520
 const WALKING_GRASS_SPEED_THRESHOLD = 0.12
 const TERRAIN_SAND_BLEND_HEIGHT = 0.18
+const WATER_SPLASH4_STOP_DELAY_MS = 500
 
 function isRailsGraph(value)
 {
@@ -85,6 +86,7 @@ export default class MapWorld
         this.isUnderwaterLoopPlaying = false
         this.activeFootstepLoop = null
         this.shallowWaterSplashCooldownMs = 0
+        this.splash4StopDelayMs = 0
 
         if(this.resources.isReady)
         {
@@ -216,6 +218,15 @@ export default class MapWorld
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
         {
             this.experience.sound?.play?.('waterSplash4')
+            this.splash4StopDelayMs = 0
+        }
+        else if(!isBottomUnderWater)
+        {
+            this.splash4StopDelayMs += deltaMs
+            if(this.splash4StopDelayMs >= WATER_SPLASH4_STOP_DELAY_MS)
+            {
+                this.experience.sound?.stopSound?.('waterSplash4')
+            }
         }
 
         if(isMovingInShallowWater)

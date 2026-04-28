@@ -401,6 +401,35 @@ export default class SoundManager
         return stoppedCount
     }
 
+    stopSound(soundName)
+    {
+        if(typeof soundName !== 'string' || soundName.trim() === '')
+        {
+            return 0
+        }
+
+        const voices = Array.from(this.activeVoices.values())
+        let stoppedCount = 0
+
+        for(const voice of voices)
+        {
+            if(voice.soundName !== soundName)
+            {
+                continue
+            }
+
+            const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
+            const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
+            if(!handledAsync)
+            {
+                this.removeVoice(voice.id)
+            }
+            stoppedCount += 1
+        }
+
+        return stoppedCount
+    }
+
     normalizeDialogueDefinition(definition)
     {
         if(typeof definition === 'string')
