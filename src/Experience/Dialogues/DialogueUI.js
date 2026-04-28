@@ -318,6 +318,7 @@ export default class DialogueUI
         this.visible = false
         this.root.classList.remove('is-visible')
         this.root.classList.remove('is-offscreen')
+        this.root.classList.remove('is-bottom-fallback')
         this.hideTurnIndicator()
         document.body.classList.remove('is-dialogue-open')
         this.setChoiceCursorMode(false)
@@ -478,8 +479,7 @@ export default class DialogueUI
         this.anchorObject = this.anchorObject?.parent ? this.anchorObject : scene.getObjectByName(this.anchorNodeName)
         if(!this.anchorObject)
         {
-            this.root.classList.add('is-offscreen')
-            this.hideTurnIndicator()
+            this.showBottomFallback()
             return
         }
 
@@ -503,13 +503,14 @@ export default class DialogueUI
 
         if(outOfView)
         {
-            this.root.classList.add('is-offscreen')
-            this.showTurnIndicator(camera, { ndcX, ndcY, ndcZ })
+            this.showBottomFallback()
             return
         }
 
+        this.root.classList.remove('is-bottom-fallback')
         this.root.classList.remove('is-offscreen')
         this.hideTurnIndicator()
+        this.root.style.bottom = ''
         this.anchorScreenPosition.set(
             (ndcX * 0.5 + 0.5) * window.innerWidth,
             (-ndcY * 0.5 + 0.5) * window.innerHeight
@@ -522,6 +523,16 @@ export default class DialogueUI
         {
             this.updateCursorHoverState()
         }
+    }
+
+    showBottomFallback()
+    {
+        this.root.classList.remove('is-offscreen')
+        this.root.classList.add('is-bottom-fallback')
+        this.root.style.left = '50%'
+        this.root.style.top = ''
+        this.root.style.bottom = '18px'
+        this.hideTurnIndicator()
     }
 
     showTurnIndicator(camera, { ndcX = 0, ndcY = 0, ndcZ = 0 } = {})

@@ -641,6 +641,20 @@ body.is-scene1-material-cursor .dialogue__cursor
     opacity: 0;
 }
 
+.dialogue.is-bottom-fallback
+{
+    opacity: 1;
+    left: 50%;
+    top: auto;
+    bottom: 18px;
+    transform: translate(-50%, 0) scale(1);
+}
+
+.dialogue.is-bottom-fallback .dialogue__tail
+{
+    display: none;
+}
+
 .dialogue__panel
 {
     position: relative;
