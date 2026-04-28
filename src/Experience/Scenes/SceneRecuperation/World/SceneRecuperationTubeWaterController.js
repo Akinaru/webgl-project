@@ -36,11 +36,12 @@ const AFTER_20_WINDOW_KEY = 'fenetre-blue_2'
 
 export default class SceneRecuperationTubeWaterController
 {
-    constructor({ recuperationModel } = {})
+    constructor({ recuperationModel, debugParentFolder = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.debug = this.experience.debug
+        this.debugParentFolder = debugParentFolder
         this.recuperationModel = recuperationModel
         this.tubeMeshes = this.recuperationModel?.getTubeWaterMeshes?.() ?? []
         this.rotationTargets = this.recuperationModel?.getTubeWaterRotationTargets?.() ?? []
@@ -133,7 +134,10 @@ export default class SceneRecuperationTubeWaterController
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🧩 Recuperation Tube Flow', { expanded: false })
+        this.debugFolder = this.debug.addFolder('Tube Flow', {
+            parent: this.debugParentFolder || this.debug.ui,
+            expanded: false
+        })
         this.debug.addBinding(this.debugFolder, this.flow, 'fillSpeed', {
             label: 'fillSpeed',
             min: 0.1,

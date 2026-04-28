@@ -2,13 +2,14 @@ import CollisionDebug from '../../../Common/CollisionDebug.js'
 
 export default class SceneRecuperationCollisionDebug extends CollisionDebug
 {
-    constructor({ player, recuperationModel } = {})
+    constructor({ player, recuperationModel, debugParentFolder = null } = {})
     {
         super({
             player,
             getCollisionBoxes: () => recuperationModel?.getCollisionBoxes?.() ?? [],
-            folderLabel: '🧱 Recuperation Collision Debug',
-            groupName: '__recuperationCollisionDebug'
+            folderLabel: 'Collision',
+            groupName: '__recuperationCollisionDebug',
+            debugParentFolder
         })
     }
 }

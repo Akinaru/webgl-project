@@ -6,6 +6,7 @@ import Player from '../../../Common/Player.js'
 import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import SceneRecuperationModel from './SceneRecuperationModel.js'
+import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
@@ -50,6 +51,7 @@ export default class SceneRecuperationWorld
 
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel()
+        this.setDebug()
 
         this.player = new Player({
             groundHeight: 0,
@@ -64,13 +66,19 @@ export default class SceneRecuperationWorld
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
+        this.windTurbine = new SceneRecuperationWindTurbine({
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
+        })
 
         this.tubeWaterController = new SceneRecuperationTubeWaterController({
-            recuperationModel: this.recuperationModel
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
         })
         this.collisionDebug = new SceneRecuperationCollisionDebug({
             player: this.player,
-            recuperationModel: this.recuperationModel
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
         })
         this.materialButtons = new SceneRecuperationMaterialButtons({
             recuperationModel: this.recuperationModel,
@@ -85,9 +93,20 @@ export default class SceneRecuperationWorld
         this.setExitTeleportActive(false)
     }
 
+    setDebug()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || this.debugFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.experience.debug.addFolder('♻️ Recuperation', { expanded: false })
+    }
+
     update(delta = this.experience.time.delta)
     {
         this.light?.update?.(delta)
+        this.windTurbine?.update?.(delta)
         this.player?.update(delta)
         this.checkRoom2FlowTrigger()
         this.tubeWaterController?.update?.()
@@ -475,6 +494,12 @@ export default class SceneRecuperationWorld
             this.collisionDebug = null
         }
 
+        if(this.windTurbine)
+        {
+            this.windTurbine.destroy?.()
+            this.windTurbine = null
+        }
+
         this.clearWallCrossTeleportVisual()
 
         if(this.recuperationModel)
@@ -503,6 +528,8 @@ export default class SceneRecuperationWorld
         this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
         this.isReturningToMap = false
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
 
         this.isSetUp = false
     }
