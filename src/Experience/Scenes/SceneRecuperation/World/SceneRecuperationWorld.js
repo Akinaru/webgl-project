@@ -6,6 +6,7 @@ import Player from '../../../Common/Player.js'
 import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import SceneRecuperationModel from './SceneRecuperationModel.js'
+import SceneRecuperationWater from './SceneRecuperationWater.js'
 import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
@@ -53,6 +54,9 @@ export default class SceneRecuperationWorld
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel({
             debugParentFolder: this.debugFolder
+        })
+        this.water = new SceneRecuperationWater({
+            recuperationModel: this.recuperationModel
         })
 
         this.player = new Player({
@@ -503,6 +507,12 @@ export default class SceneRecuperationWorld
         }
 
         this.clearWallCrossTeleportVisual()
+
+        if(this.water)
+        {
+            this.water.destroy?.()
+            this.water = null
+        }
 
         if(this.recuperationModel)
         {

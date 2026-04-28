@@ -21,18 +21,7 @@ export default class SceneRecuperationModel
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
-        this.debug = this.experience.debug
-        this.debugParentFolder = debugParentFolder
         this.resource = this.resources.items.recuperationModel
-        this.waterDistributionTexture = this.resources.items.recuperationWaterDistributionTexture ?? null
-        this.runtimeMaterials = []
-        this.debugFolder = null
-        this.waterTextureState = {
-            rotationDegrees: 0,
-            flipX: false,
-            flipY: false,
-            edgeSoftness: 0.08
-        }
 
         if(this.resource?.scene)
         {
@@ -42,14 +31,11 @@ export default class SceneRecuperationModel
         {
             this.setFallback()
         }
-
-        this.setDebug()
     }
 
     setModel()
     {
         this.removeStaleRoots()
-        this.disposeRuntimeMaterials()
 
         this.model = this.resource.scene.clone(true)
         this.model.name = '__recuperationModelRoot'
@@ -63,7 +49,6 @@ export default class SceneRecuperationModel
         this.clickableMaterialMeshes = []
         this.tubeWaterMeshes = []
         this.tubeWaterRotationTargets = []
-        this.waterSurfaceMeshes = []
         const tubeWaterTargetIds = new Set()
 
         this.model.traverse((child) =>
@@ -84,11 +69,6 @@ export default class SceneRecuperationModel
             if(!child.geometry?.boundingBox)
             {
                 return
-            }
-
-            if(this.isWaterSurfaceMesh(child))
-            {
-                this.waterSurfaceMeshes.push(child)
             }
 
             if(this.isTubeWaterMesh(child))
@@ -122,7 +102,6 @@ export default class SceneRecuperationModel
 
         })
 
-        this.applyWaterSurfaceTexture()
         this.scene.add(this.model)
         this.model.updateMatrixWorld(true)
         this.buildCollisionBoxes()
@@ -235,172 +214,6 @@ export default class SceneRecuperationModel
     isTubeWaterMesh(mesh)
     {
         return this.hasNameInHierarchy(mesh, [TUBE_WATER_NAME_TOKEN])
-    }
-
-    isWaterSurfaceMesh(mesh)
-    {
-        return String(mesh?.name || '').toLowerCase().trim() === 'water'
-    }
-
-    applyWaterSurfaceTexture()
-    {
-        if(!(this.waterDistributionTexture instanceof THREE.Texture))
-        {
-            return
-        }
-
-        this.waterDistributionTexture.colorSpace = THREE.NoColorSpace
-        this.waterDistributionTexture.flipY = false
-        this.waterDistributionTexture.wrapS = THREE.ClampToEdgeWrapping
-        this.waterDistributionTexture.wrapT = THREE.ClampToEdgeWrapping
-        this.applyWaterSurfaceTextureTransform()
-        this.waterDistributionTexture.needsUpdate = true
-
-        for(const mesh of this.waterSurfaceMeshes ?? [])
-        {
-            const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-            const clonedMaterials = sourceMaterials.map((material) => this.createWaterSurfaceMaterial(material))
-            mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
-        }
-    }
-
-    createWaterSurfaceMaterial(baseMaterial)
-    {
-        const material = baseMaterial?.clone?.() ?? baseMaterial
-        if(!material)
-        {
-            return material
-        }
-
-        material.userData = material.userData || {}
-        material.userData.recuperationWaterMaskUniforms = {
-            edgeSoftness: { value: this.waterTextureState.edgeSoftness }
-        }
-
-        material.alphaMap = this.waterDistributionTexture
-        material.transparent = true
-        material.alphaTest = 0.001
-        material.depthWrite = false
-        material.side = THREE.DoubleSide
-        material.onBeforeCompile = (shader) =>
-        {
-            shader.uniforms.uRecuperationWaterMaskSoftness = material.userData.recuperationWaterMaskUniforms.edgeSoftness
-            shader.fragmentShader = shader.fragmentShader
-                .replace(
-                    '#include <alphamap_pars_fragment>',
-                    `#include <alphamap_pars_fragment>
-uniform float uRecuperationWaterMaskSoftness;`
-                )
-                .replace(
-                    '#include <alphamap_fragment>',
-                    `#include <alphamap_fragment>
-#ifdef USE_ALPHAMAP
-    float waterMaskAlpha = diffuseColor.a;
-    float waterMaskSoftness = clamp(uRecuperationWaterMaskSoftness, 0.0001, 0.5);
-    diffuseColor.a = smoothstep(
-        0.5 - waterMaskSoftness,
-        0.5 + waterMaskSoftness,
-        waterMaskAlpha
-    );
-#endif`
-                )
-        }
-        material.customProgramCacheKey = () =>
-        {
-            const parentKey = typeof baseMaterial?.customProgramCacheKey === 'function'
-                ? baseMaterial.customProgramCacheKey()
-                : ''
-            return `${parentKey}__recuperationWaterMaskSoftnessV1`
-        }
-        material.needsUpdate = true
-
-        this.runtimeMaterials.push(material)
-        return material
-    }
-
-    applyWaterSurfaceTextureTransform()
-    {
-        if(!(this.waterDistributionTexture instanceof THREE.Texture))
-        {
-            return
-        }
-
-        const repeatX = this.waterTextureState.flipX ? -1 : 1
-        const repeatY = this.waterTextureState.flipY ? -1 : 1
-
-        this.waterDistributionTexture.center.set(0.5, 0.5)
-        this.waterDistributionTexture.repeat.set(repeatX, repeatY)
-        this.waterDistributionTexture.offset.set(
-            this.waterTextureState.flipX ? 1 : 0,
-            this.waterTextureState.flipY ? 1 : 0
-        )
-        this.waterDistributionTexture.rotation = THREE.MathUtils.degToRad(this.waterTextureState.rotationDegrees)
-        this.waterDistributionTexture.needsUpdate = true
-    }
-
-    applyWaterSurfaceMaterialSettings()
-    {
-        for(const material of this.runtimeMaterials ?? [])
-        {
-            const uniforms = material?.userData?.recuperationWaterMaskUniforms
-            if(!uniforms?.edgeSoftness)
-            {
-                continue
-            }
-
-            uniforms.edgeSoftness.value = this.waterTextureState.edgeSoftness
-            material.needsUpdate = true
-        }
-    }
-
-    setDebug()
-    {
-        if(!this.debug?.isDebugEnabled)
-        {
-            return
-        }
-
-        this.debugFolder = this.debug.addFolder('Eau surface', {
-            parent: this.debugParentFolder || this.debug.ui,
-            expanded: false
-        })
-
-        this.debug.addBinding(this.debugFolder, this.waterTextureState, 'rotationDegrees', {
-            label: 'rotation',
-            options: {
-                '0°': 0,
-                '90°': 90,
-                '180°': 180,
-                '270°': 270
-            }
-        }).on('change', () =>
-        {
-            this.applyWaterSurfaceTextureTransform()
-        })
-
-        this.debug.addBinding(this.debugFolder, this.waterTextureState, 'flipX', {
-            label: 'flipX'
-        }).on('change', () =>
-        {
-            this.applyWaterSurfaceTextureTransform()
-        })
-
-        this.debug.addBinding(this.debugFolder, this.waterTextureState, 'flipY', {
-            label: 'flipY'
-        }).on('change', () =>
-        {
-            this.applyWaterSurfaceTextureTransform()
-        })
-
-        this.debug.addBinding(this.debugFolder, this.waterTextureState, 'edgeSoftness', {
-            label: 'softness',
-            min: 0.001,
-            max: 0.35,
-            step: 0.001
-        }).on('change', () =>
-        {
-            this.applyWaterSurfaceMaterialSettings()
-        })
     }
 
     getTubeWaterRotationTargetFromObject(object)
@@ -543,16 +356,6 @@ uniform float uRecuperationWaterMaskSoftness;`
         {
             this.scene.remove(staleRoot)
         }
-    }
-
-    disposeRuntimeMaterials()
-    {
-        for(const material of this.runtimeMaterials ?? [])
-        {
-            material?.dispose?.()
-        }
-
-        this.runtimeMaterials = []
     }
 
     getCollisionBoxes()
@@ -742,10 +545,6 @@ uniform float uRecuperationWaterMaskSoftness;`
 
     destroy()
     {
-        this.disposeRuntimeMaterials()
-        this.debugFolder?.dispose?.()
-        this.debugFolder = null
-
         if(this.model)
         {
             this.scene.remove(this.model)
@@ -766,7 +565,6 @@ uniform float uRecuperationWaterMaskSoftness;`
         this.clickableMaterialMeshes = null
         this.tubeWaterMeshes = null
         this.tubeWaterRotationTargets = null
-        this.waterSurfaceMeshes = null
         this.worldBounds = null
     }
 }
