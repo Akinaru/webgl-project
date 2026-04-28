@@ -1,4 +1,5 @@
 import soundDefinitionsJson from './soundDefinitions.json'
+import { getBushSoundUrls } from './bushSoundBank.js'
 
 const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 
@@ -25,6 +26,7 @@ export default class SoundManager
         this.debugState = null
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
+        this.bushSoundUrls = getBushSoundUrls()
     }
 
     init()
@@ -70,6 +72,50 @@ export default class SoundManager
     playPauseOpen(options = {})
     {
         return this.play('pauseOpen', options)
+    }
+
+    playRandomBush({
+        force = false,
+        volume = 1,
+        playbackRate = 1,
+        channel = 'bush'
+    } = {})
+    {
+        if(!Array.isArray(this.bushSoundUrls) || this.bushSoundUrls.length === 0)
+        {
+            return false
+        }
+
+        const randomIndex = Math.floor(Math.random() * this.bushSoundUrls.length)
+        const fallbackPath = this.bushSoundUrls[randomIndex]
+        if(typeof fallbackPath !== 'string' || fallbackPath.length === 0)
+        {
+            return false
+        }
+
+        if(fallbackPath.endsWith('/bush-1.mp3') && SOUND_DEFINITIONS.bush1)
+        {
+            return this.play('bush1', {
+                force,
+                volume,
+                playbackRate,
+                channel
+            })
+        }
+
+        return this.playSoundDefinition({
+            soundName: `bush:${randomIndex}`,
+            definition: {
+                resourceKey: '',
+                fallbackPath,
+                volume: 1,
+                playbackRate: 1,
+                channel
+            },
+            force,
+            volume,
+            playbackRate
+        })
     }
 
     play(soundName, {
@@ -385,35 +431,6 @@ export default class SoundManager
         for(const voice of voices)
         {
             if(voice.channel !== channel)
-            {
-                continue
-            }
-
-            const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
-            const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
-            if(!handledAsync)
-            {
-                this.removeVoice(voice.id)
-            }
-            stoppedCount += 1
-        }
-
-        return stoppedCount
-    }
-
-    stopSound(soundName)
-    {
-        if(typeof soundName !== 'string' || soundName.trim() === '')
-        {
-            return 0
-        }
-
-        const voices = Array.from(this.activeVoices.values())
-        let stoppedCount = 0
-
-        for(const voice of voices)
-        {
-            if(voice.soundName !== soundName)
             {
                 continue
             }

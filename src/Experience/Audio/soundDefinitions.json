@@ -11,8 +11,8 @@
     "label": "Pause open",
     "resourceKey": "pauseOpenSound",
     "fallbackPath": "sounds/ui/pause-open.mp3",
-    "volume": 0.28,
-    "playbackRate": 1,
+    "volume": 0.1,
+    "playbackRate": 3,
     "channel": "ui"
   },
   "waterSplash4": {
@@ -71,5 +71,13 @@
     "fadeInMs": 60,
     "fadeOutMs": 100,
     "channel": "footsteps"
+  },
+  "bush1": {
+    "label": "Bush 1",
+    "resourceKey": "bush1Sound",
+    "fallbackPath": "sounds/effects/bush/bush-1.mp3",
+    "volume": 0.1,
+    "playbackRate": 1,
+    "channel": "bush"
   }
 }

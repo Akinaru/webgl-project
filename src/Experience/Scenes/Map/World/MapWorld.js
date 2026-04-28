@@ -23,7 +23,8 @@ const SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS = 220
 const SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS = 520
 const WALKING_GRASS_SPEED_THRESHOLD = 0.12
 const TERRAIN_SAND_BLEND_HEIGHT = 0.18
-const WATER_SPLASH4_STOP_DELAY_MS = 500
+const BUSH_TRIGGER_COOLDOWN_MS = 220
+const BUSH_SOUND_MOVE_SPEED_THRESHOLD = 0.06
 
 function isRailsGraph(value)
 {
@@ -86,7 +87,8 @@ export default class MapWorld
         this.isUnderwaterLoopPlaying = false
         this.activeFootstepLoop = null
         this.shallowWaterSplashCooldownMs = 0
-        this.splash4StopDelayMs = 0
+        this.wasInsideBush = false
+        this.bushTriggerCooldownMs = 0
 
         if(this.resources.isReady)
         {
@@ -179,8 +181,43 @@ export default class MapWorld
         this.player?.update(delta)
         this.collisionDebug?.update?.()
         this.updateWaterEntrySound()
+        this.updateBushSound(delta)
         this.updateTeleportZoneVisual()
         this.checkTeleportTrigger()
+    }
+
+    updateBushSound(deltaMs = this.experience.time.delta)
+    {
+        const playerPosition = this.player?.position
+        if(!playerPosition || !this.bushes)
+        {
+            this.wasInsideBush = false
+            return
+        }
+
+        const safeDeltaMs = Number.isFinite(deltaMs) ? Math.max(0, deltaMs) : 16
+        this.bushTriggerCooldownMs = Math.max(0, this.bushTriggerCooldownMs - safeDeltaMs)
+
+        const isInsideBush = this.bushes.isPointInsideBush?.(playerPosition.x, playerPosition.z, this.player?.settings?.radius ?? 0.2) === true
+        const playerVelocity = this.player?.velocity
+        const horizontalSpeed = Number.isFinite(playerVelocity?.x) && Number.isFinite(playerVelocity?.z)
+            ? Math.hypot(playerVelocity.x, playerVelocity.z)
+            : 0
+        const isMovingInBush = isInsideBush && horizontalSpeed > BUSH_SOUND_MOVE_SPEED_THRESHOLD
+
+        if(isMovingInBush && this.bushTriggerCooldownMs <= 0)
+        {
+            const played = this.experience.sound?.playRandomBush?.({
+                volume: 1,
+                playbackRate: 1
+            })
+            if(played)
+            {
+                this.bushTriggerCooldownMs = BUSH_TRIGGER_COOLDOWN_MS
+            }
+        }
+
+        this.wasInsideBush = isInsideBush
     }
 
     updateWaterEntrySound()
@@ -218,15 +255,6 @@ export default class MapWorld
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
         {
             this.experience.sound?.play?.('waterSplash4')
-            this.splash4StopDelayMs = 0
-        }
-        else if(!isBottomUnderWater)
-        {
-            this.splash4StopDelayMs += deltaMs
-            if(this.splash4StopDelayMs >= WATER_SPLASH4_STOP_DELAY_MS)
-            {
-                this.experience.sound?.stopSound?.('waterSplash4')
-            }
         }
 
         if(isMovingInShallowWater)
