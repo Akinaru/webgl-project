@@ -13,5 +13,10 @@ export default [
         name: 'recuperationModel',
         type: 'gltfModel',
         path: 'models/SceneRecuperation.gltf'
+    },
+    {
+        name: 'distributionModel',
+        type: 'gltfModel',
+        path: 'models/SceneDistribution.gltf'
     }
 ]

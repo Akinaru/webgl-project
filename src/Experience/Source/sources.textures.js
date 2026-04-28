@@ -13,5 +13,10 @@ export default [
         name: 'bushFoliageAlphaTexture',
         type: 'texture',
         path: 'textures/foliage/foliageSDF.png'
+    },
+    {
+        name: 'recuperationWaterDistributionTexture',
+        type: 'texture',
+        path: 'textures/water/uvWaterDistribution.jpg'
     }
 ]
