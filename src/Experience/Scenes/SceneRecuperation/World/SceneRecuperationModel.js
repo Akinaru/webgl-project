@@ -14,14 +14,14 @@ const CLICKABLE_MATERIAL_NAMES = new Set(['materiau0', 'materiau1', 'materiau2']
 const TUBE_WATER_NAME_TOKEN = 'tube-water'
 const MODULE_ROTATION_TARGET_PATTERN = /^module-(?:angle|straight)(?:_instance)?(?:[_\s-].*)?$/i
 
-export default class Scene1Model
+export default class SceneRecuperationModel
 {
     constructor()
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
-        this.resource = this.resources.items.scene1Model
+        this.resource = this.resources.items.recuperationModel
 
         if(this.resource?.scene)
         {
@@ -38,8 +38,8 @@ export default class Scene1Model
         this.removeStaleRoots()
 
         this.model = this.resource.scene.clone(true)
-        this.model.name = '__scene1ModelRoot'
-        this.model.userData.isScene1ModelRoot = true
+        this.model.name = '__recuperationModelRoot'
+        this.model.userData.isRecuperationModelRoot = true
         this.model.position.set(0, 0, 0)
         this.model.scale.set(1, 1, 1)
 
@@ -121,7 +121,7 @@ export default class Scene1Model
         this.fallback.position.y = 0.75
         this.fallback.castShadow = true
         this.fallback.receiveShadow = true
-        this.fallback.userData.isScene1ModelRoot = true
+        this.fallback.userData.isRecuperationModelRoot = true
         this.scene.add(this.fallback)
         this.fallback.updateMatrixWorld(true)
 
@@ -346,7 +346,7 @@ export default class Scene1Model
         const staleRoots = []
         for(const child of this.scene.children)
         {
-            if(child?.userData?.isScene1ModelRoot)
+            if(child?.userData?.isRecuperationModelRoot)
             {
                 staleRoots.push(child)
             }

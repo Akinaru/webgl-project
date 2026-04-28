@@ -571,12 +571,12 @@ body.is-pointer-locked .hud__crosshair
     opacity: 1;
 }
 
-body.is-scene1-material-cursor .hud__crosshair
+body.is-recuperation-material-cursor .hud__crosshair
 {
     opacity: 0;
 }
 
-body.is-scene1-material-cursor .dialogue__cursor
+body.is-recuperation-material-cursor .dialogue__cursor
 {
     opacity: 1 !important;
 }
