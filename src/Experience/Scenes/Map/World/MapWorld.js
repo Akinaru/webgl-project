@@ -25,6 +25,7 @@ const WALKING_GRASS_SPEED_THRESHOLD = 0.12
 const TERRAIN_SAND_BLEND_HEIGHT = 0.18
 const BUSH_TRIGGER_COOLDOWN_MS = 220
 const BUSH_SOUND_MOVE_SPEED_THRESHOLD = 0.06
+const FOOTSTEP_RATE_EPSILON = 0.02
 
 function isRailsGraph(value)
 {
@@ -86,6 +87,7 @@ export default class MapWorld
         this.wasPlayerBottomUnderWater = false
         this.isUnderwaterLoopPlaying = false
         this.activeFootstepLoop = null
+        this.activeFootstepPlaybackRate = 1
         this.shallowWaterSplashCooldownMs = 0
         this.wasInsideBush = false
         this.bushTriggerCooldownMs = 0
@@ -278,7 +280,8 @@ export default class MapWorld
         const nextFootstepLoop = isWalkingOnReliefAbovePlan
             ? (isOnSandTintBand ? 'walkingSand' : 'walkingGrass')
             : null
-        this.syncFootstepLoop(nextFootstepLoop)
+        const footstepPlaybackRate = this.getFootstepPlaybackRate()
+        this.syncFootstepLoop(nextFootstepLoop, footstepPlaybackRate)
 
         if(isFullyUnderWater)
         {
@@ -443,6 +446,7 @@ export default class MapWorld
         this.experience.sound?.stopChannel?.('footsteps')
         this.isUnderwaterLoopPlaying = false
         this.activeFootstepLoop = null
+        this.activeFootstepPlaybackRate = 1
         this.wasPlayerBottomUnderWater = false
 
         if(this.player)
@@ -532,28 +536,49 @@ export default class MapWorld
         this.isSetUp = false
     }
 
-    syncFootstepLoop(nextSoundName)
+    getFootstepPlaybackRate()
+    {
+        const speedMultiplier = this.player?.settings?.speedMultiplier
+        if(!Number.isFinite(speedMultiplier))
+        {
+            return 1
+        }
+
+        return THREE.MathUtils.clamp(speedMultiplier * 1.5, 0.2, 8)
+    }
+
+    syncFootstepLoop(nextSoundName, playbackRate = 1)
     {
         const normalizedNext = typeof nextSoundName === 'string' && nextSoundName !== ''
             ? nextSoundName
             : null
-        if(this.activeFootstepLoop === normalizedNext)
+        const normalizedRate = Number.isFinite(playbackRate)
+            ? Math.max(0.05, playbackRate)
+            : 1
+        if(
+            this.activeFootstepLoop === normalizedNext
+            && Math.abs((this.activeFootstepPlaybackRate ?? 1) - normalizedRate) <= FOOTSTEP_RATE_EPSILON
+        )
         {
             return
         }
 
         this.experience.sound?.stopChannel?.('footsteps')
         this.activeFootstepLoop = null
+        this.activeFootstepPlaybackRate = 1
 
         if(!normalizedNext)
         {
             return
         }
 
-        const didPlay = this.experience.sound?.play?.(normalizedNext)
+        const didPlay = this.experience.sound?.play?.(normalizedNext, {
+            playbackRate: normalizedRate
+        })
         if(didPlay)
         {
             this.activeFootstepLoop = normalizedNext
+            this.activeFootstepPlaybackRate = normalizedRate
         }
     }
 }

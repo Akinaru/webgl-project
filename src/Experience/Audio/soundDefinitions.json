@@ -76,7 +76,7 @@
     "label": "Bush 1",
     "resourceKey": "bush1Sound",
     "fallbackPath": "sounds/effects/bush/bush-1.mp3",
-    "volume": 0.1,
+    "volume": 0.04,
     "playbackRate": 1,
     "channel": "bush"
   }
