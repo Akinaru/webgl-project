@@ -49,6 +49,7 @@ export default class Player
             stepHeight: 0.58,
             walkSpeed: 4.2,
             sprintSpeed: 7,
+            speedMultiplier: 0.7,
             acceleration: 18,
             gravity: 24,
             jumpSpeed: 8.4,
@@ -210,6 +211,12 @@ export default class Player
             max: 1.2,
             step: 0.01
         })
+        this.debug.addBinding(this.debugFolder, this.settings, 'speedMultiplier', {
+            label: 'speed',
+            min: 0.2,
+            max: 4,
+            step: 0.01
+        })
 
         this.debug.addBinding(this.debugFolder, this.settings, 'headBobAmplitude', {
             label: 'bobAmp',
@@ -284,7 +291,8 @@ export default class Player
     updateVelocity(deltaSeconds)
     {
         const isSprinting = this.inputs.isPressed('ShiftLeft', 'ShiftRight')
-        const currentSpeed = isSprinting ? this.settings.sprintSpeed : this.settings.walkSpeed
+        const speedMultiplier = Math.max(0, this.settings.speedMultiplier ?? 1)
+        const currentSpeed = (isSprinting ? this.settings.sprintSpeed : this.settings.walkSpeed) * speedMultiplier
         const movementEnabled = this.isPointerLocked
 
         this.forwardDirection.set(0, 0, -1).applyAxisAngle(UP_AXIS, this.yaw)

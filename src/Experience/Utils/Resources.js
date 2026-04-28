@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import EventEmitter from './EventEmitter.js'
 import EventEnum from '../Enum/EventEnum.js'
 
@@ -29,6 +30,7 @@ export default class Resources extends EventEmitter
         this.loaders = {}
         this.loaders.gltfLoader = new GLTFLoader()
         this.loaders.textureLoader = new THREE.TextureLoader()
+        this.loaders.exrLoader = new EXRLoader()
         this.loaders.cubeTextureLoader = new THREE.CubeTextureLoader()
         this.loaders.audioLoader = new THREE.AudioLoader()
     }
@@ -73,6 +75,22 @@ export default class Resources extends EventEmitter
             else if(source.type === 'texture')
             {
                 this.loaders.textureLoader.load(
+                    source.path,
+                    (file) =>
+                    {
+                        this.sourceLoaded(source, file)
+                    },
+                    undefined,
+                    (error) =>
+                    {
+                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
+                        this.sourceLoaded(source, null)
+                    }
+                )
+            }
+            else if(source.type === 'exrTexture')
+            {
+                this.loaders.exrLoader.load(
                     source.path,
                     (file) =>
                     {

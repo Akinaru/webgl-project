@@ -46,6 +46,7 @@ export default class Bushes
         this.tmpBounds = new THREE.Box3()
         this.tmpMeshBounds = new THREE.Box3()
         this.dummy = new THREE.Object3D()
+        this.instanceColliders = []
 
         this.init()
     }
@@ -333,6 +334,7 @@ export default class Bushes
         const scaleMin = Math.max(0.01, Math.min(this.state.echelleMin, this.state.echelleMax))
         const scaleMax = Math.max(scaleMin, Math.max(this.state.echelleMin, this.state.echelleMax))
         const random = this.createSeededRandom((Math.floor(this.state.graineRepartition) ^ 0x9E3779B9) >>> 0)
+        const colliders = []
 
         let appliedCount = 0
         for(const point of points)
@@ -347,6 +349,11 @@ export default class Bushes
             this.dummy.updateMatrix()
 
             this.instancedMesh.setMatrixAt(appliedCount, this.dummy.matrix)
+            colliders.push({
+                x: this.dummy.position.x,
+                z: this.dummy.position.z,
+                radius: Math.max(0.12, scale * 0.6)
+            })
             appliedCount++
         }
 
@@ -354,6 +361,28 @@ export default class Bushes
         this.instancedMesh.instanceMatrix.needsUpdate = true
         this.instancedMesh.computeBoundingSphere()
         this.state.buissonsActifs = appliedCount
+        this.instanceColliders = colliders
+    }
+
+    isPointInsideBush(x, z, extraRadius = 0.18)
+    {
+        if(!Number.isFinite(x) || !Number.isFinite(z) || !Array.isArray(this.instanceColliders))
+        {
+            return false
+        }
+
+        for(const collider of this.instanceColliders)
+        {
+            const radius = Math.max(0, (collider.radius ?? 0) + extraRadius)
+            const dx = x - collider.x
+            const dz = z - collider.z
+            if((dx * dx) + (dz * dz) <= (radius * radius))
+            {
+                return true
+            }
+        }
+
+        return false
     }
 
     disposeInstancedMesh()
@@ -562,6 +591,7 @@ export default class Bushes
         this.tmpBounds = null
         this.tmpMeshBounds = null
         this.dummy = null
+        this.instanceColliders = null
         this.foliageAlphaTexture = null
         this.windPerlinTexture?.dispose?.()
         this.windPerlinTexture = null
