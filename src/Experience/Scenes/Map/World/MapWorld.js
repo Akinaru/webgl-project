@@ -21,6 +21,8 @@ const PLAYER_HEAD_TOP_OFFSET = 0.04
 const SHALLOW_WATER_MOVE_SPEED_THRESHOLD = 0.08
 const SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS = 220
 const SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS = 520
+const WALKING_GRASS_SPEED_THRESHOLD = 0.12
+const TERRAIN_SAND_BLEND_HEIGHT = 0.18
 
 function isRailsGraph(value)
 {
@@ -81,6 +83,7 @@ export default class MapWorld
         this.readyEventName = `${EventEnum.READY}.mapWorld${mapWorldInstanceIndex++}`
         this.wasPlayerBottomUnderWater = false
         this.isUnderwaterLoopPlaying = false
+        this.activeFootstepLoop = null
         this.shallowWaterSplashCooldownMs = 0
 
         if(this.resources.isReady)
@@ -196,6 +199,7 @@ export default class MapWorld
         const deltaMs = Number.isFinite(this.experience?.time?.delta) ? this.experience.time.delta : 16
         const playerBottomY = playerY - playerHeight
         const playerTopY = playerY + PLAYER_HEAD_TOP_OFFSET
+        const terrainSableMaxY = this.mapModel?.getTerrainWaterlineSableMaxY?.() ?? Number.NEGATIVE_INFINITY
         const isBottomUnderWater = playerBottomY < (waterLevel - WATER_ENTRY_EPSILON)
         const isFullyUnderWater = playerTopY < (waterLevel - WATER_ENTRY_EPSILON)
         const isPartiallyUnderWater = isBottomUnderWater && !isFullyUnderWater
@@ -203,6 +207,11 @@ export default class MapWorld
             ? Math.hypot(playerVelocity.x, playerVelocity.z)
             : 0
         const isMovingInShallowWater = isPartiallyUnderWater && horizontalSpeed > SHALLOW_WATER_MOVE_SPEED_THRESHOLD
+        const isAbovePlan = playerBottomY > (waterLevel + WATER_ENTRY_EPSILON)
+        const isWalkingOnReliefAbovePlan = Boolean(this.player?.isOnGround)
+            && isAbovePlan
+            && horizontalSpeed > WALKING_GRASS_SPEED_THRESHOLD
+        const isOnSandTintBand = playerBottomY <= (terrainSableMaxY + TERRAIN_SAND_BLEND_HEIGHT)
 
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
         {
@@ -226,6 +235,11 @@ export default class MapWorld
         {
             this.shallowWaterSplashCooldownMs = 0
         }
+
+        const nextFootstepLoop = isWalkingOnReliefAbovePlan
+            ? (isOnSandTintBand ? 'walkingSand' : 'walkingGrass')
+            : null
+        this.syncFootstepLoop(nextFootstepLoop)
 
         if(isFullyUnderWater)
         {
@@ -387,7 +401,9 @@ export default class MapWorld
     {
         this.resources.off(this.readyEventName)
         this.experience.sound?.stopChannel?.('underwater')
+        this.experience.sound?.stopChannel?.('footsteps')
         this.isUnderwaterLoopPlaying = false
+        this.activeFootstepLoop = null
         this.wasPlayerBottomUnderWater = false
 
         if(this.player)
@@ -475,5 +491,30 @@ export default class MapWorld
         this.teleportZone = null
 
         this.isSetUp = false
+    }
+
+    syncFootstepLoop(nextSoundName)
+    {
+        const normalizedNext = typeof nextSoundName === 'string' && nextSoundName !== ''
+            ? nextSoundName
+            : null
+        if(this.activeFootstepLoop === normalizedNext)
+        {
+            return
+        }
+
+        this.experience.sound?.stopChannel?.('footsteps')
+        this.activeFootstepLoop = null
+
+        if(!normalizedNext)
+        {
+            return
+        }
+
+        const didPlay = this.experience.sound?.play?.(normalizedNext)
+        if(didPlay)
+        {
+            this.activeFootstepLoop = normalizedNext
+        }
     }
 }
