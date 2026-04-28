@@ -25,66 +25,26 @@
             {
               "id": "inventeur",
               "text": "J observe, je teste, j invente.",
-              "actions": [
-                {
-                  "type": "recordAction",
-                  "actionId": "bloom.role.inventeur.chosen"
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "inventeur"
-                }
-              ],
-              "next": "inventeur_reply"
+              "next": "inventeur_reply",
+              "conditions": []
             },
             {
               "id": "meneur",
               "text": "Je prends les decisions et je motive.",
-              "actions": [
-                {
-                  "type": "recordAction",
-                  "actionId": "bloom.role.meneur.chosen"
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "meneur"
-                }
-              ],
-              "next": "meneur_reply"
+              "next": "meneur_reply",
+              "conditions": []
             },
             {
               "id": "travailleur",
               "text": "Je fonce et j execute proprement.",
-              "actions": [
-                {
-                  "type": "recordAction",
-                  "actionId": "bloom.role.travailleur.chosen"
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "travailleur"
-                }
-              ],
-              "next": "travailleur_reply"
+              "next": "travailleur_reply",
+              "conditions": []
             },
             {
               "id": "botaniste",
               "text": "Je protege le vivant et je cultive.",
-              "actions": [
-                {
-                  "type": "recordAction",
-                  "actionId": "bloom.role.botaniste.chosen"
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "botaniste"
-                }
-              ],
-              "next": "botaniste_reply"
+              "next": "botaniste_reply",
+              "conditions": []
             }
           ]
         },
@@ -120,30 +80,14 @@
             {
               "id": "yes",
               "text": "Oui, lance-le.",
-              "actions": [
-                {
-                  "type": "setFlag",
-                  "key": "calibration_requested",
-                  "value": true
-                },
-                {
-                  "type": "startMiniGame",
-                  "key": "calibration.v1"
-                }
-              ],
-              "next": "mission_yes"
+              "next": "mission_yes",
+              "conditions": []
             },
             {
               "id": "no",
               "text": "Pas maintenant.",
-              "actions": [
-                {
-                  "type": "setFlag",
-                  "key": "calibration_requested",
-                  "value": false
-                }
-              ],
-              "next": "mission_no"
+              "next": "mission_no",
+              "conditions": []
             }
           ]
         },
@@ -212,8 +156,9 @@
           "next": "end",
           "actions": [
             {
-              "type": "recordAction",
-              "actionId": "bloom.bonus.botaniste.granted"
+              "type": "addMetier",
+              "metier": "BOTANISTE",
+              "amount": 1
             }
           ]
         },
@@ -224,8 +169,9 @@
           "next": "end",
           "actions": [
             {
-              "type": "recordAction",
-              "actionId": "bloom.bonus.travailleur.granted"
+              "type": "addMetier",
+              "metier": "TRAVAILLEUR",
+              "amount": 1
             }
           ]
         },
@@ -236,8 +182,9 @@
           "next": "end",
           "actions": [
             {
-              "type": "recordAction",
-              "actionId": "bloom.bonus.meneur.granted"
+              "type": "addMetier",
+              "metier": "MENEUR",
+              "amount": 1
             }
           ]
         },
@@ -248,8 +195,9 @@
           "next": "end",
           "actions": [
             {
-              "type": "recordAction",
-              "actionId": "bloom.bonus.inventeur.granted"
+              "type": "addMetier",
+              "metier": "INVENTEUR",
+              "amount": 1
             }
           ]
         },
@@ -295,25 +243,12 @@
             {
               "id": "train",
               "text": "Un mini entrainement",
-              "actions": [
-                {
-                  "type": "startMiniGame",
-                  "key": "training.loop",
-                  "payload": null
-                }
-              ],
               "next": "action_1",
               "conditions": []
             },
             {
               "id": "scene",
               "text": "Changer de scene",
-              "actions": [
-                {
-                  "type": "switchScene",
-                  "scene": "complexe"
-                }
-              ],
               "next": "action_1",
               "conditions": []
             },
@@ -321,8 +256,7 @@
               "id": "nothing",
               "text": "Rien, on continue.",
               "next": "action_1",
-              "conditions": [],
-              "actions": []
+              "conditions": []
             }
           ]
         },
@@ -334,7 +268,7 @@
               "key": "",
               "value": true,
               "nodeId": "n9",
-              "lockToNode": false
+              "lockToNode": true
             }
           ],
           "next": ""
@@ -362,22 +296,19 @@
               "id": "choice_1",
               "text": "1",
               "next": "line_1",
-              "conditions": [],
-              "actions": []
+              "conditions": []
             },
             {
               "id": "choice_2",
               "text": "2",
               "next": "line_2",
-              "conditions": [],
-              "actions": []
+              "conditions": []
             },
             {
               "id": "choice_3",
               "text": "3",
               "next": "line_3",
-              "conditions": [],
-              "actions": []
+              "conditions": []
             }
           ]
         },
