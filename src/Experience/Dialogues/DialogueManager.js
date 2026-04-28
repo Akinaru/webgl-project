@@ -112,6 +112,9 @@ export default class DialogueManager extends EventEmitter
             key: dialogueKey
         }])
 
+        this.experience?.sound?.unlock?.()
+        this.experience?.sound?.playDialogue?.(dialogue.sound)
+
         this.goToNode(dialogue.startNode)
         return true
     }
@@ -141,6 +144,16 @@ export default class DialogueManager extends EventEmitter
         this.state.node = node
         this.state.waitingChoice = false
         this.state.choices = []
+
+        if(node.sound)
+        {
+            this.experience?.sound?.unlock?.()
+            this.experience?.sound?.playDialogue?.(node.sound)
+        }
+        else if(!this.state.dialogue?.sound)
+        {
+            this.experience?.sound?.stopDialogue?.()
+        }
 
         this.actionExecutor.executeMany(node.actions, this.createActionContext())
 
@@ -273,6 +286,7 @@ export default class DialogueManager extends EventEmitter
         }
 
         const endedKey = this.state.dialogueKey
+        this.experience?.sound?.stopDialogue?.()
         this.state = this.createEmptyState()
 
         this.trigger('end', [{
@@ -387,6 +401,7 @@ export default class DialogueManager extends EventEmitter
 
     destroy()
     {
+        this.experience?.sound?.stopDialogue?.()
         this.ui.destroy()
         this.debugFolder?.dispose?.()
         this.queue.length = 0

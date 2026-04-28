@@ -80,7 +80,7 @@ export default class Experience
     {
         const hasRuntimeFocus = document.hasFocus?.() ?? true
 
-        if(!this.menu?.isPauseOpen?.() && hasRuntimeFocus)
+        if(hasRuntimeFocus)
         {
             this.sceneManager.update(this.time.delta)
         }

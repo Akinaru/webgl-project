@@ -4,14 +4,16 @@ const SOUND_DEFINITIONS = Object.freeze({
         resourceKey: 'menuClickSound',
         fallbackPath: 'sounds/ui/menu-click.mp3',
         volume: 0.34,
-        playbackRate: 1.02
+        playbackRate: 1.02,
+        channel: 'ui'
     },
     pauseOpen: {
         label: 'Pause open',
         resourceKey: 'pauseOpenSound',
         fallbackPath: 'sounds/ui/pause-open.mp3',
         volume: 0.28,
-        playbackRate: 1
+        playbackRate: 1,
+        channel: 'ui'
     }
 })
 
@@ -87,16 +89,72 @@ export default class SoundManager
     play(soundName, {
         force = false,
         volume = 1,
-        playbackRate = 1
+        playbackRate = 1,
+        channel = null
     } = {})
     {
-        if(!force && !this.enabled)
+        const definition = SOUND_DEFINITIONS[soundName]
+        if(!definition)
         {
             return false
         }
 
-        const definition = SOUND_DEFINITIONS[soundName]
-        if(!definition)
+        return this.playSoundDefinition({
+            soundName,
+            definition: {
+                ...definition,
+                channel: channel || definition.channel || 'default'
+            },
+            force,
+            volume,
+            playbackRate
+        })
+    }
+
+    playDialogue(definition, options = {})
+    {
+        this.stopDialogue()
+
+        const normalizedDefinition = this.normalizeDialogueDefinition(definition)
+        if(!normalizedDefinition)
+        {
+            return false
+        }
+
+        return this.playSoundDefinition({
+            soundName: normalizedDefinition.soundName,
+            definition: {
+                ...normalizedDefinition,
+                channel: 'dialogue'
+            },
+            force: options.force ?? false,
+            volume: options.volume ?? 1,
+            playbackRate: options.playbackRate ?? 1
+        })
+    }
+
+    stopDialogue()
+    {
+        return this.stopChannel('dialogue')
+    }
+
+    playSelectedFromDebug()
+    {
+        this.unlock()
+        this.play(this.debugState?.selectedSound || 'menuClick', {
+            force: Boolean(this.debugState?.forcePlay)
+        })
+    }
+
+    playSoundDefinition({
+        soundName,
+        definition,
+        force = false,
+        volume = 1,
+        playbackRate = 1
+    } = {})
+    {
+        if(!force && !this.enabled)
         {
             return false
         }
@@ -114,14 +172,6 @@ export default class SoundManager
         return this.playFallbackSound(soundName, definition, {
             volume,
             playbackRate
-        })
-    }
-
-    playSelectedFromDebug()
-    {
-        this.unlock()
-        this.play(this.debugState?.selectedSound || 'menuClick', {
-            force: Boolean(this.debugState?.forcePlay)
         })
     }
 
@@ -144,6 +194,7 @@ export default class SoundManager
 
         const sourceNode = context.createBufferSource()
         sourceNode.buffer = buffer
+        sourceNode.loop = Boolean(definition.loop)
         sourceNode.playbackRate.value = Math.max(0.05, playbackRate * definition.playbackRate)
 
         const gainNode = context.createGain()
@@ -154,6 +205,7 @@ export default class SoundManager
 
         const voiceId = this.registerVoice({
             soundName,
+            channel: definition.channel || 'default',
             sourceType: 'buffer',
             stop: () =>
             {
@@ -201,6 +253,7 @@ export default class SoundManager
         audio.volume = Math.max(0, Math.min(1, definition.volume * volume))
         audio.playbackRate = Math.max(0.05, definition.playbackRate * playbackRate)
         audio.preload = 'auto'
+        audio.loop = Boolean(definition.loop)
 
         let voiceId = 0
         const onEnded = () =>
@@ -217,6 +270,7 @@ export default class SoundManager
 
         voiceId = this.registerVoice({
             soundName,
+            channel: definition.channel || 'default',
             sourceType: 'htmlAudio',
             stop: () =>
             {
@@ -251,6 +305,7 @@ export default class SoundManager
 
     registerVoice({
         soundName,
+        channel = 'default',
         sourceType,
         stop,
         cleanup
@@ -261,6 +316,7 @@ export default class SoundManager
         this.activeVoices.set(voiceId, {
             id: voiceId,
             soundName,
+            channel,
             sourceType,
             stop,
             cleanup
@@ -282,6 +338,83 @@ export default class SoundManager
         this.activeVoices.delete(voiceId)
         this.syncDebugState()
         return true
+    }
+
+    stopChannel(channel)
+    {
+        if(typeof channel !== 'string' || channel.trim() === '')
+        {
+            return 0
+        }
+
+        const voices = Array.from(this.activeVoices.values())
+        let stoppedCount = 0
+
+        for(const voice of voices)
+        {
+            if(voice.channel !== channel)
+            {
+                continue
+            }
+
+            voice.stop?.()
+            this.removeVoice(voice.id)
+            stoppedCount += 1
+        }
+
+        return stoppedCount
+    }
+
+    normalizeDialogueDefinition(definition)
+    {
+        if(typeof definition === 'string')
+        {
+            const presetDefinition = SOUND_DEFINITIONS[definition]
+            if(!presetDefinition)
+            {
+                return null
+            }
+
+            return {
+                soundName: definition,
+                ...presetDefinition
+            }
+        }
+
+        if(!definition || typeof definition !== 'object')
+        {
+            return null
+        }
+
+        if(typeof definition.key === 'string' && definition.key.trim() !== '')
+        {
+            const presetDefinition = SOUND_DEFINITIONS[definition.key]
+            if(presetDefinition)
+            {
+                return {
+                    soundName: definition.key,
+                    ...presetDefinition,
+                    ...definition
+                }
+            }
+        }
+
+        const fallbackPath = definition.fallbackPath || definition.path || ''
+        const resourceKey = definition.resourceKey || ''
+
+        if(resourceKey === '' && fallbackPath === '')
+        {
+            return null
+        }
+
+        return {
+            soundName: definition.name || definition.key || resourceKey || fallbackPath,
+            resourceKey,
+            fallbackPath,
+            volume: typeof definition.volume === 'number' ? definition.volume : 1,
+            playbackRate: typeof definition.playbackRate === 'number' ? definition.playbackRate : 1,
+            loop: Boolean(definition.loop)
+        }
     }
 
     setDebug()
@@ -386,7 +519,7 @@ export default class SoundManager
         const voices = Array.from(this.activeVoices.values())
         const label = voices
             .slice(0, ACTIVE_SOUNDS_LABEL_LIMIT)
-            .map((voice) => `#${voice.id} ${voice.soundName}`)
+            .map((voice) => `#${voice.id} ${voice.channel}:${voice.soundName}`)
             .join(' | ')
 
         if(voices.length <= ACTIVE_SOUNDS_LABEL_LIMIT)

@@ -8,12 +8,20 @@
         "intro_1": {
           "type": "line",
           "speaker": "Bloom",
+          "sound": {
+            "resourceKey": "voice_1",
+            "fallbackPath": "sounds/dialogues/voice_1.mp3"
+          },
           "text": "Salut. Je suis Bloom, la petite goutte qui va te guider.",
           "next": "intro_2"
         },
         "intro_2": {
           "type": "line",
           "speaker": "Bloom",
+          "sound": {
+            "resourceKey": "voice_2",
+            "fallbackPath": "sounds/dialogues/voice_2.mp3"
+          },
           "text": "Ton role va evoluer selon tes choix. On commence ?",
           "next": "role_choice"
         },
