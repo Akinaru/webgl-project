@@ -58,5 +58,10 @@ export default [
         name: 'bush1Sound',
         type: 'audioBuffer',
         path: 'sounds/effects/bush/bush-1.mp3'
+    },
+    {
+        name: 'valveTurningSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/distribution/valve_turning.wav'
     }
 ]

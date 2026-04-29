@@ -9,6 +9,8 @@ const GESTURE_POINTER_MAX_RADIUS = 180
 const GESTURE_ROTATION_GAIN = 1
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
 const CURSOR_VISUAL_OFFSET_MAX = 12
+const VALVE_TURNING_SOUND_NAME = 'valveTurning'
+const VALVE_TURNING_CHANNEL = 'valveTurning'
 
 class Valve
 {
@@ -211,6 +213,7 @@ export default class SceneDistributionValveController
         this.gesturePointerPrev = new THREE.Vector2(72, 0)
         this.projectedPivot = new THREE.Vector3()
         this.projectedHitPoint = new THREE.Vector3()
+        this.isValveTurningSoundPlaying = false
 
         this.valves = []
         this.valveByUuid = new Map()
@@ -333,12 +336,14 @@ export default class SceneDistributionValveController
             this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             this.resetGesturePointerFromActiveValve()
             document.body.classList.add(VALVE_DRAGGING_CLASS)
+            this.startValveTurningSound()
         }
 
         this.onInteractUp = () =>
         {
             this.activeValve = null
             this.activeHitPointWorld = null
+            this.stopValveTurningSound()
             document.body.classList.remove(VALVE_DRAGGING_CLASS)
         }
 
@@ -564,6 +569,26 @@ export default class SceneDistributionValveController
         }
     }
 
+    startValveTurningSound()
+    {
+        if(this.isValveTurningSoundPlaying)
+        {
+            return
+        }
+
+        this.experience?.sound?.unlock?.()
+        const didPlay = this.experience?.sound?.play?.(VALVE_TURNING_SOUND_NAME, {
+            channel: VALVE_TURNING_CHANNEL
+        }) === true
+        this.isValveTurningSoundPlaying = didPlay
+    }
+
+    stopValveTurningSound()
+    {
+        this.experience?.sound?.stopChannel?.(VALVE_TURNING_CHANNEL)
+        this.isValveTurningSoundPlaying = false
+    }
+
     destroy()
     {
         this.inputs?.off?.('mousemove.distributionValve')
@@ -578,6 +603,7 @@ export default class SceneDistributionValveController
         this.hoveredHitPointWorld = null
         this.activeValve = null
         this.activeHitPointWorld = null
+        this.stopValveTurningSound()
         this.valves = []
         this.valveByUuid.clear()
         this.releaseCursor()

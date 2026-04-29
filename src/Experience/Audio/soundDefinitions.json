@@ -100,5 +100,17 @@
     "playbackRate": 1,
     "channel": "bush",
     "audioType": "sfx"
+  },
+  "valveTurning": {
+    "label": "Valve turning",
+    "resourceKey": "valveTurningSound",
+    "fallbackPath": "sounds/effects/distribution/valve_turning.wav",
+    "volume": 0.28,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 50,
+    "fadeOutMs": 90,
+    "channel": "valveTurning",
+    "audioType": "sfx"
   }
 }
