@@ -6,7 +6,6 @@ export default class BaseScene
     {
         this.name = name
         this.instance = new THREE.Scene()
-        this.hudHint = ''
     }
 
     enter()

@@ -84,7 +84,6 @@ export default class SceneManager
 
         this.experience.scene = this.currentScene.instance
         this.renderer.setScene(this.currentScene.instance)
-        this.setHudHint(this.currentScene.hudHint)
 
         this.currentScene.enter?.(previousKey)
         this.currentScene.resize?.()
@@ -385,23 +384,6 @@ export default class SceneManager
         this.debugStats.children = scene ? scene.children.length : 0
         this.debugStats.meshes = meshes
         this.debugStats.lights = lights
-    }
-
-    setHudHint(hint)
-    {
-        const hintElement = document.querySelector('.hud__hint')
-        if(!hintElement)
-        {
-            return
-        }
-
-        if(typeof hint === 'string' && hint.trim() !== '')
-        {
-            hintElement.textContent = hint
-            return
-        }
-
-        hintElement.textContent = ''
     }
 
     destroy()

@@ -520,33 +520,6 @@ body.is-pointer-locked
     z-index: 2;
 }
 
-.hud__hint
-{
-    position: absolute;
-    left: 50%;
-    bottom: 1.2rem;
-    transform: translateX(-50%);
-    padding: 0.55rem 0.9rem;
-    max-width: min(90vw, 760px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 999px;
-    background: rgba(8, 12, 18, 0.55);
-    color: rgba(245, 247, 250, 0.92);
-    backdrop-filter: blur(4px);
-    text-align: center;
-    font-size: 0.83rem;
-    line-height: 1.35;
-    transition: opacity 160ms ease;
-}
-
-.hud__hint:empty
-{
-    opacity: 0;
-    border-color: transparent;
-    background: transparent;
-    padding: 0;
-}
-
 .hud__crosshair
 {
     position: absolute;
@@ -559,11 +532,6 @@ body.is-pointer-locked
     border-radius: 50%;
     opacity: 0;
     transition: opacity 120ms ease;
-}
-
-body.is-pointer-locked .hud__hint
-{
-    opacity: 0;
 }
 
 body.is-pointer-locked .hud__crosshair

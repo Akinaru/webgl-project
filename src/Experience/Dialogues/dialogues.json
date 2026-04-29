@@ -222,10 +222,6 @@
               "type": "setFlag",
               "key": "bloom_intro_done",
               "value": true
-            },
-            {
-              "type": "setHudHint",
-              "text": "Dialogue termine. Clique dans la scene pour reprendre le controle."
             }
           ]
         }
