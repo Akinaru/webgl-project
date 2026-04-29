@@ -1,3 +1,5 @@
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
 
@@ -15,6 +17,7 @@ export default class Menu
     constructor(experience)
     {
         this.experience = experience
+        this.debug = this.experience.debug
         this.hasStartedFlow = false
         this.isInitialized = false
         this.hasResolved = false
@@ -29,6 +32,8 @@ export default class Menu
         })
 
         this.bootScreen = document.querySelector('#bootScreen')
+        this.bootHome = document.querySelector('#bootHome')
+        this.bootLogoViewer = document.querySelector('#bootLogoViewer')
         this.btnStartExperience = document.querySelector('#btnStartExperience')
         this.bootAudioToggle = document.querySelector('#bootAudioToggle')
         this.bootLoadingValue = document.querySelector('#bootLoadingValue')
@@ -39,11 +44,60 @@ export default class Menu
         this.transitionFill = this.transitionOverlay?.querySelector?.('[data-scene-transition-fill]') ?? null
 
         this.hasUI = Boolean(this.bootScreen && this.btnStartExperience && this.bootAudioToggle)
+        this.bootLogoRafId = 0
+        this.bootLogoScene = null
+        this.bootLogoCamera = null
+        this.bootLogoRenderer = null
+        this.bootLogoRoot = null
+        this.bootLogoDirectionalLight = null
+        this.bootLogoRimLight = null
+        this.bootLogoClock = new THREE.Clock()
+        this.debugMenuFolder = null
+        this.debugBootLogoFolder = null
+        this.bootLogoSettings = {
+            viewerWidth: 680,
+            viewerHeight: 295,
+            viewerOffsetY: -32,
+            gap: 8,
+            cameraX: 0,
+            cameraY: 0,
+            cameraZ: 6.55,
+            rotationX: 0,
+            rotationY: 0,
+            rotationZ: 0,
+            positionX: 0,
+            positionY: -1.5,
+            positionZ: 0,
+            scale: 2.15,
+            ambientIntensity: 1.65,
+            lightIntensity: 2.4,
+            lightX: 3.6,
+            lightY: 4.4,
+            lightZ: 6.2,
+            rimIntensity: 1.35,
+            rimX: -4.8,
+            rimY: 1.8,
+            rimZ: 3.5,
+            swayAmplitudeY: 0,
+            swaySpeedY: 0.72,
+            swayAmplitudeX: 0,
+            swaySpeedX: 0.48,
+            floatAmplitude: 0,
+            floatSpeed: 1.1,
+            lightPulseAmplitude: 0,
+            lightPulseSpeed: 0.9
+        }
+        this.bootLogoAmbientLight = null
 
         this.pauseMenu = new PauseMenu({
             experience: this.experience,
             isEnabled: () => this.hasResolved && !this.isDestroyed
         })
+
+        this.handleWindowResize = () =>
+        {
+            this.resizeBootLogoViewer()
+        }
 
         this.handleStartExperience = () =>
         {
@@ -87,6 +141,8 @@ export default class Menu
         this.isInitialized = true
         this.applyAudioPreference(this.readStoredAudioPreference())
         this.pauseMenu?.start?.()
+        this.initBootLogoViewer()
+        this.setDebug()
 
         if(!this.hasUI)
         {
@@ -104,6 +160,7 @@ export default class Menu
     {
         this.btnStartExperience.addEventListener('click', this.handleStartExperience)
         this.bootAudioToggle.addEventListener('change', this.handleBootAudioToggleChange)
+        window.addEventListener('resize', this.handleWindowResize)
     }
 
     resolveStart(payload)
@@ -284,6 +341,343 @@ export default class Menu
         }
     }
 
+    initBootLogoViewer()
+    {
+        if(!this.hasUI || !(this.bootLogoViewer instanceof HTMLElement) || this.bootLogoRenderer)
+        {
+            return
+        }
+
+        this.bootLogoScene = new THREE.Scene()
+        this.bootLogoCamera = new THREE.PerspectiveCamera(24, 1, 0.1, 100)
+        this.applyBootLogoLayout()
+        this.applyBootLogoCameraSettings()
+
+        this.bootLogoAmbientLight = new THREE.AmbientLight('#ffffff', this.bootLogoSettings.ambientIntensity)
+        this.bootLogoScene.add(this.bootLogoAmbientLight)
+
+        this.bootLogoDirectionalLight = new THREE.DirectionalLight('#dff9ff', this.bootLogoSettings.lightIntensity)
+        this.bootLogoScene.add(this.bootLogoDirectionalLight)
+
+        this.bootLogoRimLight = new THREE.DirectionalLight('#66deff', this.bootLogoSettings.rimIntensity)
+        this.bootLogoScene.add(this.bootLogoRimLight)
+        this.applyBootLogoLightSettings()
+
+        this.bootLogoRenderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+            powerPreference: 'high-performance'
+        })
+        this.bootLogoRenderer.outputColorSpace = THREE.SRGBColorSpace
+        this.bootLogoRenderer.setClearColor(0x000000, 0)
+        this.bootLogoRenderer.domElement.className = 'boot__logo-canvas'
+        this.bootLogoViewer.appendChild(this.bootLogoRenderer.domElement)
+
+        this.resizeBootLogoViewer()
+
+        const loader = new GLTFLoader()
+        loader.load('/models/UI/Logo.gltf', (gltf) =>
+        {
+            if(this.isDestroyed || !this.bootLogoScene)
+            {
+                return
+            }
+
+            this.bootLogoRoot = gltf.scene
+
+            this.bootLogoRoot.traverse((child) =>
+            {
+                if(!child.isMesh)
+                {
+                    return
+                }
+
+                child.castShadow = false
+                child.receiveShadow = false
+
+                if(child.material?.isMeshStandardMaterial || child.material?.isMeshPhysicalMaterial)
+                {
+                    child.material.roughness = Math.min(child.material.roughness ?? 0.2, 0.22)
+                    child.material.metalness = Math.max(child.material.metalness ?? 0, 0.08)
+                    child.material.envMapIntensity = 1.05
+                }
+            })
+
+            this.bootLogoScene.add(this.bootLogoRoot)
+            this.applyBootLogoRootSettings()
+        })
+
+        this.startBootLogoLoop()
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.active || this.debugMenuFolder)
+        {
+            return
+        }
+
+        this.debugMenuFolder = this.debug.addFolder('🪟 Menu', { expanded: false })
+        this.debugBootLogoFolder = this.debug.addFolder('Boot Logo', {
+            parent: this.debugMenuFolder,
+            expanded: false
+        })
+
+        const refreshLayout = () =>
+        {
+            this.applyBootLogoLayout()
+            this.resizeBootLogoViewer()
+        }
+
+        const refreshCamera = () =>
+        {
+            this.applyBootLogoCameraSettings()
+            this.updateBootLogoViewer()
+        }
+
+        const refreshRoot = () =>
+        {
+            this.applyBootLogoRootSettings()
+            this.updateBootLogoViewer()
+        }
+
+        const refreshLights = () =>
+        {
+            this.applyBootLogoLightSettings()
+            this.updateBootLogoViewer()
+        }
+
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'viewerWidth', {
+            label: 'largeur',
+            min: 320,
+            max: 1200,
+            step: 1
+        })?.on('change', refreshLayout)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'viewerHeight', {
+            label: 'hauteur',
+            min: 100,
+            max: 420,
+            step: 1
+        })?.on('change', refreshLayout)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'viewerOffsetY', {
+            label: 'offset Y',
+            min: -220,
+            max: 220,
+            step: 1
+        })?.on('change', refreshLayout)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'gap', {
+            label: 'gap',
+            min: 0,
+            max: 48,
+            step: 1
+        })?.on('change', refreshLayout)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'cameraY', {
+            label: 'camera Y',
+            min: -3,
+            max: 3,
+            step: 0.01
+        })?.on('change', refreshCamera)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'cameraZ', {
+            label: 'zoom',
+            min: 2,
+            max: 16,
+            step: 0.01
+        })?.on('change', refreshCamera)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'scale', {
+            label: 'scale',
+            min: 0.2,
+            max: 6,
+            step: 0.01
+        })?.on('change', refreshRoot)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'positionY', {
+            label: 'logo Y',
+            min: -3,
+            max: 3,
+            step: 0.01
+        })?.on('change', refreshRoot)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rotationX', {
+            label: 'rot X',
+            min: -Math.PI,
+            max: Math.PI,
+            step: 0.01
+        })?.on('change', refreshRoot)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rotationY', {
+            label: 'rot Y',
+            min: -Math.PI,
+            max: Math.PI,
+            step: 0.01
+        })?.on('change', refreshRoot)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'lightIntensity', {
+            label: 'light',
+            min: 0,
+            max: 10,
+            step: 0.01
+        })?.on('change', refreshLights)
+        this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rimIntensity', {
+            label: 'rim',
+            min: 0,
+            max: 10,
+            step: 0.01
+        })?.on('change', refreshLights)
+    }
+
+    applyBootLogoLayout()
+    {
+        if(this.bootHome instanceof HTMLElement)
+        {
+            this.bootHome.style.setProperty('--boot-logo-gap', `${this.bootLogoSettings.gap}px`)
+        }
+
+        if(!(this.bootLogoViewer instanceof HTMLElement))
+        {
+            return
+        }
+
+        this.bootLogoViewer.style.setProperty('--boot-logo-width', `${this.bootLogoSettings.viewerWidth}px`)
+        this.bootLogoViewer.style.setProperty('--boot-logo-height', `${this.bootLogoSettings.viewerHeight}px`)
+        this.bootLogoViewer.style.setProperty('--boot-logo-offset-y', `${this.bootLogoSettings.viewerOffsetY}px`)
+    }
+
+    applyBootLogoCameraSettings()
+    {
+        if(!this.bootLogoCamera)
+        {
+            return
+        }
+
+        this.bootLogoCamera.position.set(
+            this.bootLogoSettings.cameraX,
+            this.bootLogoSettings.cameraY,
+            this.bootLogoSettings.cameraZ
+        )
+        this.bootLogoCamera.lookAt(0, 0, 0)
+    }
+
+    applyBootLogoRootSettings()
+    {
+        if(!this.bootLogoRoot)
+        {
+            return
+        }
+
+        this.bootLogoRoot.position.set(
+            this.bootLogoSettings.positionX,
+            this.bootLogoSettings.positionY,
+            this.bootLogoSettings.positionZ
+        )
+        this.bootLogoRoot.rotation.set(
+            this.bootLogoSettings.rotationX,
+            this.bootLogoSettings.rotationY,
+            this.bootLogoSettings.rotationZ
+        )
+        this.bootLogoRoot.scale.setScalar(this.bootLogoSettings.scale)
+    }
+
+    applyBootLogoLightSettings()
+    {
+        if(this.bootLogoAmbientLight)
+        {
+            this.bootLogoAmbientLight.intensity = this.bootLogoSettings.ambientIntensity
+        }
+
+        if(this.bootLogoDirectionalLight)
+        {
+            this.bootLogoDirectionalLight.intensity = this.bootLogoSettings.lightIntensity
+            this.bootLogoDirectionalLight.position.set(
+                this.bootLogoSettings.lightX,
+                this.bootLogoSettings.lightY,
+                this.bootLogoSettings.lightZ
+            )
+        }
+
+        if(this.bootLogoRimLight)
+        {
+            this.bootLogoRimLight.intensity = this.bootLogoSettings.rimIntensity
+            this.bootLogoRimLight.position.set(
+                this.bootLogoSettings.rimX,
+                this.bootLogoSettings.rimY,
+                this.bootLogoSettings.rimZ
+            )
+        }
+    }
+
+    resizeBootLogoViewer()
+    {
+        if(
+            !(this.bootLogoViewer instanceof HTMLElement) ||
+            !this.bootLogoRenderer ||
+            !this.bootLogoCamera
+        )
+        {
+            return
+        }
+
+        const width = Math.max(1, this.bootLogoViewer.clientWidth || 640)
+        const height = Math.max(1, this.bootLogoViewer.clientHeight || 240)
+        this.bootLogoCamera.aspect = width / height
+        this.bootLogoCamera.updateProjectionMatrix()
+        this.bootLogoRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+        this.bootLogoRenderer.setSize(width, height, false)
+    }
+
+    startBootLogoLoop()
+    {
+        if(this.bootLogoRafId || !this.bootLogoRenderer || !this.bootLogoScene || !this.bootLogoCamera)
+        {
+            return
+        }
+
+        const tick = () =>
+        {
+            this.bootLogoRafId = window.requestAnimationFrame(tick)
+            this.updateBootLogoViewer()
+        }
+
+        this.bootLogoRafId = window.requestAnimationFrame(tick)
+        this.updateBootLogoViewer()
+    }
+
+    stopBootLogoLoop()
+    {
+        if(!this.bootLogoRafId)
+        {
+            return
+        }
+
+        window.cancelAnimationFrame(this.bootLogoRafId)
+        this.bootLogoRafId = 0
+    }
+
+    updateBootLogoViewer()
+    {
+        if(!this.bootLogoRenderer || !this.bootLogoScene || !this.bootLogoCamera)
+        {
+            return
+        }
+
+        const elapsed = this.bootLogoClock.getElapsedTime()
+        if(this.bootLogoRoot)
+        {
+            this.bootLogoRoot.rotation.set(
+                this.bootLogoSettings.rotationX + (Math.cos(elapsed * this.bootLogoSettings.swaySpeedX) * this.bootLogoSettings.swayAmplitudeX),
+                this.bootLogoSettings.rotationY + (Math.sin(elapsed * this.bootLogoSettings.swaySpeedY) * this.bootLogoSettings.swayAmplitudeY),
+                this.bootLogoSettings.rotationZ
+            )
+            this.bootLogoRoot.position.set(
+                this.bootLogoSettings.positionX,
+                this.bootLogoSettings.positionY + (Math.sin(elapsed * this.bootLogoSettings.floatSpeed) * this.bootLogoSettings.floatAmplitude),
+                this.bootLogoSettings.positionZ
+            )
+        }
+
+        if(this.bootLogoDirectionalLight)
+        {
+            this.bootLogoDirectionalLight.intensity = this.bootLogoSettings.lightIntensity + (Math.sin(elapsed * this.bootLogoSettings.lightPulseSpeed) * this.bootLogoSettings.lightPulseAmplitude)
+        }
+
+        this.bootLogoRenderer.render(this.bootLogoScene, this.bootLogoCamera)
+    }
+
     waitForResourcesReady()
     {
         return new Promise((resolve) =>
@@ -357,12 +751,45 @@ export default class Menu
     {
         this.isDestroyed = true
         this.stopLoadingProgressLoop()
+        this.stopBootLogoLoop()
         this.experience?.resources?.off?.(this.resourcesReadyEventName)
 
         this.pauseMenu?.destroy?.()
 
         this.btnStartExperience?.removeEventListener('click', this.handleStartExperience)
         this.bootAudioToggle?.removeEventListener('change', this.handleBootAudioToggleChange)
+        window.removeEventListener('resize', this.handleWindowResize)
+
+        if(this.bootLogoRoot)
+        {
+            this.bootLogoRoot.traverse((child) =>
+            {
+                child.geometry?.dispose?.()
+
+                if(Array.isArray(child.material))
+                {
+                    child.material.forEach((material) => material?.dispose?.())
+                }
+                else
+                {
+                    child.material?.dispose?.()
+                }
+            })
+            this.bootLogoRoot = null
+        }
+
+        this.bootLogoScene = null
+        this.bootLogoCamera = null
+        this.bootLogoAmbientLight = null
+        this.bootLogoDirectionalLight = null
+        this.bootLogoRimLight = null
+
+        if(this.bootLogoRenderer)
+        {
+            this.bootLogoRenderer.dispose()
+            this.bootLogoRenderer.domElement?.remove?.()
+            this.bootLogoRenderer = null
+        }
 
         if(!this.hasResolved)
         {
