@@ -5,7 +5,8 @@
     "fallbackPath": "sounds/ui/menu-click.mp3",
     "volume": 0.34,
     "playbackRate": 1.02,
-    "channel": "ui"
+    "channel": "ui",
+    "audioType": "sfx"
   },
   "pauseOpen": {
     "label": "Pause open",
@@ -13,7 +14,8 @@
     "fallbackPath": "sounds/ui/pause-open.mp3",
     "volume": 0.1,
     "playbackRate": 3,
-    "channel": "ui"
+    "channel": "ui",
+    "audioType": "sfx"
   },
   "waterSplash4": {
     "label": "Water splash 4",
@@ -21,7 +23,8 @@
     "fallbackPath": "sounds/effects/water/water-splash-4.mp3",
     "volume": 0.1,
     "playbackRate": 1,
-    "channel": "sfx"
+    "channel": "sfx",
+    "audioType": "sfx"
   },
   "waterSplash": {
     "label": "Water splash",
@@ -29,7 +32,8 @@
     "fallbackPath": "sounds/effects/water/water-splash.mp3",
     "volume": 1,
     "playbackRate": 1,
-    "channel": "sfx"
+    "channel": "sfx",
+    "audioType": "sfx"
   },
   "waterSplash2": {
     "label": "Water splash 2",
@@ -37,7 +41,8 @@
     "fallbackPath": "sounds/effects/water/water-splash-2.mp3",
     "volume": 0.1,
     "playbackRate": 1,
-    "channel": "sfx"
+    "channel": "sfx",
+    "audioType": "sfx"
   },
   "waterUnder": {
     "label": "Water under",
@@ -48,40 +53,44 @@
     "loop": true,
     "fadeInMs": 180,
     "fadeOutMs": 220,
-    "channel": "underwater"
+    "channel": "underwater",
+    "audioType": "sfx"
   },
   "walkingGrass": {
     "label": "Walking grass",
     "resourceKey": "walkingGrassSound",
     "fallbackPath": "sounds/effects/walking/walking-grass.mp3",
-    "volume": 1.2,
+    "volume": 1.7,
     "playbackRate": 2,
     "loop": true,
     "fadeInMs": 70,
     "fadeOutMs": 120,
-    "channel": "footsteps"
+    "channel": "footsteps",
+    "audioType": "sfx"
   },
   "walkingSand": {
     "label": "Walking sand",
     "resourceKey": "walkingSandSound",
     "fallbackPath": "sounds/effects/walking/walking-sand.mp3",
-    "volume": 0.08,
+    "volume": 0.3,
     "playbackRate": 2,
     "loop": true,
     "fadeInMs": 60,
     "fadeOutMs": 100,
-    "channel": "footsteps"
+    "channel": "footsteps",
+    "audioType": "sfx"
   },
   "walkingStone": {
     "label": "Walking stone",
     "resourceKey": "walkingStoneSound",
     "fallbackPath": "sounds/effects/walking/walking-stone.mp3",
-    "volume": 0.4,
+    "volume": 0.3,
     "playbackRate": 2,
     "loop": true,
     "fadeInMs": 70,
     "fadeOutMs": 120,
-    "channel": "footsteps"
+    "channel": "footsteps",
+    "audioType": "sfx"
   },
   "bush1": {
     "label": "Bush 1",
@@ -89,6 +98,7 @@
     "fallbackPath": "sounds/effects/bush/bush-1.mp3",
     "volume": 0.04,
     "playbackRate": 1,
-    "channel": "bush"
+    "channel": "bush",
+    "audioType": "sfx"
   }
 }

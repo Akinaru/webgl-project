@@ -4,6 +4,14 @@ import { getBushSoundUrls } from './bushSoundBank.js'
 const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 const AUDIO_MUSIC_VOLUME_KEY = 'bloom.audio.musicVolume'
 const AUDIO_SFX_VOLUME_KEY = 'bloom.audio.sfxVolume'
+const AUDIO_TYPE = Object.freeze({
+    MUSIC: 'music',
+    SFX: 'sfx'
+})
+const AUDIO_VOLUME_DEFAULTS = Object.freeze({
+    [AUDIO_TYPE.MUSIC]: 1,
+    [AUDIO_TYPE.SFX]: 1
+})
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
 const NOW_PLAYING_LINE_LIMIT = 6
@@ -28,8 +36,8 @@ export default class SoundManager
         this.debugDefinitionsFolder = null
         this.debugState = null
         this.soundDefinitionTuning = {}
-        this.musicVolume = 1
-        this.sfxVolume = 1
+        this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+        this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -199,7 +207,8 @@ export default class SoundManager
         }
 
         const resolvedDefinition = this.applySoundDefinitionOverrides(soundName, definition)
-        const channelVolume = this.getChannelVolumeMultiplier(resolvedDefinition.channel)
+        const audioType = this.resolveAudioType(soundName, resolvedDefinition)
+        const channelVolume = this.getAudioTypeVolumeMultiplier(audioType)
 
         const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
             volume: volume * channelVolume,
@@ -529,15 +538,32 @@ export default class SoundManager
         }
     }
 
-    getChannelVolumeMultiplier(channel = '')
+    resolveAudioType(soundName = '', definition = {})
     {
-        const normalized = String(channel || '').toLowerCase()
-        if(normalized === 'sfx' || normalized === 'footsteps' || normalized === 'underwater' || normalized === 'bush')
+        const explicitType = String(definition?.audioType || '').toLowerCase()
+        if(explicitType === AUDIO_TYPE.MUSIC || explicitType === AUDIO_TYPE.SFX)
         {
-            return this.sfxVolume
+            return explicitType
         }
 
-        return this.musicVolume
+        // Backward-compatible fallback for definitions without audioType.
+        const normalizedChannel = String(definition?.channel || '').toLowerCase()
+        if(normalizedChannel === 'music' || normalizedChannel === 'bgm' || normalizedChannel === 'ambient')
+        {
+            return AUDIO_TYPE.MUSIC
+        }
+
+        return AUDIO_TYPE.SFX
+    }
+
+    getAudioTypeVolumeMultiplier(audioType = AUDIO_TYPE.SFX)
+    {
+        if(audioType === AUDIO_TYPE.MUSIC)
+        {
+            return this.musicVolume
+        }
+
+        return this.sfxVolume
     }
 
     setMusicVolume(value = 1)
@@ -581,9 +607,17 @@ export default class SoundManager
             {
                 this.musicVolume = Math.max(0, Math.min(1, storedMusicVolume))
             }
+            else
+            {
+                this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+            }
             if(Number.isFinite(storedSfxVolume))
             {
                 this.sfxVolume = Math.max(0, Math.min(1, storedSfxVolume))
+            }
+            else
+            {
+                this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
             }
         }
         catch(error)
