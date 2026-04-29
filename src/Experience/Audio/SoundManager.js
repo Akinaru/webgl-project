@@ -23,7 +23,9 @@ export default class SoundManager
         this.debugFolder = null
         this.debugControlsFolder = null
         this.debugRuntimeFolder = null
+        this.debugDefinitionsFolder = null
         this.debugState = null
+        this.soundDefinitionTuning = {}
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -191,7 +193,9 @@ export default class SoundManager
             return false
         }
 
-        const hasPlayedBufferSound = this.playBufferSound(soundName, definition, {
+        const resolvedDefinition = this.applySoundDefinitionOverrides(soundName, definition)
+
+        const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
             volume,
             playbackRate
         })
@@ -202,7 +206,7 @@ export default class SoundManager
             return true
         }
 
-        const hasPlayedFallbackSound = this.playFallbackSound(soundName, definition, {
+        const hasPlayedFallbackSound = this.playFallbackSound(soundName, resolvedDefinition, {
             volume,
             playbackRate
         })
@@ -212,6 +216,26 @@ export default class SoundManager
         }
 
         return hasPlayedFallbackSound
+    }
+
+    applySoundDefinitionOverrides(soundName, definition)
+    {
+        if(!definition || typeof definition !== 'object')
+        {
+            return definition
+        }
+
+        const tuning = this.soundDefinitionTuning?.[soundName]
+        if(!tuning)
+        {
+            return definition
+        }
+
+        return {
+            ...definition,
+            volume: Number.isFinite(tuning.volume) ? tuning.volume : definition.volume,
+            playbackRate: Number.isFinite(tuning.playbackRate) ? tuning.playbackRate : definition.playbackRate
+        }
     }
 
     playBufferSound(soundName, definition, {
@@ -531,6 +555,10 @@ export default class SoundManager
             parent: this.debugFolder,
             expanded: false
         })
+        this.debugDefinitionsFolder = this.debug.addFolder('Definitions', {
+            parent: this.debugFolder,
+            expanded: false
+        })
 
         this.debug.addBinding(this.debugControlsFolder, this.debugState, 'enabled', {
             label: 'enabled'
@@ -555,6 +583,8 @@ export default class SoundManager
                 this.playSelectedFromDebug()
             }
         })
+
+        this.populateDefinitionsDebugFolder()
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'contextState', {
             label: 'context',
@@ -585,6 +615,84 @@ export default class SoundManager
             label: 'lastPlayed',
             readonly: true
         }, 'auto')
+    }
+
+    populateDefinitionsDebugFolder()
+    {
+        if(!this.debugDefinitionsFolder)
+        {
+            return
+        }
+
+        for(const [soundName, definition] of Object.entries(SOUND_DEFINITIONS))
+        {
+            const baseVolume = Number.isFinite(definition.volume) ? definition.volume : 1
+            const basePlaybackRate = Number.isFinite(definition.playbackRate) ? definition.playbackRate : 1
+            this.soundDefinitionTuning[soundName] = {
+                volume: baseVolume,
+                playbackRate: basePlaybackRate
+            }
+
+            const soundFolder = this.debug.addFolder(definition.label || soundName, {
+                parent: this.debugDefinitionsFolder,
+                expanded: false
+            })
+
+            this.debug.addBinding(soundFolder, this.soundDefinitionTuning[soundName], 'volume', {
+                label: 'volume',
+                min: 0,
+                max: 2,
+                step: 0.01
+            })
+
+            this.debug.addBinding(soundFolder, this.soundDefinitionTuning[soundName], 'playbackRate', {
+                label: 'rate',
+                min: 0.05,
+                max: 4,
+                step: 0.01
+            })
+        }
+
+        this.debug.addButton(this.debugDefinitionsFolder, {
+            title: 'Save definitions to clipboard',
+            onClick: async () =>
+            {
+                await this.copySoundDefinitionsToClipboard()
+            }
+        })
+    }
+
+    buildSoundDefinitionsExportPayload()
+    {
+        const payload = {}
+
+        for(const [soundName, definition] of Object.entries(SOUND_DEFINITIONS))
+        {
+            const tuning = this.soundDefinitionTuning?.[soundName] ?? {}
+            payload[soundName] = {
+                ...definition,
+                volume: Number.isFinite(tuning.volume) ? tuning.volume : definition.volume,
+                playbackRate: Number.isFinite(tuning.playbackRate) ? tuning.playbackRate : definition.playbackRate
+            }
+        }
+
+        return payload
+    }
+
+    async copySoundDefinitionsToClipboard()
+    {
+        const payload = this.buildSoundDefinitionsExportPayload()
+        const text = JSON.stringify(payload, null, 2)
+
+        try
+        {
+            await navigator.clipboard.writeText(text)
+            console.info('[Audio] soundDefinitions copiees dans le presse-papiers')
+        }
+        catch(error)
+        {
+            console.warn('[Audio] Impossible de copier soundDefinitions:', error)
+        }
     }
 
     getDebugSoundOptions()
@@ -698,11 +806,14 @@ export default class SoundManager
 
         this.debugControlsFolder?.dispose?.()
         this.debugRuntimeFolder?.dispose?.()
+        this.debugDefinitionsFolder?.dispose?.()
         this.debugFolder?.dispose?.()
         this.debugControlsFolder = null
         this.debugRuntimeFolder = null
+        this.debugDefinitionsFolder = null
         this.debugFolder = null
         this.debugState = null
+        this.soundDefinitionTuning = {}
 
         this.masterGain?.disconnect?.()
         this.masterGain = null
