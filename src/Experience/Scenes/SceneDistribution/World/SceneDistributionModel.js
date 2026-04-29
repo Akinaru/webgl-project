@@ -16,6 +16,13 @@ const WALKABLE_GROUND_NAME_TOKENS = [
     'passerelle',
     'platform'
 ]
+const TRANSPARENT_EXACT_NAMES = new Set([
+    'water'
+])
+const TRANSPARENT_PREFIXES = [
+    'tube-water'
+]
+const TRANSPARENT_OPACITY = 0.2
 
 export default class SceneDistributionModel
 {
@@ -60,6 +67,7 @@ export default class SceneDistributionModel
 
             child.castShadow = true
             child.receiveShadow = true
+            this.applyTransparentMaterialRules(child)
 
             if(!child.geometry?.boundingBox)
             {
@@ -168,6 +176,35 @@ export default class SceneDistributionModel
             }
 
             material.side = THREE.DoubleSide
+            material.needsUpdate = true
+        }
+    }
+
+    applyTransparentMaterialRules(mesh)
+    {
+        const meshName = (mesh.name || '').toLowerCase()
+        const isTransparentTarget = TRANSPARENT_EXACT_NAMES.has(meshName)
+            || TRANSPARENT_PREFIXES.some((prefix) => meshName.startsWith(prefix))
+
+        if(!isTransparentTarget)
+        {
+            return
+        }
+
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material]
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.transparent = true
+            material.opacity = TRANSPARENT_OPACITY
+            material.depthWrite = false
             material.needsUpdate = true
         }
     }

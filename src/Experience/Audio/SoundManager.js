@@ -2,6 +2,16 @@ import soundDefinitionsJson from './soundDefinitions.json'
 import { getBushSoundUrls } from './bushSoundBank.js'
 
 const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
+const AUDIO_MUSIC_VOLUME_KEY = 'bloom.audio.musicVolume'
+const AUDIO_SFX_VOLUME_KEY = 'bloom.audio.sfxVolume'
+const AUDIO_TYPE = Object.freeze({
+    MUSIC: 'music',
+    SFX: 'sfx'
+})
+const AUDIO_VOLUME_DEFAULTS = Object.freeze({
+    [AUDIO_TYPE.MUSIC]: 1,
+    [AUDIO_TYPE.SFX]: 1
+})
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
 const NOW_PLAYING_LINE_LIMIT = 6
@@ -26,6 +36,8 @@ export default class SoundManager
         this.debugDefinitionsFolder = null
         this.debugState = null
         this.soundDefinitionTuning = {}
+        this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+        this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -33,6 +45,7 @@ export default class SoundManager
 
     init()
     {
+        this.restoreVolumePreferences()
         this.setEnabled(this.experience?.audioEnabled !== false)
         this.setDebug()
         this.syncDebugState()
@@ -194,9 +207,11 @@ export default class SoundManager
         }
 
         const resolvedDefinition = this.applySoundDefinitionOverrides(soundName, definition)
+        const audioType = this.resolveAudioType(soundName, resolvedDefinition)
+        const channelVolume = this.getAudioTypeVolumeMultiplier(audioType)
 
         const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
-            volume,
+            volume: volume * channelVolume,
             playbackRate
         })
 
@@ -207,7 +222,7 @@ export default class SoundManager
         }
 
         const hasPlayedFallbackSound = this.playFallbackSound(soundName, resolvedDefinition, {
-            volume,
+            volume: volume * channelVolume,
             playbackRate
         })
         if(hasPlayedFallbackSound)
@@ -520,6 +535,107 @@ export default class SoundManager
             volume: typeof definition.volume === 'number' ? definition.volume : 1,
             playbackRate: typeof definition.playbackRate === 'number' ? definition.playbackRate : 1,
             loop: Boolean(definition.loop)
+        }
+    }
+
+    resolveAudioType(soundName = '', definition = {})
+    {
+        const explicitType = String(definition?.audioType || '').toLowerCase()
+        if(explicitType === AUDIO_TYPE.MUSIC || explicitType === AUDIO_TYPE.SFX)
+        {
+            return explicitType
+        }
+
+        // Backward-compatible fallback for definitions without audioType.
+        const normalizedChannel = String(definition?.channel || '').toLowerCase()
+        if(normalizedChannel === 'music' || normalizedChannel === 'bgm' || normalizedChannel === 'ambient')
+        {
+            return AUDIO_TYPE.MUSIC
+        }
+
+        return AUDIO_TYPE.SFX
+    }
+
+    getAudioTypeVolumeMultiplier(audioType = AUDIO_TYPE.SFX)
+    {
+        if(audioType === AUDIO_TYPE.MUSIC)
+        {
+            return this.musicVolume
+        }
+
+        return this.sfxVolume
+    }
+
+    setMusicVolume(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.musicVolume = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : this.musicVolume
+        this.persistVolumePreferences()
+        return this.musicVolume
+    }
+
+    setSfxVolume(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.sfxVolume = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : this.sfxVolume
+        this.persistVolumePreferences()
+        return this.sfxVolume
+    }
+
+    getMusicVolume()
+    {
+        return this.musicVolume
+    }
+
+    getSfxVolume()
+    {
+        return this.sfxVolume
+    }
+
+    restoreVolumePreferences()
+    {
+        try
+        {
+            const storedMusicVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_MUSIC_VOLUME_KEY) || '')
+            const storedSfxVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_SFX_VOLUME_KEY) || '')
+
+            if(Number.isFinite(storedMusicVolume))
+            {
+                this.musicVolume = Math.max(0, Math.min(1, storedMusicVolume))
+            }
+            else
+            {
+                this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+            }
+            if(Number.isFinite(storedSfxVolume))
+            {
+                this.sfxVolume = Math.max(0, Math.min(1, storedSfxVolume))
+            }
+            else
+            {
+                this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
+            }
+        }
+        catch(error)
+        {
+            void error
+        }
+    }
+
+    persistVolumePreferences()
+    {
+        try
+        {
+            window.localStorage.setItem(AUDIO_MUSIC_VOLUME_KEY, String(this.musicVolume))
+            window.localStorage.setItem(AUDIO_SFX_VOLUME_KEY, String(this.sfxVolume))
+        }
+        catch(error)
+        {
+            void error
         }
     }
 
