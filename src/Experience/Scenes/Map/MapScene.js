@@ -7,7 +7,6 @@ export default class MapScene extends BaseScene
     constructor()
     {
         super(SceneEnum.MAP)
-        this.hudHint = ''
     }
 
     enter()

@@ -111,6 +111,7 @@ export default class SceneRecuperationWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.water?.update?.(delta)
         this.light?.update?.(delta)
         this.windTurbine?.update?.(delta)
         this.player?.update(delta)

@@ -69,16 +69,6 @@ export default class DialogueActionExecutor
                 })
                 break
 
-            case 'setHudHint':
-            {
-                const hintElement = document.querySelector('.hud__hint')
-                if(hintElement && typeof action.text === 'string')
-                {
-                    hintElement.textContent = action.text
-                }
-                break
-            }
-
             case 'moveBloomToRailNode':
                 this.moveBloomToRailNode(action)
                 break

@@ -7,7 +7,6 @@ export default class SceneDistributionScene extends BaseScene
     constructor()
     {
         super(SceneEnum.DISTRIBUTION)
-        this.hudHint = 'Distribution: clique pour pointer lock, ZQSD/WASD pour te deplacer.'
     }
 
     enter()

@@ -7,7 +7,6 @@ export default class SceneRecuperationScene extends BaseScene
     constructor()
     {
         super(SceneEnum.RECUPERATION)
-        this.hudHint = 'Recuperation: tu viens d etre teleporte. Clique pour pointer lock, ZQSD/WASD pour te deplacer.'
     }
 
     enter()

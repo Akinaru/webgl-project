@@ -19,25 +19,25 @@ export default class Bushes
 
         this.state = {
             nombreBuissons: 220,
-            graineRepartition: 2026,
-            distanceMinimale: 0.55,
+            graineRepartition: 54348,
+            distanceMinimale: 0.35,
             echelleMin: 0.26,
-            echelleMax: 0.52,
+            echelleMax: 0.41,
             hauteurOffset: 0.02,
-            normaleYMin: 0.78,
+            normaleYMin: 0.337,
             margeHauteurHerbe: 0.08,
             nombreFeuilles: 80,
-            tailleFeuille: 0.8,
-            seuilAlpha: 0.4,
+            tailleFeuille: 0.82,
+            seuilAlpha: 0.38,
             melangeNormales: 0.85,
             rotationAleatoire: 9999,
-            frequenceVent: 0.2,
-            vitesseVent: 0.1,
-            forceVent: 0.75,
+            frequenceVent: 0.043,
+            vitesseVent: 0.043,
+            forceVent: 0.391,
             buissonsActifs: 0
         }
 
-        this.couleurFeuillage = new THREE.Color('#88a94a')
+        this.couleurFeuillage = new THREE.Color('#88bb31')
 
         this.raycaster = new THREE.Raycaster()
         this.rayOrigin = new THREE.Vector3()
