@@ -27,7 +27,8 @@ const BUSH_TRIGGER_COOLDOWN_MS = 220
 const BUSH_SOUND_MOVE_SPEED_THRESHOLD = 0.06
 const FOOTSTEP_RATE_EPSILON = 0.02
 const WALKING_GRASS_PLAYBACK_MULTIPLIER = 1.5
-const WALKING_SAND_PLAYBACK_MULTIPLIER = 3.0
+const WALKING_SAND_PLAYBACK_MULTIPLIER = 2.0
+const WALKING_STONE_PLAYBACK_MULTIPLIER = 1.2
 
 function isRailsGraph(value)
 {
@@ -255,6 +256,7 @@ export default class MapWorld
             && isAbovePlan
             && horizontalSpeed > WALKING_GRASS_SPEED_THRESHOLD
         const isOnSandTintBand = playerBottomY <= (terrainSableMaxY + TERRAIN_SAND_BLEND_HEIGHT)
+        const isOnBridge = this.mapModel?.hasNameInHierarchy?.(this.player?.currentGroundObject, ['pont', 'bridge']) === true
 
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
         {
@@ -280,7 +282,7 @@ export default class MapWorld
         }
 
         const nextFootstepLoop = isWalkingOnReliefAbovePlan
-            ? (isOnSandTintBand ? 'walkingSand' : 'walkingGrass')
+            ? (isOnSandTintBand ? 'walkingSand' : (isOnBridge ? 'walkingStone' : 'walkingGrass'))
             : null
         const footstepPlaybackRate = this.getFootstepPlaybackRate(nextFootstepLoop)
         this.syncFootstepLoop(nextFootstepLoop, footstepPlaybackRate)
@@ -620,7 +622,9 @@ export default class MapWorld
 
         const playbackMultiplier = soundName === 'walkingSand'
             ? WALKING_SAND_PLAYBACK_MULTIPLIER
-            : WALKING_GRASS_PLAYBACK_MULTIPLIER
+            : (soundName === 'walkingStone'
+                ? WALKING_STONE_PLAYBACK_MULTIPLIER
+                : WALKING_GRASS_PLAYBACK_MULTIPLIER)
         return THREE.MathUtils.clamp(speedMultiplier * playbackMultiplier, 0.2, 8)
     }
 

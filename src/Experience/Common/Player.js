@@ -107,6 +107,7 @@ export default class Player
         this.pitch = spawnPitch
         this.isOnGround = true
         this.isPointerLocked = false
+        this.currentGroundObject = null
 
         this.setCamera()
         this.setPointerLock()
@@ -409,6 +410,7 @@ export default class Player
     {
         const fallbackGroundY = this.groundHeight + this.settings.height
         let resolvedGroundY = fallbackGroundY
+        let resolvedGroundObject = null
 
         if(this.groundMeshes.length > 0)
         {
@@ -449,6 +451,7 @@ export default class Player
                 }
 
                 resolvedGroundY = Math.max(resolvedGroundY, candidateGroundY)
+                resolvedGroundObject = hit.object
                 break
             }
         }
@@ -458,10 +461,12 @@ export default class Player
             this.position.y = resolvedGroundY
             this.velocity.y = 0
             this.isOnGround = true
+            this.currentGroundObject = resolvedGroundObject
             return
         }
 
         this.isOnGround = false
+        this.currentGroundObject = null
     }
 
     resolveCeilingCollision()

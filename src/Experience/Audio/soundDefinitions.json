@@ -72,6 +72,17 @@
     "fadeOutMs": 100,
     "channel": "footsteps"
   },
+  "walkingStone": {
+    "label": "Walking stone",
+    "resourceKey": "walkingStoneSound",
+    "fallbackPath": "sounds/effects/walking/walking-stone.mp3",
+    "volume": 0.4,
+    "playbackRate": 2,
+    "loop": true,
+    "fadeInMs": 70,
+    "fadeOutMs": 120,
+    "channel": "footsteps"
+  },
   "bush1": {
     "label": "Bush 1",
     "resourceKey": "bush1Sound",
