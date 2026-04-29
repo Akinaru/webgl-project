@@ -1,5 +1,7 @@
 import MetierEnum from '../Enum/MetierEnum.js'
 
+const METIER_IDS = Object.values(MetierEnum)
+
 export default class DialogueConditionResolver
 {
     constructor(dialogueManager)
@@ -39,6 +41,9 @@ export default class DialogueConditionResolver
             case 'metierAtMost':
                 return this.getMetierValue(condition.metier) <= (condition.value ?? 0)
 
+            case 'metierIsMax':
+                return this.isMetierMax(condition.metier)
+
             case 'contextEquals':
                 return context?.[condition.key] === condition.value
 
@@ -52,6 +57,17 @@ export default class DialogueConditionResolver
     {
         const metierId = this.resolveMetierId(metierRef)
         return this.experience.metierManager.getMetierValue(metierId)
+    }
+
+    isMetierMax(metierRef)
+    {
+        const metierId = this.resolveMetierId(metierRef)
+        const targetValue = this.experience.metierManager.getMetierValue(metierId)
+
+        return METIER_IDS.every((candidateId) =>
+        {
+            return targetValue >= this.experience.metierManager.getMetierValue(candidateId)
+        })
     }
 
     resolveMetierId(metierRef)
