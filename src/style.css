@@ -153,19 +153,19 @@ body.is-pointer-locked
     transition: opacity 420ms ease, transform 420ms ease, filter 420ms ease;
 }
 
-.boot__panel,
-.pause-menu__panel
+.menu-panel
 {
     position: relative;
     isolation: isolate;
     overflow: hidden;
     width: min(92vw, 620px);
     padding: 1.9rem 1.55rem 1.45rem;
-    border: 2px solid rgba(255, 255, 255, 0.29);
+    border: none;
     border-radius: 50px;
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 22%, rgba(0, 116, 141, 0.3) 100%);
     box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.5),
         0 18px 40.1px 1px rgba(255, 255, 255, 0.2),
         0 14px 34px rgba(0, 0, 0, 0.24),
         inset 0 0 22.1px 12px rgba(255, 255, 255, 0.2);
@@ -174,8 +174,7 @@ body.is-pointer-locked
     text-align: center;
 }
 
-.boot__panel::before,
-.pause-menu__panel::before
+.menu-panel::before
 {
     content: '';
     position: absolute;
@@ -192,8 +191,7 @@ body.is-pointer-locked
     transform: translate3d(0, 0, 0);
 }
 
-.boot__panel::after,
-.pause-menu__panel::after
+.menu-panel::after
 {
     content: '';
     position: absolute;
@@ -206,25 +204,33 @@ body.is-pointer-locked
     pointer-events: none;
 }
 
-.boot__panel > *,
-.pause-menu__panel > *
+.menu-panel > *
 {
     position: relative;
     z-index: 1;
 }
 
-.boot__title,
-.pause-menu__title
+.menu-title
 {
     margin: 0;
     color: rgba(255, 255, 255, 0.98);
-    font-size: clamp(1.4rem, 3vw, 22px);
+    font-size: 22px;
     font-weight: 500;
     line-height: 1.38;
     text-shadow: 0 1px 12px rgba(255, 255, 255, 0.12);
 }
 
-.boot__actions
+.boot__title.menu-title
+{
+    font-size: 22px;
+}
+
+.pause-menu__title.menu-title
+{
+    font-size: 30px;
+}
+
+.menu-actions
 {
     display: grid;
     width: min(100%, 420px);
@@ -232,8 +238,7 @@ body.is-pointer-locked
     gap: 0.72rem;
 }
 
-.boot__sound-toggle,
-.pause-menu__sound-toggle
+.menu-toggle
 {
     width: fit-content;
     max-width: 100%;
@@ -252,16 +257,14 @@ body.is-pointer-locked
     cursor: pointer;
 }
 
-.boot__checkbox,
-.pause-menu__checkbox
+.menu-checkbox
 {
     position: absolute;
     opacity: 0;
     pointer-events: none;
 }
 
-.boot__checkbox-ui,
-.pause-menu__checkbox-ui
+.menu-checkbox-ui
 {
     position: relative;
     width: 24px;
@@ -274,42 +277,39 @@ body.is-pointer-locked
     transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
-.boot__checkbox:checked + .boot__checkbox-ui,
-.pause-menu__checkbox:checked + .pause-menu__checkbox-ui
+.menu-checkbox:checked + .menu-checkbox-ui
 {
     background: rgba(255, 255, 255, 0.24);
     box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.98);
 }
 
-.boot__checkbox:focus-visible + .boot__checkbox-ui,
-.pause-menu__checkbox:focus-visible + .pause-menu__checkbox-ui
+.menu-checkbox:focus-visible + .menu-checkbox-ui
 {
     outline: 2px solid rgba(255, 255, 255, 0.48);
     outline-offset: 4px;
 }
 
-.boot__sound-label,
-.pause-menu__sound-label
+.menu-toggle__label
 {
     display: inline-block;
     line-height: 1.2;
 }
 
-.boot__btn,
-.pause-menu__button
+.menu-button
 {
     width: min(100%, 420px);
-    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    border: none;
     border-radius: 24px;
     background: rgba(0, 116, 141, 0.5);
     color: #f6fbff;
     padding: 1.02rem 1.28rem;
     font: inherit;
-    font-size: clamp(1.35rem, 4vw, 28px);
+    font-size: 28px;
     font-weight: 600;
     line-height: 1.2;
     cursor: pointer;
     box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.5),
         0 10px 24px rgba(255, 255, 255, 0.1),
         inset 0 0 16px rgba(255, 255, 255, 0.14);
     backdrop-filter: blur(8px);
@@ -317,24 +317,28 @@ body.is-pointer-locked
     transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease, opacity 140ms ease, background 140ms ease;
 }
 
-.boot__btn:hover,
-.pause-menu__button:hover
+.menu-button:hover
 {
     transform: translateY(-1px);
     filter: brightness(1.08);
     border-color: rgba(255, 255, 255, 0.5);
 }
 
-.boot__btn:disabled,
-.pause-menu__button:disabled
+.menu-button:disabled
 {
     cursor: not-allowed;
     opacity: 0.48;
 }
 
-.pause-menu__button--secondary
+.menu-button--secondary
 {
     background: rgba(255, 255, 255, 0.1);
+}
+
+.boot__actions,
+.pause-menu__actions
+{
+    margin-top: 1.3rem;
 }
 
 .boot.is-starting .boot__home,
@@ -560,7 +564,6 @@ body.is-recuperation-material-cursor .dialogue__cursor
     padding: 1rem;
     background: transparent;
     opacity: 0;
-    transition: opacity 180ms ease;
 }
 
 .pause-menu.is-displayed
@@ -571,14 +574,6 @@ body.is-recuperation-material-cursor .dialogue__cursor
 .pause-menu.is-visible
 {
     opacity: 1;
-}
-
-.pause-menu__actions
-{
-    margin-top: 1.3rem;
-    display: grid;
-    justify-items: center;
-    gap: 0.72rem;
 }
 
 .tp-dfwv

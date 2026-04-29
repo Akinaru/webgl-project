@@ -56,7 +56,8 @@ export default class SceneRecuperationWorld
             debugParentFolder: this.debugFolder
         })
         this.water = new SceneRecuperationWater({
-            recuperationModel: this.recuperationModel
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
         })
 
         this.player = new Player({

@@ -4,20 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bloom</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <canvas class="webgl"></canvas>
     <div class="boot" id="bootScreen">
       <div class="boot__home" id="bootHome">
-        <div class="boot__panel" role="dialog" aria-modal="true" aria-labelledby="bootMenuTitle">
-          <h1 class="boot__title" id="bootMenuTitle">Pour une expérience optimale,<br />nous vous recommandons d’activer le son</h1>
-          <label class="boot__sound-toggle" for="bootAudioToggle">
-            <input class="boot__checkbox" id="bootAudioToggle" type="checkbox" />
-            <span class="boot__checkbox-ui" aria-hidden="true"></span>
-            <span class="boot__sound-label">Activer le son</span>
+        <div class="boot__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="bootMenuTitle">
+          <h1 class="boot__title menu-title" id="bootMenuTitle">Pour une expérience optimale,<br />nous vous recommandons d’activer le son</h1>
+          <label class="boot__sound-toggle menu-toggle" for="bootAudioToggle">
+            <input class="boot__checkbox menu-checkbox" id="bootAudioToggle" type="checkbox" />
+            <span class="boot__checkbox-ui menu-checkbox-ui" aria-hidden="true"></span>
+            <span class="boot__sound-label menu-toggle__label">Activer le son</span>
           </label>
-          <div class="boot__actions">
-            <button class="boot__btn" id="btnStartExperience" type="button">Démarrer l'expérience</button>
+          <div class="boot__actions menu-actions">
+            <button class="boot__btn menu-button" id="btnStartExperience" type="button">Démarrer l'expérience</button>
           </div>
         </div>
       </div>
@@ -31,11 +37,11 @@
       <div class="hud__crosshair" aria-hidden="true"></div>
     </div>
     <div class="pause-menu" id="pauseMenu" aria-hidden="true">
-      <div class="pause-menu__panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
-        <h2 class="pause-menu__title" id="pauseMenuTitle">Menu principal</h2>
-        <div class="pause-menu__actions">
-          <button class="pause-menu__button" id="pauseResumeButton" type="button">Reprendre l'expérience</button>
-          <button class="pause-menu__button pause-menu__button--secondary" id="pauseSettingsButton" type="button">Paramètres</button>
+      <div class="pause-menu__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
+        <h2 class="pause-menu__title menu-title" id="pauseMenuTitle">Menu principal</h2>
+        <div class="pause-menu__actions menu-actions">
+          <button class="pause-menu__button menu-button" id="pauseResumeButton" type="button">Reprendre l'expérience</button>
+          <button class="pause-menu__button pause-menu__button--secondary menu-button menu-button--secondary" id="pauseSettingsButton" type="button">Paramètres</button>
         </div>
       </div>
     </div>

@@ -32,6 +32,14 @@ const METIER_CONFIGS = Object.freeze([
     }
 ])
 
+const DEBUG_METIER_OPTIONS = Object.freeze(
+    METIER_CONFIGS.reduce((options, config) =>
+    {
+        options[config.label] = config.id
+        return options
+    }, {})
+)
+
 export default class MetierManager extends EventEmitter
 {
     constructor()
@@ -44,6 +52,10 @@ export default class MetierManager extends EventEmitter
         this.enum = MetierEnum
         this.metiers = new Map()
         this.debugValues = null
+        this.debugAdjustState = {
+            metier: MetierEnum.BOTANISTE,
+            amount: 1
+        }
 
         this.setMetiers()
         this.setDebug()
@@ -159,6 +171,38 @@ export default class MetierManager extends EventEmitter
                 readonly: true
             }, 'auto')
         }
+
+        this.debugAdjustFolder = this.debug.addFolder('Ajuster', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.debugAdjustFolder, this.debugAdjustState, 'metier', {
+            label: 'metier',
+            options: DEBUG_METIER_OPTIONS
+        })
+
+        this.debug.addBinding(this.debugAdjustFolder, this.debugAdjustState, 'amount', {
+            label: 'valeur',
+            min: -20,
+            max: 20,
+            step: 1
+        })
+
+        this.debug.addButton(this.debugAdjustFolder, {
+            title: 'Ajouter la valeur',
+            onClick: () =>
+            {
+                const metierId = this.debugAdjustState.metier
+                const amount = Number(this.debugAdjustState.amount ?? 0)
+                if(!Number.isFinite(amount) || amount === 0)
+                {
+                    return
+                }
+
+                this.addToMetier(metierId, amount)
+            }
+        })
     }
 
     updateDebugValue(metierId, value)
@@ -174,6 +218,7 @@ export default class MetierManager extends EventEmitter
     destroy()
     {
         this.debugFolder?.dispose?.()
+        this.debugAdjustFolder = null
         this.debugValues = null
     }
 }

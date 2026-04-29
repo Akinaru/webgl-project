@@ -2,7 +2,6 @@ import EventEmitter from '../Utils/EventEmitter.js'
 
 const DISPLAYED_CLASS = 'is-displayed'
 const VISIBLE_CLASS = 'is-visible'
-const TRANSITION_DURATION_MS = 180
 
 export default class PauseMenu extends EventEmitter
 {
@@ -145,23 +144,6 @@ export default class PauseMenu extends EventEmitter
             })
         }
 
-        this.onRootTransitionEnd = (event) =>
-        {
-            if(event.target !== this.root || event.propertyName !== 'opacity')
-            {
-                return
-            }
-
-            if(this.state === PauseMenu.OPENING)
-            {
-                this.finishOpen()
-            }
-            else if(this.state === PauseMenu.CLOSING)
-            {
-                this.finishClose()
-            }
-        }
-
         this.onPointerLockChange = ({ element, previousElement } = {}) =>
         {
             const isPointerLockedNow = element === this.canvas
@@ -237,30 +219,6 @@ export default class PauseMenu extends EventEmitter
         }
     }
 
-    finishOpen()
-    {
-        if(this.state !== PauseMenu.OPENING)
-        {
-            return
-        }
-
-        this.state = PauseMenu.OPEN
-        this.trigger('opened')
-    }
-
-    finishClose()
-    {
-        if(this.state !== PauseMenu.CLOSING)
-        {
-            return
-        }
-
-        this.state = PauseMenu.CLOSED
-        this.root.classList.remove(DISPLAYED_CLASS)
-        this.trigger('closed')
-        this.tryRestorePointerLock('finish_close')
-    }
-
     start()
     {
         if(this.isInitialized)
@@ -282,7 +240,6 @@ export default class PauseMenu extends EventEmitter
         this.resumeButton.addEventListener('click', this.onResumeClick)
         this.settingsButton.addEventListener('click', this.onSettingsClick)
         this.root.addEventListener('click', this.onRootClick)
-        this.root.addEventListener('transitionend', this.onRootTransitionEnd)
     }
 
     open({
@@ -319,22 +276,18 @@ export default class PauseMenu extends EventEmitter
             hasFocus: document.hasFocus?.() ?? true
         })
 
-        this.state = PauseMenu.OPENING
+        this.state = PauseMenu.OPEN
         this.root.setAttribute('aria-hidden', 'false')
         this.root.classList.add(DISPLAYED_CLASS)
+        this.root.classList.add(VISIBLE_CLASS)
 
         if(isPointerLockedNow)
         {
             this.inputs?.exitPointerLock?.()
         }
 
-        this.visibilityRafId = requestAnimationFrame(() =>
-        {
-            this.root?.classList?.add(VISIBLE_CLASS)
-            this.visibilityRafId = 0
-        })
-
         this.trigger('open')
+        this.trigger('opened')
         this.experience?.sound?.playPauseOpen?.()
     }
 
@@ -374,16 +327,12 @@ export default class PauseMenu extends EventEmitter
             this.closeTimeoutId = 0
         }
 
-        this.state = PauseMenu.CLOSING
+        this.state = PauseMenu.CLOSED
         this.root.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(VISIBLE_CLASS)
+        this.root.classList.remove(DISPLAYED_CLASS)
         this.trigger('close')
-
-        this.closeTimeoutId = window.setTimeout(() =>
-        {
-            this.closeTimeoutId = 0
-            this.finishClose()
-        }, TRANSITION_DURATION_MS + 40)
+        this.trigger('closed')
 
         if(shouldRestorePointerLock)
         {
@@ -425,7 +374,6 @@ export default class PauseMenu extends EventEmitter
         this.resumeButton.removeEventListener('click', this.onResumeClick)
         this.settingsButton.removeEventListener('click', this.onSettingsClick)
         this.root.removeEventListener('click', this.onRootClick)
-        this.root.removeEventListener('transitionend', this.onRootTransitionEnd)
 
         this.root.classList.remove(VISIBLE_CLASS)
         this.root.classList.remove(DISPLAYED_CLASS)
