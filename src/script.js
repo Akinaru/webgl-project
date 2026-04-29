@@ -1,4 +1,3 @@
-import './style.css'
 import Experience from './Experience/Experience.js'
 
 const MOBILE_MAX_WIDTH = 1024
