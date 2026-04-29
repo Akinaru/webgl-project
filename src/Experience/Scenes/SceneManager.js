@@ -87,11 +87,15 @@ export default class SceneManager
         overlay.className = 'scene-transition'
         overlay.setAttribute('aria-hidden', 'true')
         overlay.innerHTML = `
-            <div class="scene-transition__panel">
-                <span class="scene-transition__label" data-scene-transition-label>Transition de scene</span>
-                <span class="scene-transition__value" data-scene-transition-value>0%</span>
-                <div class="scene-transition__bar">
-                    <span class="scene-transition__fill" data-scene-transition-fill></span>
+            <div class="scene-transition__home">
+                <div class="scene-transition__panel menu-panel">
+                    <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
+                    <div class="scene-transition__meter">
+                        <span class="scene-transition__value" data-scene-transition-value>0%</span>
+                        <div class="scene-transition__bar" aria-hidden="true">
+                            <span class="scene-transition__fill" data-scene-transition-fill></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         `

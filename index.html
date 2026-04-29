@@ -15,6 +15,7 @@
     <canvas class="webgl"></canvas>
     <div class="boot" id="bootScreen">
       <div class="boot__home" id="bootHome">
+        <div class="boot__logo-viewer" id="bootLogoViewer" aria-hidden="true"></div>
         <div class="boot__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="bootMenuTitle">
           <h1 class="boot__title menu-title" id="bootMenuTitle">Pour une expérience optimale,<br />nous vous recommandons d’activer le son</h1>
           <label class="boot__sound-toggle menu-toggle" for="bootAudioToggle">
@@ -32,6 +33,22 @@
         <div class="boot__eyelid boot__eyelid--top"></div>
         <div class="boot__eyelid boot__eyelid--bottom"></div>
       </div>
+    </div>
+    <div class="scene-transition" id="sceneTransition" aria-hidden="true">
+      <div class="scene-transition__home">
+        <div class="scene-transition__panel menu-panel">
+          <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
+          <div class="scene-transition__meter">
+            <span class="scene-transition__value" data-scene-transition-value>0%</span>
+            <div class="scene-transition__bar" aria-hidden="true">
+              <span class="scene-transition__fill" data-scene-transition-fill></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hud">
+      <div class="hud__crosshair" aria-hidden="true"></div>
     </div>
     <div class="pause-menu" id="pauseMenu" aria-hidden="true">
       <div class="pause-menu__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
