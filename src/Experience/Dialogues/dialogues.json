@@ -8,20 +8,12 @@
         "intro_1": {
           "type": "line",
           "speaker": "Bloom",
-          "sound": {
-            "resourceKey": "voice_1",
-            "fallbackPath": "sounds/dialogues/voice_1.mp3"
-          },
           "text": "Salut. Je suis Bloom, la petite goutte qui va te guider.",
           "next": "intro_2"
         },
         "intro_2": {
           "type": "line",
           "speaker": "Bloom",
-          "sound": {
-            "resourceKey": "voice_2",
-            "fallbackPath": "sounds/dialogues/voice_2.mp3"
-          },
           "text": "Ton role va evoluer selon tes choix. On commence ?",
           "next": "role_choice"
         },
@@ -33,26 +25,70 @@
             {
               "id": "inventeur",
               "text": "J observe, je teste, j invente.",
-              "next": "inventeur_reply",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "INVENTEUR",
+                  "amount": 3
+                },
+                {
+                  "type": "setFlag",
+                  "key": "bloom_role",
+                  "value": "inventeur"
+                }
+              ],
+              "next": "inventeur_reply"
             },
             {
               "id": "meneur",
               "text": "Je prends les decisions et je motive.",
-              "next": "meneur_reply",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "MENEUR",
+                  "amount": 3
+                },
+                {
+                  "type": "setFlag",
+                  "key": "bloom_role",
+                  "value": "meneur"
+                }
+              ],
+              "next": "meneur_reply"
             },
             {
               "id": "travailleur",
               "text": "Je fonce et j execute proprement.",
-              "next": "travailleur_reply",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "TRAVAILLEUR",
+                  "amount": 3
+                },
+                {
+                  "type": "setFlag",
+                  "key": "bloom_role",
+                  "value": "travailleur"
+                }
+              ],
+              "next": "travailleur_reply"
             },
             {
               "id": "botaniste",
               "text": "Je protege le vivant et je cultive.",
-              "next": "botaniste_reply",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "BOTANISTE",
+                  "amount": 3
+                },
+                {
+                  "type": "setFlag",
+                  "key": "bloom_role",
+                  "value": "botaniste"
+                }
+              ],
+              "next": "botaniste_reply"
             }
           ]
         },
@@ -88,14 +124,30 @@
             {
               "id": "yes",
               "text": "Oui, lance-le.",
-              "next": "mission_yes",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "setFlag",
+                  "key": "calibration_requested",
+                  "value": true
+                },
+                {
+                  "type": "startMiniGame",
+                  "key": "calibration.v1"
+                }
+              ],
+              "next": "mission_yes"
             },
             {
               "id": "no",
               "text": "Pas maintenant.",
-              "next": "mission_no",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "setFlag",
+                  "key": "calibration_requested",
+                  "value": false
+                }
+              ],
+              "next": "mission_no"
             }
           ]
         },
@@ -222,6 +274,10 @@
               "type": "setFlag",
               "key": "bloom_intro_done",
               "value": true
+            },
+            {
+              "type": "setHudHint",
+              "text": "Dialogue termine. Clique dans la scene pour reprendre le controle."
             }
           ]
         }
@@ -236,8 +292,7 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Petit point d etape: tu peux me reparler quand tu veux.",
-          "next": "f2",
-          "actions": []
+          "next": "f2"
         },
         "f2": {
           "type": "choice",
@@ -247,117 +302,101 @@
             {
               "id": "train",
               "text": "Un mini entrainement",
-              "next": "action_1",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "startMiniGame",
+                  "key": "training.loop"
+                }
+              ],
+              "next": "f3"
             },
             {
               "id": "scene",
               "text": "Changer de scene",
-              "next": "action_1",
-              "conditions": []
+              "actions": [
+                {
+                  "type": "switchScene",
+                  "scene": "complexe"
+                }
+              ],
+              "next": "f3"
             },
             {
               "id": "nothing",
               "text": "Rien, on continue.",
-              "next": "action_1",
-              "conditions": []
+              "next": "f3"
             }
           ]
         },
-        "action_1": {
-          "type": "action",
-          "run": [
-            {
-              "type": "moveBloomToRailNode",
-              "key": "",
-              "value": true,
-              "nodeId": "n9",
-              "lockToNode": true
-            }
-          ],
-          "next": ""
+        "f3": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Nickel, je reste en support.",
+          "next": "fend"
+        },
+        "fend": {
+          "type": "end",
+          "actions": []
         }
       }
     },
-    "bloom.test": {
-      "key": "bloom.test",
+    "intro": {
+      "key": "intro",
       "once": false,
-      "startNode": "debut",
+      "startNode": "intro_1",
       "nodes": {
-        "debut": {
+        "intro_1": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Salut a toi pour ce test de dialogue",
-          "next": "choice_1",
+          "text": "Bonjour… Je m’appelle Bloom. Et toi ? Non, ne réponds pas encore. Je sais déjà que tu es là parce que le monde a changé. Parce que l’eau, autrefois banale, est devenue rare et précieuse.",
+          "next": "intro_2",
           "actions": []
         },
-        "choice_1": {
-          "type": "choice",
-          "speaker": "Bloom",
-          "text": "2+1 ?",
-          "choices": [
-            {
-              "id": "choice_1",
-              "text": "1",
-              "next": "line_1",
-              "conditions": []
-            },
-            {
-              "id": "choice_2",
-              "text": "2",
-              "next": "line_2",
-              "conditions": []
-            },
-            {
-              "id": "choice_3",
-              "text": "3",
-              "next": "line_3",
-              "conditions": []
-            }
-          ]
-        },
-        "line_1": {
+        "intro_2": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "1, c'est faux !",
-          "next": "fin2",
+          "text": "Après la privation des ressources en 2039 à cause des villes-marques, nous avons compris trop tard : on ne peut pas traiter l’eau comme un produit. ",
+          "next": "intro_3",
           "actions": []
         },
-        "line_2": {
+        "intro_3": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "2, c'est faux !",
-          "next": "fin2",
+          "text": "Aujourd’hui en 2050, elle n’est pas à vendre. Elle est à partager. À protéger.",
+          "next": "intro_4",
           "actions": []
         },
-        "line_3": {
+        "intro_4": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "3, c'es juste !!!!",
-          "next": "fin2",
+          "text": "Alors, nous avons bâti Altera, une société où chaque geste compte, où chaque personne à un rôle à jouer et trouve sa place non pas par hasard, mais par essence. ",
+          "next": "intro_5",
           "actions": []
         },
-        "end_1": {
+        "intro_5": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Toi, apprenti-citoyen, tu vas découvrir comment nous vivons, comment nous pensons, comment nous survivons… ensemble.",
+          "next": "intro_6",
+          "actions": []
+        },
+        "intro_6": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Aller on se jette à l’eau ! Le parcours se fera en 3 grandes étapes : la récupération de l’eau, le recyclage et la distribution.",
+          "next": "intro_7",
+          "actions": []
+        },
+        "intro_7": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Tu es prêt ? Alors suis-moi dans le bâtiment de récupération d’eau !",
+          "next": "intro_end",
+          "actions": []
+        },
+        "intro_end": {
           "type": "end",
           "actions": []
-        },
-        "fin2": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "bon merci pour ta réponse",
-          "next": "action_1",
-          "actions": []
-        },
-        "action_1": {
-          "type": "action",
-          "run": [
-            {
-              "type": "setFlag",
-              "key": "test.action",
-              "value": true
-            }
-          ],
-          "next": "end_1"
         }
       }
     }
