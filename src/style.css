@@ -753,7 +753,9 @@ body.is-dialogue-cursor *
     border-radius: 50%;
     border: 2px solid rgba(44, 140, 201, 0.95);
     background: transparent;
-    transform: translate(-50%, -50%) scale(1);
+    --cursor-offset-x: 0px;
+    --cursor-offset-y: 0px;
+    transform: translate(-50%, -50%) translate(var(--cursor-offset-x), var(--cursor-offset-y)) scale(1);
     pointer-events: none;
     z-index: 40;
     opacity: 0;
@@ -767,7 +769,7 @@ body.is-dialogue-cursor *
 
 .dialogue__cursor.is-over-choice
 {
-    transform: translate(-50%, -50%) scale(0.72);
+    transform: translate(-50%, -50%) translate(var(--cursor-offset-x), var(--cursor-offset-y)) scale(0.72);
     background: rgba(53, 151, 215, 0.85);
     border-color: rgba(28, 103, 154, 0.98);
 }
