@@ -2,6 +2,8 @@ import soundDefinitionsJson from './soundDefinitions.json'
 import { getBushSoundUrls } from './bushSoundBank.js'
 
 const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
+const AUDIO_MUSIC_VOLUME_KEY = 'bloom.audio.musicVolume'
+const AUDIO_SFX_VOLUME_KEY = 'bloom.audio.sfxVolume'
 
 const ACTIVE_SOUNDS_LABEL_LIMIT = 8
 const NOW_PLAYING_LINE_LIMIT = 6
@@ -26,6 +28,8 @@ export default class SoundManager
         this.debugDefinitionsFolder = null
         this.debugState = null
         this.soundDefinitionTuning = {}
+        this.musicVolume = 1
+        this.sfxVolume = 1
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -33,6 +37,7 @@ export default class SoundManager
 
     init()
     {
+        this.restoreVolumePreferences()
         this.setEnabled(this.experience?.audioEnabled !== false)
         this.setDebug()
         this.syncDebugState()
@@ -194,9 +199,10 @@ export default class SoundManager
         }
 
         const resolvedDefinition = this.applySoundDefinitionOverrides(soundName, definition)
+        const channelVolume = this.getChannelVolumeMultiplier(resolvedDefinition.channel)
 
         const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
-            volume,
+            volume: volume * channelVolume,
             playbackRate
         })
 
@@ -207,7 +213,7 @@ export default class SoundManager
         }
 
         const hasPlayedFallbackSound = this.playFallbackSound(soundName, resolvedDefinition, {
-            volume,
+            volume: volume * channelVolume,
             playbackRate
         })
         if(hasPlayedFallbackSound)
@@ -520,6 +526,82 @@ export default class SoundManager
             volume: typeof definition.volume === 'number' ? definition.volume : 1,
             playbackRate: typeof definition.playbackRate === 'number' ? definition.playbackRate : 1,
             loop: Boolean(definition.loop)
+        }
+    }
+
+    getChannelVolumeMultiplier(channel = '')
+    {
+        const normalized = String(channel || '').toLowerCase()
+        if(normalized === 'sfx' || normalized === 'footsteps' || normalized === 'underwater' || normalized === 'bush')
+        {
+            return this.sfxVolume
+        }
+
+        return this.musicVolume
+    }
+
+    setMusicVolume(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.musicVolume = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : this.musicVolume
+        this.persistVolumePreferences()
+        return this.musicVolume
+    }
+
+    setSfxVolume(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.sfxVolume = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : this.sfxVolume
+        this.persistVolumePreferences()
+        return this.sfxVolume
+    }
+
+    getMusicVolume()
+    {
+        return this.musicVolume
+    }
+
+    getSfxVolume()
+    {
+        return this.sfxVolume
+    }
+
+    restoreVolumePreferences()
+    {
+        try
+        {
+            const storedMusicVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_MUSIC_VOLUME_KEY) || '')
+            const storedSfxVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_SFX_VOLUME_KEY) || '')
+
+            if(Number.isFinite(storedMusicVolume))
+            {
+                this.musicVolume = Math.max(0, Math.min(1, storedMusicVolume))
+            }
+            if(Number.isFinite(storedSfxVolume))
+            {
+                this.sfxVolume = Math.max(0, Math.min(1, storedSfxVolume))
+            }
+        }
+        catch(error)
+        {
+            void error
+        }
+    }
+
+    persistVolumePreferences()
+    {
+        try
+        {
+            window.localStorage.setItem(AUDIO_MUSIC_VOLUME_KEY, String(this.musicVolume))
+            window.localStorage.setItem(AUDIO_SFX_VOLUME_KEY, String(this.sfxVolume))
+        }
+        catch(error)
+        {
+            void error
         }
     }
 

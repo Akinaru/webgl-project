@@ -33,15 +33,34 @@
         <div class="boot__eyelid boot__eyelid--bottom"></div>
       </div>
     </div>
-    <div class="hud">
-      <div class="hud__crosshair" aria-hidden="true"></div>
-    </div>
     <div class="pause-menu" id="pauseMenu" aria-hidden="true">
       <div class="pause-menu__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
         <h2 class="pause-menu__title menu-title" id="pauseMenuTitle">Menu principal</h2>
         <div class="pause-menu__actions menu-actions">
           <button class="pause-menu__button menu-button" id="pauseResumeButton" type="button">Reprendre l'expérience</button>
           <button class="pause-menu__button pause-menu__button--secondary menu-button menu-button--secondary" id="pauseSettingsButton" type="button">Paramètres</button>
+        </div>
+      </div>
+      <div class="pause-settings menu-panel" id="pauseSettingsModal" role="dialog" aria-modal="true" aria-labelledby="pauseSettingsTitle" aria-hidden="true">
+        <div class="pause-settings__header">
+          <h3 class="pause-settings__title" id="pauseSettingsTitle">Paramètres</h3>
+          <button class="pause-settings__close" id="pauseSettingsCloseButton" type="button" aria-label="Fermer les paramètres">✕</button>
+        </div>
+        <div class="pause-settings__section">
+          <img class="pause-settings__icon" src="/icons/settings-audio.svg" alt="" aria-hidden="true" />
+          <div class="pause-settings__subtitle">Audio</div>
+        </div>
+        <div class="pause-settings__controls">
+          <label class="pause-settings__row" for="pauseMusicVolume">
+            <span class="pause-settings__label">Musique</span>
+            <input class="pause-settings__slider" id="pauseMusicVolume" type="range" min="0" max="100" step="1" value="100" />
+            <span class="pause-settings__value" id="pauseMusicVolumeValue">100%</span>
+          </label>
+          <label class="pause-settings__row" for="pauseSfxVolume">
+            <span class="pause-settings__label">Effets sonores</span>
+            <input class="pause-settings__slider" id="pauseSfxVolume" type="range" min="0" max="100" step="1" value="100" />
+            <span class="pause-settings__value" id="pauseSfxVolumeValue">100%</span>
+          </label>
         </div>
       </div>
     </div>
