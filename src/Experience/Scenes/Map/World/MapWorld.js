@@ -26,6 +26,8 @@ const TERRAIN_SAND_BLEND_HEIGHT = 0.18
 const BUSH_TRIGGER_COOLDOWN_MS = 220
 const BUSH_SOUND_MOVE_SPEED_THRESHOLD = 0.06
 const FOOTSTEP_RATE_EPSILON = 0.02
+const WALKING_GRASS_PLAYBACK_MULTIPLIER = 1.5
+const WALKING_SAND_PLAYBACK_MULTIPLIER = 3.0
 
 function isRailsGraph(value)
 {
@@ -280,7 +282,7 @@ export default class MapWorld
         const nextFootstepLoop = isWalkingOnReliefAbovePlan
             ? (isOnSandTintBand ? 'walkingSand' : 'walkingGrass')
             : null
-        const footstepPlaybackRate = this.getFootstepPlaybackRate()
+        const footstepPlaybackRate = this.getFootstepPlaybackRate(nextFootstepLoop)
         this.syncFootstepLoop(nextFootstepLoop, footstepPlaybackRate)
 
         if(isFullyUnderWater)
@@ -608,7 +610,7 @@ export default class MapWorld
         this.isSetUp = false
     }
 
-    getFootstepPlaybackRate()
+    getFootstepPlaybackRate(soundName = null)
     {
         const speedMultiplier = this.player?.settings?.speedMultiplier
         if(!Number.isFinite(speedMultiplier))
@@ -616,7 +618,10 @@ export default class MapWorld
             return 1
         }
 
-        return THREE.MathUtils.clamp(speedMultiplier * 1.5, 0.2, 8)
+        const playbackMultiplier = soundName === 'walkingSand'
+            ? WALKING_SAND_PLAYBACK_MULTIPLIER
+            : WALKING_GRASS_PLAYBACK_MULTIPLIER
+        return THREE.MathUtils.clamp(speedMultiplier * playbackMultiplier, 0.2, 8)
     }
 
     syncFootstepLoop(nextSoundName, playbackRate = 1)
