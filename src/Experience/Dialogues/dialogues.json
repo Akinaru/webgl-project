@@ -1,401 +1,252 @@
 {
   "dialogues": {
-    "bloom.intro": {
-      "key": "bloom.intro",
-      "once": true,
-      "startNode": "intro_1",
-      "nodes": {
-        "intro_1": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Salut. Je suis Bloom, la petite goutte qui va te guider.",
-          "next": "intro_2"
-        },
-        "intro_2": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Ton role va evoluer selon tes choix. On commence ?",
-          "next": "role_choice"
-        },
-        "role_choice": {
-          "type": "choice",
-          "speaker": "Bloom",
-          "text": "Quelle approche te ressemble le plus ?",
-          "choices": [
-            {
-              "id": "inventeur",
-              "text": "J observe, je teste, j invente.",
-              "actions": [
-                {
-                  "type": "addMetier",
-                  "metier": "INVENTEUR",
-                  "amount": 3
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "inventeur"
-                }
-              ],
-              "next": "inventeur_reply"
-            },
-            {
-              "id": "meneur",
-              "text": "Je prends les decisions et je motive.",
-              "actions": [
-                {
-                  "type": "addMetier",
-                  "metier": "MENEUR",
-                  "amount": 3
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "meneur"
-                }
-              ],
-              "next": "meneur_reply"
-            },
-            {
-              "id": "travailleur",
-              "text": "Je fonce et j execute proprement.",
-              "actions": [
-                {
-                  "type": "addMetier",
-                  "metier": "TRAVAILLEUR",
-                  "amount": 3
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "travailleur"
-                }
-              ],
-              "next": "travailleur_reply"
-            },
-            {
-              "id": "botaniste",
-              "text": "Je protege le vivant et je cultive.",
-              "actions": [
-                {
-                  "type": "addMetier",
-                  "metier": "BOTANISTE",
-                  "amount": 3
-                },
-                {
-                  "type": "setFlag",
-                  "key": "bloom_role",
-                  "value": "botaniste"
-                }
-              ],
-              "next": "botaniste_reply"
-            }
-          ]
-        },
-        "inventeur_reply": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Parfait. Profil inventeur active.",
-          "next": "mission_offer"
-        },
-        "meneur_reply": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Parfait. Profil meneur active.",
-          "next": "mission_offer"
-        },
-        "travailleur_reply": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Parfait. Profil travailleur active.",
-          "next": "mission_offer"
-        },
-        "botaniste_reply": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Parfait. Profil botaniste active.",
-          "next": "mission_offer"
-        },
-        "mission_offer": {
-          "type": "choice",
-          "speaker": "Bloom",
-          "text": "Je peux declencher le mini-jeu de calibration. On y va ?",
-          "choices": [
-            {
-              "id": "yes",
-              "text": "Oui, lance-le.",
-              "actions": [
-                {
-                  "type": "setFlag",
-                  "key": "calibration_requested",
-                  "value": true
-                },
-                {
-                  "type": "startMiniGame",
-                  "key": "calibration.v1"
-                }
-              ],
-              "next": "mission_yes"
-            },
-            {
-              "id": "no",
-              "text": "Pas maintenant.",
-              "actions": [
-                {
-                  "type": "setFlag",
-                  "key": "calibration_requested",
-                  "value": false
-                }
-              ],
-              "next": "mission_no"
-            }
-          ]
-        },
-        "mission_yes": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Top. Je te laisse la main, je surveille les variables.",
-          "next": "bonus_branch"
-        },
-        "mission_no": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "D accord. On continue la narration tranquille.",
-          "next": "bonus_branch"
-        },
-        "bonus_branch": {
-          "type": "branch",
-          "branches": [
-            {
-              "conditions": [
-                {
-                  "type": "flagEquals",
-                  "key": "bloom_role",
-                  "value": "inventeur"
-                }
-              ],
-              "next": "bonus_inventeur"
-            },
-            {
-              "conditions": [
-                {
-                  "type": "flagEquals",
-                  "key": "bloom_role",
-                  "value": "meneur"
-                }
-              ],
-              "next": "bonus_meneur"
-            },
-            {
-              "conditions": [
-                {
-                  "type": "flagEquals",
-                  "key": "bloom_role",
-                  "value": "travailleur"
-                }
-              ],
-              "next": "bonus_travailleur"
-            },
-            {
-              "conditions": [
-                {
-                  "type": "flagEquals",
-                  "key": "bloom_role",
-                  "value": "botaniste"
-                }
-              ],
-              "next": "bonus_botaniste"
-            }
-          ],
-          "fallbackNext": "bonus_default"
-        },
-        "bonus_inventeur": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Bonus inventeur: +1 botaniste pour l equilibre.",
-          "next": "end",
-          "actions": [
-            {
-              "type": "addMetier",
-              "metier": "BOTANISTE",
-              "amount": 1
-            }
-          ]
-        },
-        "bonus_meneur": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Bonus meneur: +1 travailleur pour concretiser.",
-          "next": "end",
-          "actions": [
-            {
-              "type": "addMetier",
-              "metier": "TRAVAILLEUR",
-              "amount": 1
-            }
-          ]
-        },
-        "bonus_travailleur": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Bonus travailleur: +1 meneur pour la coordination.",
-          "next": "end",
-          "actions": [
-            {
-              "type": "addMetier",
-              "metier": "MENEUR",
-              "amount": 1
-            }
-          ]
-        },
-        "bonus_botaniste": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Bonus botaniste: +1 inventeur pour optimiser le vivant.",
-          "next": "end",
-          "actions": [
-            {
-              "type": "addMetier",
-              "metier": "INVENTEUR",
-              "amount": 1
-            }
-          ]
-        },
-        "bonus_default": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "On garde une base neutre pour le moment.",
-          "next": "end"
-        },
-        "end": {
-          "type": "end",
-          "actions": [
-            {
-              "type": "setFlag",
-              "key": "bloom_intro_done",
-              "value": true
-            },
-            {
-              "type": "setHudHint",
-              "text": "Dialogue termine. Clique dans la scene pour reprendre le controle."
-            }
-          ]
-        }
-      }
-    },
-    "bloom.followup": {
-      "key": "bloom.followup",
-      "once": false,
-      "startNode": "f1",
-      "nodes": {
-        "f1": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Petit point d etape: tu peux me reparler quand tu veux.",
-          "next": "f2"
-        },
-        "f2": {
-          "type": "choice",
-          "speaker": "Bloom",
-          "text": "Tu veux quoi maintenant ?",
-          "choices": [
-            {
-              "id": "train",
-              "text": "Un mini entrainement",
-              "actions": [
-                {
-                  "type": "startMiniGame",
-                  "key": "training.loop"
-                }
-              ],
-              "next": "f3"
-            },
-            {
-              "id": "scene",
-              "text": "Changer de scene",
-              "actions": [
-                {
-                  "type": "switchScene",
-                  "scene": "complexe"
-                }
-              ],
-              "next": "f3"
-            },
-            {
-              "id": "nothing",
-              "text": "Rien, on continue.",
-              "next": "f3"
-            }
-          ]
-        },
-        "f3": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Nickel, je reste en support.",
-          "next": "fend"
-        },
-        "fend": {
-          "type": "end",
-          "actions": []
-        }
-      }
-    },
     "intro": {
       "key": "intro",
       "once": false,
-      "startNode": "intro_1",
+      "startNode": "intro_001",
       "nodes": {
-        "intro_1": {
+        "intro_end": {
+          "type": "end",
+          "actions": []
+        },
+        "intro_001": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Bonjour… Je m’appelle Bloom. Et toi ? Non, ne réponds pas encore. Je sais déjà que tu es là parce que le monde a changé. Parce que l’eau, autrefois banale, est devenue rare et précieuse.",
-          "next": "intro_2",
+          "next": "intro_002",
           "actions": []
         },
-        "intro_2": {
+        "intro_002": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Après la privation des ressources en 2039 à cause des villes-marques, nous avons compris trop tard : on ne peut pas traiter l’eau comme un produit. ",
-          "next": "intro_3",
+          "next": "intro_003",
           "actions": []
         },
-        "intro_3": {
+        "intro_003": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Aujourd’hui en 2050, elle n’est pas à vendre. Elle est à partager. À protéger.",
-          "next": "intro_4",
+          "next": "intro_004",
           "actions": []
         },
-        "intro_4": {
+        "intro_004": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Alors, nous avons bâti Altera, une société où chaque geste compte, où chaque personne à un rôle à jouer et trouve sa place non pas par hasard, mais par essence. ",
-          "next": "intro_5",
+          "next": "intro_005",
           "actions": []
         },
-        "intro_5": {
+        "intro_005": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Toi, apprenti-citoyen, tu vas découvrir comment nous vivons, comment nous pensons, comment nous survivons… ensemble.",
-          "next": "intro_6",
+          "next": "intro_006",
           "actions": []
         },
-        "intro_6": {
+        "intro_006": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Aller on se jette à l’eau ! Le parcours se fera en 3 grandes étapes : la récupération de l’eau, le recyclage et la distribution.",
-          "next": "intro_7",
+          "next": "intro_007",
           "actions": []
         },
-        "intro_7": {
+        "intro_007": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Tu es prêt ? Alors suis-moi dans le bâtiment de récupération d’eau !",
           "next": "intro_end",
           "actions": []
+        }
+      }
+    },
+    "recuperation": {
+      "key": "recuperation",
+      "once": false,
+      "startNode": "recuperation_001",
+      "nodes": {
+        "recuperation_001": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Regarde autour de toi. Ces bâtiments… ils ne sont pas juste beaux. Ils sont intelligents. \nChaque matériau choisit comment il veut récupérer la pluie. ",
+          "next": "recuperation_002",
+          "actions": []
         },
-        "intro_end": {
+        "recuperation_002": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Toi, ton rôle coule de source : tu vas décider du meilleur matériau à utiliser pour ce nouveau quartier.",
+          "next": "recuperation_003",
+          "actions": []
+        },
+        "recuperation_003": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "La carapace scarabé ? Elle imite la nature : robuste, auto-nettoyante, pleine de secrets.Le verre ? Transparent et lisse, il laisse glisser chaque goutte librement.Ou la végétation ? Vivante, respirante… elle boit, filtre, et donne de l’ombre.",
+          "next": "recuperation_004",
+          "actions": []
+        },
+        "recuperation_004": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Choisis, applique et simules la pluie pour trouver le meilleur matériau.",
+          "next": "recuperation_005",
+          "actions": []
+        },
+        "recuperation_005": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Hourra ! Tu as choisis un super matériau, l’eau peut circuler !",
+          "next": "recuperation_006",
+          "actions": []
+        },
+        "recuperation_006": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPlus tu es efficace, moins de gouttes d’eau seront perdues.",
+          "next": "recuperation_end",
+          "actions": []
+        },
+        "recuperation_end": {
           "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "recyclage_1": {
+      "key": "recyclage_1",
+      "once": false,
+      "startNode": "recyclage_101",
+      "nodes": {
+        "recyclage_101": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Voici nos petits héros invisibles. \nIls nettoient l’eau… mais parfois, ils se salissent eux-mêmes. Et là, c’est à toi d’intervenir.",
+          "next": "recyclage_102",
+          "actions": []
+        },
+        "recyclage_102": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Devant cette borne, utilise tes mains - oui, tes vraies mains - pour essuyer les taches sur les nanobots.",
+          "next": "recyclage_103",
+          "actions": []
+        },
+        "recyclage_103": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Une fois que tu penses avoir finit de nettoyer le nanobot, pense à le renvoyer à son travail car il est essentiel à la vie d’Altera.",
+          "next": "recyclage_104",
+          "actions": []
+        },
+        "recyclage_104": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "J’espère que c’était clair comme de l’eau de roche. Aller hop hop hop, au travail !",
+          "next": "recyclage_1_end",
+          "actions": []
+        },
+        "recyclage_1_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "recyclage_0": {
+      "key": "recyclage_0",
+      "once": false,
+      "startNode": "recyclage_001",
+      "nodes": {
+        "recyclage_001": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Bon continuons notre parcours au fil de l'eau.",
+          "next": "recyclage_002",
+          "actions": []
+        },
+        "recyclage_002": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Ici dans la salle du recyclage, l’eau sale ne part pas à l’égout. \nElle revient à la terre… grâce à eux :  les champignons filtres. ",
+          "next": "recyclage_003",
+          "actions": []
+        },
+        "recyclage_003": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Ils mangent les polluants, et en retour, ils brillent. \nPlus tu leur donnes d’énergie en cliquant, plus ils s’allument.",
+          "next": "recyclage_004",
+          "actions": []
+        },
+        "recyclage_004": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Wahou, c’est super, tu t’en sors comme un poisson dans l’eau !",
+          "next": "recyclage_005",
+          "actions": []
+        },
+        "recyclage_005": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Place-les aux bons endroits et n’aie pas peur de toucher et de cliquer pour les faire briller. Chaque luminescence est une victoire contre la pollution. Et moi, je suis fière de toi.",
+          "next": "recyclage_0_end",
+          "actions": []
+        },
+        "recyclage_0_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "distribution": {
+      "key": "distribution",
+      "once": false,
+      "startNode": "distribution_001",
+      "nodes": {
+        "distribution_001": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Ahh la dernière étape, nous voyons le bout du tuyau !\nMaintenant, l’eau est propre. Il faut la donner. Mais à qui et combien ?",
+          "next": "distribution_002",
+          "actions": []
+        },
+        "distribution_002": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Ouvre les vannes et envoie l’eau pour l’agriculture, les foyers, les hôpitaux et l’industrie. ",
+          "next": "distribution_003",
+          "actions": []
+        },
+        "distribution_003": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Mais attention à la goutte d’eau qui fait déborder le vase : chaque dépassement de quota est un déséquilibre.",
+          "next": "distribution_004",
+          "actions": []
+        },
+        "distribution_004": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Et si tu atteins les jauges sans déborder… alors tu as compris : l’eau n’est pas une course. \nC’est un équilibre.",
+          "next": "distribution_end",
+          "actions": []
+        },
+        "distribution_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "resultat": {
+      "key": "resultat",
+      "once": false,
+      "startNode": "resultat_001",
+      "nodes": {
+        "resultat_001": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Tu as terminé ta visite. Et maintenant… voici la vérité : chaque choix que tu as fait, chaque geste, chaque hesitation… tout cela a dessiné ton profil. Tu n’as pas passé un test. Tu t’es révélé.",
+          "next": "",
           "actions": []
         }
       }
