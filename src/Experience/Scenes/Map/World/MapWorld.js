@@ -26,6 +26,9 @@ const TERRAIN_SAND_BLEND_HEIGHT = 0.18
 const BUSH_TRIGGER_COOLDOWN_MS = 220
 const BUSH_SOUND_MOVE_SPEED_THRESHOLD = 0.06
 const FOOTSTEP_RATE_EPSILON = 0.02
+const WALKING_GRASS_PLAYBACK_MULTIPLIER = 1.5
+const WALKING_SAND_PLAYBACK_MULTIPLIER = 2.0
+const WALKING_STONE_PLAYBACK_MULTIPLIER = 1.2
 
 function isRailsGraph(value)
 {
@@ -253,6 +256,7 @@ export default class MapWorld
             && isAbovePlan
             && horizontalSpeed > WALKING_GRASS_SPEED_THRESHOLD
         const isOnSandTintBand = playerBottomY <= (terrainSableMaxY + TERRAIN_SAND_BLEND_HEIGHT)
+        const isOnBridge = this.mapModel?.hasNameInHierarchy?.(this.player?.currentGroundObject, ['pont', 'bridge']) === true
 
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
         {
@@ -278,9 +282,9 @@ export default class MapWorld
         }
 
         const nextFootstepLoop = isWalkingOnReliefAbovePlan
-            ? (isOnSandTintBand ? 'walkingSand' : 'walkingGrass')
+            ? (isOnSandTintBand ? 'walkingSand' : (isOnBridge ? 'walkingStone' : 'walkingGrass'))
             : null
-        const footstepPlaybackRate = this.getFootstepPlaybackRate()
+        const footstepPlaybackRate = this.getFootstepPlaybackRate(nextFootstepLoop)
         this.syncFootstepLoop(nextFootstepLoop, footstepPlaybackRate)
 
         if(isFullyUnderWater)
@@ -305,108 +309,181 @@ export default class MapWorld
 
     setTeleportZone()
     {
-        const bridgeZone = this.mapModel?.getBridgeTeleportZone?.({
+        const recuperationBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
             preferredBridge: 'cloneur_4'
         })
-        this.teleportZone = bridgeZone ?? {
+        const distributionBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
+            preferredBridge: 'cloneur_5'
+        })
+
+        const recuperationZone = recuperationBridgeZone ?? {
             x: -2.2,
             y: 0.08,
             z: 6,
             radius: 1.75
         }
+        const distributionZone = distributionBridgeZone ?? {
+            x: recuperationZone.x + 4.2,
+            y: recuperationZone.y,
+            z: recuperationZone.z - 2.4,
+            radius: recuperationZone.radius
+        }
+
+        const areZonesOverlapping =
+            Math.hypot(distributionZone.x - recuperationZone.x, distributionZone.z - recuperationZone.z)
+            < (recuperationZone.radius + distributionZone.radius + 0.4)
+        if(areZonesOverlapping)
+        {
+            distributionZone.x += (recuperationZone.radius + distributionZone.radius + 0.9)
+            distributionZone.z += 0.75
+        }
+
+        this.teleportZones = [
+            {
+                ...recuperationZone,
+                id: 'recuperation',
+                targetScene: SceneEnum.RECUPERATION,
+                colors: {
+                    pad: '#5fb2ff',
+                    padEmissive: '#173b63',
+                    ring: '#57b9ff',
+                    ringEmissive: '#1f4d73',
+                    column: '#72d0ff',
+                    light: '#79ccff'
+                },
+                pulseSpeed: 4.2,
+                spinSpeed: 0.01,
+                columnSpinSpeed: -0.003
+            },
+            {
+                ...distributionZone,
+                id: 'distribution',
+                targetScene: SceneEnum.DISTRIBUTION,
+                colors: {
+                    pad: '#ff9e57',
+                    padEmissive: '#5a2e11',
+                    ring: '#ffb27a',
+                    ringEmissive: '#6f3c16',
+                    column: '#ffc28d',
+                    light: '#ffb777'
+                },
+                pulseSpeed: 3.3,
+                spinSpeed: -0.013,
+                columnSpinSpeed: 0.0038
+            }
+        ]
         this.isTeleporting = false
 
-        this.teleportGroup = new THREE.Group()
-        this.teleportGroup.name = '__mapRecuperationTeleportZone'
-        this.teleportGroup.position.set(this.teleportZone.x, this.teleportZone.y ?? 0.08, this.teleportZone.z)
+        this.teleportEntries = []
+        for(const zone of this.teleportZones)
+        {
+            const teleportGroup = new THREE.Group()
+            teleportGroup.name = `__mapTeleportZone_${zone.id}`
+            teleportGroup.position.set(zone.x, zone.y ?? 0.08, zone.z)
 
-        this.teleportPad = new THREE.Mesh(
-            new THREE.CylinderGeometry(this.teleportZone.radius * 0.86, this.teleportZone.radius * 0.86, 0.06, 48),
-            new THREE.MeshStandardMaterial({
-                color: '#5fb2ff',
-                emissive: '#173b63',
-                emissiveIntensity: 0.62,
-                roughness: 0.28,
-                metalness: 0.35
+            const teleportPad = new THREE.Mesh(
+                new THREE.CylinderGeometry(zone.radius * 0.86, zone.radius * 0.86, 0.06, 48),
+                new THREE.MeshStandardMaterial({
+                    color: zone.colors.pad,
+                    emissive: zone.colors.padEmissive,
+                    emissiveIntensity: 0.62,
+                    roughness: 0.28,
+                    metalness: 0.35
+                })
+            )
+            teleportPad.position.y = 0.03
+            teleportPad.name = `__mapTeleportPad_${zone.id}`
+
+            const teleportRing = new THREE.Mesh(
+                new THREE.TorusGeometry(zone.radius, 0.08, 12, 64),
+                new THREE.MeshStandardMaterial({
+                    color: zone.colors.ring,
+                    emissive: zone.colors.ringEmissive,
+                    emissiveIntensity: 0.85,
+                    roughness: 0.35,
+                    metalness: 0.15
+                })
+            )
+            teleportRing.rotation.x = Math.PI * 0.5
+            teleportRing.position.y = 0.09
+
+            const teleportColumn = new THREE.Mesh(
+                new THREE.CylinderGeometry(zone.radius * 0.36, zone.radius * 0.56, 2.2, 32, 1, true),
+                new THREE.MeshBasicMaterial({
+                    color: zone.colors.column,
+                    transparent: true,
+                    opacity: 0.23,
+                    side: THREE.DoubleSide,
+                    depthWrite: false
+                })
+            )
+            teleportColumn.position.y = 1.12
+
+            const teleportLight = new THREE.PointLight(zone.colors.light, 1.9, 10, 2)
+            teleportLight.position.y = 1.2
+
+            teleportGroup.add(teleportPad)
+            teleportGroup.add(teleportRing)
+            teleportGroup.add(teleportColumn)
+            teleportGroup.add(teleportLight)
+            this.experience.scene.add(teleportGroup)
+
+            this.teleportEntries.push({
+                zone,
+                group: teleportGroup,
+                pad: teleportPad,
+                ring: teleportRing,
+                column: teleportColumn,
+                light: teleportLight
             })
-        )
-        this.teleportPad.position.y = 0.03
-        this.teleportPad.name = '__mapRecuperationTeleportPad'
-
-        this.teleportRing = new THREE.Mesh(
-            new THREE.TorusGeometry(this.teleportZone.radius, 0.08, 12, 64),
-            new THREE.MeshStandardMaterial({
-                color: '#57b9ff',
-                emissive: '#1f4d73',
-                emissiveIntensity: 0.85,
-                roughness: 0.35,
-                metalness: 0.15
-            })
-        )
-        this.teleportRing.rotation.x = Math.PI * 0.5
-        this.teleportRing.position.y = 0.09
-
-        this.teleportColumn = new THREE.Mesh(
-            new THREE.CylinderGeometry(this.teleportZone.radius * 0.36, this.teleportZone.radius * 0.56, 2.2, 32, 1, true),
-            new THREE.MeshBasicMaterial({
-                color: '#72d0ff',
-                transparent: true,
-                opacity: 0.23,
-                side: THREE.DoubleSide,
-                depthWrite: false
-            })
-        )
-        this.teleportColumn.position.y = 1.12
-
-        this.teleportLight = new THREE.PointLight('#79ccff', 1.9, 10, 2)
-        this.teleportLight.position.y = 1.2
-
-        this.teleportGroup.add(this.teleportPad)
-        this.teleportGroup.add(this.teleportRing)
-        this.teleportGroup.add(this.teleportColumn)
-        this.teleportGroup.add(this.teleportLight)
-        this.experience.scene.add(this.teleportGroup)
+        }
     }
 
     updateTeleportZoneVisual()
     {
-        if(!this.teleportGroup || this.isTeleporting)
+        if(!Array.isArray(this.teleportEntries) || this.teleportEntries.length === 0 || this.isTeleporting)
         {
             return
         }
 
         const elapsed = this.experience.time.elapsed * 0.001
-        const pulse = 0.72 + (Math.sin(elapsed * 4.2) * 0.26)
+        for(const entry of this.teleportEntries)
+        {
+            const pulse = 0.72 + (Math.sin(elapsed * (entry.zone.pulseSpeed ?? 4.2)) * 0.26)
 
-        this.teleportPad.material.emissiveIntensity = 0.5 + (pulse * 0.35)
-        this.teleportRing.material.emissiveIntensity = pulse
-        this.teleportRing.rotation.z += 0.01
+            entry.pad.material.emissiveIntensity = 0.5 + (pulse * 0.35)
+            entry.ring.material.emissiveIntensity = pulse
+            entry.ring.rotation.z += entry.zone.spinSpeed ?? 0.01
 
-        this.teleportColumn.material.opacity = 0.18 + (Math.sin(elapsed * 2.3) * 0.07)
-        this.teleportColumn.rotation.y -= 0.003
+            entry.column.material.opacity = 0.18 + (Math.sin(elapsed * 2.3) * 0.07)
+            entry.column.rotation.y += entry.zone.columnSpinSpeed ?? -0.003
 
-        this.teleportLight.intensity = 1.4 + (Math.sin(elapsed * 5) * 0.55)
+            entry.light.intensity = 1.4 + (Math.sin(elapsed * 5) * 0.55)
+        }
     }
 
     checkTeleportTrigger()
     {
-        if(this.isTeleporting || !this.player?.position || !this.teleportZone)
+        if(this.isTeleporting || !this.player?.position || !Array.isArray(this.teleportZones))
         {
             return
         }
 
-        const dx = this.player.position.x - this.teleportZone.x
-        const dz = this.player.position.z - this.teleportZone.z
-        const distanceSq = (dx * dx) + (dz * dz)
-        const radiusSq = this.teleportZone.radius * this.teleportZone.radius
-
-        if(distanceSq > radiusSq)
+        for(const zone of this.teleportZones)
         {
+            const dx = this.player.position.x - zone.x
+            const dz = this.player.position.z - zone.z
+            const distanceSq = (dx * dx) + (dz * dz)
+            const radiusSq = zone.radius * zone.radius
+            if(distanceSq > radiusSq)
+            {
+                continue
+            }
+
+            this.isTeleporting = true
+            this.experience.sceneManager?.switchTo?.(zone.targetScene ?? SceneEnum.RECUPERATION)
             return
         }
-
-        this.isTeleporting = true
-        this.experience.sceneManager?.switchTo?.(SceneEnum.RECUPERATION)
     }
 
     setVegetationDebug()
@@ -515,28 +592,27 @@ export default class MapWorld
             this.light = null
         }
 
-        if(this.teleportGroup)
+        if(Array.isArray(this.teleportEntries))
         {
-            this.experience.scene.remove(this.teleportGroup)
-            this.teleportPad.geometry.dispose()
-            this.teleportPad.material.dispose()
-            this.teleportRing.geometry.dispose()
-            this.teleportRing.material.dispose()
-            this.teleportColumn.geometry.dispose()
-            this.teleportColumn.material.dispose()
-            this.teleportPad = null
-            this.teleportRing = null
-            this.teleportColumn = null
-            this.teleportLight = null
-            this.teleportGroup = null
+            for(const entry of this.teleportEntries)
+            {
+                this.experience.scene.remove(entry.group)
+                entry.pad.geometry.dispose()
+                entry.pad.material.dispose()
+                entry.ring.geometry.dispose()
+                entry.ring.material.dispose()
+                entry.column.geometry.dispose()
+                entry.column.material.dispose()
+            }
+            this.teleportEntries = null
         }
 
-        this.teleportZone = null
+        this.teleportZones = null
 
         this.isSetUp = false
     }
 
-    getFootstepPlaybackRate()
+    getFootstepPlaybackRate(soundName = null)
     {
         const speedMultiplier = this.player?.settings?.speedMultiplier
         if(!Number.isFinite(speedMultiplier))
@@ -544,7 +620,12 @@ export default class MapWorld
             return 1
         }
 
-        return THREE.MathUtils.clamp(speedMultiplier * 1.5, 0.2, 8)
+        const playbackMultiplier = soundName === 'walkingSand'
+            ? WALKING_SAND_PLAYBACK_MULTIPLIER
+            : (soundName === 'walkingStone'
+                ? WALKING_STONE_PLAYBACK_MULTIPLIER
+                : WALKING_GRASS_PLAYBACK_MULTIPLIER)
+        return THREE.MathUtils.clamp(speedMultiplier * playbackMultiplier, 0.2, 8)
     }
 
     syncFootstepLoop(nextSoundName, playbackRate = 1)

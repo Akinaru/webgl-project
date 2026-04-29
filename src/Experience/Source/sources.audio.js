@@ -50,6 +50,11 @@ export default [
         path: 'sounds/effects/walking/walking-sand.mp3'
     },
     {
+        name: 'walkingStoneSound',
+        type: 'audioBuffer',
+        path: 'sounds/effects/walking/walking-stone.mp3'
+    },
+    {
         name: 'bush1Sound',
         type: 'audioBuffer',
         path: 'sounds/effects/bush/bush-1.mp3'
