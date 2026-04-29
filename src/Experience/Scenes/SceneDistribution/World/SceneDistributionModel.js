@@ -84,7 +84,7 @@ export default class SceneDistributionModel
                 this.groundMeshes.push(child)
             }
 
-            if(this.hasNameInHierarchy(child, ['vanne']))
+            if(this.hasNameInHierarchy(child, ['vanne', 'axe']))
             {
                 this.vanneMeshes.push(child)
             }

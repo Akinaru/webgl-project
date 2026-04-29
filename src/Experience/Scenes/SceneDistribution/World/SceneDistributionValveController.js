@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 
 const CURSOR_OWNER_CLASS = 'is-distribution-vanne-cursor'
 const DEFAULT_TURN_SPEED = 0.012
@@ -12,6 +13,16 @@ class Valve
         this.mesh = mesh
         this.turnSpeed = turnSpeed
         this.rotationAxis = this.resolveRotationAxis(mesh)
+        this.worldAxis = new THREE.Vector3()
+        this.worldPivot = new THREE.Vector3()
+        this.worldReferencePoint = new THREE.Vector3()
+        this.cameraToPivot = new THREE.Vector3()
+        this.radialWorld = new THREE.Vector3()
+        this.screenPivot = new THREE.Vector3()
+        this.screenTangentPoint = new THREE.Vector3()
+        this.tangentWorld = new THREE.Vector3()
+        this.tangentScreen = new THREE.Vector2()
+        this.fallbackVec = new THREE.Vector3()
     }
 
     resolveRotationAxis(mesh)
@@ -49,6 +60,72 @@ class Valve
 
         this.mesh.rotateOnAxis(this.rotationAxis, deltaX * this.turnSpeed)
     }
+
+    rotateFromScreenDelta({
+        deltaX = 0,
+        deltaY = 0,
+        camera = null,
+        hitPointWorld = null
+    } = {})
+    {
+        if(!this.mesh || !camera)
+        {
+            return
+        }
+
+        this.mesh.getWorldPosition(this.worldPivot)
+        this.worldAxis.copy(this.rotationAxis).transformDirection(this.mesh.matrixWorld).normalize()
+
+        if(hitPointWorld instanceof THREE.Vector3)
+        {
+            this.worldReferencePoint.copy(hitPointWorld)
+        }
+        else
+        {
+            this.cameraToPivot.copy(camera.position).sub(this.worldPivot)
+            this.radialWorld.copy(this.cameraToPivot).cross(this.worldAxis)
+            if(this.radialWorld.lengthSq() < 1e-8)
+            {
+                this.radialWorld.set(1, 0, 0).cross(this.worldAxis)
+            }
+            if(this.radialWorld.lengthSq() < 1e-8)
+            {
+                this.radialWorld.set(0, 0, 1)
+            }
+            this.radialWorld.normalize().multiplyScalar(0.35)
+            this.worldReferencePoint.copy(this.worldPivot).add(this.radialWorld)
+        }
+
+        this.radialWorld.copy(this.worldReferencePoint).sub(this.worldPivot)
+        this.radialWorld.addScaledVector(this.worldAxis, -this.radialWorld.dot(this.worldAxis))
+        if(this.radialWorld.lengthSq() < 1e-8)
+        {
+            this.rotateFromMouseDelta(deltaX)
+            return
+        }
+        this.radialWorld.normalize()
+
+        this.tangentWorld.copy(this.worldAxis).cross(this.radialWorld).normalize()
+        this.fallbackVec.copy(this.worldPivot).add(this.tangentWorld)
+
+        this.screenPivot.copy(this.worldPivot).project(camera)
+        this.screenTangentPoint.copy(this.fallbackVec).project(camera)
+        this.tangentScreen.set(
+            this.screenTangentPoint.x - this.screenPivot.x,
+            this.screenTangentPoint.y - this.screenPivot.y
+        )
+
+        const tangentLen = this.tangentScreen.length()
+        if(tangentLen < 1e-6)
+        {
+            this.rotateFromMouseDelta(deltaX)
+            return
+        }
+        this.tangentScreen.multiplyScalar(1 / tangentLen)
+
+        const deltaAlongTangent = (deltaX * this.tangentScreen.x) - (deltaY * this.tangentScreen.y)
+        this.mesh.rotateOnAxis(this.rotationAxis, deltaAlongTangent * this.turnSpeed)
+    }
 }
 
 export default class SceneDistributionValveController
@@ -64,7 +141,10 @@ export default class SceneDistributionValveController
         this.camera = this.experience?.camera?.instance
 
         this.raycaster = new THREE.Raycaster()
-        this.pointerNdc = new THREE.Vector2(0, 0)
+        this.centerRaycaster = new CenterScreenRaycaster({
+            getCamera: () => this.camera
+        })
+        this.centerScreen = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
         this.cursorElement = null
         this.createdCursorElement = false
         this.ownsCursor = false
@@ -74,7 +154,9 @@ export default class SceneDistributionValveController
         this.valves = []
         this.valveByUuid = new Map()
         this.hoveredValve = null
+        this.hoveredHitPointWorld = null
         this.activeValve = null
+        this.activeHitPointWorld = null
 
         this.setValves(valveMeshes)
         this.setEvents()
@@ -114,18 +196,17 @@ export default class SceneDistributionValveController
 
         this.onMouseMove = (event) =>
         {
-            this.updateHoveredValve(event)
-            this.updateCursor(event)
-
             if(!(event?.buttons & 1))
             {
                 this.activeValve = null
+                this.activeHitPointWorld = null
                 return
             }
 
             if(!this.activeValve && this.hoveredValve)
             {
                 this.activeValve = this.hoveredValve
+                this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             }
 
             if(!this.activeValve)
@@ -135,11 +216,25 @@ export default class SceneDistributionValveController
 
             const deltaX = Number.isFinite(event?.movementX)
                 ? event.movementX
-                : ((Number.isFinite(event?.clientX) ? event.clientX : this.lastMouseClientX) - this.lastMouseClientX)
-            this.activeValve.rotateFromMouseDelta(deltaX)
+                : 0
+            const deltaY = Number.isFinite(event?.movementY)
+                ? event.movementY
+                : 0
+            this.activeValve.rotateFromScreenDelta({
+                deltaX,
+                deltaY,
+                camera: this.camera,
+                hitPointWorld: this.activeHitPointWorld
+            })
+        }
+
+        this.onWindowResize = () =>
+        {
+            this.centerScreen.set(window.innerWidth * 0.5, window.innerHeight * 0.5)
         }
 
         this.inputs.on?.('mousemove.distributionValve', this.onMouseMove)
+        window.addEventListener('resize', this.onWindowResize)
     }
 
     ensureCursorElement()
@@ -157,56 +252,30 @@ export default class SceneDistributionValveController
         this.createdCursorElement = true
     }
 
-    updateHoveredValve(event)
+    update()
     {
-        if(
-            !this.canvas
-            || !this.camera
-            || !Array.isArray(this.valves)
-            || this.valves.length === 0
-        )
+        this.ensureCursorElement()
+        this.updateHoveredValveAtCenter()
+        this.updateCursorAtCenter()
+    }
+
+    updateHoveredValveAtCenter()
+    {
+        if(!this.centerRaycaster.hasCamera() || !Array.isArray(this.valves) || this.valves.length === 0)
         {
             this.hoveredValve = null
             this.setCursorHover(false)
             return
         }
 
-        const clientX = Number.isFinite(event?.clientX) ? event.clientX : this.lastMouseClientX
-        const clientY = Number.isFinite(event?.clientY) ? event.clientY : null
-        if(Number.isFinite(clientX))
-        {
-            this.lastMouseClientX = clientX
-        }
-
-        if(!Number.isFinite(clientX) || !Number.isFinite(clientY))
-        {
-            this.hoveredValve = null
-            this.setCursorHover(false)
-            return
-        }
-
-        const rect = this.canvas.getBoundingClientRect()
-        const isInsideCanvas =
-            clientX >= rect.left
-            && clientX <= rect.right
-            && clientY >= rect.top
-            && clientY <= rect.bottom
-        if(!isInsideCanvas)
-        {
-            this.hoveredValve = null
-            this.setCursorHover(false)
-            return
-        }
-
-        this.pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1
-        this.pointerNdc.y = -(((clientY - rect.top) / rect.height) * 2 - 1)
-        this.raycaster.setFromCamera(this.pointerNdc, this.camera)
-        const meshes = this.valves.map((valve) => valve.mesh)
-        const firstHit = this.raycaster.intersectObjects(meshes, true)[0]
-
-        this.hoveredValve = firstHit
-            ? (this.valveByUuid.get(firstHit.object.uuid) ?? this.findValveInAncestors(firstHit.object))
+        this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
+        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), true)
+        const firstHit = hits[0]
+        const mesh = firstHit?.object ?? null
+        this.hoveredValve = mesh
+            ? (this.valveByUuid.get(mesh.uuid) ?? this.findValveInAncestors(mesh))
             : null
+        this.hoveredHitPointWorld = firstHit?.point?.clone?.() ?? null
         this.setCursorHover(Boolean(this.hoveredValve))
     }
 
@@ -225,7 +294,7 @@ export default class SceneDistributionValveController
         return null
     }
 
-    updateCursor(event)
+    updateCursorAtCenter()
     {
         this.cursorElement = this.cursorElement || document.querySelector('.dialogue__cursor')
         if(!(this.cursorElement instanceof HTMLElement))
@@ -233,16 +302,10 @@ export default class SceneDistributionValveController
             return
         }
 
-        if(Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY))
-        {
-            this.cursorPosition.x = event.clientX
-            this.cursorPosition.y = event.clientY
-        }
-
         this.ownsCursor = true
         document.body.classList.add(CURSOR_OWNER_CLASS)
-        this.cursorElement.style.left = `${this.cursorPosition.x}px`
-        this.cursorElement.style.top = `${this.cursorPosition.y}px`
+        this.cursorElement.style.left = `${this.centerScreen.x}px`
+        this.cursorElement.style.top = `${this.centerScreen.y}px`
         this.cursorElement.classList.add('is-visible')
     }
 
@@ -276,9 +339,13 @@ export default class SceneDistributionValveController
     destroy()
     {
         this.inputs?.off?.('mousemove.distributionValve')
+        window.removeEventListener('resize', this.onWindowResize)
         this.onMouseMove = null
+        this.onWindowResize = null
         this.hoveredValve = null
+        this.hoveredHitPointWorld = null
         this.activeValve = null
+        this.activeHitPointWorld = null
         this.valves = []
         this.valveByUuid.clear()
         this.releaseCursor()

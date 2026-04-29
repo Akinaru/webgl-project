@@ -74,6 +74,7 @@ export default class SceneDistributionWorld
     {
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.valveController?.update?.(delta)
     }
 
     destroy()
