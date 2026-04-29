@@ -15,29 +15,29 @@ export default class Water
         this.mapModel = mapModel
 
         this.state = {
-            hauteurEau: 1.20,
-            hauteurSurface: 0.72,
+            hauteurEau: 1.17,
+            hauteurSurface: 0.55,
             hauteurFond: 0.22,
-            supplementHauteurSable: 0.39,
-            slopeFrequency: 14,
-            noiseFrequency: 0.304,
-            rippleThreshold: -0.315,
-            backgroundOpacity: 0.45,
-            largeurMousseBord: 0.032,
-            douceurMousseBord: 0.044,
-            frequenceMousse: 0.5,
+            supplementHauteurSable: 0.47,
+            slopeFrequency: 10.43,
+            noiseFrequency: 0.326,
+            rippleThreshold: -0.185,
+            backgroundOpacity: 0.446,
+            largeurMousseBord: 0.042,
+            douceurMousseBord: 0.034,
+            frequenceMousse: 0,
             seuilMousse: 0.293,
-            intensiteMousse: 2,
+            intensiteMousse: 0.696,
             opaciteMousse: 1,
             eauTransparenteMousseSeulement: false,
-            rippleTimeSpeed: RIPPLE_TIME_SPEED_DEFAULT,
+            rippleTimeSpeed: 0.033,
             showPlan: true
         }
 
-        this.couleurSable = new THREE.Color('#bf9c51')
-        this.couleurBleuSurface = new THREE.Color('#1c6972')
-        this.couleurBleuFond = new THREE.Color('#031d26')
-        this.backgroundColor = new THREE.Color('#124f69')
+        this.couleurSable = new THREE.Color('#f8d487')
+        this.couleurBleuSurface = new THREE.Color('#1dd6eb')
+        this.couleurBleuFond = new THREE.Color('#0b515f')
+        this.backgroundColor = new THREE.Color('#1dd6eb')
         this.couleurMousse = new THREE.Color('#ffffff')
         this.applyWaterline()
         this.applyPlanVisibility()

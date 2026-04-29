@@ -25,25 +25,25 @@ export default class CloudLayer
         this.state = {
             enabled: true,
             followPlayer: true,
-            followStrength: 1,
-            altitude: 56,
-            size: 480,
-            windSpeed: 0.163,
-            windAngle: 0.35,
-            coverage: 0.478,
-            softness: 0.187,
-            density: 1.484,
-            noiseScale: 0.015,
-            detailScale: 4.435,
-            detailStrength: 1.543,
-            warpScale: 0.9,
-            warpStrength: 0.68,
-            opacity: 0.72,
-            edgeFade: 0.274,
-            sunGlowStrength: 0.22
+            followStrength: 0.804,
+            altitude: 24.8,
+            size: 1386,
+            windSpeed: 0.04,
+            windAngle: 0.956,
+            coverage: 0.446,
+            softness: 0.014,
+            density: 1.337,
+            noiseScale: 0.02,
+            detailScale: 3.391,
+            detailStrength: 0.935,
+            warpScale: 0,
+            warpStrength: 1.402,
+            opacity: 0.891,
+            edgeFade: 0.257,
+            sunGlowStrength: 0.995
         }
 
-        this.cloudColor = new THREE.Color('#ffffff')
+        this.cloudColor = new THREE.Color('#fffefd')
         this.shadowColor = new THREE.Color('#d9e3ef')
 
         this.focusPosition = new THREE.Vector3()

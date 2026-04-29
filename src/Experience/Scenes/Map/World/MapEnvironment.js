@@ -16,8 +16,8 @@ export default class MapEnvironment
             fogDensity: 0.012
         }
 
-        this.backgroundColor = new THREE.Color('#81b9f2')
-        this.fogColor = new THREE.Color('#81b9f2')
+        this.backgroundColor = new THREE.Color('#55daff')
+        this.fogColor = new THREE.Color('#c4daf2')
 
         this.setFog()
         this.setDebug()

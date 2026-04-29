@@ -2,8 +2,8 @@ import * as THREE from 'three'
 import Experience from '../Experience.js'
 import BloomRailSystem from './BloomRailSystem.js'
 
-const BLOOM_FACING_OFFSET_RADIANS = 0.25
-const BLOOM_UV_ZOOM = 1.15
+const BLOOM_FACING_OFFSET_RADIANS = -2.76
+const BLOOM_UV_ZOOM = 1.14
 
 export default class Bloom
 {
@@ -42,18 +42,18 @@ export default class Bloom
         this.railAnchorPosition = new THREE.Vector3()
 
         this.scaleState = {
-            visualScale: 0.4
+            visualScale: 0.46
         }
 
         this.motion = {
             center: motion.center instanceof THREE.Vector3
                 ? motion.center.clone()
                 : new THREE.Vector3(motion.center?.x ?? 0, motion.center?.y ?? 0, motion.center?.z ?? -6),
-            radius: motion.radius ?? 7,
-            turnSpeed: motion.turnSpeed ?? 0.26,
-            walkFrequency: motion.walkFrequency ?? 1.7,
-            walkFrequencySpeedInfluence: motion.walkFrequencySpeedInfluence ?? 0.8,
-            bobAmplitude: motion.bobAmplitude ?? 0.06,
+            radius: motion.radius ?? 3.05,
+            turnSpeed: motion.turnSpeed ?? 5,
+            walkFrequency: motion.walkFrequency ?? 0.52,
+            walkFrequencySpeedInfluence: motion.walkFrequencySpeedInfluence ?? 0.29,
+            bobAmplitude: motion.bobAmplitude ?? 0.035,
             swingIntensity: motion.swingIntensity ?? 1,
             heightOffset: motion.heightOffset ?? 0
         }
@@ -74,9 +74,9 @@ export default class Bloom
         this.rails = new BloomRailSystem({
             scene: this.scene,
             rails: rails.lines ?? rails.rails ?? [],
-            speed: rails.speed ?? 3.8,
-            railSwitchDistance: rails.railSwitchDistance ?? 0.7,
-            endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.4,
+            speed: rails.speed ?? 4.6,
+            railSwitchDistance: rails.railSwitchDistance ?? 1.05,
+            endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.6,
             helperPointRadius: rails.helperPointRadius ?? 0.08,
             showHelpers: rails.showHelpers ?? true
         })

@@ -35,22 +35,22 @@ export default class MapLight
             useCycle: false,
             cycleSpeed: 0.035,
             distance: 52,
-            phi: 0.63,
-            theta: 0.72,
-            phiAmplitude: 0.62,
-            thetaAmplitude: 1.25,
+            phi: 0.383,
+            theta: 0.068,
+            phiAmplitude: 0.581,
+            thetaAmplitude: 1.161,
 
             ambientIntensity: 0.42,
             hemiIntensity: 0.45,
-            sunIntensity: 2.15,
+            sunIntensity: 1.435,
 
             castShadow: true,
-            shadowAmplitude: 58,
-            shadowNear: 1,
-            shadowDepth: 160,
+            shadowAmplitude: 56.3,
+            shadowNear: 9.9,
+            shadowDepth: 118.2,
             shadowBias: -0.0005,
             shadowNormalBias: 0.03,
-            shadowRadius: 3,
+            shadowRadius: 1.96,
             shadowMapSize: 2048,
 
             showDirectionHelper: false,
@@ -58,9 +58,9 @@ export default class MapLight
         }
 
         this.ambientColor = new THREE.Color('#ffffff')
-        this.skyColor = new THREE.Color('#cde7ff')
-        this.groundColor = new THREE.Color('#7ea16a')
-        this.sunColor = new THREE.Color('#fff1d8')
+        this.skyColor = new THREE.Color('#55daff')
+        this.groundColor = new THREE.Color('#d6fdff')
+        this.sunColor = new THREE.Color('#fff3ac')
 
         this.spherical = new THREE.Spherical(
             this.state.distance,
