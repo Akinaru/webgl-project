@@ -31,7 +31,7 @@ export default class DialogueUI
 
         this.speaker = document.createElement('p')
         this.speaker.className = 'dialogue__speaker'
-        this.panel.appendChild(this.speaker)
+        this.root.appendChild(this.speaker)
 
         this.text = document.createElement('p')
         this.text.className = 'dialogue__text'
@@ -43,7 +43,7 @@ export default class DialogueUI
 
         this.hint = document.createElement('p')
         this.hint.className = 'dialogue__hint'
-        this.panel.appendChild(this.hint)
+        this.root.appendChild(this.hint)
 
         this.cursor = document.createElement('span')
         this.cursor.className = 'dialogue__cursor'
@@ -221,7 +221,7 @@ export default class DialogueUI
         }
 
         this.setChoiceCursorMode(false)
-        this.hint.textContent = 'Entree pour continuer.'
+        this.hint.textContent = 'Entrer pour continuer'
     }
 
     show()

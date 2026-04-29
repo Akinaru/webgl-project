@@ -620,8 +620,8 @@ body.is-recuperation-material-cursor .dialogue__cursor
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    width: min(92vw, 620px);
-    padding: 1.15rem 1.15rem 1rem;
+    width: min(94vw, 680px);
+    padding: 1.3rem 1.3rem 1.15rem;
     border: none;
     border-radius: 34px;
     background:
@@ -674,13 +674,29 @@ body.is-recuperation-material-cursor .dialogue__cursor
 
 .dialogue__speaker
 {
-    margin-bottom: 0.28rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: translate(1.3rem, -50%);
+    margin: 0;
+    padding: 0.56rem 0.92rem;
+    border-radius: 999px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 22%, rgba(0, 116, 141, 0.28) 100%);
+    box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.5),
+        0 12px 26px rgba(0, 0, 0, 0.2),
+        inset 0 0 14px rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px) saturate(1.74) brightness(1.08);
+    -webkit-backdrop-filter: blur(10px) saturate(1.74) brightness(1.08);
     color: rgba(242, 250, 255, 0.86);
     font-weight: 600;
     font-size: 0.8rem;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     text-shadow: 0 1px 10px rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+    z-index: 2;
 }
 
 .dialogue__text
@@ -756,9 +772,25 @@ body.is-recuperation-material-cursor .dialogue__cursor
 .dialogue__hint
 {
     margin-top: 0.72rem;
-    color: rgba(231, 245, 255, 0.72);
+    width: fit-content;
+    max-width: min(92vw, 680px);
+    padding: 0.64rem 0.94rem;
+    border-radius: 999px;
+    align-self: center;
+    justify-self: center;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.07) 22%, rgba(0, 116, 141, 0.28) 100%);
+    box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.5),
+        0 12px 26px rgba(0, 0, 0, 0.2),
+        inset 0 0 14px rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(10px) saturate(1.74) brightness(1.08);
+    -webkit-backdrop-filter: blur(10px) saturate(1.74) brightness(1.08);
+    color: rgba(231, 245, 255, 0.82);
     font-size: 0.8rem;
     letter-spacing: 0.01em;
+    text-align: center;
+    pointer-events: none;
 }
 
 body.is-dialogue-open .hud__crosshair
