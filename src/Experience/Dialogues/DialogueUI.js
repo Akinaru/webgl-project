@@ -1,5 +1,4 @@
 import Experience from '../Experience.js'
-import * as THREE from 'three'
 
 export default class DialogueUI
 {
@@ -9,28 +8,12 @@ export default class DialogueUI
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.visible = false
-        this.anchorWorldPosition = new THREE.Vector3()
-        this.anchorWorldForIndicator = new THREE.Vector3()
-        this.anchorScreenPosition = new THREE.Vector2()
-        this.anchorOffset = new THREE.Vector3(0, 1.15, 0)
-        this.anchorNodeName = '__bloomRoot'
-        this.anchorObject = null
-        this.anchorRaf = null
-        this.anchorBounds = new THREE.Box3()
-        this.anchorBoundsSize = new THREE.Vector3()
-        this.anchorHeightWorld = 1.6
-        this.lastAnchorMeasureAt = 0
-        this.anchorMeasureIntervalMs = 250
         this.choiceCursorMode = false
         this.cursorVisible = false
-        this.virtualCursorPosition = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
-        this.cameraForward = new THREE.Vector3()
-        this.cameraLookDirection = new THREE.Vector3()
-        this.cameraToTarget = new THREE.Vector3()
-        this.lastIndicatorSide = 1
-        this.lastIndicatorY = window.innerHeight * 0.5
-        this.verticalIndicatorMaxDistance = 6.5
-        this.verticalIndicatorCenterToleranceNdcX = 0.42
+        this.virtualCursorPosition = {
+            x: window.innerWidth * 0.5,
+            y: window.innerHeight * 0.5
+        }
 
         this.setElements()
         this.setEvents()
@@ -62,17 +45,9 @@ export default class DialogueUI
         this.hint.className = 'dialogue__hint'
         this.panel.appendChild(this.hint)
 
-        this.tail = document.createElement('span')
-        this.tail.className = 'dialogue__tail'
-        this.panel.appendChild(this.tail)
-
         this.cursor = document.createElement('span')
         this.cursor.className = 'dialogue__cursor'
         document.body.appendChild(this.cursor)
-
-        this.turnIndicator = document.createElement('span')
-        this.turnIndicator.className = 'dialogue__turn-indicator'
-        document.body.appendChild(this.turnIndicator)
 
         document.body.appendChild(this.root)
         this.hide()
@@ -97,25 +72,7 @@ export default class DialogueUI
                 return
             }
 
-            if(event.code === 'Escape')
-            {
-                event.preventDefault()
-                this.dialogueManager.skip()
-                return
-            }
-
-            if(this.dialogueManager.isWaitingChoice())
-            {
-                const index = this.keyToChoiceIndex(event.code)
-                if(index !== null)
-                {
-                    event.preventDefault()
-                    this.dialogueManager.chooseByIndex(index)
-                }
-                return
-            }
-
-            if(event.code === 'Enter')
+            if(event.code === 'Enter' && !this.dialogueManager.isWaitingChoice())
             {
                 event.preventDefault()
                 this.dialogueManager.continue()
@@ -138,22 +95,18 @@ export default class DialogueUI
 
         this.onPanelMouseEnter = () =>
         {
-            if(!this.choiceCursorMode)
+            if(this.choiceCursorMode)
             {
-                return
+                this.updateCursorHoverState()
             }
-
-            this.updateCursorHoverState()
         }
 
         this.onPanelMouseLeave = () =>
         {
-            if(!this.choiceCursorMode)
+            if(this.choiceCursorMode)
             {
-                return
+                this.updateCursorHoverState()
             }
-
-            this.updateCursorHoverState()
         }
 
         this.onChoicesMouseOver = (event) =>
@@ -206,8 +159,8 @@ export default class DialogueUI
 
         this.onWindowResize = () =>
         {
-            this.virtualCursorPosition.x = THREE.MathUtils.clamp(this.virtualCursorPosition.x, 0, window.innerWidth)
-            this.virtualCursorPosition.y = THREE.MathUtils.clamp(this.virtualCursorPosition.y, 0, window.innerHeight)
+            this.virtualCursorPosition.x = Math.min(Math.max(this.virtualCursorPosition.x, 0), window.innerWidth)
+            this.virtualCursorPosition.y = Math.min(Math.max(this.virtualCursorPosition.y, 0), window.innerHeight)
             this.syncCursorDom()
         }
 
@@ -230,29 +183,6 @@ export default class DialogueUI
         return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
     }
 
-    keyToChoiceIndex(code)
-    {
-        if(code.startsWith('Digit'))
-        {
-            const value = Number(code.replace('Digit', ''))
-            if(value >= 1 && value <= 9)
-            {
-                return value - 1
-            }
-        }
-
-        if(code.startsWith('Numpad'))
-        {
-            const value = Number(code.replace('Numpad', ''))
-            if(value >= 1 && value <= 9)
-            {
-                return value - 1
-            }
-        }
-
-        return null
-    }
-
     render(payload = {})
     {
         if(!payload?.running || !payload?.node)
@@ -265,7 +195,6 @@ export default class DialogueUI
 
         this.speaker.textContent = payload.node.speaker || 'Bloom'
         this.text.textContent = payload.node.text || ''
-
         this.choices.innerHTML = ''
 
         if(payload.waitingChoice && payload.choices?.length > 0)
@@ -287,12 +216,12 @@ export default class DialogueUI
                 this.choices.appendChild(button)
             })
 
-            this.hint.textContent = 'Choisis une reponse avec 1-9 ou clique.'
+            this.hint.textContent = 'Choisis une reponse en cliquant.'
             return
         }
 
         this.setChoiceCursorMode(false)
-        this.hint.textContent = 'Entrée pour continuer - Echap pour passer.'
+        this.hint.textContent = 'Entree pour continuer.'
     }
 
     show()
@@ -305,7 +234,6 @@ export default class DialogueUI
         this.visible = true
         this.root.classList.add('is-visible')
         document.body.classList.add('is-dialogue-open')
-        this.startAnchorLoop()
     }
 
     hide()
@@ -317,12 +245,8 @@ export default class DialogueUI
 
         this.visible = false
         this.root.classList.remove('is-visible')
-        this.root.classList.remove('is-offscreen')
-        this.root.classList.remove('is-bottom-fallback')
-        this.hideTurnIndicator()
         document.body.classList.remove('is-dialogue-open')
         this.setChoiceCursorMode(false)
-        this.stopAnchorLoop()
     }
 
     setChoiceCursorMode(isEnabled)
@@ -357,8 +281,8 @@ export default class DialogueUI
             this.virtualCursorPosition.y = event.clientY
         }
 
-        this.virtualCursorPosition.x = THREE.MathUtils.clamp(this.virtualCursorPosition.x, 0, window.innerWidth)
-        this.virtualCursorPosition.y = THREE.MathUtils.clamp(this.virtualCursorPosition.y, 0, window.innerHeight)
+        this.virtualCursorPosition.x = Math.min(Math.max(this.virtualCursorPosition.x, 0), window.innerWidth)
+        this.virtualCursorPosition.y = Math.min(Math.max(this.virtualCursorPosition.y, 0), window.innerHeight)
     }
 
     syncCursorDom()
@@ -434,233 +358,6 @@ export default class DialogueUI
         }
     }
 
-    startAnchorLoop()
-    {
-        if(this.anchorRaf)
-        {
-            return
-        }
-
-        const tick = () =>
-        {
-            this.anchorRaf = window.requestAnimationFrame(tick)
-            this.updateAnchorPosition()
-        }
-
-        this.anchorRaf = window.requestAnimationFrame(tick)
-        this.updateAnchorPosition()
-    }
-
-    stopAnchorLoop()
-    {
-        if(!this.anchorRaf)
-        {
-            return
-        }
-
-        window.cancelAnimationFrame(this.anchorRaf)
-        this.anchorRaf = null
-    }
-
-    updateAnchorPosition()
-    {
-        if(!this.visible)
-        {
-            return
-        }
-
-        const camera = this.experience.camera?.instance
-        const scene = this.experience.scene
-        if(!camera || !scene)
-        {
-            return
-        }
-
-        this.anchorObject = this.anchorObject?.parent ? this.anchorObject : scene.getObjectByName(this.anchorNodeName)
-        if(!this.anchorObject)
-        {
-            this.showBottomFallback()
-            return
-        }
-
-        const now = performance.now()
-        if((now - this.lastAnchorMeasureAt) >= this.anchorMeasureIntervalMs)
-        {
-            this.measureAnchorHeight()
-            this.lastAnchorMeasureAt = now
-        }
-
-        this.anchorObject.getWorldPosition(this.anchorWorldPosition)
-        this.anchorOffset.y = THREE.MathUtils.clamp(this.anchorHeightWorld * 0.58, 0.55, 2.4)
-        this.anchorWorldPosition.add(this.anchorOffset)
-        this.anchorWorldForIndicator.copy(this.anchorWorldPosition)
-        this.anchorWorldPosition.project(camera)
-
-        const ndcX = this.anchorWorldPosition.x
-        const ndcY = this.anchorWorldPosition.y
-        const ndcZ = this.anchorWorldPosition.z
-        const outOfView = ndcZ < -1 || ndcZ > 1 || Math.abs(ndcX) > 1.08 || Math.abs(ndcY) > 1.02
-
-        if(outOfView)
-        {
-            this.showBottomFallback()
-            return
-        }
-
-        this.root.classList.remove('is-bottom-fallback')
-        this.root.classList.remove('is-offscreen')
-        this.hideTurnIndicator()
-        this.root.style.bottom = ''
-        this.anchorScreenPosition.set(
-            (ndcX * 0.5 + 0.5) * window.innerWidth,
-            (-ndcY * 0.5 + 0.5) * window.innerHeight
-        )
-
-        this.root.style.left = `${this.anchorScreenPosition.x}px`
-        this.root.style.top = `${this.anchorScreenPosition.y}px`
-
-        if(this.choiceCursorMode)
-        {
-            this.updateCursorHoverState()
-        }
-    }
-
-    showBottomFallback()
-    {
-        this.root.classList.remove('is-offscreen')
-        this.root.classList.add('is-bottom-fallback')
-        this.root.style.left = '50%'
-        this.root.style.top = ''
-        this.root.style.bottom = '18px'
-        this.hideTurnIndicator()
-    }
-
-    showTurnIndicator(camera, { ndcX = 0, ndcY = 0, ndcZ = 0 } = {})
-    {
-        const width = window.innerWidth
-        const height = window.innerHeight
-        const paddingX = 56
-        const paddingY = 56
-        let x = width * 0.5
-        let y = height * 0.5
-        let rotation = 0
-
-        const isVerticalEdge = Math.abs(ndcY) > Math.max(Math.abs(ndcX) * 0.95, 0.72)
-
-        if(isVerticalEdge)
-        {
-            if(!this.shouldShowVerticalIndicator(camera, { ndcX, ndcZ }))
-            {
-                this.hideTurnIndicator()
-                return
-            }
-
-            if(ndcY > 0)
-            {
-                y = paddingY
-                rotation = 0
-            }
-            else
-            {
-                y = height - paddingY
-                rotation = Math.PI
-            }
-
-            x = THREE.MathUtils.clamp((ndcX * 0.5 + 0.5) * width, paddingX, width - paddingX)
-            this.lastIndicatorY = y
-        }
-        else
-        {
-            const side = this.getIndicatorSide(camera)
-            x = side > 0 ? (width - paddingX) : paddingX
-            const targetY = this.getIndicatorVerticalPosition(camera, height)
-            y = THREE.MathUtils.lerp(this.lastIndicatorY, targetY, 0.22)
-            this.lastIndicatorY = y
-            rotation = side > 0 ? (Math.PI * 0.5) : (-Math.PI * 0.5)
-        }
-
-        this.turnIndicator.style.left = `${x}px`
-        this.turnIndicator.style.top = `${y}px`
-        this.turnIndicator.style.setProperty('--turn-rotation', `${rotation}rad`)
-        this.turnIndicator.classList.add('is-visible')
-    }
-
-    shouldShowVerticalIndicator(camera, { ndcX = 0, ndcZ = 0 } = {})
-    {
-        if(Math.abs(ndcX) > this.verticalIndicatorCenterToleranceNdcX)
-        {
-            return false
-        }
-
-        if(ndcZ < -1 || ndcZ > 1)
-        {
-            return false
-        }
-
-        const distanceToAnchor = camera.position.distanceTo(this.anchorWorldForIndicator)
-        return distanceToAnchor <= this.verticalIndicatorMaxDistance
-    }
-
-    getIndicatorVerticalPosition(camera, viewportHeight)
-    {
-        const paddingY = 56
-        camera.getWorldDirection(this.cameraLookDirection)
-        const clampedLookY = THREE.MathUtils.clamp(this.cameraLookDirection.y, -0.95, 0.95)
-        const normalized = (clampedLookY + 1) * 0.5
-
-        return THREE.MathUtils.lerp(
-            paddingY,
-            viewportHeight - paddingY,
-            normalized
-        )
-    }
-
-    getIndicatorSide(camera)
-    {
-        camera.getWorldDirection(this.cameraForward)
-        this.cameraForward.y = 0
-        if(this.cameraForward.lengthSq() > 1e-8)
-        {
-            this.cameraForward.normalize()
-        }
-
-        this.cameraToTarget.copy(this.anchorWorldForIndicator).sub(camera.position)
-        this.cameraToTarget.y = 0
-
-        if(this.cameraToTarget.lengthSq() <= 1e-8 || this.cameraForward.lengthSq() <= 1e-8)
-        {
-            return this.lastIndicatorSide
-        }
-
-        this.cameraToTarget.normalize()
-        const crossY = this.cameraForward.z * this.cameraToTarget.x - this.cameraForward.x * this.cameraToTarget.z
-
-        if(Math.abs(crossY) < 1e-4)
-        {
-            return this.lastIndicatorSide
-        }
-
-        this.lastIndicatorSide = crossY < 0 ? 1 : -1
-        return this.lastIndicatorSide
-    }
-
-    hideTurnIndicator()
-    {
-        this.turnIndicator.classList.remove('is-visible')
-    }
-
-    measureAnchorHeight()
-    {
-        this.anchorBounds.setFromObject(this.anchorObject)
-        if(this.anchorBounds.isEmpty())
-        {
-            return
-        }
-
-        this.anchorBounds.getSize(this.anchorBoundsSize)
-        this.anchorHeightWorld = Math.max(this.anchorBoundsSize.y, 0.1)
-    }
-
     destroy()
     {
         this.inputs?.off?.('keydown.dialogueUI')
@@ -671,10 +368,8 @@ export default class DialogueUI
         this.panel.removeEventListener('mouseleave', this.onPanelMouseLeave)
         this.choices.removeEventListener('mouseover', this.onChoicesMouseOver)
         this.choices.removeEventListener('mouseout', this.onChoicesMouseOut)
-        this.stopAnchorLoop()
         this.setChoiceCursorMode(false)
         this.cursor.remove()
-        this.turnIndicator.remove()
         this.root.remove()
     }
 }
