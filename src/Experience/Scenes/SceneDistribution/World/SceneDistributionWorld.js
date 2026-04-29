@@ -4,6 +4,7 @@ import Player from '../../../Common/Player.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import MapLight from '../../Map/World/MapLight.js'
 import SceneDistributionModel from './SceneDistributionModel.js'
+import SceneDistributionValveController from './SceneDistributionValveController.js'
 
 let distributionWorldInstanceIndex = 0
 
@@ -48,6 +49,10 @@ export default class SceneDistributionWorld
             spawnPosition: this.distributionModel.getSpawnPosition?.(),
             spawnYaw: 0
         })
+        this.valveController = new SceneDistributionValveController({
+            experience: this.experience,
+            valveMeshes: this.distributionModel.getVanneMeshes?.() ?? []
+        })
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null,
@@ -69,11 +74,14 @@ export default class SceneDistributionWorld
     {
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.valveController?.update?.(delta)
     }
 
     destroy()
     {
         this.resources.off(this.readyEventName)
+        this.valveController?.destroy?.()
+        this.valveController = null
 
         if(this.player)
         {
