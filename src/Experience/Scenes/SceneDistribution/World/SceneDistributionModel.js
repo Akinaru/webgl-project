@@ -25,6 +25,7 @@ export default class SceneDistributionModel
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.resource = this.resources.items.distributionModel
+        this.vanneMeshes = []
 
         if(this.resource?.scene)
         {
@@ -48,6 +49,7 @@ export default class SceneDistributionModel
         this.collisionMeshes = []
         this.collisionBoxes = []
         this.groundMeshes = []
+        this.vanneMeshes = []
 
         this.model.traverse((child) =>
         {
@@ -80,6 +82,11 @@ export default class SceneDistributionModel
             if(this.isWalkableGroundMesh(child))
             {
                 this.groundMeshes.push(child)
+            }
+
+            if(this.hasNameInHierarchy(child, ['vanne']))
+            {
+                this.vanneMeshes.push(child)
             }
         })
 
@@ -276,6 +283,11 @@ export default class SceneDistributionModel
             : (this.collisionMeshes ?? [])
     }
 
+    getVanneMeshes()
+    {
+        return this.vanneMeshes ?? []
+    }
+
     getSpawnPosition()
     {
         return this.spawnPosition?.clone?.() ?? { x: 0, y: 3, z: 0 }
@@ -310,6 +322,7 @@ export default class SceneDistributionModel
         this.collisionMeshes = null
         this.collisionBoxes = null
         this.groundMeshes = null
+        this.vanneMeshes = null
         this.spawnPosition = null
         this.worldBounds = null
         this.boundaryBox = null
