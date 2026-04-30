@@ -969,16 +969,17 @@ export default class Bloom
 
     updateFacingTowardsPlayer(deltaSeconds)
     {
-        if(!this.model || !(this.follow.target?.position instanceof THREE.Vector3))
+        const playerTarget = this.follow.target ?? this.experience?.player ?? null
+        if(!this.model || !(playerTarget?.position instanceof THREE.Vector3))
         {
             return false
         }
 
         this.direction
             .set(
-                this.follow.target.position.x - this.model.position.x,
+                this.model.position.x - playerTarget.position.x,
                 0,
-                this.follow.target.position.z - this.model.position.z
+                this.model.position.z - playerTarget.position.z
             )
 
         if(this.direction.lengthSq() <= 1e-8)
