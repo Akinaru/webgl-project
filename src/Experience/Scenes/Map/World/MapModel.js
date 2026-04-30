@@ -99,6 +99,13 @@ export default class MapModel
                 return
             }
 
+            if(this.isBushSocketMesh(child))
+            {
+                child.visible = false
+                child.castShadow = false
+                child.receiveShadow = false
+            }
+
             if(this.isPlanMeshName(child.name))
             {
                 this.planMeshes.push(child)
@@ -150,6 +157,12 @@ export default class MapModel
     isTerrainTintMesh(mesh)
     {
         return this.hasNameInHierarchy(mesh, ['relief'])
+    }
+
+    isBushSocketMesh(mesh)
+    {
+        const name = (mesh?.name || '').toLowerCase()
+        return name.includes('socle_bush')
     }
 
     applyReliefShadowReceiverPolicy()
@@ -1401,6 +1414,11 @@ export default class MapModel
             return false
         }
 
+        if(this.isBushSocketMesh(mesh))
+        {
+            return false
+        }
+
         const meshName = (mesh.name || '').toLowerCase()
         const isPalmTreePart = this.isPalmTreePart(mesh)
 
@@ -1552,6 +1570,32 @@ export default class MapModel
     {
         const meshes = this.collisionMeshes ?? []
         return meshes.filter((mesh) => this.isPlayerGroundSurface(mesh))
+    }
+
+    getBushSocketMeshes()
+    {
+        if(!this.model)
+        {
+            return []
+        }
+
+        const sockets = []
+        this.model.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const name = (child.name || '').toLowerCase()
+            if(name.includes('socle_bush'))
+            {
+                sockets.push(child)
+            }
+        })
+
+        sockets.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        return sockets
     }
 
     getReliefMeshes()

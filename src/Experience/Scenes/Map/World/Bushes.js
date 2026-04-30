@@ -3,9 +3,6 @@ import { ImprovedNoise } from 'three/examples/jsm/math/ImprovedNoise.js'
 import Experience from '../../../Experience.js'
 import Foliage from './Foliage.js'
 
-const INSTANCE_ATTEMPTS_FACTOR = 120
-const INSTANCE_ATTEMPTS_MIN = 200
-
 export default class Bushes
 {
     constructor({ mapModel = null, spawnPosition = null } = {})
@@ -277,49 +274,27 @@ export default class Bushes
 
     collectInstancePoints(targetCount)
     {
-        const reliefMeshes = this.mapModel?.getReliefMeshes?.() ?? []
-        if(reliefMeshes.length === 0)
+        const socketMeshes = this.mapModel?.getBushSocketMeshes?.() ?? []
+        if(socketMeshes.length === 0)
         {
             return []
         }
 
-        const reliefBounds = this.computeReliefBounds(reliefMeshes)
-        if(!reliefBounds)
+        const points = []
+        const limit = Math.min(socketMeshes.length, Math.max(0, Math.floor(targetCount)))
+        for(let index = 0; index < limit; index++)
         {
-            return []
+            const socketMesh = socketMeshes[index]
+            this.tmpMeshBounds.setFromObject(socketMesh)
+            const point = new THREE.Vector3(
+                (this.tmpMeshBounds.min.x + this.tmpMeshBounds.max.x) * 0.5,
+                this.tmpMeshBounds.max.y,
+                (this.tmpMeshBounds.min.z + this.tmpMeshBounds.max.z) * 0.5
+            )
+            points.push(point)
         }
 
-        const random = this.createSeededRandom(Math.floor(this.state.graineRepartition) >>> 0)
-        const waterlineMinY = this.mapModel?.getTerrainWaterlineMinY?.() ?? Number.NEGATIVE_INFINITY
-        const topY = reliefBounds.max.y + 18
-        const raycastFar = (topY - reliefBounds.min.y) + 18
-        const maxAttempts = Math.max(INSTANCE_ATTEMPTS_MIN, targetCount * INSTANCE_ATTEMPTS_FACTOR)
-        const acceptedPoints = []
-
-        for(let attempt = 0; attempt < maxAttempts && acceptedPoints.length < targetCount; attempt++)
-        {
-            const x = THREE.MathUtils.lerp(reliefBounds.min.x, reliefBounds.max.x, random())
-            const z = THREE.MathUtils.lerp(reliefBounds.min.z, reliefBounds.max.z, random())
-
-            this.rayOrigin.set(x, topY, z)
-            this.raycaster.set(this.rayOrigin, this.rayDirection)
-            this.raycaster.far = raycastFar
-
-            const hit = this.raycaster.intersectObjects(reliefMeshes, false)[0]
-            if(!this.isValidReliefHit(hit, waterlineMinY))
-            {
-                continue
-            }
-
-            if(!this.isFarEnoughFromOthers(hit.point, acceptedPoints))
-            {
-                continue
-            }
-
-            acceptedPoints.push(hit.point.clone())
-        }
-
-        return acceptedPoints
+        return points
     }
 
     applyInstanceMatrices()
