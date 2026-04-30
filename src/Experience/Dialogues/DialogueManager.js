@@ -145,10 +145,13 @@ export default class DialogueManager extends EventEmitter
         this.state.waitingChoice = false
         this.state.choices = []
 
-        if(node.sound)
+        const autoSoundPath = node.type === 'line' ? `sounds/dialogues/${this.state.dialogueKey}/${nextNodeId}.mp3` : null
+        const soundToPlay = node.sound || (autoSoundPath ? { path: autoSoundPath, name: nextNodeId } : null)
+
+        if(soundToPlay)
         {
             this.experience?.sound?.unlock?.()
-            this.experience?.sound?.playDialogue?.(node.sound)
+            this.experience?.sound?.playDialogue?.(soundToPlay)
         }
         else if(!this.state.dialogue?.sound)
         {
