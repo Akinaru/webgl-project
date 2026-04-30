@@ -862,6 +862,13 @@ export default class Player
                     }
 
                     this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
+                    const facingDot = this.worldNormal.dot(this.collisionDirection)
+                    // Ignore backface hits (common with DoubleSide materials) so the player
+                    // can exit concave/interior spaces without getting locked inside.
+                    if(facingDot >= 0)
+                    {
+                        continue
+                    }
                     // Keep angled modules collidable while still ignoring near-horizontal surfaces.
                     if(this.worldNormal.y > WALL_NORMAL_MAX_Y)
                     {

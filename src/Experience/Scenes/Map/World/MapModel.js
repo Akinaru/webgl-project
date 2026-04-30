@@ -6,8 +6,15 @@ import { terrainWaterlineShaderChunks } from './Shaders/Terrain/waterlineShaderC
 import { planWaterMaskShaderChunks } from './Shaders/Water/planMaskShaderChunks.js'
 
 // MapModel centralise le chargement de la map, les collisions, et les shaders eau (relief + plan).
-const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
+const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes', 'fontaine', 'fountain']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
+const FOUNTAIN_NAME_TOKENS = ['fontaine', 'fountain']
+const FOUNTAIN_STRICT_COLLISION_TOKENS = ['fontaine_1']
+const FOUNTAIN_TOP_COLLISION_HEIGHT = 0.28
+const FOUNTAIN_TOP_COLLISION_OUTER_MARGIN = 0.06
+const FOUNTAIN_TOP_COLLISION_INNER_RATIO = 0.32
+const FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS = 0.08
+const FOUNTAIN_TOP_COLLISION_STRICT_INSET = 0.12
 const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
 const PLAN_NOISE_TEXTURE_RESOLUTION = 128
 const PALM_MASTER_NAME = 'palmier_master'
@@ -135,12 +142,13 @@ export default class MapModel
 
             const size = new THREE.Vector3()
             child.geometry.boundingBox.getSize(size)
+            this.applyCollisionMaterialFixes(child)
+
             if(!this.shouldUseForCollision(child))
             {
                 return
             }
 
-            this.applyCollisionMaterialFixes(child)
             this.collisionMeshes.push(child)
         })
 
@@ -1590,6 +1598,12 @@ export default class MapModel
             worldBounds.copy(localBounds).applyMatrix4(child.matrixWorld)
             this.collisionBoxes.push(worldBounds.clone())
         })
+
+        const fountainTopCollisionBoxes = this.buildFountainTopCollisionBoxes()
+        for(const fountainTopCollisionBox of fountainTopCollisionBoxes)
+        {
+            this.collisionBoxes.push(fountainTopCollisionBox)
+        }
     }
 
     shouldUseForCollision(mesh)
@@ -1619,6 +1633,139 @@ export default class MapModel
 
         const isTrunk = meshName.includes('tronc') || meshName.includes('trunk')
         return isTrunk
+    }
+
+    isFountainMesh(object)
+    {
+        return this.hasNameInHierarchy(object, FOUNTAIN_NAME_TOKENS)
+    }
+
+    buildFountainTopCollisionBoxes()
+    {
+        if(!this.model)
+        {
+            return []
+        }
+
+        const fountainRoot = this.findFirstObjectByNameTokens(FOUNTAIN_NAME_TOKENS)
+        if(!fountainRoot)
+        {
+            return []
+        }
+
+        const bounds = new THREE.Box3().setFromObject(fountainRoot)
+        if(bounds.isEmpty())
+        {
+            return []
+        }
+
+        const size = bounds.getSize(new THREE.Vector3())
+        const minY = bounds.max.y - FOUNTAIN_TOP_COLLISION_HEIGHT
+
+        if(minY >= bounds.max.y)
+        {
+            return []
+        }
+
+        const rootName = String(fountainRoot?.name || '').toLowerCase()
+        const useStrictTopCollision = FOUNTAIN_STRICT_COLLISION_TOKENS.some((token) => rootName.includes(token))
+        if(useStrictTopCollision)
+        {
+            const insetX = Math.min(size.x * 0.45, FOUNTAIN_TOP_COLLISION_STRICT_INSET)
+            const insetZ = Math.min(size.z * 0.45, FOUNTAIN_TOP_COLLISION_STRICT_INSET)
+            const strictMinX = bounds.min.x + insetX
+            const strictMaxX = bounds.max.x - insetX
+            const strictMinZ = bounds.min.z + insetZ
+            const strictMaxZ = bounds.max.z - insetZ
+
+            if(strictMinX >= strictMaxX || strictMinZ >= strictMaxZ)
+            {
+                return []
+            }
+
+            return [
+                new THREE.Box3(
+                    new THREE.Vector3(strictMinX, minY, strictMinZ),
+                    new THREE.Vector3(strictMaxX, bounds.max.y, strictMaxZ)
+                )
+            ]
+        }
+
+        const maxOuterMarginX = size.x * 0.2
+        const maxOuterMarginZ = size.z * 0.2
+        const outerMarginX = Math.min(maxOuterMarginX, FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
+        const outerMarginZ = Math.min(maxOuterMarginZ, FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
+
+        const outerMinX = bounds.min.x + outerMarginX
+        const outerMaxX = bounds.max.x - outerMarginX
+        const outerMinZ = bounds.min.z + outerMarginZ
+        const outerMaxZ = bounds.max.z - outerMarginZ
+
+        if(outerMinX >= outerMaxX || outerMinZ >= outerMaxZ)
+        {
+            return []
+        }
+
+        let innerMinX = bounds.min.x + (size.x * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMaxX = bounds.max.x - (size.x * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMinZ = bounds.min.z + (size.z * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMaxZ = bounds.max.z - (size.z * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+
+        innerMinX = Math.max(innerMinX, outerMinX + FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMaxX = Math.min(innerMaxX, outerMaxX - FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMinZ = Math.max(innerMinZ, outerMinZ + FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMaxZ = Math.min(innerMaxZ, outerMaxZ - FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+
+        if(innerMinX >= innerMaxX || innerMinZ >= innerMaxZ)
+        {
+            return []
+        }
+
+        const ringBoxes = [
+            new THREE.Box3(
+                new THREE.Vector3(outerMinX, minY, outerMinZ),
+                new THREE.Vector3(outerMaxX, bounds.max.y, innerMinZ)
+            ),
+            new THREE.Box3(
+                new THREE.Vector3(outerMinX, minY, innerMaxZ),
+                new THREE.Vector3(outerMaxX, bounds.max.y, outerMaxZ)
+            ),
+            new THREE.Box3(
+                new THREE.Vector3(outerMinX, minY, innerMinZ),
+                new THREE.Vector3(innerMinX, bounds.max.y, innerMaxZ)
+            ),
+            new THREE.Box3(
+                new THREE.Vector3(innerMaxX, minY, innerMinZ),
+                new THREE.Vector3(outerMaxX, bounds.max.y, innerMaxZ)
+            )
+        ]
+
+        return ringBoxes.filter((box) => !box.isEmpty())
+    }
+
+    findFirstObjectByNameTokens(tokens = [])
+    {
+        if(!this.model)
+        {
+            return null
+        }
+
+        let found = null
+        this.model.traverse((object) =>
+        {
+            if(found)
+            {
+                return
+            }
+
+            const objectName = String(object?.name || '').toLowerCase()
+            if(tokens.some((token) => objectName.includes(token)))
+            {
+                found = object
+            }
+        })
+
+        return found
     }
 
     isPlanMesh(object)
