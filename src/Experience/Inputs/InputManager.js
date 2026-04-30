@@ -1,4 +1,10 @@
 import EventEmitter from '../Utils/EventEmitter.js'
+import {
+    INPUT_ACTION,
+    INPUT_BINDING_STORAGE_KEY,
+    INPUT_ACTION_DEFAULT_BINDINGS,
+    INPUT_ACTION_FALLBACK_CODES
+} from './InputBindings.constants.js'
 
 export default class InputManager extends EventEmitter
 {
@@ -18,6 +24,10 @@ export default class InputManager extends EventEmitter
             wheelX: 0,
             wheelY: 0
         }
+        this.actionBindings = {
+            ...INPUT_ACTION_DEFAULT_BINDINGS
+        }
+        this.restoreActionBindings()
 
         this.onKeyDown = (event) =>
         {
@@ -116,6 +126,167 @@ export default class InputManager extends EventEmitter
         return positive - negative
     }
 
+    getActionBinding(action)
+    {
+        const actionKey = String(action || '')
+        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        {
+            return null
+        }
+
+        return this.actionBindings[actionKey] || INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
+    }
+
+    getActionCodes(action)
+    {
+        const actionKey = String(action || '')
+        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        {
+            return []
+        }
+
+        const primaryCode = this.getActionBinding(actionKey)
+        const fallbackCodes = INPUT_ACTION_FALLBACK_CODES[actionKey] || []
+        const codes = [primaryCode, ...fallbackCodes]
+        const uniqueCodes = new Set()
+
+        for(const code of codes)
+        {
+            if(typeof code !== 'string' || code.trim() === '')
+            {
+                continue
+            }
+
+            uniqueCodes.add(code)
+        }
+
+        return Array.from(uniqueCodes)
+    }
+
+    isActionPressed(action)
+    {
+        return this.isPressed(...this.getActionCodes(action))
+    }
+
+    getActionAxis(negativeAction, positiveAction)
+    {
+        const negative = this.isActionPressed(negativeAction) ? 1 : 0
+        const positive = this.isActionPressed(positiveAction) ? 1 : 0
+        return positive - negative
+    }
+
+    getActionBindingsSnapshot()
+    {
+        return {
+            ...this.actionBindings
+        }
+    }
+
+    setActionBinding(action, code, { persist = true } = {})
+    {
+        const actionKey = String(action || '')
+        const normalizedCode = String(code || '').trim()
+
+        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        {
+            return false
+        }
+
+        if(normalizedCode === '')
+        {
+            return false
+        }
+
+        for(const [otherActionKey, otherCode] of Object.entries(this.actionBindings))
+        {
+            if(otherActionKey === actionKey)
+            {
+                continue
+            }
+
+            if(otherCode === normalizedCode)
+            {
+                return false
+            }
+        }
+
+        this.actionBindings[actionKey] = normalizedCode
+        if(persist)
+        {
+            this.persistActionBindings()
+        }
+
+        this.trigger('bindingchange', [{
+            action: actionKey,
+            code: normalizedCode,
+            bindings: this.getActionBindingsSnapshot()
+        }])
+        return true
+    }
+
+    restoreActionBindings()
+    {
+        let parsed = null
+        try
+        {
+            parsed = JSON.parse(window.localStorage.getItem(INPUT_BINDING_STORAGE_KEY) || 'null')
+        }
+        catch(error)
+        {
+            parsed = null
+        }
+
+        for(const actionKey of Object.values(INPUT_ACTION))
+        {
+            const configuredCode = parsed?.[actionKey]
+            const fallbackCode = INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
+            const normalizedCode = typeof configuredCode === 'string'
+                ? configuredCode.trim()
+                : ''
+
+            this.actionBindings[actionKey] = normalizedCode !== ''
+                ? normalizedCode
+                : fallbackCode
+        }
+    }
+
+    persistActionBindings()
+    {
+        try
+        {
+            window.localStorage.setItem(
+                INPUT_BINDING_STORAGE_KEY,
+                JSON.stringify(this.actionBindings)
+            )
+        }
+        catch(error)
+        {
+            // Persistence best effort.
+        }
+    }
+
+    resetActionBindings({ persist = true } = {})
+    {
+        for(const [actionKey, defaultCode] of Object.entries(INPUT_ACTION_DEFAULT_BINDINGS))
+        {
+            this.actionBindings[actionKey] = defaultCode
+        }
+
+        if(persist)
+        {
+            this.persistActionBindings()
+        }
+
+        this.trigger('bindingchange', [{
+            action: null,
+            code: null,
+            bindings: this.getActionBindingsSnapshot(),
+            isReset: true
+        }])
+
+        return this.getActionBindingsSnapshot()
+    }
+
     isMouseButtonPressed(button)
     {
         return this.buttons.has(button)
@@ -192,5 +363,6 @@ export default class InputManager extends EventEmitter
         this.off('pointerlockchange')
         this.off('sceneinteractdown')
         this.off('sceneinteractup')
+        this.off('bindingchange')
     }
 }

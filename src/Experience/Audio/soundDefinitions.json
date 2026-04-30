@@ -8,6 +8,15 @@
     "channel": "ui",
     "audioType": "sfx"
   },
+  "pauseMusicPreview": {
+    "label": "Pause music preview",
+    "resourceKey": "menuClickSound",
+    "fallbackPath": "sounds/ui/menu-click.mp3",
+    "volume": 0.26,
+    "playbackRate": 0.94,
+    "channel": "uiMusicPreview",
+    "audioType": "music"
+  },
   "pauseOpen": {
     "label": "Pause open",
     "resourceKey": "pauseOpenSound",

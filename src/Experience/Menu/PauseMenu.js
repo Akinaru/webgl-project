@@ -1,4 +1,5 @@
 import EventEmitter from '../Utils/EventEmitter.js'
+import { INPUT_ACTION } from '../Inputs/InputBindings.constants.js'
 
 const DISPLAYED_CLASS = 'is-displayed'
 const VISIBLE_CLASS = 'is-visible'
@@ -12,11 +13,34 @@ const SELECTORS = Object.freeze({
     musicVolumeSlider: '#pauseMusicVolume',
     musicVolumeValue: '#pauseMusicVolumeValue',
     sfxVolumeSlider: '#pauseSfxVolume',
-    sfxVolumeValue: '#pauseSfxVolumeValue'
+    sfxVolumeValue: '#pauseSfxVolumeValue',
+    keybindButtons: '[data-keybind-action]',
+    resetAllButton: '#pauseSettingsResetAll'
 })
 const SLIDER_GRADIENT_DARK_RGB = Object.freeze({ r: 36, g: 120, b: 186 })
 const SLIDER_GRADIENT_LIGHT_RGB = Object.freeze({ r: 123, g: 215, b: 255 })
 const SLIDER_GRADIENT_ALPHA = 0.95
+const VOLUME_PREVIEW_MIN_INTERVAL_MS = 90
+const VOLUME_PREVIEW_SOUND_BY_TYPE = Object.freeze({
+    music: 'pauseMusicPreview',
+    sfx: 'menuClick'
+})
+const KEYBIND_CAPTURE_LABEL = 'Appuyer...'
+const KEYBIND_ERROR_FLASH_MS = 320
+const KEYBIND_CODE_LABELS = Object.freeze({
+    Space: 'Espace',
+    Escape: 'Echap',
+    ArrowUp: 'Fleche haut',
+    ArrowDown: 'Fleche bas',
+    ArrowLeft: 'Fleche gauche',
+    ArrowRight: 'Fleche droite',
+    ShiftLeft: 'Maj gauche',
+    ShiftRight: 'Maj droite',
+    ControlLeft: 'Ctrl gauche',
+    ControlRight: 'Ctrl droite',
+    AltLeft: 'Alt gauche',
+    AltRight: 'Alt droite'
+})
 
 export default class PauseMenu extends EventEmitter
 {
@@ -48,6 +72,13 @@ export default class PauseMenu extends EventEmitter
         this.ignoreEscapeUntilMs = 0
         this.visibilityRafId = 0
         this.closeTimeoutId = 0
+        this.lastVolumePreviewAt = {
+            music: -Infinity,
+            sfx: -Infinity
+        }
+        this.pendingKeybindAction = null
+        this.keybindErrorTimeoutId = 0
+        this.keybindErrorAction = null
 
         this.root = document.querySelector(SELECTORS.root)
         this.resumeButton = document.querySelector(SELECTORS.resumeButton)
@@ -58,6 +89,8 @@ export default class PauseMenu extends EventEmitter
         this.musicVolumeValue = document.querySelector(SELECTORS.musicVolumeValue)
         this.sfxVolumeSlider = document.querySelector(SELECTORS.sfxVolumeSlider)
         this.sfxVolumeValue = document.querySelector(SELECTORS.sfxVolumeValue)
+        this.keybindButtons = Array.from(document.querySelectorAll(SELECTORS.keybindButtons))
+        this.resetAllButton = document.querySelector(SELECTORS.resetAllButton)
 
         this.hasUI = Boolean(
             this.root
@@ -69,6 +102,8 @@ export default class PauseMenu extends EventEmitter
             && this.musicVolumeValue
             && this.sfxVolumeSlider
             && this.sfxVolumeValue
+            && this.keybindButtons.length > 0
+            && this.resetAllButton
         )
 
         this.onKeyDown = (event) =>
@@ -78,7 +113,19 @@ export default class PauseMenu extends EventEmitter
                 return
             }
 
-            if(event.repeat || event.code !== 'Escape')
+            if(this.pendingKeybindAction)
+            {
+                this.handlePendingKeybindInput(event)
+                return
+            }
+
+            if(event.repeat)
+            {
+                return
+            }
+
+            const pauseCodes = this.inputs?.getActionCodes?.(INPUT_ACTION.PAUSE) ?? ['Escape']
+            if(!pauseCodes.includes(event.code))
             {
                 return
             }
@@ -156,6 +203,7 @@ export default class PauseMenu extends EventEmitter
         this.onResumeClick = (event) =>
         {
             event.preventDefault()
+            this.experience?.sound?.playMenuClick?.()
             this.close({
                 restorePointerLock: true,
                 source: 'resume_button'
@@ -182,6 +230,7 @@ export default class PauseMenu extends EventEmitter
             this.updateVolumeValueLabel(this.musicVolumeValue, percent)
             this.updateSliderFill(this.musicVolumeSlider, percent)
             this.experience?.sound?.setMusicVolume?.(percent / 100)
+            this.playVolumePreview('music')
         }
 
         this.onSfxVolumeInput = (event) =>
@@ -190,6 +239,30 @@ export default class PauseMenu extends EventEmitter
             this.updateVolumeValueLabel(this.sfxVolumeValue, percent)
             this.updateSliderFill(this.sfxVolumeSlider, percent)
             this.experience?.sound?.setSfxVolume?.(percent / 100)
+            this.playVolumePreview('sfx')
+        }
+
+        this.onKeybindButtonClick = (event) =>
+        {
+            event.preventDefault()
+            const button = event.currentTarget instanceof HTMLElement
+                ? event.currentTarget
+                : null
+            const action = String(button?.dataset?.keybindAction || '').trim()
+            if(!action)
+            {
+                return
+            }
+
+            this.beginKeybindCapture(action)
+            this.experience?.sound?.playMenuClick?.()
+        }
+
+        this.onResetAllClick = (event) =>
+        {
+            event.preventDefault()
+            this.resetAllSettings()
+            this.experience?.sound?.playMenuClick?.()
         }
 
         this.onRootClick = (event) =>
@@ -303,8 +376,14 @@ export default class PauseMenu extends EventEmitter
         this.settingsCloseButton.addEventListener('click', this.onSettingsCloseClick)
         this.musicVolumeSlider.addEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.addEventListener('input', this.onSfxVolumeInput)
+        this.resetAllButton.addEventListener('click', this.onResetAllClick)
+        for(const button of this.keybindButtons)
+        {
+            button.addEventListener('click', this.onKeybindButtonClick)
+        }
         this.root.addEventListener('click', this.onRootClick)
         this.syncSettingsVolumeUI()
+        this.syncKeybindButtons()
     }
 
     open({
@@ -440,6 +519,8 @@ export default class PauseMenu extends EventEmitter
         }
 
         this.syncSettingsVolumeUI()
+        this.syncKeybindButtons()
+        this.clearKeybindError()
         this.settingsModal.classList.add(VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'false')
         this.root.classList.add(SETTINGS_OPEN_CLASS)
@@ -457,6 +538,8 @@ export default class PauseMenu extends EventEmitter
         this.settingsModal.classList.remove(VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(SETTINGS_OPEN_CLASS)
+        this.cancelKeybindCapture()
+        this.clearKeybindError()
         if(!silent)
         {
             this.experience?.sound?.playMenuClick?.()
@@ -503,6 +586,232 @@ export default class PauseMenu extends EventEmitter
         slider.style.setProperty('--slider-fill-end', `rgba(${r}, ${g}, ${b}, ${SLIDER_GRADIENT_ALPHA})`)
     }
 
+    playVolumePreview(type = 'sfx')
+    {
+        const sound = this.experience?.sound
+        const soundName = VOLUME_PREVIEW_SOUND_BY_TYPE[type]
+        if(!sound || !soundName)
+        {
+            return
+        }
+
+        const now = performance.now()
+        const lastPreviewAt = this.lastVolumePreviewAt?.[type] ?? -Infinity
+        if((now - lastPreviewAt) < VOLUME_PREVIEW_MIN_INTERVAL_MS)
+        {
+            return
+        }
+
+        this.lastVolumePreviewAt[type] = now
+        sound.unlock?.()
+        sound.play?.(soundName)
+    }
+
+    beginKeybindCapture(action)
+    {
+        this.pendingKeybindAction = action
+        this.clearKeybindError()
+        this.syncKeybindButtons()
+    }
+
+    cancelKeybindCapture()
+    {
+        if(!this.pendingKeybindAction)
+        {
+            return
+        }
+
+        this.pendingKeybindAction = null
+        this.syncKeybindButtons()
+    }
+
+    handlePendingKeybindInput(event)
+    {
+        const action = this.pendingKeybindAction
+        if(!action)
+        {
+            return
+        }
+
+        event.preventDefault()
+        event.stopPropagation?.()
+
+        if(event.repeat)
+        {
+            return
+        }
+
+        const code = String(event.code || '').trim()
+        if(!code)
+        {
+            return
+        }
+
+        const duplicateAction = this.findActionUsingCode(code, { excludeAction: action })
+        if(duplicateAction)
+        {
+            this.triggerKeybindError(action)
+            return
+        }
+
+        const hasBound = this.inputs?.setActionBinding?.(action, code) === true
+        if(!hasBound)
+        {
+            this.triggerKeybindError(action)
+            return
+        }
+
+        this.pendingKeybindAction = null
+        this.clearKeybindError()
+        this.syncKeybindButtons()
+        this.experience?.sound?.playMenuClick?.()
+    }
+
+    findActionUsingCode(code, { excludeAction = null } = {})
+    {
+        const normalizedCode = String(code || '').trim()
+        const normalizedExclude = String(excludeAction || '').trim()
+        const bindings = this.inputs?.getActionBindingsSnapshot?.() ?? {}
+
+        for(const [action, actionCode] of Object.entries(bindings))
+        {
+            if(action === normalizedExclude)
+            {
+                continue
+            }
+
+            if(actionCode === normalizedCode)
+            {
+                return action
+            }
+        }
+
+        return null
+    }
+
+    triggerKeybindError(action)
+    {
+        const normalizedAction = String(action || '').trim()
+        if(normalizedAction === '')
+        {
+            return
+        }
+
+        this.keybindErrorAction = normalizedAction
+        this.syncKeybindButtons()
+
+        this.experience?.sound?.unlock?.()
+        this.experience?.sound?.play?.('menuClick', {
+            volume: 0.95,
+            playbackRate: 0.72
+        })
+
+        if(this.keybindErrorTimeoutId)
+        {
+            window.clearTimeout(this.keybindErrorTimeoutId)
+            this.keybindErrorTimeoutId = 0
+        }
+
+        this.keybindErrorTimeoutId = window.setTimeout(() =>
+        {
+            this.clearKeybindError()
+        }, KEYBIND_ERROR_FLASH_MS)
+    }
+
+    clearKeybindError()
+    {
+        if(this.keybindErrorTimeoutId)
+        {
+            window.clearTimeout(this.keybindErrorTimeoutId)
+            this.keybindErrorTimeoutId = 0
+        }
+
+        this.keybindErrorAction = null
+        this.syncKeybindButtons()
+    }
+
+    resetAllSettings()
+    {
+        this.experience?.sound?.setMusicVolume?.(1)
+        this.experience?.sound?.setSfxVolume?.(1)
+        this.inputs?.resetActionBindings?.()
+        this.cancelKeybindCapture()
+        this.clearKeybindError()
+        this.syncSettingsVolumeUI()
+        this.syncKeybindButtons()
+    }
+
+    syncKeybindButtons()
+    {
+        for(const button of this.keybindButtons)
+        {
+            if(!(button instanceof HTMLElement))
+            {
+                continue
+            }
+
+            const action = String(button.dataset?.keybindAction || '').trim()
+            if(!action)
+            {
+                continue
+            }
+
+            if(this.pendingKeybindAction === action)
+            {
+                button.textContent = KEYBIND_CAPTURE_LABEL
+                button.classList.add('is-capturing')
+                if(this.keybindErrorAction === action)
+                {
+                    button.classList.add('is-error')
+                }
+                else
+                {
+                    button.classList.remove('is-error')
+                }
+                continue
+            }
+
+            const code = this.inputs?.getActionBinding?.(action) || ''
+            button.textContent = this.formatKeyCodeLabel(code)
+            button.classList.remove('is-capturing')
+            if(this.keybindErrorAction === action)
+            {
+                button.classList.add('is-error')
+            }
+            else
+            {
+                button.classList.remove('is-error')
+            }
+        }
+    }
+
+    formatKeyCodeLabel(code)
+    {
+        const normalizedCode = String(code || '').trim()
+        if(normalizedCode === '')
+        {
+            return '-'
+        }
+
+        const directLabel = KEYBIND_CODE_LABELS[normalizedCode]
+        if(directLabel)
+        {
+            return directLabel
+        }
+
+        if(normalizedCode.startsWith('Key') && normalizedCode.length === 4)
+        {
+            return normalizedCode.slice(3)
+        }
+
+        if(normalizedCode.startsWith('Digit'))
+        {
+            return normalizedCode.slice(5)
+        }
+
+        return normalizedCode
+    }
+
     destroy()
     {
         if(!this.hasUI)
@@ -519,6 +828,11 @@ export default class PauseMenu extends EventEmitter
         this.settingsCloseButton.removeEventListener('click', this.onSettingsCloseClick)
         this.musicVolumeSlider.removeEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.removeEventListener('input', this.onSfxVolumeInput)
+        this.resetAllButton.removeEventListener('click', this.onResetAllClick)
+        for(const button of this.keybindButtons)
+        {
+            button.removeEventListener('click', this.onKeybindButtonClick)
+        }
         this.root.removeEventListener('click', this.onRootClick)
 
         this.root.classList.remove(VISIBLE_CLASS)
@@ -538,11 +852,18 @@ export default class PauseMenu extends EventEmitter
             window.clearTimeout(this.closeTimeoutId)
             this.closeTimeoutId = 0
         }
+        if(this.keybindErrorTimeoutId)
+        {
+            window.clearTimeout(this.keybindErrorTimeoutId)
+            this.keybindErrorTimeoutId = 0
+        }
 
         this.state = PauseMenu.CLOSED
         this.wasPointerLockedBeforeOpen = false
         this.pointerLockWasActive = false
         this.pendingPointerLockRestore = false
+        this.pendingKeybindAction = null
+        this.clearKeybindError()
     }
 
     getStateLabel()

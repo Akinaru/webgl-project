@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 import SpatialBoxOctree from '../Utils/SpatialBoxOctree.js'
+import { INPUT_ACTION } from '../Inputs/InputBindings.constants.js'
 
 const UP_AXIS = new THREE.Vector3(0, 1, 0)
 const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
@@ -277,13 +278,13 @@ export default class Player
 
     updateMoveDirection()
     {
-        const forwardAxis = this.inputs.getAxis(
-            ['KeyS', 'ArrowDown'],
-            ['KeyW', 'KeyZ', 'ArrowUp']
+        const forwardAxis = this.inputs.getActionAxis(
+            INPUT_ACTION.MOVE_BACKWARD,
+            INPUT_ACTION.MOVE_FORWARD
         )
-        const sideAxis = this.inputs.getAxis(
-            ['KeyA', 'KeyQ', 'ArrowLeft'],
-            ['KeyD', 'ArrowRight']
+        const sideAxis = this.inputs.getActionAxis(
+            INPUT_ACTION.MOVE_LEFT,
+            INPUT_ACTION.MOVE_RIGHT
         )
 
         this.moveDirection.set(sideAxis, 0, forwardAxis)
@@ -315,7 +316,7 @@ export default class Player
         this.velocity.x = THREE.MathUtils.lerp(this.velocity.x, targetVelocity.x, interpolation)
         this.velocity.z = THREE.MathUtils.lerp(this.velocity.z, targetVelocity.z, interpolation)
 
-        const jumpPressed = this.inputs.isPressed('Space')
+        const jumpPressed = this.inputs.isActionPressed(INPUT_ACTION.JUMP)
         if(movementEnabled && this.isOnGround && jumpPressed)
         {
             this.velocity.y = this.settings.jumpSpeed
