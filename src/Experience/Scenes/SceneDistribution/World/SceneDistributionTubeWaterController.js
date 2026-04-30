@@ -11,6 +11,7 @@ import {
     FILL_EDGE_SOFTNESS,
     TUBE_GROUPS_BY_VALVE_TOKEN
 } from './SceneDistributionTubeWaterController.constants.js'
+import { setupSceneDistributionTubeWaterControllerDebug } from './SceneDistributionTubeWaterController.debug.js'
 
 const FILL_COORD_ATTRIBUTE = 'aDistributionFillCoord'
 const FILL_UNIFORM = 'uDistributionFillProgress'
@@ -371,28 +372,6 @@ export default class SceneDistributionTubeWaterController
 
     setDebug()
     {
-        if(!this.debug?.isDebugEnabled || !this.debugParentFolder)
-        {
-            return
-        }
-
-        this.debugFolder = this.debug.addFolder('Remplissage tuyaux', {
-            parent: this.debugParentFolder,
-            expanded: false
-        })
-
-        this.debug.addBinding(this.debugFolder, this.settings, 'radiansPerTubeFill', {
-            label: 'Rotation pour remplir 1 tuyau',
-            min: Math.PI * 0.25,
-            max: Math.PI * 6,
-            step: 0.01
-        })
-
-        this.debug.addBinding(this.debugFolder, this.settings, 'fillEdgeSoftness', {
-            label: 'Douceur front de remplissage',
-            min: 0.001,
-            max: 0.2,
-            step: 0.001
-        })
+        setupSceneDistributionTubeWaterControllerDebug.call(this)
     }
 }

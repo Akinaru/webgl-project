@@ -12,6 +12,7 @@ import {
     VALVE_TURNING_CHANNEL,
     VALVE_NAME_TOKENS
 } from './SceneDistributionValveController.constants.js'
+import { setupSceneDistributionValveControllerDebug } from './SceneDistributionValveController.debug.js'
 
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
 
@@ -707,35 +708,6 @@ export default class SceneDistributionValveController
 
     setDebug()
     {
-        if(!this.debug?.isDebugEnabled || !this.debugParentFolder)
-        {
-            return
-        }
-
-        this.debugFolder = this.debug.addFolder('Vannes', {
-            parent: this.debugParentFolder,
-            expanded: false
-        })
-
-        this.debug.addBinding(this.debugFolder, this.settings, 'turnSpeedMultiplier', {
-            label: 'Vitesse de rotation',
-            min: 0.1,
-            max: 3,
-            step: 0.01
-        })
-
-        this.debug.addBinding(this.debugFolder, this.settings, 'gestureRotationGain', {
-            label: 'Sensibilite du geste',
-            min: 0.1,
-            max: 4,
-            step: 0.01
-        })
-
-        this.debug.addBinding(this.debugFolder, this.settings, 'maxVisualOffset', {
-            label: 'Amplitude visuelle curseur',
-            min: 2,
-            max: 30,
-            step: 0.5
-        })
+        setupSceneDistributionValveControllerDebug.call(this)
     }
 }

@@ -6,6 +6,7 @@ import MapLight from '../../Map/World/MapLight.js'
 import SceneDistributionModel from './SceneDistributionModel.js'
 import SceneDistributionValveController from './SceneDistributionValveController.js'
 import SceneDistributionTubeWaterController from './SceneDistributionTubeWaterController.js'
+import { setupSceneDistributionWorldDebug } from './SceneDistributionWorld.debug.js'
 
 let distributionWorldInstanceIndex = 0
 
@@ -75,12 +76,7 @@ export default class SceneDistributionWorld
 
     setDebug()
     {
-        if(!this.experience?.debug?.isDebugEnabled || this.debugFolder)
-        {
-            return
-        }
-
-        this.debugFolder = this.experience.debug.addFolder('📦 Distribution', { expanded: false })
+        setupSceneDistributionWorldDebug.call(this)
     }
 
     update(delta = this.experience.time.delta)
