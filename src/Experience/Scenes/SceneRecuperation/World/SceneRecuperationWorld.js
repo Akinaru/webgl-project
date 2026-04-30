@@ -11,6 +11,7 @@ import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
+import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
 
 const SCREEN_INACTIVE_COLOR = '#0e131d'
 const EXIT_TELEPORT_INACTIVE_COLOR = '#2f3d50'
@@ -53,6 +54,10 @@ export default class SceneRecuperationWorld
         this.setDebug()
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel({
+            debugParentFolder: this.debugFolder
+        })
+        this.cascadeTubes = new SceneRecuperationCascadeTubes({
+            recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
         this.water = new SceneRecuperationWater({
@@ -112,6 +117,7 @@ export default class SceneRecuperationWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.cascadeTubes?.update?.(delta)
         this.water?.update?.(delta)
         this.light?.update?.(delta)
         this.windTurbine?.update?.(delta)
@@ -514,6 +520,12 @@ export default class SceneRecuperationWorld
         {
             this.water.destroy?.()
             this.water = null
+        }
+
+        if(this.cascadeTubes)
+        {
+            this.cascadeTubes.destroy?.()
+            this.cascadeTubes = null
         }
 
         if(this.recuperationModel)
