@@ -9,8 +9,10 @@ import {
     GESTURE_ROTATION_GAIN,
     CURSOR_VISUAL_OFFSET_MAX,
     VALVE_TURNING_SOUND_NAME,
-    VALVE_TURNING_CHANNEL
+    VALVE_TURNING_CHANNEL,
+    VALVE_NAME_TOKENS
 } from './SceneDistributionValveController.constants.js'
+import { setupSceneDistributionValveControllerDebug } from './SceneDistributionValveController.debug.js'
 
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
 
@@ -193,13 +195,22 @@ export default class SceneDistributionValveController
 {
     constructor({
         experience,
-        valveMeshes = []
+        valveMeshes = [],
+        canRotateValveDirection = null,
+        debugParentFolder = null
     } = {})
     {
         this.experience = experience
         this.inputs = this.experience?.inputs
         this.canvas = this.experience?.canvas
         this.camera = this.experience?.camera?.instance
+        this.debug = this.experience?.debug
+        this.debugParentFolder = debugParentFolder
+        this.settings = {
+            turnSpeedMultiplier: 1,
+            gestureRotationGain: GESTURE_ROTATION_GAIN,
+            maxVisualOffset: CURSOR_VISUAL_OFFSET_MAX
+        }
 
         this.raycaster = new THREE.Raycaster()
         this.centerRaycaster = new CenterScreenRaycaster({
@@ -216,6 +227,8 @@ export default class SceneDistributionValveController
         this.projectedPivot = new THREE.Vector3()
         this.projectedHitPoint = new THREE.Vector3()
         this.isValveTurningSoundPlaying = false
+        this.accumulatedRightTurnRadians = 0
+        this.accumulatedRightTurnByValveToken = new Map()
 
         this.valves = []
         this.valveByUuid = new Map()
@@ -223,9 +236,18 @@ export default class SceneDistributionValveController
         this.hoveredHitPointWorld = null
         this.activeValve = null
         this.activeHitPointWorld = null
+        this.canRotateValveDirection = typeof canRotateValveDirection === 'function'
+            ? canRotateValveDirection
+            : null
 
         this.setValves(valveMeshes)
         this.setEvents()
+        this.setDebug()
+    }
+
+    setRotationConstraintResolver(resolver)
+    {
+        this.canRotateValveDirection = typeof resolver === 'function' ? resolver : null
     }
 
     setValves(valveMeshes = [])
@@ -245,7 +267,7 @@ export default class SceneDistributionValveController
                 continue
             }
 
-            if(!this.hasNameInHierarchy(mesh, ['vanne']))
+            if(!this.isValveMesh(mesh))
             {
                 continue
             }
@@ -253,9 +275,43 @@ export default class SceneDistributionValveController
             const valve = new Valve(mesh, {
                 axisMeshes: this.resolveLinkedAxisMeshes(mesh)
             })
+            valve.valveToken = this.resolveValveToken(mesh)
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
         }
+    }
+
+    resolveValveToken(mesh)
+    {
+        const name = String(mesh?.name || '').toLowerCase()
+        const compactName = name.replace(/[\s_-]+/g, '')
+
+        if(compactName.includes('vanne2'))
+        {
+            return 'vanne2'
+        }
+
+        if(compactName.includes('vanne1'))
+        {
+            return 'vanne1'
+        }
+
+        for(const token of VALVE_NAME_TOKENS)
+        {
+            if(compactName.includes(token))
+            {
+                return token
+            }
+        }
+
+        return 'vanne'
+    }
+
+    isValveMesh(mesh)
+    {
+        const name = String(mesh?.name || '').toLowerCase()
+        const compactName = name.replace(/[\s_-]+/g, '')
+        return compactName.includes('vanne')
     }
 
     resolveLinkedAxisMeshes(valveMesh)
@@ -338,7 +394,6 @@ export default class SceneDistributionValveController
             this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             this.resetGesturePointerFromActiveValve()
             document.body.classList.add(VALVE_DRAGGING_CLASS)
-            this.startValveTurningSound()
         }
 
         this.onInteractUp = () =>
@@ -392,7 +447,7 @@ export default class SceneDistributionValveController
         }
 
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
-        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), true)
+        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), false)
         const firstHit = hits[0]
         const mesh = firstHit?.object ?? null
         this.hoveredValve = mesh
@@ -477,8 +532,37 @@ export default class SceneDistributionValveController
             return
         }
 
-        this.activeValve.rotateByAngle(signedAngularDelta * GESTURE_ROTATION_GAIN)
+        const appliedAngle = signedAngularDelta * this.settings.gestureRotationGain * this.settings.turnSpeedMultiplier
+        const valveToken = this.activeValve?.valveToken || 'vanne'
+        const rotationDirection = appliedAngle >= 0 ? 1 : -1
+        const canRotate = this.canRotateValveDirection
+            ? this.canRotateValveDirection(valveToken, rotationDirection)
+            : true
+
+        if(!canRotate)
+        {
+            this.stopValveTurningSound()
+            return
+        }
+
+        this.activeValve.rotateByAngle(appliedAngle)
+        this.accumulatedRightTurnRadians = Math.max(0, this.accumulatedRightTurnRadians + appliedAngle)
+        const current = this.accumulatedRightTurnByValveToken.get(valveToken) ?? 0
+        const nextValue = Math.max(0, current + appliedAngle)
+        this.accumulatedRightTurnByValveToken.set(valveToken, nextValue)
+        this.startValveTurningSound()
         this.updateCursorVisualOffsetFromGesture()
+    }
+
+    getAccumulatedRightTurnRadians()
+    {
+        return this.accumulatedRightTurnRadians
+    }
+
+    getAccumulatedRightTurnRadiansForValve(valveToken = 'vanne')
+    {
+        const normalizedToken = String(valveToken || '').toLowerCase()
+        return this.accumulatedRightTurnByValveToken.get(normalizedToken) ?? 0
     }
 
     resetGesturePointerFromActiveValve()
@@ -535,7 +619,7 @@ export default class SceneDistributionValveController
             return
         }
 
-        const scale = CURSOR_VISUAL_OFFSET_MAX / Math.max(length, 1)
+        const scale = this.settings.maxVisualOffset / Math.max(length, 1)
         const offsetX = this.gesturePointer.x * scale
         const offsetY = this.gesturePointer.y * scale
         this.cursorElement.style.setProperty('--cursor-offset-x', `${offsetX.toFixed(2)}px`)
@@ -608,6 +692,7 @@ export default class SceneDistributionValveController
         this.stopValveTurningSound()
         this.valves = []
         this.valveByUuid.clear()
+        this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()
         document.body.classList.remove(VALVE_DRAGGING_CLASS)
 
@@ -617,5 +702,12 @@ export default class SceneDistributionValveController
         }
         this.cursorElement = null
         this.createdCursorElement = false
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
+    }
+
+    setDebug()
+    {
+        setupSceneDistributionValveControllerDebug.call(this)
     }
 }

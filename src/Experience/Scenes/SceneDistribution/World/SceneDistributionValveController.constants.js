@@ -7,3 +7,4 @@ export const GESTURE_ROTATION_GAIN = 1
 export const CURSOR_VISUAL_OFFSET_MAX = 12
 export const VALVE_TURNING_SOUND_NAME = 'valveTurning'
 export const VALVE_TURNING_CHANNEL = 'valveTurning'
+export const VALVE_NAME_TOKENS = ['vanne2', 'vanne1', 'vanne']

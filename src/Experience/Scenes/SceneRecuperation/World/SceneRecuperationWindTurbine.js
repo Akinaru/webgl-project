@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { setupSceneRecuperationWindTurbineDebug } from './SceneRecuperationWindTurbine.debug.js'
 import Experience from '../../../Experience.js'
 
 const DEFAULT_ROTATION_SPEED = 1.8
@@ -49,21 +50,7 @@ export default class SceneRecuperationWindTurbine
 
     setDebug()
     {
-        if(!this.debug?.isDebugEnabled)
-        {
-            return
-        }
-
-        this.debugFolder = this.debug.addFolder('Eolienne', {
-            parent: this.debugParentFolder || this.debug.ui,
-            expanded: false
-        })
-        this.debug.addBinding(this.debugFolder, this.state, 'speed', {
-            label: 'speed',
-            min: -1,
-            max: 1,
-            step: 0.001
-        })
+        setupSceneRecuperationWindTurbineDebug.call(this)
     }
 
     destroy()

@@ -13,6 +13,7 @@ import Television from './Television.js'
 import ShowerParticles from './ShowerParticles.js'
 import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
+import { setupSceneRecuperationWorldDebug } from './SceneRecuperationWorld.debug.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
 import {
@@ -128,12 +129,7 @@ export default class SceneRecuperationWorld
 
     setDebug()
     {
-        if(!this.experience?.debug?.isDebugEnabled || this.debugFolder)
-        {
-            return
-        }
-
-        this.debugFolder = this.experience.debug.addFolder('♻️ Recuperation', { expanded: false })
+        setupSceneRecuperationWorldDebug.call(this)
     }
 
     update(delta = this.experience.time.delta)

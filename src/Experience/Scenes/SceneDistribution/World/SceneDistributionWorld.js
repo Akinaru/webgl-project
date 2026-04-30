@@ -5,6 +5,8 @@ import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import MapLight from '../../Map/World/MapLight.js'
 import SceneDistributionModel from './SceneDistributionModel.js'
 import SceneDistributionValveController from './SceneDistributionValveController.js'
+import SceneDistributionTubeWaterController from './SceneDistributionTubeWaterController.js'
+import { setupSceneDistributionWorldDebug } from './SceneDistributionWorld.debug.js'
 
 let distributionWorldInstanceIndex = 0
 
@@ -53,8 +55,18 @@ export default class SceneDistributionWorld
         })
         this.valveController = new SceneDistributionValveController({
             experience: this.experience,
-            valveMeshes: this.distributionModel.getVanneMeshes?.() ?? []
+            valveMeshes: this.distributionModel.getVanneMeshes?.() ?? [],
+            debugParentFolder: this.debugFolder
         })
+        this.tubeWaterController = new SceneDistributionTubeWaterController({
+            tubeWaterMeshes: this.distributionModel.getTubeWaterMeshes?.() ?? [],
+            getRightTurnAmountForValve: (valveToken) => this.valveController?.getAccumulatedRightTurnRadiansForValve?.(valveToken) ?? 0,
+            debug: this.experience.debug,
+            debugParentFolder: this.debugFolder
+        })
+        this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
+            this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
+        )
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null,
@@ -64,12 +76,7 @@ export default class SceneDistributionWorld
 
     setDebug()
     {
-        if(!this.experience?.debug?.isDebugEnabled || this.debugFolder)
-        {
-            return
-        }
-
-        this.debugFolder = this.experience.debug.addFolder('📦 Distribution', { expanded: false })
+        setupSceneDistributionWorldDebug.call(this)
     }
 
     update(delta = this.experience.time.delta)
@@ -77,6 +84,7 @@ export default class SceneDistributionWorld
         this.light?.update?.(delta)
         this.player?.update?.(delta)
         this.valveController?.update?.(delta)
+        this.tubeWaterController?.update?.(delta)
     }
 
     destroy()
@@ -84,6 +92,8 @@ export default class SceneDistributionWorld
         this.resources.off(this.readyEventName)
         this.valveController?.destroy?.()
         this.valveController = null
+        this.tubeWaterController?.destroy?.()
+        this.tubeWaterController = null
 
         if(this.player)
         {
