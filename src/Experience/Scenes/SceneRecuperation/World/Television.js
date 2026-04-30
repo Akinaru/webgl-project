@@ -389,7 +389,7 @@ export default class Television
 
         ctx.strokeStyle = BORDER_COLOR
         ctx.lineWidth = 10
-        ctx.strokeRect(18, 18, CANVAS_WIDTH - 36, CANVAS_HEIGHT - 36)
+        
 
         ctx.fillStyle = TITLE_COLOR
         ctx.font = '600 42px sans-serif'
