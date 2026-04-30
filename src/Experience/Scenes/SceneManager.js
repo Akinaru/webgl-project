@@ -22,7 +22,28 @@ export default class SceneManager
 
         this.setTransitionOverlay()
         this.setDebug()
-        this.switchTo(SceneEnum.MAP)
+
+        const initialScene = this.getInitialScene()
+        this.switchTo(initialScene)
+    }
+
+    getInitialScene()
+    {
+        const urlParams = new URLSearchParams(window.location.search)
+        const sceneParam = urlParams.get('scene')
+        if(sceneParam && this.sceneFactories.has(sceneParam))
+        {
+            return sceneParam
+        }
+
+        const hash = window.location.hash
+        const sceneMatch = hash.match(/[#&]scene=([^&]+)/)
+        if(sceneMatch && this.sceneFactories.has(sceneMatch[1]))
+        {
+            return sceneMatch[1]
+        }
+
+        return SceneEnum.MAP
     }
 
     register(key, factory)

@@ -732,6 +732,14 @@ export default class Menu
         this.hideTransitionOverlay()
 
         this.resolveStart({ audioEnabled: this.audioEnabled })
+
+        if(window.location.hash.includes('debug'))
+        {
+            this.bootScreen.remove()
+            this.focusGameCanvas()
+            return
+        }
+
         this.bootScreen.classList.remove(LOADING_CLASS)
         this.bootScreen.classList.add(EYE_OPENING_CLASS)
         await this.wait(EYE_OPENING_DELAY_MS)
