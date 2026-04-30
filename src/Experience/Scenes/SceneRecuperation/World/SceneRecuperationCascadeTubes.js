@@ -11,14 +11,14 @@ const DEFAULT_HIGHLIGHT_COLOR = '#5bc2b9'
 const DEFAULT_FOAM_COLOR = '#ffffff'
 const DEFAULT_FLOW_SPEED = 1.1
 const DEFAULT_FLOW_SCALE = 0.9
-const DEFAULT_FOAM_NOISE_FREQUENCY = 4.5
-const DEFAULT_FOAM_THRESHOLD = 0.28
-const DEFAULT_FOAM_SOFTNESS = 0.18
+const DEFAULT_FOAM_NOISE_FREQUENCY = 9.26
+const DEFAULT_FOAM_THRESHOLD = 0.76
+const DEFAULT_FOAM_SOFTNESS = 0.001
 const DEFAULT_FOAM_INTENSITY = 1
 const DEFAULT_FOAM_OPACITY = 1
 const DEFAULT_OPACITY = 1
-const DEFAULT_ROTATION_SALLE_CHOIX = 0
-const DEFAULT_ROTATION_SALLE_TUBE = 0
+const DEFAULT_ROTATION_SALLE_CHOIX = 0.228
+const DEFAULT_ROTATION_SALLE_TUBE = 0.196
 const CASCADE_GROUP_SALLE_TUBE = 'salleTube'
 const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'
 
@@ -191,12 +191,28 @@ export default class SceneRecuperationCascadeTubes
 
     getCascadeTubeGroupKey(mesh)
     {
-        if(this.recuperationModel?.hasExactNameInHierarchy?.(mesh, ['cascade+plantes 1']))
+        let current = mesh
+        while(current)
         {
-            return CASCADE_GROUP_SALLE_CHOIX
+            const normalizedName = String(current.name || '')
+                .toLowerCase()
+                .trim()
+                .replace(/[\s_]+/g, '_')
+
+            if(normalizedName === 'cascade+plantes_1')
+            {
+                return CASCADE_GROUP_SALLE_TUBE
+            }
+
+            if(normalizedName === 'cascade+plantes')
+            {
+                return CASCADE_GROUP_SALLE_CHOIX
+            }
+
+            current = current.parent
         }
 
-        return CASCADE_GROUP_SALLE_TUBE
+        return CASCADE_GROUP_SALLE_CHOIX
     }
 
     getRotationValueForGroup(groupKey)
