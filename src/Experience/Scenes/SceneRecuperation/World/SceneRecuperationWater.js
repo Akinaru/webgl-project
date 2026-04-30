@@ -26,10 +26,38 @@ export default class SceneRecuperationWater
         this.edgePower = EDGE_POWER
         this.opacity = WATER_OPACITY
         this.localTime = 0
-        this.waterMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['water'], { exact: true }) ?? []
+        this.waterMaskTexelSize = new THREE.Vector2(1 / 1024, 1 / 1024)
+        this.waterMeshes = this.collectWaterMeshes()
 
         this.applyTexture()
         this.setDebug()
+    }
+
+    collectWaterMeshes()
+    {
+        const root = this.recuperationModel?.model
+        if(!root)
+        {
+            return []
+        }
+
+        const meshes = []
+        root.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, ['water']))
+            {
+                return
+            }
+
+            meshes.push(child)
+        })
+
+        return meshes
     }
 
     applyTexture()
@@ -53,6 +81,7 @@ export default class SceneRecuperationWater
         this.waterDistributionTexture.offset.set(0, 0)
         this.waterDistributionTexture.rotation = 0
         this.waterDistributionTexture.needsUpdate = true
+        this.updateMaskTexelSize()
 
         for(const mesh of this.waterMeshes)
         {
@@ -89,7 +118,8 @@ export default class SceneRecuperationWater
             edgeSoftness: { value: this.edgeSoftness },
             edgePower: { value: this.edgePower },
             localTime: { value: this.localTime },
-            opacity: { value: this.opacity }
+            opacity: { value: this.opacity },
+            waterMaskTexelSize: { value: this.waterMaskTexelSize.clone() }
         }
         material.onBeforeCompile = (shader) =>
         {
@@ -101,6 +131,7 @@ export default class SceneRecuperationWater
             shader.uniforms.uRecuperationWaterEdgePower = uniforms.edgePower
             shader.uniforms.uRecuperationWaterTime = uniforms.localTime
             shader.uniforms.uOpacity = uniforms.opacity
+            shader.uniforms.uWaterMaskTexelSize = uniforms.waterMaskTexelSize
 
             applyStandardMaterialPatch(shader, recuperationWaterVisibleGradientShaderChunks)
         }
@@ -114,6 +145,14 @@ export default class SceneRecuperationWater
         material.needsUpdate = true
         this.runtimeMaterials.push(material)
         return material
+    }
+
+    updateMaskTexelSize()
+    {
+        const image = this.waterDistributionTexture?.image
+        const width = image?.width ?? image?.videoWidth ?? 1024
+        const height = image?.height ?? image?.videoHeight ?? 1024
+        this.waterMaskTexelSize.set(1 / Math.max(1, width), 1 / Math.max(1, height))
     }
 
     setDebug()
@@ -188,6 +227,7 @@ export default class SceneRecuperationWater
             uniforms.edgeSoftness.value = this.edgeSoftness
             uniforms.edgePower.value = this.edgePower
             uniforms.opacity.value = this.opacity
+            uniforms.waterMaskTexelSize.value.copy(this.waterMaskTexelSize)
         }
     }
 
