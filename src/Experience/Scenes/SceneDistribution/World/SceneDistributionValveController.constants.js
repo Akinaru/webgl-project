@@ -1,0 +1,9 @@
+export const CURSOR_OWNER_CLASS = 'is-distribution-vanne-cursor'
+export const VALVE_DRAGGING_CLASS = 'is-distribution-valve-dragging'
+export const DEFAULT_TURN_SPEED = 0.012
+export const GESTURE_POINTER_MIN_RADIUS = 24
+export const GESTURE_POINTER_MAX_RADIUS = 180
+export const GESTURE_ROTATION_GAIN = 1
+export const CURSOR_VISUAL_OFFSET_MAX = 12
+export const VALVE_TURNING_SOUND_NAME = 'valveTurning'
+export const VALVE_TURNING_CHANNEL = 'valveTurning'

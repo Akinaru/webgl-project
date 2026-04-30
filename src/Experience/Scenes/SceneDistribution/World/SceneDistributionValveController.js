@@ -1,16 +1,18 @@
 import * as THREE from 'three'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
+import {
+    CURSOR_OWNER_CLASS,
+    VALVE_DRAGGING_CLASS,
+    DEFAULT_TURN_SPEED,
+    GESTURE_POINTER_MIN_RADIUS,
+    GESTURE_POINTER_MAX_RADIUS,
+    GESTURE_ROTATION_GAIN,
+    CURSOR_VISUAL_OFFSET_MAX,
+    VALVE_TURNING_SOUND_NAME,
+    VALVE_TURNING_CHANNEL
+} from './SceneDistributionValveController.constants.js'
 
-const CURSOR_OWNER_CLASS = 'is-distribution-vanne-cursor'
-const VALVE_DRAGGING_CLASS = 'is-distribution-valve-dragging'
-const DEFAULT_TURN_SPEED = 0.012
-const GESTURE_POINTER_MIN_RADIUS = 24
-const GESTURE_POINTER_MAX_RADIUS = 180
-const GESTURE_ROTATION_GAIN = 1
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
-const CURSOR_VISUAL_OFFSET_MAX = 12
-const VALVE_TURNING_SOUND_NAME = 'valveTurning'
-const VALVE_TURNING_CHANNEL = 'valveTurning'
 
 class Valve
 {

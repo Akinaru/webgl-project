@@ -1,45 +1,16 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const NON_COLLIDABLE_NAME_TOKENS = [
-    'water',
-    'cascade',
-    'sphere',
-    'sphère',
-    'screen'
-]
-const COLLIDABLE_OVERRIDE_NAME_TOKENS = [
-    'citerne',
-    'citerne_instance'
-]
-const VANNE_NAME_TOKENS = [
-    'vanne',
-    'axe'
-]
-const WALKABLE_GROUND_NAME_TOKENS = [
-    'sol',
-    'ground',
-    'floor',
-    'chemin',
-    'passerelle',
-    'platform'
-]
-const PALM_TREE_NAME_TOKENS = [
-    'palmier',
-    'palm'
-]
-const PALM_TRUNK_NAME_TOKENS = [
-    'tronc',
-    'trunk',
-    'stipe'
-]
-const TRANSPARENT_EXACT_NAMES = new Set([
-    'water'
-])
-const TRANSPARENT_PREFIXES = [
-    'tube-water'
-]
-const TRANSPARENT_OPACITY = 0.2
+import {
+    NON_COLLIDABLE_NAME_TOKENS,
+    COLLIDABLE_OVERRIDE_NAME_TOKENS,
+    VANNE_NAME_TOKENS,
+    WALKABLE_GROUND_NAME_TOKENS,
+    PALM_TREE_NAME_TOKENS,
+    PALM_TRUNK_NAME_TOKENS,
+    TRANSPARENT_EXACT_NAMES,
+    TRANSPARENT_PREFIXES,
+    TRANSPARENT_OPACITY
+} from './SceneDistributionModel.constants.js'
 
 export default class SceneDistributionModel
 {

@@ -12,10 +12,11 @@ import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
-
-const SCREEN_INACTIVE_COLOR = '#0e131d'
-const EXIT_TELEPORT_INACTIVE_COLOR = '#2f3d50'
-const FINAL_TUBE_MODULE_NAME = 'module-straight_24'
+import {
+    SCREEN_INACTIVE_COLOR,
+    EXIT_TELEPORT_INACTIVE_COLOR,
+    FINAL_TUBE_MODULE_NAME
+} from './SceneRecuperationWorld.constants.js'
 
 let recuperationWorldInstanceIndex = 0
 
