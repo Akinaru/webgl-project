@@ -51,6 +51,34 @@ export default class SceneRecuperationTubeWaterController
         this.rotation = {
             speed: ROTATION_SPEED_PER_SECOND
         }
+        this.waterShader = {
+            animateTubeOpacity: false,
+            animateWindowOpacity: false,
+            foamSpeedMultiplier: 1,
+            foamRotation: 0,
+            foamScalePrimary: 2.2,
+            foamScaleSecondary: 4.4,
+            bodyScale: 1.35,
+            repeatNoiseScale: 3.2,
+            repeatNoiseStrength: 0.22,
+            foamThresholdMin: 0.7,
+            foamThresholdMax: 0.9,
+            foamMix: 0.35,
+            foamOpacity: 0.34,
+            frontOpacity: 0.32,
+            frontWidthSingle: 0.14,
+            frontWidthDual: 0.16,
+            waterShadowStrength: 0.48,
+            waterMidLow: 0.82,
+            waterMidHigh: 1.08,
+            waterHighlightMix: 0.36,
+            bodyBlendBase: 0.62,
+            bodyBlendGain: 0.18,
+            emissiveBase: 0.55,
+            emissiveFoam: 0.22,
+            emissiveFront: 0.45,
+            foamColor: '#f4fbff'
+        }
 
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
@@ -111,6 +139,9 @@ export default class SceneRecuperationTubeWaterController
         this.colorMix = new THREE.Color()
         this.emissiveMix = new THREE.Color()
         this.tmpColor = new THREE.Color()
+        this.foamColor = new THREE.Color(this.waterShader.foamColor)
+        this.patternOffset = new THREE.Vector2()
+        this.patternWorldCenter = new THREE.Vector3()
 
         this.collectJoinTargets()
         this.buildTubeOrder()
@@ -149,6 +180,158 @@ export default class SceneRecuperationTubeWaterController
             min: Math.PI * 0.25,
             max: Math.PI * 8,
             step: 0.05
+        })
+
+        this.debugShaderFolder = this.debug.addFolder('Water Shader', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'animateTubeOpacity', { label: 'tubeOpacity' })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'animateWindowOpacity', { label: 'windowOpacity' })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamSpeedMultiplier', {
+            label: 'foamSpeed',
+            min: 0,
+            max: 8,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamRotation', {
+            label: 'foamRot',
+            min: -Math.PI,
+            max: Math.PI,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamScalePrimary', {
+            label: 'foamScaleA',
+            min: 0.1,
+            max: 12,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamScaleSecondary', {
+            label: 'foamScaleB',
+            min: 0.1,
+            max: 16,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'bodyScale', {
+            label: 'bodyScale',
+            min: 0.1,
+            max: 8,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'repeatNoiseScale', {
+            label: 'noiseScale',
+            min: 0.1,
+            max: 12,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'repeatNoiseStrength', {
+            label: 'noisePower',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamThresholdMin', {
+            label: 'foamMin',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamThresholdMax', {
+            label: 'foamMax',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamMix', {
+            label: 'foamMix',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'foamOpacity', {
+            label: 'foamOpacity',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'frontOpacity', {
+            label: 'frontOpacity',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'frontWidthSingle', {
+            label: 'frontWidth',
+            min: 0.01,
+            max: 0.6,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'frontWidthDual', {
+            label: 'dualFront',
+            min: 0.01,
+            max: 0.6,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'waterShadowStrength', {
+            label: 'shadow',
+            min: 0,
+            max: 1.5,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'waterMidLow', {
+            label: 'midLow',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'waterMidHigh', {
+            label: 'midHigh',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'waterHighlightMix', {
+            label: 'highlight',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'bodyBlendBase', {
+            label: 'bodyBase',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'bodyBlendGain', {
+            label: 'bodyGain',
+            min: 0,
+            max: 1,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveBase', {
+            label: 'emitBase',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveFoam', {
+            label: 'emitFoam',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })
+        this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveFront', {
+            label: 'emitFront',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })
+        const foamColorBinding = this.debug.addColorBinding(this.debugShaderFolder, this.waterShader, 'foamColor', {
+            label: 'foamColor'
+        })
+        foamColorBinding?.on?.('change', () =>
+        {
+            this.foamColor.set(this.waterShader.foamColor)
         })
     }
 
@@ -207,7 +390,7 @@ export default class SceneRecuperationTubeWaterController
 
             for(const material of clonedMaterials)
             {
-                this.setupFlowShaderMaterial(material, mesh, target.uuid)
+                this.setupFlowShaderMaterial(material, mesh, target)
             }
         }
     }
@@ -397,12 +580,14 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
         this.blueWindowShaderMaterialsByMeshUuid.get(mesh.uuid).push(material)
     }
 
-    setupFlowShaderMaterial(material, mesh, tubeUuid)
+    setupFlowShaderMaterial(material, mesh, tubeTarget)
     {
         if(!material || typeof material.onBeforeCompile !== 'function')
         {
             return
         }
+
+        const tubeUuid = tubeTarget?.uuid ?? mesh?.uuid
 
         const geometry = mesh?.geometry
         if(!geometry?.attributes?.position)
@@ -429,8 +614,20 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             return
         }
 
+        const patternSeed = this.hashStringToUnit(tubeUuid)
+        const worldSeedX = this.hashStringToUnit(`${tubeUuid}:x`)
+        const worldSeedY = this.hashStringToUnit(`${tubeUuid}:y`)
+        this.getWorldCenter(tubeTarget ?? mesh, this.patternWorldCenter)
+        this.patternOffset.set(
+            (this.patternWorldCenter.x * 0.37) + ((worldSeedX - 0.5) * 8.0),
+            (this.patternWorldCenter.z * 0.41) + ((worldSeedY - 0.5) * 8.0)
+        )
+
         const flowUniforms = {
             uFlowProgress: { value: 0 },
+            uFlowTime: { value: 0 },
+            uPatternPhase: { value: patternSeed * 6.283185307179586 },
+            uPatternOffset: { value: this.patternOffset.clone() },
             uFlowDirection: { value: 1 },
             uFlowDualSided: { value: 0 },
             uFlowFeather: { value: 0.05 },
@@ -439,7 +636,30 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             uFlowDisconnectedColor: { value: this.disconnectedColor.clone() },
             uFlowConnectedColor: { value: this.tubeConnectedColor.clone() },
             uFlowConnectedEmissiveColor: { value: this.tubeConnectedEmissiveColor.clone() },
-            uFlowEmissiveIntensity: { value: 0.68 }
+            uFlowEmissiveIntensity: { value: 0.68 },
+            uFoamRotation: { value: this.waterShader.foamRotation },
+            uFoamScalePrimary: { value: this.waterShader.foamScalePrimary },
+            uFoamScaleSecondary: { value: this.waterShader.foamScaleSecondary },
+            uBodyScale: { value: this.waterShader.bodyScale },
+            uRepeatNoiseScale: { value: this.waterShader.repeatNoiseScale },
+            uRepeatNoiseStrength: { value: this.waterShader.repeatNoiseStrength },
+            uFoamThresholdMin: { value: this.waterShader.foamThresholdMin },
+            uFoamThresholdMax: { value: this.waterShader.foamThresholdMax },
+            uFoamMix: { value: this.waterShader.foamMix },
+            uFoamOpacity: { value: this.waterShader.foamOpacity },
+            uFrontOpacity: { value: this.waterShader.frontOpacity },
+            uFrontWidthSingle: { value: this.waterShader.frontWidthSingle },
+            uFrontWidthDual: { value: this.waterShader.frontWidthDual },
+            uWaterShadowStrength: { value: this.waterShader.waterShadowStrength },
+            uWaterMidLow: { value: this.waterShader.waterMidLow },
+            uWaterMidHigh: { value: this.waterShader.waterMidHigh },
+            uWaterHighlightMix: { value: this.waterShader.waterHighlightMix },
+            uBodyBlendBase: { value: this.waterShader.bodyBlendBase },
+            uBodyBlendGain: { value: this.waterShader.bodyBlendGain },
+            uEmissiveBase: { value: this.waterShader.emissiveBase },
+            uEmissiveFoam: { value: this.waterShader.emissiveFoam },
+            uEmissiveFront: { value: this.waterShader.emissiveFront },
+            uFoamColor: { value: this.foamColor.clone() }
         }
 
         material.userData.flowUniforms = flowUniforms
@@ -450,6 +670,9 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             previousOnBeforeCompile?.(shader, renderer)
 
             shader.uniforms.uFlowProgress = flowUniforms.uFlowProgress
+            shader.uniforms.uFlowTime = flowUniforms.uFlowTime
+            shader.uniforms.uPatternPhase = flowUniforms.uPatternPhase
+            shader.uniforms.uPatternOffset = flowUniforms.uPatternOffset
             shader.uniforms.uFlowDirection = flowUniforms.uFlowDirection
             shader.uniforms.uFlowDualSided = flowUniforms.uFlowDualSided
             shader.uniforms.uFlowFeather = flowUniforms.uFlowFeather
@@ -459,6 +682,29 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             shader.uniforms.uFlowConnectedColor = flowUniforms.uFlowConnectedColor
             shader.uniforms.uFlowConnectedEmissiveColor = flowUniforms.uFlowConnectedEmissiveColor
             shader.uniforms.uFlowEmissiveIntensity = flowUniforms.uFlowEmissiveIntensity
+            shader.uniforms.uFoamRotation = flowUniforms.uFoamRotation
+            shader.uniforms.uFoamScalePrimary = flowUniforms.uFoamScalePrimary
+            shader.uniforms.uFoamScaleSecondary = flowUniforms.uFoamScaleSecondary
+            shader.uniforms.uBodyScale = flowUniforms.uBodyScale
+            shader.uniforms.uRepeatNoiseScale = flowUniforms.uRepeatNoiseScale
+            shader.uniforms.uRepeatNoiseStrength = flowUniforms.uRepeatNoiseStrength
+            shader.uniforms.uFoamThresholdMin = flowUniforms.uFoamThresholdMin
+            shader.uniforms.uFoamThresholdMax = flowUniforms.uFoamThresholdMax
+            shader.uniforms.uFoamMix = flowUniforms.uFoamMix
+            shader.uniforms.uFoamOpacity = flowUniforms.uFoamOpacity
+            shader.uniforms.uFrontOpacity = flowUniforms.uFrontOpacity
+            shader.uniforms.uFrontWidthSingle = flowUniforms.uFrontWidthSingle
+            shader.uniforms.uFrontWidthDual = flowUniforms.uFrontWidthDual
+            shader.uniforms.uWaterShadowStrength = flowUniforms.uWaterShadowStrength
+            shader.uniforms.uWaterMidLow = flowUniforms.uWaterMidLow
+            shader.uniforms.uWaterMidHigh = flowUniforms.uWaterMidHigh
+            shader.uniforms.uWaterHighlightMix = flowUniforms.uWaterHighlightMix
+            shader.uniforms.uBodyBlendBase = flowUniforms.uBodyBlendBase
+            shader.uniforms.uBodyBlendGain = flowUniforms.uBodyBlendGain
+            shader.uniforms.uEmissiveBase = flowUniforms.uEmissiveBase
+            shader.uniforms.uEmissiveFoam = flowUniforms.uEmissiveFoam
+            shader.uniforms.uEmissiveFront = flowUniforms.uEmissiveFront
+            shader.uniforms.uFoamColor = flowUniforms.uFoamColor
 
             if(shader.vertexShader.includes('#include <begin_vertex>'))
             {
@@ -467,12 +713,14 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
                         'void main() {',
                         `attribute float ${FLOW_COORD_ATTRIBUTE};
 varying float vFlowCoord;
+varying vec3 vFlowLocalPosition;
 void main() {`
                     )
                     .replace(
                         '#include <begin_vertex>',
                         `#include <begin_vertex>
-vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);`
+vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);
+vFlowLocalPosition = position;`
                     )
             }
 
@@ -480,7 +728,11 @@ vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);`
                 .replace(
                     'void main() {',
                     `varying float vFlowCoord;
+varying vec3 vFlowLocalPosition;
 uniform float uFlowProgress;
+uniform float uFlowTime;
+uniform float uPatternPhase;
+uniform vec2 uPatternOffset;
 uniform float uFlowDirection;
 uniform float uFlowDualSided;
 uniform float uFlowFeather;
@@ -488,6 +740,58 @@ uniform vec3 uFlowDisconnectedColor;
 uniform vec3 uFlowConnectedColor;
 uniform vec3 uFlowConnectedEmissiveColor;
 uniform float uFlowEmissiveIntensity;
+uniform float uFoamRotation;
+uniform float uFoamScalePrimary;
+uniform float uFoamScaleSecondary;
+uniform float uBodyScale;
+uniform float uRepeatNoiseScale;
+uniform float uRepeatNoiseStrength;
+uniform float uFoamThresholdMin;
+uniform float uFoamThresholdMax;
+uniform float uFoamMix;
+uniform float uFoamOpacity;
+uniform float uFrontOpacity;
+uniform float uFrontWidthSingle;
+uniform float uFrontWidthDual;
+uniform float uWaterShadowStrength;
+uniform float uWaterMidLow;
+uniform float uWaterMidHigh;
+uniform float uWaterHighlightMix;
+uniform float uBodyBlendBase;
+uniform float uBodyBlendGain;
+uniform float uEmissiveBase;
+uniform float uEmissiveFoam;
+uniform float uEmissiveFront;
+uniform vec3 uFoamColor;
+
+float hash21(vec2 p)
+{
+    p = fract(p * vec2(234.34, 435.345));
+    p += dot(p, p + 34.23);
+    return fract(p.x * p.y);
+}
+
+float noise21(vec2 p)
+{
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+mat2 rotation2d(float angle)
+{
+    float s = sin(angle);
+    float c = cos(angle);
+    return mat2(c, -s, s, c);
+}
+
 void main() {`
                 )
 
@@ -505,7 +809,34 @@ float flowFillDual = 1.0 - smoothstep((flowProgress * 0.5) - flowEdge, (flowProg
 float dualFillCompleted = step(0.9999, flowProgress);
 flowFillDual = mix(flowFillDual, 1.0, dualFillCompleted);
 float flowFill = mix(flowFillSingle, flowFillDual, step(0.5, uFlowDualSided));
-vec3 flowBaseColor = mix(uFlowDisconnectedColor, uFlowConnectedColor, flowFill);
+
+float animatedFlowCoord = (uFlowDirection >= 0.0 ? vFlowCoord : (1.0 - vFlowCoord));
+vec2 baseUv = vec2(
+    (vFlowLocalPosition.x + vFlowLocalPosition.z) * 1.9,
+    (animatedFlowCoord * 6.0) - uFlowTime + uPatternPhase
+);
+baseUv += uPatternOffset;
+vec2 clayUv = rotation2d(uFoamRotation) * baseUv;
+float foamNoiseA = noise21(clayUv * uFoamScalePrimary);
+float foamNoiseB = noise21((clayUv + vec2(4.2, -1.7)) * uFoamScaleSecondary);
+float repeatNoise = noise21((rotation2d(uFoamRotation * 0.5) * (baseUv + vec2(1.7, -3.4))) * uRepeatNoiseScale);
+float foamNoise = mix(foamNoiseA, foamNoiseB, clamp(uFoamMix, 0.0, 1.0));
+foamNoise = mix(foamNoise, foamNoise * repeatNoise, clamp(uRepeatNoiseStrength, 0.0, 1.0));
+float foamMask = smoothstep(uFoamThresholdMin, max(uFoamThresholdMin + 0.0001, uFoamThresholdMax), foamNoise);
+float bodyBreakup = noise21((clayUv + vec2(-2.6, 3.1)) * uBodyScale);
+
+float frontSingle = 1.0 - smoothstep(0.0, uFrontWidthSingle, abs(flowCoordSingle - flowProgress));
+float frontDual = 1.0 - smoothstep(0.0, uFrontWidthDual, abs(flowCoordDual - (flowProgress * 0.5)));
+float flowFront = mix(frontSingle, frontDual, step(0.5, uFlowDualSided));
+
+vec3 waterShadow = uFlowConnectedColor * uWaterShadowStrength;
+vec3 waterMid = mix(uFlowConnectedColor * uWaterMidLow, uFlowConnectedColor * uWaterMidHigh, bodyBreakup);
+vec3 waterHighlight = mix(uFlowConnectedColor, uFoamColor, uWaterHighlightMix);
+vec3 stylizedWater = mix(waterShadow, waterMid, uBodyBlendBase + (bodyBreakup * uBodyBlendGain));
+stylizedWater = mix(stylizedWater, uFoamColor, foamMask * uFoamOpacity);
+stylizedWater += waterHighlight * flowFront * uFrontOpacity;
+
+vec3 flowBaseColor = mix(uFlowDisconnectedColor, stylizedWater, flowFill);
 vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 )
             }
@@ -514,7 +845,9 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             {
                 flowFragmentShader = flowFragmentShader.replace(
                     'vec3 totalEmissiveRadiance = emissive;',
-                    'vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensity * flowFill);'
+                    `float emissiveFoam = foamMask * uEmissiveFoam;
+float emissiveFront = flowFront * uEmissiveFront;
+vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensity * flowFill) * (uEmissiveBase + emissiveFoam + emissiveFront);`
                 )
             }
 
@@ -615,6 +948,20 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
         }
 
         geometry.setAttribute(FLOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(flowCoordArray, 1))
+    }
+
+    hashStringToUnit(value = '')
+    {
+        let hash = 2166136261
+        const input = String(value)
+
+        for(let index = 0; index < input.length; index++)
+        {
+            hash ^= input.charCodeAt(index)
+            hash = Math.imul(hash, 16777619)
+        }
+
+        return ((hash >>> 0) % 1000000) / 1000000
     }
 
     computeAngleFlowProjection(positionAttribute, bounds)
@@ -1737,15 +2084,26 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return
         }
 
+        material.userData = material.userData || {}
+        if(material.userData.windowTransparencyDefaultsCaptured !== true)
+        {
+            material.userData.windowTransparencyDefaultsCaptured = true
+            material.userData.windowTransparentDefault = Boolean(material.transparent)
+            material.userData.windowOpacityDefault = material.opacity
+            material.userData.windowDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        if(!this.waterShader.animateWindowOpacity)
+        {
+            material.transparent = Boolean(material.userData.windowTransparentDefault)
+            material.opacity = material.userData.windowOpacityDefault
+            material.depthWrite = Boolean(material.userData.windowDepthWriteDefault)
+            return
+        }
+
         const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
         const nextOpacity = THREE.MathUtils.lerp(EMPTY_WINDOW_OPACITY, FILLED_WINDOW_OPACITY, clampedProgress)
         const shouldBeTransparent = nextOpacity < (FILLED_WINDOW_OPACITY - FLOW_PROGRESS_EPSILON)
-
-        if(material.userData?.windowDepthWriteDefault === undefined)
-        {
-            material.userData = material.userData || {}
-            material.userData.windowDepthWriteDefault = Boolean(material.depthWrite)
-        }
 
         material.transparent = shouldBeTransparent
         material.opacity = nextOpacity
@@ -2301,6 +2659,10 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 {
                     flowUniforms.uFlowProgress.value = flowProgress
                 }
+                if(flowUniforms?.uFlowTime)
+                {
+                    flowUniforms.uFlowTime.value = (this.experience.time?.elapsed ? this.experience.time.elapsed * 0.001 : 0) * this.flow.fillSpeed * this.waterShader.foamSpeedMultiplier
+                }
                 if(flowUniforms?.uFlowDirection)
                 {
                     flowUniforms.uFlowDirection.value = flowDirection
@@ -2309,6 +2671,29 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
                 {
                     flowUniforms.uFlowDualSided.value = this.dualInflowByTubeUuid.get(target.uuid) ? 1 : 0
                 }
+                if(flowUniforms?.uFoamRotation) flowUniforms.uFoamRotation.value = this.waterShader.foamRotation
+                if(flowUniforms?.uFoamScalePrimary) flowUniforms.uFoamScalePrimary.value = this.waterShader.foamScalePrimary
+                if(flowUniforms?.uFoamScaleSecondary) flowUniforms.uFoamScaleSecondary.value = this.waterShader.foamScaleSecondary
+                if(flowUniforms?.uBodyScale) flowUniforms.uBodyScale.value = this.waterShader.bodyScale
+                if(flowUniforms?.uRepeatNoiseScale) flowUniforms.uRepeatNoiseScale.value = this.waterShader.repeatNoiseScale
+                if(flowUniforms?.uRepeatNoiseStrength) flowUniforms.uRepeatNoiseStrength.value = this.waterShader.repeatNoiseStrength
+                if(flowUniforms?.uFoamThresholdMin) flowUniforms.uFoamThresholdMin.value = this.waterShader.foamThresholdMin
+                if(flowUniforms?.uFoamThresholdMax) flowUniforms.uFoamThresholdMax.value = this.waterShader.foamThresholdMax
+                if(flowUniforms?.uFoamMix) flowUniforms.uFoamMix.value = this.waterShader.foamMix
+                if(flowUniforms?.uFoamOpacity) flowUniforms.uFoamOpacity.value = this.waterShader.foamOpacity
+                if(flowUniforms?.uFrontOpacity) flowUniforms.uFrontOpacity.value = this.waterShader.frontOpacity
+                if(flowUniforms?.uFrontWidthSingle) flowUniforms.uFrontWidthSingle.value = this.waterShader.frontWidthSingle
+                if(flowUniforms?.uFrontWidthDual) flowUniforms.uFrontWidthDual.value = this.waterShader.frontWidthDual
+                if(flowUniforms?.uWaterShadowStrength) flowUniforms.uWaterShadowStrength.value = this.waterShader.waterShadowStrength
+                if(flowUniforms?.uWaterMidLow) flowUniforms.uWaterMidLow.value = this.waterShader.waterMidLow
+                if(flowUniforms?.uWaterMidHigh) flowUniforms.uWaterMidHigh.value = this.waterShader.waterMidHigh
+                if(flowUniforms?.uWaterHighlightMix) flowUniforms.uWaterHighlightMix.value = this.waterShader.waterHighlightMix
+                if(flowUniforms?.uBodyBlendBase) flowUniforms.uBodyBlendBase.value = this.waterShader.bodyBlendBase
+                if(flowUniforms?.uBodyBlendGain) flowUniforms.uBodyBlendGain.value = this.waterShader.bodyBlendGain
+                if(flowUniforms?.uEmissiveBase) flowUniforms.uEmissiveBase.value = this.waterShader.emissiveBase
+                if(flowUniforms?.uEmissiveFoam) flowUniforms.uEmissiveFoam.value = this.waterShader.emissiveFoam
+                if(flowUniforms?.uEmissiveFront) flowUniforms.uEmissiveFront.value = this.waterShader.emissiveFront
+                flowUniforms?.uFoamColor?.value?.set?.(this.waterShader.foamColor)
             }
 
             const tubeMeshes = this.tubeMeshesByTargetUuid.get(target.uuid) ?? []
@@ -2358,15 +2743,26 @@ vec4 diffuseColor = vec4(flowBaseColor, opacity);`
             return
         }
 
+        material.userData = material.userData || {}
+        if(material.userData.tubeTransparencyDefaultsCaptured !== true)
+        {
+            material.userData.tubeTransparencyDefaultsCaptured = true
+            material.userData.tubeTransparentDefault = Boolean(material.transparent)
+            material.userData.tubeOpacityDefault = material.opacity
+            material.userData.tubeDepthWriteDefault = Boolean(material.depthWrite)
+        }
+
+        if(!this.waterShader.animateTubeOpacity)
+        {
+            material.transparent = Boolean(material.userData.tubeTransparentDefault)
+            material.opacity = material.userData.tubeOpacityDefault
+            material.depthWrite = Boolean(material.userData.tubeDepthWriteDefault)
+            return
+        }
+
         const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
         const nextOpacity = THREE.MathUtils.lerp(EMPTY_TUBE_OPACITY, FILLED_TUBE_OPACITY, clampedProgress)
         const shouldBeTransparent = nextOpacity < (FILLED_TUBE_OPACITY - FLOW_PROGRESS_EPSILON)
-
-        if(material.userData?.tubeDepthWriteDefault === undefined)
-        {
-            material.userData = material.userData || {}
-            material.userData.tubeDepthWriteDefault = Boolean(material.depthWrite)
-        }
 
         material.transparent = shouldBeTransparent
         material.opacity = nextOpacity
