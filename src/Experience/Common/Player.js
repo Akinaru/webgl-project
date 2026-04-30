@@ -18,6 +18,8 @@ export default class Player
         boundaryRadius = 36,
         boundaryBox = null,
         collisionBoxes = [],
+        useBoxCollisionResolution = true,
+        useMeshCollisionRaycast = true,
         collisionMeshes = [],
         groundMeshes = [],
         spawnPosition = null,
@@ -35,6 +37,8 @@ export default class Player
         this.boundaryRadius = boundaryRadius
         this.boundaryBox = this.normalizeBoundaryBox(boundaryBox)
         this.collisionBoxes = Array.isArray(collisionBoxes) ? collisionBoxes : []
+        this.useBoxCollisionResolution = Boolean(useBoxCollisionResolution)
+        this.useMeshCollisionRaycast = Boolean(useMeshCollisionRaycast)
         this.collisionMeshes = Array.isArray(collisionMeshes) ? collisionMeshes : []
         this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
             ? groundMeshes
@@ -631,19 +635,17 @@ export default class Player
         this.ensureCollisionOctree()
 
         const candidates = this.collisionOctree.queryBox(queryBounds, [])
-        if(candidates.length > 0)
-        {
-            return candidates
-        }
-
-        return this.collisionOctreePayloads
+        return candidates
     }
 
     resolveCollisions()
     {
-        this.resolveMeshCollisions()
+        if(this.useMeshCollisionRaycast)
+        {
+            this.resolveMeshCollisions()
+        }
 
-        if(this.collisionBoxes.length === 0)
+        if(!this.useBoxCollisionResolution || this.collisionBoxes.length === 0)
         {
             this.collisionDebugState = {
                 ...(this.collisionDebugState || {}),

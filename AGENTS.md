@@ -165,8 +165,9 @@ Regles:
 2. Noms explicites (pas d'abreviations opaques).
 3. Pas de duplication evitable.
 4. Pas de magic numbers non nommes pour les timings/seuils importants.
-5. Commentaires rares et utiles (intention, pas narration).
-6. Pas de mutation globale non controlee.
+5. Pas de strings metier inline dans les conditions (`if`, `switch`, filtres): utiliser des constantes nommees (tokens/listes/enum) centralisees en tete de module.
+6. Commentaires rares et utiles (intention, pas narration).
+7. Pas de mutation globale non controlee.
 
 ## 9) Checklist avant merge
 

@@ -8,6 +8,14 @@ const NON_COLLIDABLE_NAME_TOKENS = [
     'sphère',
     'screen'
 ]
+const COLLIDABLE_OVERRIDE_NAME_TOKENS = [
+    'citerne',
+    'citerne_instance'
+]
+const VANNE_NAME_TOKENS = [
+    'vanne',
+    'axe'
+]
 const WALKABLE_GROUND_NAME_TOKENS = [
     'sol',
     'ground',
@@ -15,6 +23,15 @@ const WALKABLE_GROUND_NAME_TOKENS = [
     'chemin',
     'passerelle',
     'platform'
+]
+const PALM_TREE_NAME_TOKENS = [
+    'palmier',
+    'palm'
+]
+const PALM_TRUNK_NAME_TOKENS = [
+    'tronc',
+    'trunk',
+    'stipe'
 ]
 const TRANSPARENT_EXACT_NAMES = new Set([
     'water'
@@ -92,7 +109,7 @@ export default class SceneDistributionModel
                 this.groundMeshes.push(child)
             }
 
-            if(this.hasNameInHierarchy(child, ['vanne', 'axe']))
+            if(this.hasNameInHierarchy(child, VANNE_NAME_TOKENS))
             {
                 this.vanneMeshes.push(child)
             }
@@ -154,7 +171,24 @@ export default class SceneDistributionModel
 
     shouldUseForCollision(mesh)
     {
-        return !this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS)
+        if(this.hasNameInHierarchy(mesh, COLLIDABLE_OVERRIDE_NAME_TOKENS))
+        {
+            return true
+        }
+
+        if(this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS))
+        {
+            return false
+        }
+
+        if(!this.isPalmTreePart(mesh))
+        {
+            return true
+        }
+
+        const meshName = (mesh.name || '').toLowerCase()
+        const isTrunk = PALM_TRUNK_NAME_TOKENS.some((token) => meshName.includes(token))
+        return isTrunk
     }
 
     isWalkableGroundMesh(mesh)
@@ -284,6 +318,11 @@ export default class SceneDistributionModel
             current = current.parent
         }
         return false
+    }
+
+    isPalmTreePart(object)
+    {
+        return this.hasNameInHierarchy(object, PALM_TREE_NAME_TOKENS)
     }
 
     removeStaleRoots()
