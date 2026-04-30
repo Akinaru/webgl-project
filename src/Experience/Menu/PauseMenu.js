@@ -17,6 +17,11 @@ const SELECTORS = Object.freeze({
 const SLIDER_GRADIENT_DARK_RGB = Object.freeze({ r: 36, g: 120, b: 186 })
 const SLIDER_GRADIENT_LIGHT_RGB = Object.freeze({ r: 123, g: 215, b: 255 })
 const SLIDER_GRADIENT_ALPHA = 0.95
+const VOLUME_PREVIEW_MIN_INTERVAL_MS = 90
+const VOLUME_PREVIEW_SOUND_BY_TYPE = Object.freeze({
+    music: 'pauseMusicPreview',
+    sfx: 'menuClick'
+})
 
 export default class PauseMenu extends EventEmitter
 {
@@ -48,6 +53,10 @@ export default class PauseMenu extends EventEmitter
         this.ignoreEscapeUntilMs = 0
         this.visibilityRafId = 0
         this.closeTimeoutId = 0
+        this.lastVolumePreviewAt = {
+            music: -Infinity,
+            sfx: -Infinity
+        }
 
         this.root = document.querySelector(SELECTORS.root)
         this.resumeButton = document.querySelector(SELECTORS.resumeButton)
@@ -156,6 +165,7 @@ export default class PauseMenu extends EventEmitter
         this.onResumeClick = (event) =>
         {
             event.preventDefault()
+            this.experience?.sound?.playMenuClick?.()
             this.close({
                 restorePointerLock: true,
                 source: 'resume_button'
@@ -182,6 +192,7 @@ export default class PauseMenu extends EventEmitter
             this.updateVolumeValueLabel(this.musicVolumeValue, percent)
             this.updateSliderFill(this.musicVolumeSlider, percent)
             this.experience?.sound?.setMusicVolume?.(percent / 100)
+            this.playVolumePreview('music')
         }
 
         this.onSfxVolumeInput = (event) =>
@@ -190,6 +201,7 @@ export default class PauseMenu extends EventEmitter
             this.updateVolumeValueLabel(this.sfxVolumeValue, percent)
             this.updateSliderFill(this.sfxVolumeSlider, percent)
             this.experience?.sound?.setSfxVolume?.(percent / 100)
+            this.playVolumePreview('sfx')
         }
 
         this.onRootClick = (event) =>
@@ -501,6 +513,27 @@ export default class PauseMenu extends EventEmitter
         const g = Math.round(SLIDER_GRADIENT_DARK_RGB.g + ((SLIDER_GRADIENT_LIGHT_RGB.g - SLIDER_GRADIENT_DARK_RGB.g) * t))
         const b = Math.round(SLIDER_GRADIENT_DARK_RGB.b + ((SLIDER_GRADIENT_LIGHT_RGB.b - SLIDER_GRADIENT_DARK_RGB.b) * t))
         slider.style.setProperty('--slider-fill-end', `rgba(${r}, ${g}, ${b}, ${SLIDER_GRADIENT_ALPHA})`)
+    }
+
+    playVolumePreview(type = 'sfx')
+    {
+        const sound = this.experience?.sound
+        const soundName = VOLUME_PREVIEW_SOUND_BY_TYPE[type]
+        if(!sound || !soundName)
+        {
+            return
+        }
+
+        const now = performance.now()
+        const lastPreviewAt = this.lastVolumePreviewAt?.[type] ?? -Infinity
+        if((now - lastPreviewAt) < VOLUME_PREVIEW_MIN_INTERVAL_MS)
+        {
+            return
+        }
+
+        this.lastVolumePreviewAt[type] = now
+        sound.unlock?.()
+        sound.play?.(soundName)
     }
 
     destroy()
