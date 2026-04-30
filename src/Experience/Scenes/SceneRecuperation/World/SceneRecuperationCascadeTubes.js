@@ -3,8 +3,8 @@ import Experience from '../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { cascadeTubeShaderChunks } from './Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
 
-const CASCADE_PLANTS_NAME_TOKENS = ['cascade+plantes', 'cascade+tubes']
-const CASCADE_BLUE_TUBE_NAME_TOKENS = ['tube-blue']
+const CASCADE_PLANTS_NAME_TOKENS = ['cascade+plantes', 'cascade+tubes', 'cascade_plantes', 'pente_tubes', 'shad_tubes']
+const CASCADE_BLUE_TUBE_NAME_TOKENS = ['tube-blue', 'shad_tubes-blue']
 
 const DEFAULT_BASE_COLOR = '#13375f'
 const DEFAULT_HIGHLIGHT_COLOR = '#5bc2b9'
@@ -199,12 +199,12 @@ export default class SceneRecuperationCascadeTubes
                 .trim()
                 .replace(/[\s_]+/g, '_')
 
-            if(normalizedName === 'cascade+plantes_1')
+            if(normalizedName === 'cascade+plantes_1' || normalizedName === 'cascade_plantes_1')
             {
                 return CASCADE_GROUP_SALLE_TUBE
             }
 
-            if(normalizedName === 'cascade+plantes')
+            if(normalizedName === 'cascade+plantes' || normalizedName === 'cascade_plantes')
             {
                 return CASCADE_GROUP_SALLE_CHOIX
             }
