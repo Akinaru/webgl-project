@@ -2,27 +2,27 @@ export default [
     {
         name: 'bloomColorTexture',
         type: 'texture',
-        path: 'models/bloom_color.jpg'
+        path: 'models/bloom/textures/bloom_color.jpg'
     },
     {
         name: 'bloomColorTexture2',
         type: 'texture',
-        path: 'models/bloom_color2.jpg'
+        path: 'models/bloom/textures/bloom_color2.jpg'
     },
     {
         name: 'bloomTransmissionTexture',
         type: 'texture',
-        path: 'models/bloom_transp.jpg'
+        path: 'models/bloom/textures/bloom_transp.jpg'
     },
     {
         name: 'bloomTransmissionTexture2',
         type: 'texture',
-        path: 'models/bloom_transp2.jpg'
+        path: 'models/bloom/textures/bloom_transp2.jpg'
     },
     {
         name: 'bloomReflectionEnvTexture',
         type: 'exrTexture',
-        path: 'models/bloom_reflection.exr'
+        path: 'models/bloom/textures/bloom_reflection.exr'
     },
     {
         name: 'bushFoliageAlphaTexture',

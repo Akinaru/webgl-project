@@ -1,1 +1,2 @@
 public/models/BigMap.gltf filter=lfs diff=lfs merge=lfs -text
+public/models/**/*.gltf filter=lfs diff=lfs merge=lfs -text

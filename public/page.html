@@ -1062,11 +1062,11 @@
           }
 
           didResolve = true
-          updateStatus('Timeout chargement map: verifie public/models/Map.gltf')
+          updateStatus('Timeout chargement map: verifie public/models/scenes/map/Map.gltf')
         }, 12000)
 
         loader.load(
-          './models/Map.gltf',
+          './models/scenes/map/Map.gltf',
           (gltf) => {
             if(didResolve)
             {
