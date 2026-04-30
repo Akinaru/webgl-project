@@ -54,11 +54,14 @@ export default class SceneDistributionWorld
         })
         this.valveController = new SceneDistributionValveController({
             experience: this.experience,
-            valveMeshes: this.distributionModel.getVanneMeshes?.() ?? []
+            valveMeshes: this.distributionModel.getVanneMeshes?.() ?? [],
+            debugParentFolder: this.debugFolder
         })
         this.tubeWaterController = new SceneDistributionTubeWaterController({
             tubeWaterMeshes: this.distributionModel.getTubeWaterMeshes?.() ?? [],
-            getRightTurnAmountForValve: (valveToken) => this.valveController?.getAccumulatedRightTurnRadiansForValve?.(valveToken) ?? 0
+            getRightTurnAmountForValve: (valveToken) => this.valveController?.getAccumulatedRightTurnRadiansForValve?.(valveToken) ?? 0,
+            debug: this.experience.debug,
+            debugParentFolder: this.debugFolder
         })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
             this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true

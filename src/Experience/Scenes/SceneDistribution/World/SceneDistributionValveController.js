@@ -195,13 +195,21 @@ export default class SceneDistributionValveController
     constructor({
         experience,
         valveMeshes = [],
-        canRotateValveDirection = null
+        canRotateValveDirection = null,
+        debugParentFolder = null
     } = {})
     {
         this.experience = experience
         this.inputs = this.experience?.inputs
         this.canvas = this.experience?.canvas
         this.camera = this.experience?.camera?.instance
+        this.debug = this.experience?.debug
+        this.debugParentFolder = debugParentFolder
+        this.settings = {
+            turnSpeedMultiplier: 1,
+            gestureRotationGain: GESTURE_ROTATION_GAIN,
+            maxVisualOffset: CURSOR_VISUAL_OFFSET_MAX
+        }
 
         this.raycaster = new THREE.Raycaster()
         this.centerRaycaster = new CenterScreenRaycaster({
@@ -233,6 +241,7 @@ export default class SceneDistributionValveController
 
         this.setValves(valveMeshes)
         this.setEvents()
+        this.setDebug()
     }
 
     setRotationConstraintResolver(resolver)
@@ -522,7 +531,7 @@ export default class SceneDistributionValveController
             return
         }
 
-        const appliedAngle = signedAngularDelta * GESTURE_ROTATION_GAIN
+        const appliedAngle = signedAngularDelta * this.settings.gestureRotationGain * this.settings.turnSpeedMultiplier
         const valveToken = this.activeValve?.valveToken || 'vanne'
         const rotationDirection = appliedAngle >= 0 ? 1 : -1
         const canRotate = this.canRotateValveDirection
@@ -609,7 +618,7 @@ export default class SceneDistributionValveController
             return
         }
 
-        const scale = CURSOR_VISUAL_OFFSET_MAX / Math.max(length, 1)
+        const scale = this.settings.maxVisualOffset / Math.max(length, 1)
         const offsetX = this.gesturePointer.x * scale
         const offsetY = this.gesturePointer.y * scale
         this.cursorElement.style.setProperty('--cursor-offset-x', `${offsetX.toFixed(2)}px`)
@@ -692,5 +701,41 @@ export default class SceneDistributionValveController
         }
         this.cursorElement = null
         this.createdCursorElement = false
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled || !this.debugParentFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('Vannes', {
+            parent: this.debugParentFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'turnSpeedMultiplier', {
+            label: 'Vitesse de rotation',
+            min: 0.1,
+            max: 3,
+            step: 0.01
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'gestureRotationGain', {
+            label: 'Sensibilite du geste',
+            min: 0.1,
+            max: 4,
+            step: 0.01
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'maxVisualOffset', {
+            label: 'Amplitude visuelle curseur',
+            min: 2,
+            max: 30,
+            step: 0.5
+        })
     }
 }

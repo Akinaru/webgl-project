@@ -1,5 +1,5 @@
 export const TUBE_WATER_NAME_TOKENS = ['tube-water']
-export const FILL_PROGRESS_PER_RIGHT_TURN = 1 / (Math.PI * 0.5)
+export const DEFAULT_RADIANS_PER_TUBE_FILL = Math.PI * 1.5
 export const FILL_PROGRESS_EPSILON = 1e-4
 export const EMPTY_TUBE_OPACITY = 0.2
 export const FILLED_TUBE_OPACITY = 1

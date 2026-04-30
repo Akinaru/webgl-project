@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import {
-    FILL_PROGRESS_PER_RIGHT_TURN,
+    DEFAULT_RADIANS_PER_TUBE_FILL,
     FILL_PROGRESS_EPSILON,
     EMPTY_TUBE_OPACITY,
     FILLED_TUBE_OPACITY,
@@ -20,13 +20,21 @@ export default class SceneDistributionTubeWaterController
 {
     constructor({
         tubeWaterMeshes = [],
-        getRightTurnAmountForValve = null
+        getRightTurnAmountForValve = null,
+        debug = null,
+        debugParentFolder = null
     } = {})
     {
         this.tubeWaterMeshes = Array.isArray(tubeWaterMeshes) ? tubeWaterMeshes : []
         this.getRightTurnAmountForValve = typeof getRightTurnAmountForValve === 'function'
             ? getRightTurnAmountForValve
             : null
+        this.debug = debug
+        this.debugParentFolder = debugParentFolder
+        this.settings = {
+            radiansPerTubeFill: DEFAULT_RADIANS_PER_TUBE_FILL,
+            fillEdgeSoftness: FILL_EDGE_SOFTNESS
+        }
 
         this.emptyColor = new THREE.Color(EMPTY_TUBE_COLOR)
         this.filledColor = new THREE.Color(FILLED_TUBE_COLOR)
@@ -39,6 +47,7 @@ export default class SceneDistributionTubeWaterController
 
         this.buildTubeEntries()
         this.applyFillState()
+        this.setDebug()
     }
 
     buildTubeEntries()
@@ -180,7 +189,7 @@ export default class SceneDistributionTubeWaterController
             material.onBeforeCompile = (shader) =>
             {
                 shader.uniforms[FILL_UNIFORM] = { value: 0 }
-                shader.uniforms[FILL_EDGE_UNIFORM] = { value: FILL_EDGE_SOFTNESS }
+                shader.uniforms[FILL_EDGE_UNIFORM] = { value: this.settings.fillEdgeSoftness }
                 material.userData.distributionTubeFillUniform = shader.uniforms[FILL_UNIFORM]
                 material.userData.distributionTubeFillEdgeUniform = shader.uniforms[FILL_EDGE_UNIFORM]
 
@@ -234,8 +243,9 @@ export default class SceneDistributionTubeWaterController
             }
 
             const rightTurnAmount = Math.max(0, Number(this.getRightTurnAmountForValve(valveToken)) || 0)
+            const progressPerRadian = 1 / Math.max(0.001, this.settings.radiansPerTubeFill)
             const totalProgress = THREE.MathUtils.clamp(
-                rightTurnAmount * FILL_PROGRESS_PER_RIGHT_TURN,
+                rightTurnAmount * progressPerRadian,
                 0,
                 entries.length
             )
@@ -304,7 +314,7 @@ export default class SceneDistributionTubeWaterController
                 const fillEdgeUniform = material.userData?.distributionTubeFillEdgeUniform
                 if(fillEdgeUniform)
                 {
-                    fillEdgeUniform.value = FILL_EDGE_SOFTNESS
+                    fillEdgeUniform.value = this.settings.fillEdgeSoftness
                 }
 
                 material.needsUpdate = true
@@ -319,6 +329,8 @@ export default class SceneDistributionTubeWaterController
         this.tubeEntriesByValveToken.clear()
         this.getRightTurnAmountForValve = null
         this.fillProgressByMeshUuid.clear()
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
     }
 
     canRotateValveDirection(valveToken, direction = 1)
@@ -355,5 +367,32 @@ export default class SceneDistributionTubeWaterController
         }
 
         return true
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled || !this.debugParentFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('Remplissage tuyaux', {
+            parent: this.debugParentFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'radiansPerTubeFill', {
+            label: 'Rotation pour remplir 1 tuyau',
+            min: Math.PI * 0.25,
+            max: Math.PI * 6,
+            step: 0.01
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'fillEdgeSoftness', {
+            label: 'Douceur front de remplissage',
+            min: 0.001,
+            max: 0.2,
+            step: 0.001
+        })
     }
 }
