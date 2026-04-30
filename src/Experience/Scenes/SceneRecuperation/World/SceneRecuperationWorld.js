@@ -7,14 +7,16 @@ import MapLight from '../../Map/World/MapLight.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import SceneRecuperationModel from './SceneRecuperationModel.js'
 import SceneRecuperationWater from './SceneRecuperationWater.js'
+import Door from './Door.js'
+import Materiau from './Materiau.js'
+import Television from './Television.js'
+import ShowerParticles from './ShowerParticles.js'
 import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
-import SceneRecuperationMaterialButtons from './SceneRecuperationMaterialButtons.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
 import { setupSceneRecuperationWorldDebug } from './SceneRecuperationWorld.debug.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
 import {
-    SCREEN_INACTIVE_COLOR,
     EXIT_TELEPORT_INACTIVE_COLOR,
     FINAL_TUBE_MODULE_NAME
 } from './SceneRecuperationWorld.constants.js'
@@ -29,9 +31,13 @@ export default class SceneRecuperationWorld
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.recuperationWorld${recuperationWorldInstanceIndex++}`
 
-        this.selectedMaterialColorHex = null
         this.isExitTeleportActive = false
         this.isReturningToMap = false
+        this.testDurationSeconds = 5.5
+        this.isMaterialTestRunning = false
+        this.materialTestElapsed = 0
+        this.currentMaterialSelection = null
+        this.isMaterialChoiceValidated = false
 
         if(this.resources.isReady)
         {
@@ -66,6 +72,19 @@ export default class SceneRecuperationWorld
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
+        this.door = new Door({
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder
+        })
+        this.television = new Television({
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.debugFolder,
+            onTestRequest: () => this.startMaterialTest(),
+            onValidateRequest: () => this.validateMaterialChoice()
+        })
+        this.showerParticles = new ShowerParticles({
+            recuperationModel: this.recuperationModel
+        })
 
         this.player = new Player({
             groundHeight: 0,
@@ -94,14 +113,15 @@ export default class SceneRecuperationWorld
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
-        this.materialButtons = new SceneRecuperationMaterialButtons({
+        this.materiau = new Materiau({
             recuperationModel: this.recuperationModel,
-            isExternalHoverActive: () => this.tubeWaterController?.isHoveringTube?.() ?? false,
-            onMaterialSelected: (selection) => this.handleMaterialSelection(selection)
+            isExternalHoverActive: () =>
+                (this.tubeWaterController?.isHoveringTube?.() ?? false) ||
+                (this.television?.isHoveringInteractive?.() ?? false),
+            onSelectionChange: (selection) => this.handleMaterialSelection(selection)
         })
 
-        this.setScreenIndicator()
-        this.applyScreenColor(null)
+        this.television.setSelection(null)
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
@@ -116,13 +136,17 @@ export default class SceneRecuperationWorld
     {
         this.cascadeTubes?.update?.(delta)
         this.water?.update?.(delta)
+        this.door?.update?.(delta)
+        this.television?.update?.(delta)
+        this.showerParticles?.update?.(delta)
         this.light?.update?.(delta)
         this.windTurbine?.update?.(delta)
         this.player?.update(delta)
         this.checkRoom2FlowTrigger()
         this.tubeWaterController?.update?.()
         this.collisionDebug?.update?.()
-        this.materialButtons?.update(delta)
+        this.materiau?.update(delta)
+        this.updateMaterialTesting(delta)
         this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
         this.checkWallCrossTeleport()
@@ -130,68 +154,111 @@ export default class SceneRecuperationWorld
 
     handleMaterialSelection(selection)
     {
-        const colorHex = selection?.colorHex || null
-        this.selectedMaterialColorHex = colorHex
+        const previousKey = this.currentMaterialSelection?.key ?? null
+        const nextKey = selection?.key ?? null
 
-        this.applyScreenColor(colorHex)
-        this.tubeWaterController?.setTubeFlowColor?.(colorHex)
-        this.setExitTeleportActive(Boolean(colorHex), colorHex)
+        this.currentMaterialSelection = selection ? { ...selection } : null
+        if(previousKey !== nextKey)
+        {
+            this.isMaterialChoiceValidated = false
+            this.stopMaterialTest()
+            this.television?.setTestResult?.(null)
+        }
+
+        if(!this.currentMaterialSelection)
+        {
+            this.isMaterialChoiceValidated = false
+            this.stopMaterialTest()
+        }
+
+        this.door?.setOpen?.(this.isMaterialChoiceValidated)
+        this.television?.setSelection?.(this.currentMaterialSelection)
+        this.television?.setValidated?.(this.isMaterialChoiceValidated)
+        this.setExitTeleportActive(false)
     }
 
-    setScreenIndicator()
+    startMaterialTest()
     {
-        this.screenIndicatorEntries = []
-
-        const exactScreenMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen_1'], { exact: true }) ?? []
-        const fallbackScreenMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen'], { exact: false }) ?? []
-        const screenMeshes = exactScreenMeshes.length > 0 ? exactScreenMeshes : fallbackScreenMeshes
-
-        for(const mesh of screenMeshes)
+        if(!this.currentMaterialSelection || this.isMaterialTestRunning)
         {
-            if(!(mesh instanceof THREE.Mesh))
-            {
-                continue
+            return
+        }
+
+        this.isMaterialChoiceValidated = false
+        this.isMaterialTestRunning = true
+        this.materialTestElapsed = 0
+        this.door?.setOpen?.(false)
+        this.television?.setTestingState?.(true)
+        this.showerParticles?.start?.(this.testDurationSeconds)
+    }
+
+    stopMaterialTest()
+    {
+        this.isMaterialTestRunning = false
+        this.materialTestElapsed = 0
+        this.showerParticles?.stop?.()
+        this.television?.setTestingState?.(false)
+    }
+
+    updateMaterialTesting(deltaMs = this.experience.time.delta)
+    {
+        if(!this.isMaterialTestRunning)
+        {
+            return
+        }
+
+        const deltaSeconds = Math.max(0.001, Math.min(0.05, (deltaMs || 16.67) * 0.001))
+        this.materialTestElapsed += deltaSeconds
+        if(this.materialTestElapsed < this.testDurationSeconds)
+        {
+            return
+        }
+
+        this.isMaterialTestRunning = false
+        this.materialTestElapsed = 0
+        const result = this.buildMaterialTestResult(this.currentMaterialSelection)
+        this.television?.setTestResult?.(result)
+    }
+
+    buildMaterialTestResult(selection)
+    {
+        const key = selection?.key ?? null
+        if(key === 'materiau0')
+        {
+            return {
+                summary: 'Resultat: la carapace forme une surface protectrice mais l eau reste visible en surface.'
             }
+        }
 
-            const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-            const clonedMaterials = sourceMaterials.map((material) => material?.clone?.() ?? material)
-            mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
+        if(key === 'materiau1')
+        {
+            return {
+                summary: 'Resultat: le verre laisse bien glisser l eau, mais il protege peu contre l humidite durable.'
+            }
+        }
 
-            this.screenIndicatorEntries.push({
-                mesh,
-                materials: clonedMaterials
-            })
+        if(key === 'materiau2')
+        {
+            return {
+                summary: 'Resultat: la vegetation absorbe mieux l eau et amortit plus naturellement l impact du ruissellement.'
+            }
+        }
+
+        return {
+            summary: 'Resultat indisponible pour ce materiau.'
         }
     }
 
-    applyScreenColor(colorHex)
+    validateMaterialChoice()
     {
-        const baseColor = colorHex || SCREEN_INACTIVE_COLOR
-        const emissiveIntensity = colorHex ? 0.62 : 0.05
-
-        for(const entry of this.screenIndicatorEntries ?? [])
+        if(!this.currentMaterialSelection || this.isMaterialTestRunning)
         {
-            for(const material of entry.materials)
-            {
-                if(!material)
-                {
-                    continue
-                }
-
-                if(material.color)
-                {
-                    material.color.set(baseColor)
-                }
-
-                if(material.emissive)
-                {
-                    material.emissive.set(baseColor)
-                    material.emissiveIntensity = emissiveIntensity
-                }
-
-                material.needsUpdate = true
-            }
+            return
         }
+
+        this.isMaterialChoiceValidated = true
+        this.door?.setOpen?.(true)
+        this.television?.setValidated?.(true)
     }
 
     setRoom2FlowTrigger()
@@ -354,7 +421,7 @@ export default class SceneRecuperationWorld
         this.experience.scene.add(this.teleportVisualGroup)
     }
 
-    setExitTeleportActive(isActive, colorHex = this.selectedMaterialColorHex)
+    setExitTeleportActive(isActive, colorHex = null)
     {
         this.isExitTeleportActive = Boolean(isActive)
 
@@ -487,10 +554,10 @@ export default class SceneRecuperationWorld
             this.player = null
         }
 
-        if(this.materialButtons)
+        if(this.materiau)
         {
-            this.materialButtons.destroy?.()
-            this.materialButtons = null
+            this.materiau.destroy?.()
+            this.materiau = null
         }
 
         if(this.tubeWaterController)
@@ -517,6 +584,24 @@ export default class SceneRecuperationWorld
         {
             this.water.destroy?.()
             this.water = null
+        }
+
+        if(this.door)
+        {
+            this.door.destroy?.()
+            this.door = null
+        }
+
+        if(this.television)
+        {
+            this.television.destroy?.()
+            this.television = null
+        }
+
+        if(this.showerParticles)
+        {
+            this.showerParticles.destroy?.()
+            this.showerParticles = null
         }
 
         if(this.cascadeTubes)
@@ -547,8 +632,10 @@ export default class SceneRecuperationWorld
         this.nextWallCrossTeleportAt = 0
         this.room2FlowTrigger = null
         this.hasStartedRoom2Flow = false
-        this.screenIndicatorEntries = null
-        this.selectedMaterialColorHex = null
+        this.currentMaterialSelection = null
+        this.isMaterialTestRunning = false
+        this.materialTestElapsed = 0
+        this.isMaterialChoiceValidated = false
         this.isExitTeleportActive = false
         this.isReturningToMap = false
         this.debugFolder?.dispose?.()
