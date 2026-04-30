@@ -79,6 +79,39 @@
             <span class="pause-settings__value" id="pauseSfxVolumeValue">100%</span>
           </label>
         </div>
+        <div class="pause-settings__section pause-settings__section--keyboard">
+          <img class="pause-settings__icon" src="/icons/settings-keyboard.svg" alt="" aria-hidden="true" />
+          <div class="pause-settings__subtitle">Touches du clavier</div>
+        </div>
+        <ul class="pause-settings__keybinds" aria-label="Raccourcis clavier">
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Avancer</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="moveForward">W</button>
+          </li>
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Gauche</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="moveLeft">A</button>
+          </li>
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Sauter</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="jump">Espace</button>
+          </li>
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Reculer</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="moveBackward">S</button>
+          </li>
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Droite</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="moveRight">D</button>
+          </li>
+          <li class="pause-settings__keybind-row">
+            <span class="pause-settings__keybind-label">Pause</span>
+            <button class="pause-settings__keybind-button" type="button" data-keybind-action="pause">Echap</button>
+          </li>
+        </ul>
+        <div class="pause-settings__reset-wrap">
+          <button class="pause-settings__reset-button" id="pauseSettingsResetAll" type="button">Réinitialiser</button>
+        </div>
       </div>
     </div>
     <script type="module" src="/src/script.js"></script>
