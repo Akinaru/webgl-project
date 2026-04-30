@@ -6,18 +6,18 @@ import { cascadeTubeShaderChunks } from './Shaders/CascadeTubes/cascadeTubeShade
 const CASCADE_PLANTS_NAME_TOKENS = ['cascade+plantes', 'cascade+tubes', 'cascade_plantes', 'pente_tubes', 'shad_tubes']
 const CASCADE_BLUE_TUBE_NAME_TOKENS = ['tube-blue', 'shad_tubes-blue']
 
-const DEFAULT_BASE_COLOR = '#13375f'
-const DEFAULT_HIGHLIGHT_COLOR = '#5bc2b9'
-const DEFAULT_FOAM_COLOR = '#ffffff'
-const DEFAULT_FLOW_SPEED = 1.1
-const DEFAULT_FLOW_SCALE = 0.9
-const DEFAULT_FOAM_NOISE_FREQUENCY = 9.26
+const DEFAULT_BASE_COLOR = '#378ae5'
+const DEFAULT_FOAM_COLOR = '#e6eff8'
+const DEFAULT_FLOW_SPEED = 0.35
+const DEFAULT_FLOW_SCALE = 0.34
+const DEFAULT_FOAM_SPEED = 0.61
+const DEFAULT_FOAM_NOISE_FREQUENCY = 7.43
 const DEFAULT_FOAM_THRESHOLD = 0.76
-const DEFAULT_FOAM_SOFTNESS = 0.001
-const DEFAULT_FOAM_INTENSITY = 1
-const DEFAULT_FOAM_OPACITY = 1
-const DEFAULT_OPACITY = 1
-const DEFAULT_ROTATION_SALLE_CHOIX = 0.228
+const DEFAULT_FOAM_SOFTNESS = 0.278
+const DEFAULT_FOAM_INTENSITY = 1.63
+const DEFAULT_FOAM_OPACITY = 0.76
+const DEFAULT_OPACITY = 0.86
+const DEFAULT_ROTATION_SALLE_CHOIX = 0.163
 const DEFAULT_ROTATION_SALLE_TUBE = 0.196
 const CASCADE_GROUP_SALLE_TUBE = 'salleTube'
 const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'
@@ -34,15 +34,13 @@ export default class SceneRecuperationCascadeTubes
         this.localTime = 0
 
         this.baseColor = new THREE.Color(DEFAULT_BASE_COLOR)
-        this.highlightColor = new THREE.Color(DEFAULT_HIGHLIGHT_COLOR)
         this.foamColor = new THREE.Color(DEFAULT_FOAM_COLOR)
         this.flowSpeed = DEFAULT_FLOW_SPEED
         this.flowScale = DEFAULT_FLOW_SCALE
+        this.foamSpeed = DEFAULT_FOAM_SPEED
         this.foamNoiseFrequency = DEFAULT_FOAM_NOISE_FREQUENCY
         this.foamThreshold = DEFAULT_FOAM_THRESHOLD
-        this.foamSoftness = DEFAULT_FOAM_SOFTNESS
         this.foamIntensity = DEFAULT_FOAM_INTENSITY
-        this.foamOpacity = DEFAULT_FOAM_OPACITY
         this.opacity = DEFAULT_OPACITY
         this.rotationSalleChoix = DEFAULT_ROTATION_SALLE_CHOIX
         this.rotationSalleTube = DEFAULT_ROTATION_SALLE_TUBE
@@ -114,15 +112,13 @@ export default class SceneRecuperationCascadeTubes
         material.userData.recuperationCascadeTubeUniforms = {
             localTime: { value: this.localTime },
             baseColor: { value: this.baseColor.clone() },
-            highlightColor: { value: this.highlightColor.clone() },
             foamColor: { value: this.foamColor.clone() },
             flowSpeed: { value: this.flowSpeed },
             flowScale: { value: this.flowScale },
+            foamSpeed: { value: this.foamSpeed },
             foamNoiseFrequency: { value: this.foamNoiseFrequency },
             foamThreshold: { value: this.foamThreshold },
-            foamSoftness: { value: this.foamSoftness },
             foamIntensity: { value: this.foamIntensity },
-            foamOpacity: { value: this.foamOpacity },
             opacity: { value: this.opacity },
             patternOffset: { value: patternOffset },
             noiseSeed: { value: noiseSeed },
@@ -135,15 +131,13 @@ export default class SceneRecuperationCascadeTubes
             const uniforms = material.userData.recuperationCascadeTubeUniforms
             shader.uniforms.uCascadeTime = uniforms.localTime
             shader.uniforms.uCascadeBaseColor = uniforms.baseColor
-            shader.uniforms.uCascadeHighlightColor = uniforms.highlightColor
             shader.uniforms.uCascadeFoamColor = uniforms.foamColor
             shader.uniforms.uCascadeFlowSpeed = uniforms.flowSpeed
             shader.uniforms.uCascadeFlowScale = uniforms.flowScale
+            shader.uniforms.uCascadeFoamSpeed = uniforms.foamSpeed
             shader.uniforms.uCascadeFoamNoiseFrequency = uniforms.foamNoiseFrequency
             shader.uniforms.uCascadeFoamThreshold = uniforms.foamThreshold
-            shader.uniforms.uCascadeFoamSoftness = uniforms.foamSoftness
             shader.uniforms.uCascadeFoamIntensity = uniforms.foamIntensity
-            shader.uniforms.uCascadeFoamOpacity = uniforms.foamOpacity
             shader.uniforms.uCascadeOpacity = uniforms.opacity
             shader.uniforms.uCascadePatternOffset = uniforms.patternOffset
             shader.uniforms.uCascadeNoiseSeed = uniforms.noiseSeed
@@ -157,7 +151,7 @@ export default class SceneRecuperationCascadeTubes
             const parentKey = typeof baseMaterial?.customProgramCacheKey === 'function'
                 ? baseMaterial.customProgramCacheKey()
                 : ''
-            return `${parentKey}__recuperationCascadeTubeFlowV1`
+            return `${parentKey}__recuperationCascadeTubeFlowV3`
         }
 
         material.needsUpdate = true
@@ -241,10 +235,6 @@ export default class SceneRecuperationCascadeTubes
             label: 'Couleur de base'
         }).on('change', () => this.syncMaterialUniforms())
 
-        this.debug.addColorBinding(this.debugFolder, this, 'highlightColor', {
-            label: 'Couleur de reflet'
-        }).on('change', () => this.syncMaterialUniforms())
-
         this.debug.addColorBinding(this.debugFolder, this, 'foamColor', {
             label: 'Couleur de mousse'
         }).on('change', () => this.syncMaterialUniforms())
@@ -263,6 +253,13 @@ export default class SceneRecuperationCascadeTubes
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
+        this.debug.addBinding(this.debugFolder, this, 'foamSpeed', {
+            label: 'Vitesse de la mousse',
+            min: -4,
+            max: 4,
+            step: 0.01
+        }).on('change', () => this.syncMaterialUniforms())
+
         this.debug.addBinding(this.debugFolder, this, 'foamNoiseFrequency', {
             label: 'Frequence du bruit de mousse',
             min: 0,
@@ -277,22 +274,8 @@ export default class SceneRecuperationCascadeTubes
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
-        this.debug.addBinding(this.debugFolder, this, 'foamSoftness', {
-            label: 'Douceur de mousse',
-            min: 0.001,
-            max: 0.5,
-            step: 0.001
-        }).on('change', () => this.syncMaterialUniforms())
-
         this.debug.addBinding(this.debugFolder, this, 'foamIntensity', {
             label: 'Intensite de mousse',
-            min: 0,
-            max: 2,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'foamOpacity', {
-            label: 'Opacite de mousse',
             min: 0,
             max: 2,
             step: 0.01
@@ -331,15 +314,13 @@ export default class SceneRecuperationCascadeTubes
             }
 
             uniforms.baseColor.value.copy(this.baseColor)
-            uniforms.highlightColor.value.copy(this.highlightColor)
             uniforms.foamColor.value.copy(this.foamColor)
             uniforms.flowSpeed.value = this.flowSpeed
             uniforms.flowScale.value = this.flowScale
+            uniforms.foamSpeed.value = this.foamSpeed
             uniforms.foamNoiseFrequency.value = this.foamNoiseFrequency
             uniforms.foamThreshold.value = this.foamThreshold
-            uniforms.foamSoftness.value = this.foamSoftness
             uniforms.foamIntensity.value = this.foamIntensity
-            uniforms.foamOpacity.value = this.foamOpacity
             uniforms.opacity.value = this.opacity
             uniforms.seamOffset.value = this.getRotationValueForGroup(uniforms.groupKey)
         }
