@@ -9,7 +9,8 @@ import {
     GESTURE_ROTATION_GAIN,
     CURSOR_VISUAL_OFFSET_MAX,
     VALVE_TURNING_SOUND_NAME,
-    VALVE_TURNING_CHANNEL
+    VALVE_TURNING_CHANNEL,
+    VALVE_NAME_TOKENS
 } from './SceneDistributionValveController.constants.js'
 
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
@@ -193,7 +194,8 @@ export default class SceneDistributionValveController
 {
     constructor({
         experience,
-        valveMeshes = []
+        valveMeshes = [],
+        canRotateValveDirection = null
     } = {})
     {
         this.experience = experience
@@ -216,6 +218,8 @@ export default class SceneDistributionValveController
         this.projectedPivot = new THREE.Vector3()
         this.projectedHitPoint = new THREE.Vector3()
         this.isValveTurningSoundPlaying = false
+        this.accumulatedRightTurnRadians = 0
+        this.accumulatedRightTurnByValveToken = new Map()
 
         this.valves = []
         this.valveByUuid = new Map()
@@ -223,9 +227,17 @@ export default class SceneDistributionValveController
         this.hoveredHitPointWorld = null
         this.activeValve = null
         this.activeHitPointWorld = null
+        this.canRotateValveDirection = typeof canRotateValveDirection === 'function'
+            ? canRotateValveDirection
+            : null
 
         this.setValves(valveMeshes)
         this.setEvents()
+    }
+
+    setRotationConstraintResolver(resolver)
+    {
+        this.canRotateValveDirection = typeof resolver === 'function' ? resolver : null
     }
 
     setValves(valveMeshes = [])
@@ -253,9 +265,36 @@ export default class SceneDistributionValveController
             const valve = new Valve(mesh, {
                 axisMeshes: this.resolveLinkedAxisMeshes(mesh)
             })
+            valve.valveToken = this.resolveValveToken(mesh)
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
         }
+    }
+
+    resolveValveToken(mesh)
+    {
+        const name = String(mesh?.name || '').toLowerCase()
+        const compactName = name.replace(/[\s_-]+/g, '')
+
+        if(compactName.includes('vanne2'))
+        {
+            return 'vanne2'
+        }
+
+        if(compactName.includes('vanne1'))
+        {
+            return 'vanne1'
+        }
+
+        for(const token of VALVE_NAME_TOKENS)
+        {
+            if(compactName.includes(token))
+            {
+                return token
+            }
+        }
+
+        return 'vanne'
     }
 
     resolveLinkedAxisMeshes(valveMesh)
@@ -338,7 +377,6 @@ export default class SceneDistributionValveController
             this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             this.resetGesturePointerFromActiveValve()
             document.body.classList.add(VALVE_DRAGGING_CLASS)
-            this.startValveTurningSound()
         }
 
         this.onInteractUp = () =>
@@ -477,8 +515,37 @@ export default class SceneDistributionValveController
             return
         }
 
-        this.activeValve.rotateByAngle(signedAngularDelta * GESTURE_ROTATION_GAIN)
+        const appliedAngle = signedAngularDelta * GESTURE_ROTATION_GAIN
+        const valveToken = this.activeValve?.valveToken || 'vanne'
+        const rotationDirection = appliedAngle >= 0 ? 1 : -1
+        const canRotate = this.canRotateValveDirection
+            ? this.canRotateValveDirection(valveToken, rotationDirection)
+            : true
+
+        if(!canRotate)
+        {
+            this.stopValveTurningSound()
+            return
+        }
+
+        this.activeValve.rotateByAngle(appliedAngle)
+        this.accumulatedRightTurnRadians = Math.max(0, this.accumulatedRightTurnRadians + appliedAngle)
+        const current = this.accumulatedRightTurnByValveToken.get(valveToken) ?? 0
+        const nextValue = Math.max(0, current + appliedAngle)
+        this.accumulatedRightTurnByValveToken.set(valveToken, nextValue)
+        this.startValveTurningSound()
         this.updateCursorVisualOffsetFromGesture()
+    }
+
+    getAccumulatedRightTurnRadians()
+    {
+        return this.accumulatedRightTurnRadians
+    }
+
+    getAccumulatedRightTurnRadiansForValve(valveToken = 'vanne')
+    {
+        const normalizedToken = String(valveToken || '').toLowerCase()
+        return this.accumulatedRightTurnByValveToken.get(normalizedToken) ?? 0
     }
 
     resetGesturePointerFromActiveValve()
@@ -608,6 +675,7 @@ export default class SceneDistributionValveController
         this.stopValveTurningSound()
         this.valves = []
         this.valveByUuid.clear()
+        this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()
         document.body.classList.remove(VALVE_DRAGGING_CLASS)
 

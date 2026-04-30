@@ -45,3 +45,4 @@ export const TRANSPARENT_PREFIXES = [
 ]
 
 export const TRANSPARENT_OPACITY = 0.2
+export const TUBE_WATER_NAME_TOKENS = ['tube-water']

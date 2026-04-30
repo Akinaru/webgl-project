@@ -9,7 +9,8 @@ import {
     PALM_TRUNK_NAME_TOKENS,
     TRANSPARENT_EXACT_NAMES,
     TRANSPARENT_PREFIXES,
-    TRANSPARENT_OPACITY
+    TRANSPARENT_OPACITY,
+    TUBE_WATER_NAME_TOKENS
 } from './SceneDistributionModel.constants.js'
 
 export default class SceneDistributionModel
@@ -45,6 +46,7 @@ export default class SceneDistributionModel
         this.collisionBoxes = []
         this.groundMeshes = []
         this.vanneMeshes = []
+        this.tubeWaterMeshes = []
 
         this.model.traverse((child) =>
         {
@@ -67,6 +69,11 @@ export default class SceneDistributionModel
                 return
             }
 
+            if(this.hasNameInHierarchy(child, TUBE_WATER_NAME_TOKENS))
+            {
+                this.tubeWaterMeshes.push(child)
+            }
+
             if(!this.shouldUseForCollision(child))
             {
                 return
@@ -84,6 +91,7 @@ export default class SceneDistributionModel
             {
                 this.vanneMeshes.push(child)
             }
+
         })
 
         this.scene.add(this.model)
@@ -335,6 +343,11 @@ export default class SceneDistributionModel
         return this.vanneMeshes ?? []
     }
 
+    getTubeWaterMeshes()
+    {
+        return this.tubeWaterMeshes ?? []
+    }
+
     getSpawnPosition()
     {
         return this.spawnPosition?.clone?.() ?? { x: 0, y: 3, z: 0 }
@@ -370,6 +383,7 @@ export default class SceneDistributionModel
         this.collisionBoxes = null
         this.groundMeshes = null
         this.vanneMeshes = null
+        this.tubeWaterMeshes = null
         this.spawnPosition = null
         this.worldBounds = null
         this.boundaryBox = null
