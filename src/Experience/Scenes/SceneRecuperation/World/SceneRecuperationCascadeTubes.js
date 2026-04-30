@@ -2,23 +2,39 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { cascadeTubeShaderChunks } from './Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
+import { cascadeSlopeShaderChunks } from './Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
 
 const CASCADE_PLANTS_NAME_TOKENS = ['cascade+plantes', 'cascade+tubes', 'cascade_plantes', 'pente_tubes', 'shad_tubes']
 const CASCADE_BLUE_TUBE_NAME_TOKENS = ['tube-blue', 'shad_tubes-blue']
+const CASCADE_PLAN_NAME_TOKENS = ['shad_pente']
+const SURFACE_TYPE_TUBE = 'tube'
+const SURFACE_TYPE_SLOPE = 'slope'
 
-const DEFAULT_BASE_COLOR = '#378ae5'
-const DEFAULT_FOAM_COLOR = '#e6eff8'
+const DEFAULT_BASE_COLOR = '#2161a8'
+const DEFAULT_FOAM_COLOR = '#103d6f'
 const DEFAULT_FLOW_SPEED = 0.35
 const DEFAULT_FLOW_SCALE = 0.34
+const DEFAULT_FLOW_ANGLE = 0
 const DEFAULT_FOAM_SPEED = 0.61
 const DEFAULT_FOAM_NOISE_FREQUENCY = 7.43
 const DEFAULT_FOAM_THRESHOLD = 0.76
-const DEFAULT_FOAM_SOFTNESS = 0.278
 const DEFAULT_FOAM_INTENSITY = 1.63
 const DEFAULT_FOAM_OPACITY = 0.76
-const DEFAULT_OPACITY = 0.86
-const DEFAULT_ROTATION_SALLE_CHOIX = 0.163
-const DEFAULT_ROTATION_SALLE_TUBE = 0.196
+const DEFAULT_FOAM_BAND_ANGLE = 1.5708
+const DEFAULT_OPACITY = 1
+const DEFAULT_OVERLAY_FOAM_COLOR = '#f4fbff'
+const DEFAULT_OVERLAY_FLOW_SPEED = 0.35
+const DEFAULT_OVERLAY_FOAM_SPEED = 0
+const DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY = 4.43
+const DEFAULT_OVERLAY_FOAM_THRESHOLD = 0.78
+const DEFAULT_OVERLAY_FOAM_INTENSITY = 3
+const DEFAULT_OVERLAY_FOAM_OPACITY = 0.63
+const DEFAULT_OVERLAY_FOAM_BAND_ANGLE = 1.5708
+const DEFAULT_OVERLAY_DIAMETER_SCALE = 1.087
+const DEFAULT_ROTATION_SALLE_CHOIX = 0.174
+const DEFAULT_ROTATION_SALLE_TUBE = 0.076
+const FLOW_SPEED_VARIATION_AMPLITUDE = 0.012
+const FOAM_SPEED_VARIATION_AMPLITUDE = 0.02
 const CASCADE_GROUP_SALLE_TUBE = 'salleTube'
 const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'
 
@@ -31,26 +47,61 @@ export default class SceneRecuperationCascadeTubes
         this.recuperationModel = recuperationModel
         this.debugParentFolder = debugParentFolder
         this.runtimeMaterials = []
+        this.overlayMeshes = []
         this.localTime = 0
 
-        this.baseColor = new THREE.Color(DEFAULT_BASE_COLOR)
-        this.foamColor = new THREE.Color(DEFAULT_FOAM_COLOR)
-        this.flowSpeed = DEFAULT_FLOW_SPEED
-        this.flowScale = DEFAULT_FLOW_SCALE
-        this.foamSpeed = DEFAULT_FOAM_SPEED
-        this.foamNoiseFrequency = DEFAULT_FOAM_NOISE_FREQUENCY
-        this.foamThreshold = DEFAULT_FOAM_THRESHOLD
-        this.foamIntensity = DEFAULT_FOAM_INTENSITY
-        this.opacity = DEFAULT_OPACITY
+        this.tubeSettings = this.createTubeDefaultSurfaceSettings()
+        this.slopeSettings = this.createSlopeDefaultSurfaceSettings()
         this.rotationSalleChoix = DEFAULT_ROTATION_SALLE_CHOIX
         this.rotationSalleTube = DEFAULT_ROTATION_SALLE_TUBE
 
-        this.cascadeTubeMeshes = this.collectCascadeTubeMeshes()
+        this.cascadeSurfaceEntries = this.collectCascadeSurfaceEntries()
         this.applyMaterials()
         this.setDebug()
     }
 
-    collectCascadeTubeMeshes()
+    createDefaultSurfaceSettings()
+    {
+        return {
+            baseColor: new THREE.Color(DEFAULT_BASE_COLOR),
+            foamColor: new THREE.Color(DEFAULT_FOAM_COLOR),
+            flowSpeed: DEFAULT_FLOW_SPEED,
+            flowScale: DEFAULT_FLOW_SCALE,
+            flowAngle: DEFAULT_FLOW_ANGLE,
+            foamSpeed: DEFAULT_FOAM_SPEED,
+            foamNoiseFrequency: DEFAULT_FOAM_NOISE_FREQUENCY,
+            foamThreshold: DEFAULT_FOAM_THRESHOLD,
+            foamIntensity: DEFAULT_FOAM_INTENSITY,
+            foamOpacity: DEFAULT_FOAM_OPACITY,
+            foamBandAngle: DEFAULT_FOAM_BAND_ANGLE,
+            opacity: DEFAULT_OPACITY,
+            overlayFoamColor: new THREE.Color(DEFAULT_OVERLAY_FOAM_COLOR),
+            overlayFlowSpeed: DEFAULT_OVERLAY_FLOW_SPEED,
+            overlayFoamSpeed: DEFAULT_OVERLAY_FOAM_SPEED,
+            overlayFoamNoiseFrequency: DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY,
+            overlayFoamThreshold: DEFAULT_OVERLAY_FOAM_THRESHOLD,
+            overlayFoamIntensity: DEFAULT_OVERLAY_FOAM_INTENSITY,
+            overlayFoamOpacity: DEFAULT_OVERLAY_FOAM_OPACITY,
+            overlayFoamBandAngle: DEFAULT_OVERLAY_FOAM_BAND_ANGLE,
+            overlayDiameterScale: DEFAULT_OVERLAY_DIAMETER_SCALE
+        }
+    }
+
+    createTubeDefaultSurfaceSettings()
+    {
+        return this.createDefaultSurfaceSettings()
+    }
+
+    createSlopeDefaultSurfaceSettings()
+    {
+        const settings = this.createDefaultSurfaceSettings()
+        settings.flowAngle = 1.5
+        settings.overlayFoamThreshold = 0.68
+        settings.overlayDiameterScale = 1
+        return settings
+    }
+
+    collectCascadeSurfaceEntries()
     {
         const root = this.recuperationModel?.model
         if(!root)
@@ -58,7 +109,7 @@ export default class SceneRecuperationCascadeTubes
             return []
         }
 
-        const meshes = []
+        const entries = []
         root.traverse((child) =>
         {
             if(!(child instanceof THREE.Mesh))
@@ -66,33 +117,50 @@ export default class SceneRecuperationCascadeTubes
                 return
             }
 
-            if(!this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_PLANTS_NAME_TOKENS))
+            const isPlanMesh = this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_PLAN_NAME_TOKENS)
+            const isTubeMesh = this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_PLANTS_NAME_TOKENS)
+                && this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_BLUE_TUBE_NAME_TOKENS)
+
+            if(!isPlanMesh && !isTubeMesh)
             {
                 return
             }
 
-            if(!this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_BLUE_TUBE_NAME_TOKENS))
-            {
-                return
-            }
-
-            meshes.push(child)
+            entries.push({
+                mesh: child,
+                surfaceType: isPlanMesh ? SURFACE_TYPE_SLOPE : SURFACE_TYPE_TUBE
+            })
         })
 
-        return meshes
+        return entries
     }
 
     applyMaterials()
     {
-        for(const mesh of this.cascadeTubeMeshes)
+        for(const entry of this.cascadeSurfaceEntries)
         {
+            const { mesh, surfaceType } = entry
             const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-            const patchedMaterials = sourceMaterials.map((material) => this.createCascadeTubeMaterial(material, mesh))
+            const patchedMaterials = sourceMaterials.map((material) => this.createCascadeTubeMaterial(material, mesh, {
+                isOverlay: false,
+                surfaceType
+            }))
             mesh.material = Array.isArray(mesh.material) ? patchedMaterials : patchedMaterials[0]
+            this.attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType)
         }
     }
 
-    createCascadeTubeMaterial(baseMaterial, mesh)
+    getSurfaceSettings(surfaceType)
+    {
+        return surfaceType === SURFACE_TYPE_SLOPE ? this.slopeSettings : this.tubeSettings
+    }
+
+    getShaderChunks(surfaceType)
+    {
+        return surfaceType === SURFACE_TYPE_SLOPE ? cascadeSlopeShaderChunks : cascadeTubeShaderChunks
+    }
+
+    createCascadeTubeMaterial(baseMaterial, mesh, { isOverlay = false, surfaceType = SURFACE_TYPE_TUBE } = {})
     {
         const material = baseMaterial?.clone?.() ?? baseMaterial
         if(!material)
@@ -100,30 +168,43 @@ export default class SceneRecuperationCascadeTubes
             return material
         }
 
+        const surfaceSettings = this.getSurfaceSettings(surfaceType)
         const groupKey = this.getCascadeTubeGroupKey(mesh)
-        const patternOffset = this.createPatternOffset(mesh)
-        const noiseSeed = this.createNoiseSeed(mesh)
+        const patternOffset = this.createPatternOffset(mesh, isOverlay ? 'overlay' : 'base')
+        const noiseSeed = this.createNoiseSeed(mesh, isOverlay ? 'overlay' : 'base')
+        const speedVariation = this.createSpeedVariation(mesh, isOverlay ? 'overlay' : 'base')
+        const settings = isOverlay
+            ? this.createOverlayUniformSettings(surfaceSettings)
+            : this.createBaseUniformSettings(surfaceSettings)
 
         material.transparent = true
         material.side = THREE.DoubleSide
-        material.depthWrite = true
+        material.depthWrite = !isOverlay
         material.userData = material.userData || {}
         material.userData.isRecuperationCascadeTubeMaterial = true
         material.userData.recuperationCascadeTubeUniforms = {
             localTime: { value: this.localTime },
-            baseColor: { value: this.baseColor.clone() },
-            foamColor: { value: this.foamColor.clone() },
-            flowSpeed: { value: this.flowSpeed },
-            flowScale: { value: this.flowScale },
-            foamSpeed: { value: this.foamSpeed },
-            foamNoiseFrequency: { value: this.foamNoiseFrequency },
-            foamThreshold: { value: this.foamThreshold },
-            foamIntensity: { value: this.foamIntensity },
-            opacity: { value: this.opacity },
+            baseColor: { value: settings.baseColor },
+            foamColor: { value: settings.foamColor },
+            flowSpeed: { value: settings.flowSpeed },
+            flowScale: { value: settings.flowScale },
+            flowAngle: { value: settings.flowAngle },
+            foamSpeed: { value: settings.foamSpeed },
+            foamNoiseFrequency: { value: settings.foamNoiseFrequency },
+            foamThreshold: { value: settings.foamThreshold },
+            foamIntensity: { value: settings.foamIntensity },
+            opacity: { value: settings.opacity },
+            foamOpacity: { value: settings.foamOpacity },
+            foamBandAngle: { value: settings.foamBandAngle },
+            flowSpeedOffset: { value: speedVariation.flowSpeedOffset },
+            foamSpeedOffset: { value: speedVariation.foamSpeedOffset },
+            foamOnly: { value: isOverlay ? 1 : 0 },
             patternOffset: { value: patternOffset },
             noiseSeed: { value: noiseSeed },
             seamOffset: { value: this.getRotationValueForGroup(groupKey) },
-            groupKey
+            groupKey,
+            surfaceType,
+            isOverlay
         }
 
         material.onBeforeCompile = (shader) =>
@@ -134,16 +215,20 @@ export default class SceneRecuperationCascadeTubes
             shader.uniforms.uCascadeFoamColor = uniforms.foamColor
             shader.uniforms.uCascadeFlowSpeed = uniforms.flowSpeed
             shader.uniforms.uCascadeFlowScale = uniforms.flowScale
+            shader.uniforms.uCascadeFlowAngle = uniforms.flowAngle
             shader.uniforms.uCascadeFoamSpeed = uniforms.foamSpeed
             shader.uniforms.uCascadeFoamNoiseFrequency = uniforms.foamNoiseFrequency
             shader.uniforms.uCascadeFoamThreshold = uniforms.foamThreshold
             shader.uniforms.uCascadeFoamIntensity = uniforms.foamIntensity
             shader.uniforms.uCascadeOpacity = uniforms.opacity
+            shader.uniforms.uCascadeFoamOpacity = uniforms.foamOpacity
+            shader.uniforms.uCascadeFoamBandAngle = uniforms.foamBandAngle
+            shader.uniforms.uCascadeFoamOnly = uniforms.foamOnly
             shader.uniforms.uCascadePatternOffset = uniforms.patternOffset
             shader.uniforms.uCascadeNoiseSeed = uniforms.noiseSeed
             shader.uniforms.uCascadeSeamOffset = uniforms.seamOffset
 
-            applyStandardMaterialPatch(shader, cascadeTubeShaderChunks)
+            applyStandardMaterialPatch(shader, this.getShaderChunks(surfaceType))
         }
 
         material.customProgramCacheKey = () =>
@@ -151,7 +236,7 @@ export default class SceneRecuperationCascadeTubes
             const parentKey = typeof baseMaterial?.customProgramCacheKey === 'function'
                 ? baseMaterial.customProgramCacheKey()
                 : ''
-            return `${parentKey}__recuperationCascadeTubeFlowV3`
+            return `${parentKey}__recuperationCascadeFlowV6_${surfaceType}_${isOverlay ? 'overlay' : 'main'}`
         }
 
         material.needsUpdate = true
@@ -159,28 +244,112 @@ export default class SceneRecuperationCascadeTubes
         return material
     }
 
-    createPatternOffset(mesh)
+    createBaseUniformSettings(surfaceSettings)
+    {
+        return {
+            baseColor: surfaceSettings.baseColor.clone(),
+            foamColor: surfaceSettings.foamColor.clone(),
+            flowSpeed: surfaceSettings.flowSpeed,
+            flowScale: surfaceSettings.flowScale,
+            flowAngle: surfaceSettings.flowAngle,
+            foamSpeed: surfaceSettings.foamSpeed,
+            foamNoiseFrequency: surfaceSettings.foamNoiseFrequency,
+            foamThreshold: surfaceSettings.foamThreshold,
+            foamIntensity: surfaceSettings.foamIntensity,
+            opacity: surfaceSettings.opacity,
+            foamOpacity: surfaceSettings.foamOpacity,
+            foamBandAngle: surfaceSettings.foamBandAngle
+        }
+    }
+
+    createOverlayUniformSettings(surfaceSettings)
+    {
+        return {
+            baseColor: new THREE.Color(0x000000),
+            foamColor: surfaceSettings.overlayFoamColor.clone(),
+            flowSpeed: surfaceSettings.overlayFlowSpeed,
+            flowScale: surfaceSettings.flowScale,
+            flowAngle: surfaceSettings.flowAngle,
+            foamSpeed: surfaceSettings.overlayFoamSpeed,
+            foamNoiseFrequency: surfaceSettings.overlayFoamNoiseFrequency,
+            foamThreshold: surfaceSettings.overlayFoamThreshold,
+            foamIntensity: surfaceSettings.overlayFoamIntensity,
+            opacity: 0,
+            foamOpacity: surfaceSettings.overlayFoamOpacity,
+            foamBandAngle: surfaceSettings.overlayFoamBandAngle
+        }
+    }
+
+    attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType)
+    {
+        const overlayMaterials = sourceMaterials.map((material) => this.createCascadeTubeMaterial(material, mesh, {
+            isOverlay: true,
+            surfaceType
+        }))
+        const surfaceSettings = this.getSurfaceSettings(surfaceType)
+        const overlayMesh = new THREE.Mesh(
+            mesh.geometry,
+            Array.isArray(mesh.material) ? overlayMaterials : overlayMaterials[0]
+        )
+
+        overlayMesh.name = `${mesh.name || 'cascadeTube'}_foamOverlay`
+        overlayMesh.position.set(0, 0, 0)
+        overlayMesh.rotation.set(0, 0, 0)
+        overlayMesh.scale.set(surfaceSettings.overlayDiameterScale, 1, surfaceSettings.overlayDiameterScale)
+        overlayMesh.renderOrder = (mesh.renderOrder || 0) + 1
+        overlayMesh.frustumCulled = mesh.frustumCulled
+        overlayMesh.matrixAutoUpdate = false
+        overlayMesh.visible = mesh.visible
+        overlayMesh.castShadow = false
+        overlayMesh.receiveShadow = false
+        overlayMesh.userData.isRecuperationCascadeTubeFoamOverlay = true
+        overlayMesh.userData.surfaceType = surfaceType
+        overlayMesh.updateMatrix()
+
+        mesh.add(overlayMesh)
+        this.overlayMeshes.push(overlayMesh)
+    }
+
+    createPatternOffset(mesh, variant = 'base')
     {
         const worldPosition = new THREE.Vector3()
         mesh?.getWorldPosition?.(worldPosition)
 
-        const seedY = Math.abs(Math.sin((worldPosition.z * 39.3468) + (worldPosition.y * 11.135) + (worldPosition.x * 5.913) + 1.91))
+        const variantOffset = variant === 'overlay' ? 2.37 : 1.91
+        const seedY = Math.abs(Math.sin((worldPosition.z * 39.3468) + (worldPosition.y * 11.135) + (worldPosition.x * 5.913) + variantOffset))
 
         return new THREE.Vector2(0, seedY * 5.0)
     }
 
-    createNoiseSeed(mesh)
+    createNoiseSeed(mesh, variant = 'base')
     {
         const worldPosition = new THREE.Vector3()
         mesh?.getWorldPosition?.(worldPosition)
 
-        const seedA = Math.abs(Math.sin((worldPosition.x * 31.341) + (worldPosition.z * 17.417) + (worldPosition.y * 9.137) + 2.17))
-        const seedB = Math.abs(Math.sin((worldPosition.x * 7.731) + (worldPosition.z * 27.913) + (worldPosition.y * 21.553) + 4.63))
+        const phaseA = variant === 'overlay' ? 5.41 : 2.17
+        const phaseB = variant === 'overlay' ? 7.89 : 4.63
+        const seedA = Math.abs(Math.sin((worldPosition.x * 31.341) + (worldPosition.z * 17.417) + (worldPosition.y * 9.137) + phaseA))
+        const seedB = Math.abs(Math.sin((worldPosition.x * 7.731) + (worldPosition.z * 27.913) + (worldPosition.y * 21.553) + phaseB))
 
         return new THREE.Vector2(
             (seedA * 4.0) + 0.13,
             (seedB * 4.0) + 0.29
         )
+    }
+
+    createSpeedVariation(mesh, variant = 'base')
+    {
+        const worldPosition = new THREE.Vector3()
+        mesh?.getWorldPosition?.(worldPosition)
+
+        const phase = variant === 'overlay' ? 3.83 : 1.57
+        const flowNoise = Math.sin((worldPosition.x * 4.137) + (worldPosition.z * 2.913) + (worldPosition.y * 1.731) + phase)
+        const foamNoise = Math.sin((worldPosition.x * 2.517) + (worldPosition.z * 5.201) + (worldPosition.y * 1.173) + (phase * 1.7))
+
+        return {
+            flowSpeedOffset: flowNoise * FLOW_SPEED_VARIATION_AMPLITUDE,
+            foamSpeedOffset: foamNoise * FOAM_SPEED_VARIATION_AMPLITUDE
+        }
     }
 
     getCascadeTubeGroupKey(mesh)
@@ -230,63 +399,16 @@ export default class SceneRecuperationCascadeTubes
             parent: this.debugParentFolder || this.debug.ui,
             expanded: false
         })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'baseColor', {
-            label: 'Couleur de base'
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addColorBinding(this.debugFolder, this, 'foamColor', {
-            label: 'Couleur de mousse'
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'flowSpeed', {
-            label: 'Vitesse du flux',
-            min: -4,
-            max: 4,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'flowScale', {
-            label: 'Echelle du motif',
-            min: 0.02,
-            max: 2,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'foamSpeed', {
-            label: 'Vitesse de la mousse',
-            min: -4,
-            max: 4,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'foamNoiseFrequency', {
-            label: 'Frequence du bruit de mousse',
-            min: 0,
-            max: 12,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'foamThreshold', {
-            label: 'Largeur de mousse',
-            min: 0,
-            max: 1,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'foamIntensity', {
-            label: 'Intensite de mousse',
-            min: 0,
-            max: 2,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
-
-        this.debug.addBinding(this.debugFolder, this, 'opacity', {
-            label: 'Opacite du flux',
-            min: 0,
-            max: 1,
-            step: 0.01
-        }).on('change', () => this.syncMaterialUniforms())
+        this.tubeDebugFolder = this.debug.addFolder('Tuyaux', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        this.slopeDebugFolder = this.debug.addFolder('Pente', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        this.buildSurfaceDebug(this.tubeDebugFolder, this.tubeSettings, SURFACE_TYPE_TUBE)
+        this.buildSurfaceDebug(this.slopeDebugFolder, this.slopeSettings, SURFACE_TYPE_SLOPE)
 
         this.debug.addBinding(this.debugFolder, this, 'rotationSalleChoix', {
             label: 'Rotation salle choix',
@@ -303,6 +425,55 @@ export default class SceneRecuperationCascadeTubes
         }).on('change', () => this.syncMaterialUniforms())
     }
 
+    buildSurfaceDebug(parentFolder, surfaceSettings, surfaceType)
+    {
+        const innerFolder = this.debug.addFolder('Mousse interrieure', {
+            parent: parentFolder,
+            expanded: false
+        })
+        const outerFolder = this.debug.addFolder('Mousse exterieur', {
+            parent: parentFolder,
+            expanded: false
+        })
+
+        this.debug.addColorBinding(parentFolder, surfaceSettings, 'baseColor', { label: 'Couleur de base' }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(parentFolder, surfaceSettings, 'flowSpeed', { label: 'Vitesse du flux', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(parentFolder, surfaceSettings, 'flowScale', { label: 'Echelle du motif', min: 0.02, max: 2, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        if(surfaceType === SURFACE_TYPE_SLOPE)
+        {
+            this.debug.addBinding(parentFolder, surfaceSettings, 'flowAngle', { label: 'Angle du flux', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
+        }
+        this.debug.addBinding(parentFolder, surfaceSettings, 'opacity', { label: 'Opacite du flux', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+
+        this.debug.addColorBinding(innerFolder, surfaceSettings, 'foamColor', { label: 'Couleur de mousse' }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(innerFolder, surfaceSettings, 'foamSpeed', { label: 'Vitesse de la mousse', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(innerFolder, surfaceSettings, 'foamBandAngle', { label: 'Angle des bandes', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(innerFolder, surfaceSettings, 'foamNoiseFrequency', { label: 'Frequence du bruit de mousse', min: 0, max: 12, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(innerFolder, surfaceSettings, 'foamThreshold', { label: 'Largeur de mousse', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(innerFolder, surfaceSettings, 'foamIntensity', { label: 'Intensite de mousse', min: 0, max: 3, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+
+        this.debug.addColorBinding(outerFolder, surfaceSettings, 'overlayFoamColor', { label: 'Couleur mousse overlay' }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFlowSpeed', { label: 'Vitesse flux overlay', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamSpeed', { label: 'Vitesse mousse overlay', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamBandAngle', { label: 'Angle des bandes overlay', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamNoiseFrequency', { label: 'Bruit mousse overlay', min: 0, max: 12, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamThreshold', { label: 'Largeur mousse overlay', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamIntensity', { label: 'Intensite mousse overlay', min: 0, max: 3, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamOpacity', { label: 'Opacite mousse overlay', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
+        this.debug.addBinding(outerFolder, surfaceSettings, 'overlayDiameterScale', { label: 'Diametre overlay', min: 1, max: 1.5, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
+
+        if(surfaceType === SURFACE_TYPE_TUBE)
+        {
+            this.tubeInnerFoamDebugFolder = innerFolder
+            this.tubeOuterFoamDebugFolder = outerFolder
+        }
+        else
+        {
+            this.slopeInnerFoamDebugFolder = innerFolder
+            this.slopeOuterFoamDebugFolder = outerFolder
+        }
+    }
+
     syncMaterialUniforms()
     {
         for(const material of this.runtimeMaterials)
@@ -313,16 +484,32 @@ export default class SceneRecuperationCascadeTubes
                 continue
             }
 
-            uniforms.baseColor.value.copy(this.baseColor)
-            uniforms.foamColor.value.copy(this.foamColor)
-            uniforms.flowSpeed.value = this.flowSpeed
-            uniforms.flowScale.value = this.flowScale
-            uniforms.foamSpeed.value = this.foamSpeed
-            uniforms.foamNoiseFrequency.value = this.foamNoiseFrequency
-            uniforms.foamThreshold.value = this.foamThreshold
-            uniforms.foamIntensity.value = this.foamIntensity
-            uniforms.opacity.value = this.opacity
+            const surfaceSettings = this.getSurfaceSettings(uniforms.surfaceType)
+            const isOverlay = Boolean(uniforms.isOverlay)
+            const settings = isOverlay
+                ? this.createOverlayUniformSettings(surfaceSettings)
+                : this.createBaseUniformSettings(surfaceSettings)
+
+            uniforms.baseColor.value.copy(settings.baseColor)
+            uniforms.foamColor.value.copy(settings.foamColor)
+            uniforms.flowSpeed.value = settings.flowSpeed + (uniforms.flowSpeedOffset?.value || 0)
+            uniforms.flowScale.value = settings.flowScale
+            uniforms.flowAngle.value = settings.flowAngle
+            uniforms.foamSpeed.value = settings.foamSpeed + (uniforms.foamSpeedOffset?.value || 0)
+            uniforms.foamNoiseFrequency.value = settings.foamNoiseFrequency
+            uniforms.foamThreshold.value = settings.foamThreshold
+            uniforms.foamIntensity.value = settings.foamIntensity
+            uniforms.foamOpacity.value = settings.foamOpacity
+            uniforms.foamBandAngle.value = settings.foamBandAngle
+            uniforms.opacity.value = settings.opacity
             uniforms.seamOffset.value = this.getRotationValueForGroup(uniforms.groupKey)
+        }
+
+        for(const overlayMesh of this.overlayMeshes)
+        {
+            const surfaceSettings = this.getSurfaceSettings(overlayMesh.userData.surfaceType)
+            overlayMesh.scale.set(surfaceSettings.overlayDiameterScale, 1, surfaceSettings.overlayDiameterScale)
+            overlayMesh.updateMatrix()
         }
     }
 
@@ -340,12 +527,37 @@ export default class SceneRecuperationCascadeTubes
 
             uniforms.localTime.value = this.localTime
         }
+
+        for(const overlayMesh of this.overlayMeshes)
+        {
+            if(overlayMesh.parent)
+            {
+                overlayMesh.visible = overlayMesh.parent.visible
+            }
+        }
     }
 
     destroy()
     {
+        this.tubeInnerFoamDebugFolder?.dispose?.()
+        this.tubeInnerFoamDebugFolder = null
+        this.tubeOuterFoamDebugFolder?.dispose?.()
+        this.tubeOuterFoamDebugFolder = null
+        this.slopeInnerFoamDebugFolder?.dispose?.()
+        this.slopeInnerFoamDebugFolder = null
+        this.slopeOuterFoamDebugFolder?.dispose?.()
+        this.slopeOuterFoamDebugFolder = null
+        this.tubeDebugFolder?.dispose?.()
+        this.tubeDebugFolder = null
+        this.slopeDebugFolder?.dispose?.()
+        this.slopeDebugFolder = null
         this.debugFolder?.dispose?.()
         this.debugFolder = null
+
+        for(const overlayMesh of this.overlayMeshes)
+        {
+            overlayMesh.parent?.remove?.(overlayMesh)
+        }
 
         for(const material of this.runtimeMaterials)
         {
@@ -353,7 +565,8 @@ export default class SceneRecuperationCascadeTubes
         }
 
         this.runtimeMaterials = []
-        this.cascadeTubeMeshes = null
+        this.overlayMeshes = []
+        this.cascadeSurfaceEntries = null
         this.recuperationModel = null
     }
 }
