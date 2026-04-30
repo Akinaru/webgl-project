@@ -285,7 +285,7 @@ export default class Debug
 
         if(!this.physicsFolder)
         {
-            this.physicsFolder = this.addFolder('🧱 Physics', { expanded: false })
+            this.physicsFolder = this.addFolder('🧱 Physique', { expanded: false })
         }
 
         if(!this.physicsState)
@@ -295,7 +295,7 @@ export default class Debug
             }
 
             const binding = this.addBinding(this.physicsFolder, this.physicsState, 'wireframe', {
-                label: 'wireframe'
+                label: 'Afficher les collisions en filaire'
             })
 
             binding?.on?.('change', (event) =>

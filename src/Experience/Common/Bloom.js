@@ -563,7 +563,7 @@ export default class Bloom
         })
 
         this.debug.addBinding(this.debugFolder, this.tuning, 'facingOffsetRadians', {
-            label: 'facingOffset',
+            label: 'Decalage d orientation',
             min: -Math.PI,
             max: Math.PI,
             step: 0.01
@@ -577,14 +577,14 @@ export default class Bloom
         })
 
         this.debug.addBinding(this.debugFolder, this.tuning, 'lookTurnSpeed', {
-            label: 'turnSpeed',
+            label: 'Vitesse de rotation',
             min: 0.1,
             max: 30,
             step: 0.1
         })
 
         this.debug.addBinding(this.debugFolder, this.tuning, 'uvZoom', {
-            label: 'uvZoom',
+            label: 'Zoom de texture',
             min: 0.2,
             max: 3,
             step: 0.01
@@ -595,7 +595,7 @@ export default class Bloom
         })
 
         this.debug.addBinding(this.debugFolder, this.tuning, 'envMapIntensity', {
-            label: 'envMap',
+            label: 'Intensite de reflexion',
             min: 0,
             max: 5,
             step: 0.01
@@ -606,80 +606,80 @@ export default class Bloom
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
-            label: 'idleRadius',
+            label: 'Rayon de flottement',
             min: 0,
             max: 20,
             step: 0.05
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'bobAmplitude', {
-            label: 'bobAmp',
+            label: 'Amplitude de flottement',
             min: 0,
             max: 0.5,
             step: 0.005
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'walkFrequency', {
-            label: 'walkFreq',
+            label: 'Frequence de marche',
             min: 0,
             max: 8,
             step: 0.01
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'walkFrequencySpeedInfluence', {
-            label: 'walkBySpeed',
+            label: 'Influence de la vitesse sur la marche',
             min: 0,
             max: 3,
             step: 0.01
         })
 
-        this.railsFolder = this.debug.addFolder('Bloom Rails', {
+        this.railsFolder = this.debug.addFolder('Rails de Bloom', {
             parent: this.debugFolder,
             expanded: false
         })
 
         this.debug.addBinding(this.railsFolder, this.rails.settings, 'speed', {
-            label: 'railSpeed',
+            label: 'Vitesse sur rail',
             min: 0.1,
             max: 20,
             step: 0.1
         })
 
         this.debug.addBinding(this.railsFolder, this.rails.settings, 'railSwitchDistance', {
-            label: 'switchDist',
+            label: 'Distance de changement de rail',
             min: 0.1,
             max: 4,
             step: 0.05
         })
 
         this.debug.addBinding(this.railsFolder, this.rails.settings, 'endpointSwitchDistance', {
-            label: 'endSwitchDist',
+            label: 'Distance de changement en fin de rail',
             min: 0.1,
             max: 6,
             step: 0.05
         })
 
         this.debug.addBinding(this.railsFolder, this.rails.settings, 'showHelpers', {
-            label: 'showRails'
+            label: 'Afficher les rails'
         }).on('change', ({ value }) =>
         {
             this.rails.setHelpersVisible(value)
         })
 
         this.debug.addBinding(this.railsFolder, this.railEditor, 'addPointAtPlayer', {
-            label: 'Add Point @Player'
+            label: 'Ajouter un point a la position du joueur'
         })
 
         this.debug.addBinding(this.railsFolder, this.railEditor, 'startNewLineAtPlayer', {
-            label: 'New Line @Player'
+            label: 'Demarrer une nouvelle ligne au joueur'
         })
 
         this.debug.addBinding(this.railsFolder, this.railEditor, 'clearLines', {
-            label: 'Clear Rails'
+            label: 'Effacer les rails'
         })
 
         this.debug.addBinding(this.railsFolder, this.railEditor, 'exportLinesToConsole', {
-            label: 'Export JSON'
+            label: 'Exporter en JSON'
         })
     }
 

@@ -178,7 +178,7 @@ export default class MetierManager extends EventEmitter
         })
 
         this.debug.addBinding(this.debugAdjustFolder, this.debugAdjustState, 'metier', {
-            label: 'metier',
+            label: 'Metier cible',
             options: DEBUG_METIER_OPTIONS
         })
 

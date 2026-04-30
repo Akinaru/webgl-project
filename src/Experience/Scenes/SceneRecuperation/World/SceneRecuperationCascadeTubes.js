@@ -232,88 +232,88 @@ export default class SceneRecuperationCascadeTubes
             return
         }
 
-        this.debugFolder = this.debug.addFolder('Cascade Tubes', {
+        this.debugFolder = this.debug.addFolder('Cascade de tuyaux', {
             parent: this.debugParentFolder || this.debug.ui,
             expanded: false
         })
 
         this.debug.addColorBinding(this.debugFolder, this, 'baseColor', {
-            label: 'base'
+            label: 'Couleur de base'
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addColorBinding(this.debugFolder, this, 'highlightColor', {
-            label: 'highlight'
+            label: 'Couleur de reflet'
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addColorBinding(this.debugFolder, this, 'foamColor', {
-            label: 'foam'
+            label: 'Couleur de mousse'
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'flowSpeed', {
-            label: 'speed',
+            label: 'Vitesse du flux',
             min: -4,
             max: 4,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'flowScale', {
-            label: 'scale',
+            label: 'Echelle du motif',
             min: 0.02,
             max: 2,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'foamNoiseFrequency', {
-            label: 'foamNoise',
+            label: 'Frequence du bruit de mousse',
             min: 0,
             max: 12,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'foamThreshold', {
-            label: 'foamWidth',
+            label: 'Largeur de mousse',
             min: 0,
             max: 1,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'foamSoftness', {
-            label: 'foamSoft',
+            label: 'Douceur de mousse',
             min: 0.001,
             max: 0.5,
             step: 0.001
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'foamIntensity', {
-            label: 'foamInt',
+            label: 'Intensite de mousse',
             min: 0,
             max: 2,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'foamOpacity', {
-            label: 'foamOpacity',
+            label: 'Opacite de mousse',
             min: 0,
             max: 2,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'opacity', {
-            label: 'opacity',
+            label: 'Opacite du flux',
             min: 0,
             max: 1,
             step: 0.01
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'rotationSalleChoix', {
-            label: 'rotationChoix',
+            label: 'Rotation salle choix',
             min: 0,
             max: 1,
             step: 0.001
         }).on('change', () => this.syncMaterialUniforms())
 
         this.debug.addBinding(this.debugFolder, this, 'rotationSalleTube', {
-            label: 'rotationTube',
+            label: 'Rotation salle tube',
             min: 0,
             max: 1,
             step: 0.001

@@ -197,68 +197,68 @@ export default class Player
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🕹 Player', { expanded: false })
+        this.debugFolder = this.debug.addFolder('🕹 Joueur', { expanded: false })
         this.debug.addBinding(this.debugFolder, this.settings, 'height', {
-            label: 'height',
+            label: 'Hauteur du joueur',
             min: 0.7,
             max: 2.2,
             step: 0.01
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'radius', {
-            label: 'radius',
+            label: 'Rayon du joueur',
             min: 0.1,
             max: 0.6,
             step: 0.005
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'stepHeight', {
-            label: 'stepHeight',
+            label: 'Hauteur de marche',
             min: 0.05,
             max: 1.2,
             step: 0.01
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'speedMultiplier', {
-            label: 'speed',
+            label: 'Vitesse de deplacement',
             min: 0.2,
             max: 4,
             step: 0.01
         })
 
         this.debug.addBinding(this.debugFolder, this.settings, 'headBobAmplitude', {
-            label: 'bobAmp',
+            label: 'Amplitude du balancement',
             min: 0,
             max: 0.08,
             step: 0.001
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'headBobFrequency', {
-            label: 'bobFreq',
+            label: 'Frequence du balancement',
             min: 0.4,
             max: 4,
             step: 0.01
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'headBobSmoothing', {
-            label: 'bobSmooth',
+            label: 'Lissage du balancement',
             min: 1,
             max: 30,
             step: 0.1
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'headBobRollAmplitude', {
-            label: 'bobRoll',
+            label: 'Roulis du balancement',
             min: 0,
             max: 0.03,
             step: 0.0005
         })
 
         this.debug.addBinding(this.debugFolder, this.settings, 'cameraSmoothEnabled', {
-            label: 'camSmooth'
+            label: 'Lissage camera actif'
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'cameraPositionSmooth', {
-            label: 'camPosSmooth',
+            label: 'Lissage position camera',
             min: 1,
             max: 60,
             step: 0.1
         })
         this.debug.addBinding(this.debugFolder, this.settings, 'cameraRotationSmooth', {
-            label: 'camRotSmooth',
+            label: 'Lissage rotation camera',
             min: 1,
             max: 80,
             step: 0.1

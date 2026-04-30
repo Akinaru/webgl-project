@@ -53,12 +53,12 @@ export default class Renderer
 
     setRenderingDebug()
     {
-        this.debugRenderingFolder = this.debug.addFolder('📸 Rendering', { expanded: false })
+        this.debugRenderingFolder = this.debug.addFolder('📸 Rendu', { expanded: false })
         this.debugBloomFolder = this.debug.addFolder('Bloom', {
             parent: this.debugRenderingFolder,
             expanded: false
         })
-        this.debugBlurFolder = this.debug.addFolder('Blur/DOF', {
+        this.debugBlurFolder = this.debug.addFolder('Flou / Profondeur', {
             parent: this.debugRenderingFolder,
             expanded: false
         })
@@ -79,50 +79,50 @@ export default class Renderer
         }
 
         this.debug.addBinding(this.debugBloomFolder, this.postProcessing.bloom, 'threshold', {
-            label: 'threshold',
+            label: 'Seuil de bloom',
             min: 0,
             max: 1.5,
             step: 0.001
         })
         this.debug.addBinding(this.debugBloomFolder, this.postProcessing.bloom, 'strength', {
-            label: 'strength',
+            label: 'Intensite du bloom',
             min: 0,
             max: 5,
             step: 0.001
         })
         this.debug.addBinding(this.debugBloomFolder, this.postProcessing.bloom, 'radius', {
-            label: 'radius',
+            label: 'Rayon du bloom',
             min: 0,
             max: 1,
             step: 0.001
         })
         this.debug.addBinding(this.debugBloomFolder, this.postProcessing.bloom, 'smoothWidth', {
-            label: 'smoothWidth',
+            label: 'Largeur de transition',
             min: 0,
             max: 1,
             step: 0.001
         })
 
         this.debug.addBinding(this.debugBlurFolder, this.postProcessing.blur, 'start', {
-            label: 'start',
+            label: 'Debut du flou',
             min: 0,
             max: 1,
             step: 0.001
         })
         this.debug.addBinding(this.debugBlurFolder, this.postProcessing.blur, 'end', {
-            label: 'end',
+            label: 'Fin du flou',
             min: 0,
             max: 2,
             step: 0.001
         })
         this.debug.addBinding(this.debugBlurFolder, this.postProcessing.blur, 'repeats', {
-            label: 'repeats',
+            label: 'Nombre de passes',
             min: 0,
             max: 8,
             step: 1
         })
         this.debug.addBinding(this.debugBlurFolder, this.postProcessing.blur, 'amount', {
-            label: 'amount',
+            label: 'Intensite du flou',
             min: 0,
             max: 2,
             step: 0.001
@@ -130,7 +130,7 @@ export default class Renderer
 
         this.fpsGraph = this.debugRenderingFolder.addBlade({
             view: 'fpsgraph',
-            label: 'fps',
+            label: 'Images par seconde',
             rows: 2
         })
     }
@@ -144,24 +144,24 @@ export default class Renderer
             textures: 0
         }
 
-        this.debugStatsFolder = this.debug.addFolder('📊 Renderer Stats', {
+        this.debugStatsFolder = this.debug.addFolder('📊 Statistiques du rendu', {
             expanded: false
         })
 
         this.debug.addManualBinding(this.debugStatsFolder, this.rendererStats, 'drawCalls', {
-            label: 'drawCalls',
+            label: 'Appels de dessin',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.rendererStats, 'triangles', {
-            label: 'triangles',
+            label: 'Triangles',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.rendererStats, 'geometries', {
-            label: 'geometries',
+            label: 'Geometries',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.rendererStats, 'textures', {
-            label: 'textures',
+            label: 'Textures',
             readonly: true
         }, 'auto')
     }

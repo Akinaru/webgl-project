@@ -452,7 +452,7 @@ export default class Bushes
         }).on('change', rebuild)
 
         this.debug.addBinding(this.debugFolder, this.state, 'hauteurOffset', {
-            label: 'Hauteur offset',
+            label: 'Decalage en hauteur',
             min: -1,
             max: 1,
             step: 0.001

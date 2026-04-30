@@ -191,37 +191,37 @@ export default class SceneManager
             lights: 0
         }
 
-        this.debugStatsFolder = this.debug.addFolder('stats', {
+        this.debugStatsFolder = this.debug.addFolder('Statistiques', {
             parent: this.debugFolder,
             expanded: false
         })
 
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'scene', {
-            label: 'scene',
+            label: 'Scene active',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'loaded', {
-            label: 'loaded',
+            label: 'Ressources chargees',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'total', {
-            label: 'total',
+            label: 'Ressources totales',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'isReady', {
-            label: 'isReady',
+            label: 'Scene prete',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'children', {
-            label: 'children',
+            label: 'Objets enfants',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'meshes', {
-            label: 'meshes',
+            label: 'Maillages',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugStatsFolder, this.debugStats, 'lights', {
-            label: 'lights',
+            label: 'Lumieres',
             readonly: true
         }, 'auto')
     }

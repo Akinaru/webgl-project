@@ -376,102 +376,102 @@ export default class MapLight
             return
         }
 
-        this.debugFolder = this.debug.addFolder('☀️ Light', {
+        this.debugFolder = this.debug.addFolder('☀️ Lumiere', {
             parent: this.debugParentFolder || this.debug.ui,
             expanded: false
         })
-        this.sunFolder = this.debug.addFolder('Sun', {
+        this.sunFolder = this.debug.addFolder('Soleil', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.shadowFolder = this.debug.addFolder('Shadows', {
+        this.shadowFolder = this.debug.addFolder('Ombres', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.helpersFolder = this.debug.addFolder('Helpers', {
+        this.helpersFolder = this.debug.addFolder('Assistants visuels', {
             parent: this.debugFolder,
             expanded: false
         })
 
         this.registerDebugBinding(this.debug.addBinding(this.debugFolder, this.state, 'useCycle', {
-            label: 'useCycle'
+            label: 'Cycle jour/nuit actif'
         }))
         this.registerDebugBinding(this.debug.addBinding(this.debugFolder, this.state, 'cycleSpeed', {
-            label: 'cycleSpeed',
+            label: 'Vitesse du cycle',
             min: 0,
             max: 0.5,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.debugFolder, this.state, 'distance', {
-            label: 'distance',
+            label: 'Distance de la lumiere',
             min: 2,
             max: 300,
             step: 0.1
         }))
 
         this.registerDebugBinding(this.debug.addBinding(this.sunFolder, this.state, 'phi', {
-            label: 'phi',
+            label: 'Angle phi',
             min: 0.01,
             max: Math.PI - 0.01,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.sunFolder, this.state, 'theta', {
-            label: 'theta',
+            label: 'Angle theta',
             min: -Math.PI,
             max: Math.PI,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.sunFolder, this.state, 'phiAmplitude', {
-            label: 'phiAmplitude',
+            label: 'Amplitude phi',
             min: 0,
             max: Math.PI,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.sunFolder, this.state, 'thetaAmplitude', {
-            label: 'thetaAmplitude',
+            label: 'Amplitude theta',
             min: 0,
             max: Math.PI * 2,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.sunFolder, this.state, 'sunIntensity', {
-            label: 'sunIntensity',
+            label: 'Intensite du soleil',
             min: 0,
             max: 6,
             step: 0.001
         }))
 
         this.registerDebugBinding(this.debug.addBinding(this.debugFolder, this.state, 'ambientIntensity', {
-            label: 'ambient',
+            label: 'Intensite ambiante',
             min: 0,
             max: 3,
             step: 0.001
         }))
         this.registerDebugBinding(this.debug.addBinding(this.debugFolder, this.state, 'hemiIntensity', {
-            label: 'hemi',
+            label: 'Intensite hemispherique',
             min: 0,
             max: 3,
             step: 0.001
         }))
 
-        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'ambientColor', { label: 'ambientColor' }))
-        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'skyColor', { label: 'skyColor' }))
-        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'groundColor', { label: 'groundColor' }))
-        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'sunColor', { label: 'sunColor' }))
+        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'ambientColor', { label: 'Couleur ambiante' }))
+        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'skyColor', { label: 'Couleur du ciel' }))
+        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'groundColor', { label: 'Couleur du sol' }))
+        this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this, 'sunColor', { label: 'Couleur du soleil' }))
         if(this.environment?.backgroundColor)
         {
             this.registerDebugBinding(this.debug.addColorBinding(this.debugFolder, this.environment, 'backgroundColor', {
-                label: 'skyBgColor'
+                label: 'Couleur de fond du ciel'
             }))
         }
 
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'castShadow', {
-            label: 'enabled'
+            label: 'Ombres actives'
         }).on('change', () =>
         {
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowAmplitude', {
-            label: 'amplitude',
+            label: 'Amplitude des ombres',
             min: 1,
             max: 300,
             step: 0.1
@@ -480,7 +480,7 @@ export default class MapLight
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowNear', {
-            label: 'near',
+            label: 'Plan proche ombre',
             min: 0.1,
             max: 50,
             step: 0.1
@@ -489,7 +489,7 @@ export default class MapLight
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowDepth', {
-            label: 'depth',
+            label: 'Profondeur ombre',
             min: 1,
             max: 600,
             step: 0.1
@@ -498,14 +498,14 @@ export default class MapLight
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowMapSize', {
-            label: 'mapSize',
+            label: 'Taille de la carte d ombre',
             options: SHADOW_MAP_SIZE_OPTIONS
         }).on('change', () =>
         {
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowBias', {
-            label: 'bias',
+            label: 'Biais d ombre',
             min: -0.02,
             max: 0.02,
             step: 0.00001
@@ -514,7 +514,7 @@ export default class MapLight
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowNormalBias', {
-            label: 'normalBias',
+            label: 'Biais normal d ombre',
             min: -0.3,
             max: 0.3,
             step: 0.0001
@@ -523,7 +523,7 @@ export default class MapLight
             this.updateShadow()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowRadius', {
-            label: 'radius',
+            label: 'Rayon du flou d ombre',
             min: 0,
             max: 10,
             step: 0.01
@@ -533,13 +533,13 @@ export default class MapLight
         }))
 
         this.registerDebugBinding(this.debug.addBinding(this.helpersFolder, this.state, 'showDirectionHelper', {
-            label: 'directionHelper'
+            label: 'Afficher l axe de direction'
         }).on('change', () =>
         {
             this.applyHelpersVisibility()
         }))
         this.registerDebugBinding(this.debug.addBinding(this.helpersFolder, this.state, 'showShadowCameraHelper', {
-            label: 'shadowHelper'
+            label: 'Afficher la camera d ombre'
         }).on('change', () =>
         {
             this.applyHelpersVisibility()

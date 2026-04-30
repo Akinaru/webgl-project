@@ -50,8 +50,8 @@ export default class MapVisibilityDebug
         this.summary.totalMeshes = totalMeshes
         this.summary.totalTriangles = this.formatCount(totalTriangles)
 
-        this.debugFolder = this.debug.addFolder('🗺 Map Visibility', { expanded: false })
-        this.summaryFolder = this.debug.addFolder('Summary', {
+        this.debugFolder = this.debug.addFolder('🗺 Visibilite de la map', { expanded: false })
+        this.summaryFolder = this.debug.addFolder('Resume', {
             parent: this.debugFolder,
             expanded: false
         })
@@ -74,27 +74,27 @@ export default class MapVisibilityDebug
     {
         this.summaryBindings.push(
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'rootEntries', {
-                label: 'roots',
+                label: 'Racines',
                 readonly: true
             }),
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'totalNodes', {
-                label: 'nodes',
+                label: 'Noeuds',
                 readonly: true
             }),
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'totalMeshes', {
-                label: 'meshes',
+                label: 'Maillages',
                 readonly: true
             }),
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'totalTriangles', {
-                label: 'triangles',
+                label: 'Triangles',
                 readonly: true
             }),
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'visibleMeshes', {
-                label: 'visibleMeshes',
+                label: 'Maillages visibles',
                 readonly: true
             }),
             this.debug.addManualBinding(this.summaryFolder, this.summary, 'visibleTriangles', {
-                label: 'visibleTriangles',
+                label: 'Triangles visibles',
                 readonly: true
             })
         )
@@ -103,25 +103,25 @@ export default class MapVisibilityDebug
     setActions()
     {
         this.debug.addButtons(this.debugFolder, {
-            label: 'actions',
+            label: 'Actions rapides',
             columns: 3,
             buttons: [
                 {
-                    label: 'Show All',
+                    label: 'Tout afficher',
                     onClick: () =>
                     {
                         this.setAllVisible(true)
                     }
                 },
                 {
-                    label: 'Hide All',
+                    label: 'Tout masquer',
                     onClick: () =>
                     {
                         this.setAllVisible(false)
                     }
                 },
                 {
-                    label: 'Sync',
+                    label: 'Synchroniser',
                     onClick: () =>
                     {
                         this.syncStatesFromScene()
@@ -179,7 +179,7 @@ export default class MapVisibilityDebug
         }
 
         entry.visibilityBinding = this.debug.addBinding(entry.folder, state, 'visible', {
-            label: 'visible'
+            label: 'Visible'
         })
         entry.visibilityBinding?.on?.('change', (event) =>
         {
@@ -187,15 +187,15 @@ export default class MapVisibilityDebug
         })
 
         this.debug.addManualBinding(entry.folder, statsState, 'nodes', {
-            label: 'nodes',
+            label: 'Noeuds',
             readonly: true
         })
         this.debug.addManualBinding(entry.folder, statsState, 'meshes', {
-            label: 'meshes',
+            label: 'Maillages',
             readonly: true
         })
         this.debug.addManualBinding(entry.folder, statsState, 'triangles', {
-            label: 'triangles',
+            label: 'Triangles',
             readonly: true
         })
 

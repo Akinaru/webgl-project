@@ -47,16 +47,16 @@ export default class MapEnvironment
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🌤 Map Environment', { expanded: false })
-        this.fogFolder = this.debug.addFolder('Fog', {
+        this.debugFolder = this.debug.addFolder('🌤 Environnement de la map', { expanded: false })
+        this.fogFolder = this.debug.addFolder('Brouillard', {
             parent: this.debugFolder,
             expanded: false
         })
 
-        this.debug.addColorBinding(this.fogFolder, this, 'fogColor', { label: 'color' })
+        this.debug.addColorBinding(this.fogFolder, this, 'fogColor', { label: 'Couleur du brouillard' })
 
         this.debug.addBinding(this.fogFolder, this.state, 'fogMode', {
-            label: 'fogMode',
+            label: 'Mode de brouillard',
             options: {
                 linear: 'linear',
                 exp2: 'exp2'
@@ -66,17 +66,17 @@ export default class MapEnvironment
             this.applyFog()
         })
 
-        this.debug.addBinding(this.fogFolder, this.state, 'fogNear', { label: 'fogNear', min: 1, max: 300, step: 0.1 }).on('change', () =>
+        this.debug.addBinding(this.fogFolder, this.state, 'fogNear', { label: 'Distance de debut', min: 1, max: 300, step: 0.1 }).on('change', () =>
         {
             this.applyFog()
         })
 
-        this.debug.addBinding(this.fogFolder, this.state, 'fogFar', { label: 'fogFar', min: 1, max: 500, step: 0.1 }).on('change', () =>
+        this.debug.addBinding(this.fogFolder, this.state, 'fogFar', { label: 'Distance de fin', min: 1, max: 500, step: 0.1 }).on('change', () =>
         {
             this.applyFog()
         })
 
-        this.debug.addBinding(this.fogFolder, this.state, 'fogDensity', { label: 'fogDensity', min: 0.0001, max: 0.08, step: 0.0001 }).on('change', () =>
+        this.debug.addBinding(this.fogFolder, this.state, 'fogDensity', { label: 'Densite du brouillard', min: 0.0001, max: 0.08, step: 0.0001 }).on('change', () =>
         {
             this.applyFog()
         })

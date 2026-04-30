@@ -418,7 +418,7 @@ export default class Menu
         }
 
         this.debugMenuFolder = this.debug.addFolder('🪟 Menu', { expanded: false })
-        this.debugBootLogoFolder = this.debug.addFolder('Boot Logo', {
+        this.debugBootLogoFolder = this.debug.addFolder('Logo de demarrage', {
             parent: this.debugMenuFolder,
             expanded: false
         })
@@ -460,61 +460,61 @@ export default class Menu
             step: 1
         })?.on('change', refreshLayout)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'viewerOffsetY', {
-            label: 'offset Y',
+            label: 'Decalage Y',
             min: -220,
             max: 220,
             step: 1
         })?.on('change', refreshLayout)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'gap', {
-            label: 'gap',
+            label: 'Ecart',
             min: 0,
             max: 48,
             step: 1
         })?.on('change', refreshLayout)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'cameraY', {
-            label: 'camera Y',
+            label: 'Position Y camera',
             min: -3,
             max: 3,
             step: 0.01
         })?.on('change', refreshCamera)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'cameraZ', {
-            label: 'zoom',
+            label: 'Distance camera',
             min: 2,
             max: 16,
             step: 0.01
         })?.on('change', refreshCamera)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'scale', {
-            label: 'scale',
+            label: 'Echelle du logo',
             min: 0.2,
             max: 6,
             step: 0.01
         })?.on('change', refreshRoot)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'positionY', {
-            label: 'logo Y',
+            label: 'Position Y du logo',
             min: -3,
             max: 3,
             step: 0.01
         })?.on('change', refreshRoot)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rotationX', {
-            label: 'rot X',
+            label: 'Rotation X du logo',
             min: -Math.PI,
             max: Math.PI,
             step: 0.01
         })?.on('change', refreshRoot)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rotationY', {
-            label: 'rot Y',
+            label: 'Rotation Y du logo',
             min: -Math.PI,
             max: Math.PI,
             step: 0.01
         })?.on('change', refreshRoot)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'lightIntensity', {
-            label: 'light',
+            label: 'Intensite lumiere principale',
             min: 0,
             max: 10,
             step: 0.01
         })?.on('change', refreshLights)
         this.debug.addBinding(this.debugBootLogoFolder, this.bootLogoSettings, 'rimIntensity', {
-            label: 'rim',
+            label: 'Intensite lumiere de contour',
             min: 0,
             max: 10,
             step: 0.01

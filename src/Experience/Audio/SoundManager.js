@@ -663,37 +663,37 @@ export default class SoundManager
         }
 
         this.debugFolder = this.debug.addFolder('🔊 Audio', { expanded: false })
-        this.debugControlsFolder = this.debug.addFolder('Controls', {
+        this.debugControlsFolder = this.debug.addFolder('Controles', {
             parent: this.debugFolder,
             expanded: true
         })
-        this.debugRuntimeFolder = this.debug.addFolder('Runtime', {
+        this.debugRuntimeFolder = this.debug.addFolder('Execution', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.debugDefinitionsFolder = this.debug.addFolder('Definitions', {
+        this.debugDefinitionsFolder = this.debug.addFolder('Definitions audio', {
             parent: this.debugFolder,
             expanded: false
         })
 
         this.debug.addBinding(this.debugControlsFolder, this.debugState, 'enabled', {
-            label: 'enabled'
+            label: 'Audio actif'
         }).on('change', (event) =>
         {
             this.setEnabled(event.value)
         })
 
         this.debug.addBinding(this.debugControlsFolder, this.debugState, 'selectedSound', {
-            label: 'sound',
+            label: 'Son choisi',
             options: this.getDebugSoundOptions()
         })
 
         this.debug.addBinding(this.debugControlsFolder, this.debugState, 'forcePlay', {
-            label: 'force'
+            label: 'Forcer la lecture'
         })
 
         this.debug.addButton(this.debugControlsFolder, {
-            title: 'Play selected',
+            title: 'Lire le son choisi',
             onClick: () =>
             {
                 this.playSelectedFromDebug()
@@ -703,32 +703,32 @@ export default class SoundManager
         this.populateDefinitionsDebugFolder()
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'contextState', {
-            label: 'context',
+            label: 'Etat du contexte audio',
             readonly: true
         }, 'auto')
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'activeVoices', {
-            label: 'playing',
+            label: 'Sons en cours',
             readonly: true
         }, 'auto')
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'activeVoicesList', {
-            label: 'voices',
+            label: 'Voix actives',
             readonly: true
         }, 'auto')
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine1', {
-            label: 'now1',
+            label: 'Lecture 1',
             readonly: true
         }, 'auto')
-        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine2', { label: 'now2', readonly: true }, 'auto')
-        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine3', { label: 'now3', readonly: true }, 'auto')
-        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine4', { label: 'now4', readonly: true }, 'auto')
-        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine5', { label: 'now5', readonly: true }, 'auto')
-        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine6', { label: 'now6', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine2', { label: 'Lecture 2', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine3', { label: 'Lecture 3', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine4', { label: 'Lecture 4', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine5', { label: 'Lecture 5', readonly: true }, 'auto')
+        this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'nowPlayingLine6', { label: 'Lecture 6', readonly: true }, 'auto')
 
         this.debug.addManualBinding(this.debugRuntimeFolder, this.debugState, 'lastPlayed', {
-            label: 'lastPlayed',
+            label: 'Dernier son lu',
             readonly: true
         }, 'auto')
     }
@@ -755,14 +755,14 @@ export default class SoundManager
             })
 
             this.debug.addBinding(soundFolder, this.soundDefinitionTuning[soundName], 'volume', {
-                label: 'volume',
+                label: 'Volume',
                 min: 0,
                 max: 2,
                 step: 0.01
             })
 
             this.debug.addBinding(soundFolder, this.soundDefinitionTuning[soundName], 'playbackRate', {
-                label: 'rate',
+                label: 'Vitesse de lecture',
                 min: 0.05,
                 max: 4,
                 step: 0.01
@@ -770,7 +770,7 @@ export default class SoundManager
         }
 
         this.debug.addButton(this.debugDefinitionsFolder, {
-            title: 'Save definitions to clipboard',
+            title: 'Copier les definitions audio',
             onClick: async () =>
             {
                 await this.copySoundDefinitionsToClipboard()

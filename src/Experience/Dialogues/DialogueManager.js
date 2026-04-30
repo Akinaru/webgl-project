@@ -341,11 +341,11 @@ export default class DialogueManager extends EventEmitter
         }
 
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'running', {
-            label: 'running',
+            label: 'Dialogue en cours',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'key', {
-            label: 'currentKey',
+            label: 'Cle du dialogue courant',
             readonly: true
         }, 'auto')
 
@@ -358,7 +358,7 @@ export default class DialogueManager extends EventEmitter
             }
         })
 
-        this.debugDialogueFolder = this.debug.addFolder('🧪 Trigger Dialogue', {
+        this.debugDialogueFolder = this.debug.addFolder('🧪 Declencher un dialogue', {
             parent: this.debugFolder,
             expanded: false
         })
