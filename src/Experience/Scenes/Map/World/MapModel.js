@@ -10,6 +10,12 @@ const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes']
 const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
 const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
 const PLAN_NOISE_TEXTURE_RESOLUTION = 128
+const PALM_MASTER_NAME = 'palmier_master'
+const PALM_PLACEMENT_NAME_PATTERN = /^palmier_\d+$/i
+const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
+const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
+const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
+const SCALE_EPSILON = 1e-5
 
 export default class MapModel
 {
@@ -91,6 +97,7 @@ export default class MapModel
         this.model.scale.set(1, 1, 1)
         this.collisionBoxes = []
         this.collisionMeshes = []
+        this.setupPalmTreeInstances()
 
         this.model.traverse((child) =>
         {
@@ -163,6 +170,184 @@ export default class MapModel
     {
         const name = (mesh?.name || '').toLowerCase()
         return name.includes('socle_bush')
+    }
+
+    setupPalmTreeInstances()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        const palmMasterRoot = this.findPalmMasterRoot()
+        const palmPlacements = this.findPalmPlacementNodes()
+
+        if(!palmMasterRoot || palmPlacements.length === 0)
+        {
+            return
+        }
+
+        this.model.updateMatrixWorld(true)
+
+        const instancedByKey = new Map()
+        const modelWorldInverse = new THREE.Matrix4().copy(this.model.matrixWorld).invert()
+        const masterWorldInverse = new THREE.Matrix4().copy(palmMasterRoot.matrixWorld).invert()
+        const masterLocalMatrix = new THREE.Matrix4()
+        const instanceWorldMatrix = new THREE.Matrix4()
+        const instanceLocalMatrix = new THREE.Matrix4()
+        const placementScaleMatrix = new THREE.Matrix4()
+        const composedPosition = new THREE.Vector3()
+        const composedQuaternion = new THREE.Quaternion()
+        const composedScale = new THREE.Vector3()
+        const worldBounds = new THREE.Box3()
+        const worldSize = new THREE.Vector3()
+        const masterWorldBounds = new THREE.Box3().setFromObject(palmMasterRoot)
+        const masterWorldSize = masterWorldBounds.getSize(new THREE.Vector3())
+        const masterHeight = Math.max(SCALE_EPSILON, masterWorldSize.y)
+
+        palmMasterRoot.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh) || !child.geometry || !child.material)
+            {
+                return
+            }
+
+            child.userData[USER_DATA_PALM_MASTER] = true
+            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+
+            const material = child.material
+            const materialKey = Array.isArray(material)
+                ? material.map((entry) => entry?.uuid ?? 'none').join(',')
+                : material.uuid
+            const key = `${child.geometry.uuid}::${materialKey}`
+            if(instancedByKey.has(key))
+            {
+                return
+            }
+
+            const instanced = new THREE.InstancedMesh(
+                child.geometry,
+                material,
+                palmPlacements.length
+            )
+            instanced.name = `__instancedPalm_${child.name || child.uuid}`
+            instanced.castShadow = child.castShadow
+            instanced.receiveShadow = child.receiveShadow
+            instanced.frustumCulled = true
+            instanced.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            instancedByKey.set(key, {
+                instanced,
+                sourceMesh: child
+            })
+        })
+
+        for(const { instanced, sourceMesh } of instancedByKey.values())
+        {
+            masterLocalMatrix.copy(sourceMesh.matrixWorld).premultiply(masterWorldInverse)
+
+            for(let index = 0; index < palmPlacements.length; index++)
+            {
+                const placement = palmPlacements[index]
+                const placementScaleFactor = this.getPalmPlacementScaleFactor(placement, {
+                    worldBounds,
+                    worldSize,
+                    referenceHeight: masterHeight
+                })
+
+                placementScaleMatrix.makeScale(placementScaleFactor, placementScaleFactor, placementScaleFactor)
+                instanceWorldMatrix.copy(masterLocalMatrix)
+                instanceWorldMatrix.premultiply(placementScaleMatrix)
+                instanceWorldMatrix.premultiply(placement.matrixWorld)
+                instanceLocalMatrix.copy(instanceWorldMatrix).premultiply(modelWorldInverse)
+                instanceLocalMatrix.decompose(composedPosition, composedQuaternion, composedScale)
+                instanceLocalMatrix.compose(composedPosition, composedQuaternion, composedScale)
+                instanced.setMatrixAt(index, instanceLocalMatrix)
+            }
+
+            instanced.instanceMatrix.needsUpdate = true
+            instanced.computeBoundingSphere()
+            this.model.add(instanced)
+        }
+
+        palmMasterRoot.visible = false
+        palmMasterRoot.traverse((child) =>
+        {
+            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+        })
+
+        for(const placement of palmPlacements)
+        {
+            placement.visible = false
+            placement.userData[USER_DATA_PALM_PLACEMENT] = true
+            placement.userData[USER_DATA_EXCLUDE_COLLISION] = true
+        }
+    }
+
+    findPalmMasterRoot()
+    {
+        let palmMasterRoot = null
+        this.model.traverse((object) =>
+        {
+            if(palmMasterRoot)
+            {
+                return
+            }
+
+            const name = String(object?.name || '').trim().toLowerCase()
+            if(name === PALM_MASTER_NAME)
+            {
+                palmMasterRoot = object
+            }
+        })
+        return palmMasterRoot
+    }
+
+    findPalmPlacementNodes()
+    {
+        const placements = []
+        this.model.traverse((object) =>
+        {
+            if(!(object instanceof THREE.Object3D))
+            {
+                return
+            }
+
+            const name = String(object.name || '').trim().toLowerCase()
+            if(PALM_PLACEMENT_NAME_PATTERN.test(name))
+            {
+                placements.push(object)
+            }
+        })
+        return placements
+    }
+
+    getPalmPlacementScaleFactor(placement, {
+        worldBounds,
+        worldSize,
+        referenceHeight
+    } = {})
+    {
+        if(!(placement instanceof THREE.Mesh))
+        {
+            return 1
+        }
+
+        worldBounds.makeEmpty()
+        worldBounds.setFromObject(placement)
+        worldBounds.getSize(worldSize)
+        const placementHeight = worldSize.y
+        if(!Number.isFinite(placementHeight) || placementHeight <= SCALE_EPSILON)
+        {
+            return 1
+        }
+
+        const scaleFactor = placementHeight / referenceHeight
+        if(!Number.isFinite(scaleFactor) || scaleFactor <= SCALE_EPSILON)
+        {
+            return 1
+        }
+
+        return scaleFactor
     }
 
     applyReliefShadowReceiverPolicy()
@@ -1409,6 +1594,11 @@ export default class MapModel
 
     shouldUseForCollision(mesh)
     {
+        if(mesh?.userData?.[USER_DATA_EXCLUDE_COLLISION])
+        {
+            return false
+        }
+
         if(this.isPlanMesh(mesh))
         {
             return false

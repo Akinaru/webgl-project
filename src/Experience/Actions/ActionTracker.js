@@ -136,15 +136,15 @@ export default class ActionTracker extends EventEmitter
         }
 
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'count', {
-            label: 'count',
+            label: 'Nombre d actions',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'lastAction', {
-            label: 'lastAction',
+            label: 'Derniere action',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'lastEffects', {
-            label: 'lastEffects',
+            label: 'Derniers effets',
             readonly: true
         }, 'auto')
     }

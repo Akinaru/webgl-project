@@ -210,39 +210,39 @@ export default class CloudLayer
             return
         }
 
-        this.debugFolder = this.debug.addFolder('☁️ Clouds', { expanded: false })
-        this.placementFolder = this.debug.addFolder('Placement', {
+        this.debugFolder = this.debug.addFolder('☁️ Nuages', { expanded: false })
+        this.placementFolder = this.debug.addFolder('Positionnement', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.motionFolder = this.debug.addFolder('Motion', {
+        this.motionFolder = this.debug.addFolder('Mouvement', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.shapeFolder = this.debug.addFolder('Shape', {
+        this.shapeFolder = this.debug.addFolder('Forme', {
             parent: this.debugFolder,
             expanded: false
         })
-        this.colorFolder = this.debug.addFolder('Color', {
+        this.colorFolder = this.debug.addFolder('Couleur', {
             parent: this.debugFolder,
             expanded: false
         })
 
         this.debug.addBinding(this.debugFolder, this.state, 'enabled', {
-            label: 'enabled'
+            label: 'Nuages actifs'
         }).on('change', () =>
         {
             this.syncMaterialState()
         })
 
         this.debug.addBinding(this.placementFolder, this.state, 'followPlayer', {
-            label: 'followPlayer'
+            label: 'Suivre le joueur'
         }).on('change', () =>
         {
             this.updateAnchorPosition()
         })
         this.debug.addBinding(this.placementFolder, this.state, 'followStrength', {
-            label: 'followStrength',
+            label: 'Force de suivi',
             min: 0,
             max: 1,
             step: 0.001
@@ -251,7 +251,7 @@ export default class CloudLayer
             this.updateAnchorPosition()
         })
         this.debug.addBinding(this.placementFolder, this.state, 'altitude', {
-            label: 'altitude',
+            label: 'Altitude',
             min: 10,
             max: 180,
             step: 0.1
@@ -261,7 +261,7 @@ export default class CloudLayer
             this.updateAnchorPosition()
         })
         this.debug.addBinding(this.placementFolder, this.state, 'size', {
-            label: 'size',
+            label: 'Taille de la couche',
             min: 120,
             max: 1400,
             step: 1
@@ -271,7 +271,7 @@ export default class CloudLayer
         })
 
         this.debug.addBinding(this.motionFolder, this.state, 'windSpeed', {
-            label: 'windSpeed',
+            label: 'Vitesse du vent',
             min: 0,
             max: 3,
             step: 0.001
@@ -280,7 +280,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.motionFolder, this.state, 'windAngle', {
-            label: 'windAngle',
+            label: 'Angle du vent',
             min: -Math.PI,
             max: Math.PI,
             step: 0.001
@@ -290,7 +290,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.motionFolder, this.state, 'warpScale', {
-            label: 'warpScale',
+            label: 'Echelle de deformation',
             min: 0,
             max: 4,
             step: 0.001
@@ -299,7 +299,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.motionFolder, this.state, 'warpStrength', {
-            label: 'warpStrength',
+            label: 'Force de deformation',
             min: 0,
             max: 3,
             step: 0.001
@@ -309,7 +309,7 @@ export default class CloudLayer
         })
 
         this.debug.addBinding(this.shapeFolder, this.state, 'coverage', {
-            label: 'coverage',
+            label: 'Couverture nuageuse',
             min: 0,
             max: 1,
             step: 0.001
@@ -318,7 +318,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'softness', {
-            label: 'softness',
+            label: 'Douceur des bords',
             min: 0.001,
             max: 0.4,
             step: 0.001
@@ -327,7 +327,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'density', {
-            label: 'density',
+            label: 'Densite',
             min: 0,
             max: 1.5,
             step: 0.001
@@ -336,7 +336,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'noiseScale', {
-            label: 'noiseScale',
+            label: 'Echelle du bruit',
             min: 0.0001,
             max: 0.02,
             step: 0.0001
@@ -345,7 +345,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'detailScale', {
-            label: 'detailScale',
+            label: 'Echelle des details',
             min: 0,
             max: 8,
             step: 0.001
@@ -354,7 +354,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'detailStrength', {
-            label: 'detailStrength',
+            label: 'Intensite des details',
             min: 0,
             max: 2,
             step: 0.001
@@ -363,7 +363,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.shapeFolder, this.state, 'edgeFade', {
-            label: 'edgeFade',
+            label: 'Fondu des bords',
             min: 0.02,
             max: 0.8,
             step: 0.001
@@ -373,7 +373,7 @@ export default class CloudLayer
         })
 
         this.debug.addBinding(this.colorFolder, this.state, 'opacity', {
-            label: 'opacity',
+            label: 'Opacite',
             min: 0,
             max: 1,
             step: 0.001
@@ -382,7 +382,7 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addBinding(this.colorFolder, this.state, 'sunGlowStrength', {
-            label: 'sunGlow',
+            label: 'Halo du soleil',
             min: 0,
             max: 1.5,
             step: 0.001
@@ -391,13 +391,13 @@ export default class CloudLayer
             this.syncMaterialState()
         })
         this.debug.addColorBinding(this.colorFolder, this, 'cloudColor', {
-            label: 'cloudColor'
+            label: 'Couleur des nuages'
         }).on('change', () =>
         {
             this.syncMaterialState()
         })
         this.debug.addColorBinding(this.colorFolder, this, 'shadowColor', {
-            label: 'shadowColor'
+            label: 'Couleur des ombres nuageuses'
         }).on('change', () =>
         {
             this.syncMaterialState()

@@ -31,10 +31,10 @@ export default class Camera
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🎥 Camera', { expanded: false })
+        this.debugFolder = this.debug.addFolder('🎥 Camera de jeu', { expanded: false })
 
         this.debug.addBinding(this.debugFolder, this.instance, 'fov', {
-            label: 'fov',
+            label: 'Champ de vision',
             min: 30,
             max: 110,
             step: 1,

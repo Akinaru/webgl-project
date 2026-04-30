@@ -214,13 +214,13 @@ export default class CollisionDebug
             parent: this.debugParentFolder || this.debug.ui,
             expanded: false
         })
-        this.debug.addBinding(this.folder, this.state, 'showCollisionBoxes', { label: 'boxes' })
-        this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'rays' })
-        this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'player' })
-        this.debug.addBinding(this.folder, this.state, 'showHit', { label: 'hit' })
-        this.debug.addBinding(this.folder, this.state, 'showOctreeZone', { label: 'octreeZone' })
-        this.debug.addBinding(this.folder, this.state, 'showOctreeCandidates', { label: 'octreeCandidates' })
-        this.debug.addBinding(this.folder, this.state, 'showOctreeCells', { label: 'octreeCells' })
+        this.debug.addBinding(this.folder, this.state, 'showCollisionBoxes', { label: 'Boites de collision' })
+        this.debug.addBinding(this.folder, this.state, 'showRays', { label: 'Rayons de test' })
+        this.debug.addBinding(this.folder, this.state, 'showPlayerCollider', { label: 'Collision du joueur' })
+        this.debug.addBinding(this.folder, this.state, 'showHit', { label: 'Points d impact' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeZone', { label: 'Zone octree' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeCandidates', { label: 'Candidats octree' })
+        this.debug.addBinding(this.folder, this.state, 'showOctreeCells', { label: 'Cellules octree' })
     }
 
     update()
