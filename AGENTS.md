@@ -166,8 +166,9 @@ Regles:
 3. Pas de duplication evitable.
 4. Pas de magic numbers non nommes pour les timings/seuils importants.
 5. Pas de strings metier inline dans les conditions (`if`, `switch`, filtres): utiliser des constantes nommees (tokens/listes/enum) centralisees en tete de module.
-6. Commentaires rares et utiles (intention, pas narration).
-7. Pas de mutation globale non controlee.
+6. Les constantes module/scene (valeurs par defaut, seuils, tokens de noms, listes de collision) doivent etre sorties dans des fichiers de constantes dedies (ex: `*.constants.js`) et importees; eviter de les redefinir inline dans le fichier principal.
+7. Commentaires rares et utiles (intention, pas narration).
+8. Pas de mutation globale non controlee.
 
 ## 9) Checklist avant merge
 

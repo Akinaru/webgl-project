@@ -1,9 +1,11 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 import BloomRailSystem from './BloomRailSystem.js'
-
-const BLOOM_FACING_OFFSET_RADIANS = -2.76
-const BLOOM_UV_ZOOM = 1.14
+import {
+    BLOOM_FACING_OFFSET_RADIANS,
+    BLOOM_UV_ZOOM,
+    ARM_MESH_NAME_TOKEN
+} from './Bloom.constants.js'
 
 export default class Bloom
 {
@@ -168,8 +170,9 @@ export default class Bloom
             return name === 'mat.2' || name.includes('mat.2')
         })
         const meshName = String(mesh.name || '').toLowerCase()
+        const isArmTarget = meshName === 'bras' || meshName === 'bras 1'
         const isTargetMesh = meshName === 'bloom-face' || meshName.includes('bloom-face')
-        return isTargetMesh || hasMat2Material
+        return isTargetMesh || hasMat2Material || isArmTarget
     }
 
     applyBloomColorTexture(mesh)
@@ -311,7 +314,7 @@ export default class Bloom
     getTransmissionTextureForMesh(mesh)
     {
         const meshName = String(mesh?.name || '').trim().toLowerCase()
-        if((meshName === 'bras' || meshName === 'bras 1') && this.bloomTransmissionTexture2)
+        if(meshName.includes(ARM_MESH_NAME_TOKEN) && this.bloomTransmissionTexture2)
         {
             return this.bloomTransmissionTexture2
         }
@@ -322,7 +325,7 @@ export default class Bloom
     getColorTextureForMesh(mesh)
     {
         const meshName = String(mesh?.name || '').trim().toLowerCase()
-        if((meshName === 'bras' || meshName === 'bras 1') && this.bloomColorTexture2)
+        if(meshName.includes(ARM_MESH_NAME_TOKEN) && this.bloomColorTexture2)
         {
             return this.bloomColorTexture2
         }
