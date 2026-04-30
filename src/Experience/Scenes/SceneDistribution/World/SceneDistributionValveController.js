@@ -257,7 +257,7 @@ export default class SceneDistributionValveController
                 continue
             }
 
-            if(!this.hasNameInHierarchy(mesh, ['vanne']))
+            if(!this.isValveMesh(mesh))
             {
                 continue
             }
@@ -295,6 +295,13 @@ export default class SceneDistributionValveController
         }
 
         return 'vanne'
+    }
+
+    isValveMesh(mesh)
+    {
+        const name = String(mesh?.name || '').toLowerCase()
+        const compactName = name.replace(/[\s_-]+/g, '')
+        return compactName.includes('vanne')
     }
 
     resolveLinkedAxisMeshes(valveMesh)
@@ -430,7 +437,7 @@ export default class SceneDistributionValveController
         }
 
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
-        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), true)
+        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), false)
         const firstHit = hits[0]
         const mesh = firstHit?.object ?? null
         this.hoveredValve = mesh
