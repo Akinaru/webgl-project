@@ -16,6 +16,7 @@ import DialogueManager from './Dialogues/DialogueManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
+import Tutoriel from './Utils/Tutoriel.js'
 
 let instance = null
 
@@ -56,18 +57,24 @@ export default class Experience
         this.camera = new Camera()
         this.renderer = new Renderer()
         this.sceneManager = new SceneManager()
+        this.tutoriel = new Tutoriel()
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
 
         this.menu.start().then(() =>
         {
-            if(this.hasStartedIntroDialogue)
-            {
-                return
-            }
+            this.tutoriel.start()
 
-            this.hasStartedIntroDialogue = true
-            this.dialogueManager?.startByKey?.('bloom.followup')
+            this.tutoriel.on('finished', () =>
+            {
+                if(this.hasStartedIntroDialogue)
+                {
+                    return
+                }
+
+                this.hasStartedIntroDialogue = true
+                this.dialogueManager?.startByKey?.('bloom.followup')
+            })
         })
 
         this.time.on(`${EventEnum.TICK}.experience`, () =>
@@ -85,6 +92,7 @@ export default class Experience
             this.sceneManager.update(this.time.delta)
         }
 
+        this.tutoriel?.update(this.time.delta)
         this.sound?.update?.(this.time.delta)
         this.camera.update()
         this.renderer.update()
@@ -99,6 +107,7 @@ export default class Experience
         this.metierManager.destroy?.()
         this.actionTracker.destroy?.()
         this.dialogueManager.destroy?.()
+        this.tutoriel?.destroy?.()
         this.menu?.destroy?.()
         this.sound?.destroy?.()
         this.debug.destroy()
