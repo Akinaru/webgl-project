@@ -17,6 +17,7 @@ import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
 import Tutoriel from './Utils/Tutoriel.js'
+import Bloom from './Common/Bloom.js'
 
 let instance = null
 
@@ -58,6 +59,30 @@ export default class Experience
         this.renderer = new Renderer()
         this.sceneManager = new SceneManager()
         this.tutoriel = new Tutoriel()
+        this.bloom = null
+
+        this.resources.on(EventEnum.READY, () =>
+        {
+            this.bloom = new Bloom({
+                motion: {
+                    center: { x: 2.5, y: 2.0, z: 2.5 },
+                    radius: 0
+                },
+                follow: {
+                    target: null, // Sera défini par les scènes
+                    groundMeshes: [],
+                    groundMaxSnapUp: 0.65
+                },
+                rails: {
+                    lines: [],
+                    speed: 3.8,
+                    railSwitchDistance: 0.9,
+                    endpointSwitchDistance: 1.6,
+                    showHelpers: true
+                }
+            })
+        })
+
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
 
@@ -93,6 +118,7 @@ export default class Experience
         }
 
         this.tutoriel?.update(this.time.delta)
+        this.bloom?.update()
         this.sound?.update?.(this.time.delta)
         this.camera.update()
         this.renderer.update()
@@ -108,6 +134,7 @@ export default class Experience
         this.actionTracker.destroy?.()
         this.dialogueManager.destroy?.()
         this.tutoriel?.destroy?.()
+        this.bloom?.destroy?.()
         this.menu?.destroy?.()
         this.sound?.destroy?.()
         this.debug.destroy()

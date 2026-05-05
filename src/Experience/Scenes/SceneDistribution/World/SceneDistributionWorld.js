@@ -72,6 +72,16 @@ export default class SceneDistributionWorld
             getFocusPosition: () => this.player?.position ?? null,
             debugParentFolder: this.debugFolder
         })
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
+                groundMeshes: this.distributionModel.getGroundMeshes?.() ?? [],
+                rails: [],
+                target: this.player
+            })
+        }
     }
 
     setDebug()

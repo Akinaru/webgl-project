@@ -2,7 +2,6 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import SceneEnum from '../../../Enum/SceneEnum.js'
-import Bloom from '../../../Common/Bloom.js'
 import Player from '../../../Common/Player.js'
 import MapEnvironment from './MapEnvironment.js'
 import MapLight from './MapLight.js'
@@ -151,24 +150,17 @@ export default class MapWorld
             light: this.light,
             getFocusPosition: () => this.player?.position ?? null
         })
-        this.bloom = new Bloom({
-            motion: {
-                center: { x: 2.5, y: 2.0, z: 2.5 },
-                radius: 0
-            },
-            follow: {
-                target: this.player,
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
                 groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-                groundMaxSnapUp: 0.65
-            },
-            rails: {
-                lines: BLOOM_RAILS,
-                speed: 3.8,
-                railSwitchDistance: 0.9,
-                endpointSwitchDistance: 1.6,
-                showHelpers: true
-            }
-        })
+                rails: BLOOM_RAILS,
+                target: this.player
+            })
+        }
+
         this.collisionDebug = new MapCollisionDebug({
             player: this.player,
             mapModel: this.mapModel
@@ -183,7 +175,6 @@ export default class MapWorld
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
         this.bushes?.update?.(delta)
-        this.bloom?.update?.()
         this.player?.update(delta)
         this.collisionDebug?.update?.()
         this.updateWaterEntrySound()
@@ -561,12 +552,6 @@ export default class MapWorld
         {
             this.bushes.destroy?.()
             this.bushes = null
-        }
-
-        if(this.bloom)
-        {
-            this.bloom.destroy?.()
-            this.bloom = null
         }
 
         if(this.collisionDebug)

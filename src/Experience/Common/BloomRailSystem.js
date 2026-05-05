@@ -674,6 +674,21 @@ export default class BloomRailSystem
         this.helperGroup.visible = this.settings.showHelpers
     }
 
+    setScene(newScene)
+    {
+        if(this.scene)
+        {
+            this.scene.remove(this.helperGroup)
+        }
+
+        this.scene = newScene
+
+        if(this.scene)
+        {
+            this.scene.add(this.helperGroup)
+        }
+    }
+
     rebuildHelpers()
     {
         for(const line of this.helperLines)
