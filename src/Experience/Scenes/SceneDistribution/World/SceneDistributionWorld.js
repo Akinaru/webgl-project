@@ -82,6 +82,11 @@ export default class SceneDistributionWorld
                 target: this.player
             })
         }
+
+        // Lancement du dialogue après un court délai
+        setTimeout(() => {
+            this.experience.dialogueManager?.startByKey?.('distribution')
+        }, 2500)
     }
 
     setDebug()

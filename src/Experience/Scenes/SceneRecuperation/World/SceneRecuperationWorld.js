@@ -136,6 +136,11 @@ export default class SceneRecuperationWorld
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
+
+        // Lancement du dialogue après un court délai
+        setTimeout(() => {
+            this.experience.dialogueManager?.startByKey?.('recuperation')
+        }, 2500)
     }
 
     setDebug()
