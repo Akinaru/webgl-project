@@ -9,10 +9,13 @@ import {
     GESTURE_ROTATION_GAIN,
     CURSOR_VISUAL_OFFSET_MAX,
     VALVE_TURNING_SOUND_NAME,
-    VALVE_TURNING_CHANNEL,
-    VALVE_NAME_TOKENS
+    VALVE_TURNING_CHANNEL
 } from './SceneDistributionValveController.constants.js'
 import { setupSceneDistributionValveControllerDebug } from './SceneDistributionValveController.debug.js'
+import {
+    buildDistributionChannelSlotMap,
+    resolveDistributionChannelTokenFromObject
+} from './SceneDistributionFlow.constants.js'
 
 const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
 
@@ -275,36 +278,20 @@ export default class SceneDistributionValveController
             const valve = new Valve(mesh, {
                 axisMeshes: this.resolveLinkedAxisMeshes(mesh)
             })
-            valve.valveToken = this.resolveValveToken(mesh)
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
         }
+
+        const slotMap = buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
+        for(const valve of this.valves)
+        {
+            valve.valveToken = this.resolveValveToken(valve.mesh, slotMap)
+        }
     }
 
-    resolveValveToken(mesh)
+    resolveValveToken(mesh, slotMap = null)
     {
-        const name = String(mesh?.name || '').toLowerCase()
-        const compactName = name.replace(/[\s_-]+/g, '')
-
-        if(compactName.includes('vanne2'))
-        {
-            return 'vanne2'
-        }
-
-        if(compactName.includes('vanne1'))
-        {
-            return 'vanne1'
-        }
-
-        for(const token of VALVE_NAME_TOKENS)
-        {
-            if(compactName.includes(token))
-            {
-                return token
-            }
-        }
-
-        return 'vanne'
+        return resolveDistributionChannelTokenFromObject(mesh, slotMap)
     }
 
     isValveMesh(mesh)

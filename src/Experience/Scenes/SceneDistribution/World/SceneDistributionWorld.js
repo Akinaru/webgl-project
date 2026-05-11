@@ -6,6 +6,9 @@ import MapLight from '../../Map/World/MapLight.js'
 import SceneDistributionModel from './SceneDistributionModel.js'
 import SceneDistributionValveController from './SceneDistributionValveController.js'
 import SceneDistributionTubeWaterController from './SceneDistributionTubeWaterController.js'
+import SceneDistributionGaugeDisplay from './SceneDistributionGaugeDisplay.js'
+import SceneDistributionBalanceMonitor from './SceneDistributionBalanceMonitor.js'
+import SceneDistributionDoorController from './SceneDistributionDoorController.js'
 import { setupSceneDistributionWorldDebug } from './SceneDistributionWorld.debug.js'
 
 let distributionWorldInstanceIndex = 0
@@ -41,6 +44,10 @@ export default class SceneDistributionWorld
         this.setDebug()
         this.environment = new MapEnvironment()
         this.distributionModel = new SceneDistributionModel()
+        this.exitDoors = new SceneDistributionDoorController({
+            distributionModel: this.distributionModel,
+            debugParentFolder: this.debugFolder
+        })
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: this.distributionModel.getBoundaryRadius?.() ?? 48,
@@ -62,6 +69,17 @@ export default class SceneDistributionWorld
             tubeWaterMeshes: this.distributionModel.getTubeWaterMeshes?.() ?? [],
             getRightTurnAmountForValve: (valveToken) => this.valveController?.getAccumulatedRightTurnRadiansForValve?.(valveToken) ?? 0,
             debug: this.experience.debug,
+            debugParentFolder: this.debugFolder
+        })
+        this.balanceMonitor = new SceneDistributionBalanceMonitor({
+            tubeWaterController: this.tubeWaterController,
+            onSolvedChange: (isSolved) =>
+            {
+                this.exitDoors?.setOpen?.(isSolved)
+            }
+        })
+        this.gaugeDisplay = new SceneDistributionGaugeDisplay({
+            distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
         })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
@@ -96,10 +114,13 @@ export default class SceneDistributionWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.exitDoors?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
         this.valveController?.update?.(delta)
         this.tubeWaterController?.update?.(delta)
+        this.balanceMonitor?.update?.()
+        this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
     }
 
     destroy()
@@ -109,6 +130,12 @@ export default class SceneDistributionWorld
         this.valveController = null
         this.tubeWaterController?.destroy?.()
         this.tubeWaterController = null
+        this.balanceMonitor?.destroy?.()
+        this.balanceMonitor = null
+        this.gaugeDisplay?.destroy?.()
+        this.gaugeDisplay = null
+        this.exitDoors?.destroy?.()
+        this.exitDoors = null
 
         if(this.player)
         {

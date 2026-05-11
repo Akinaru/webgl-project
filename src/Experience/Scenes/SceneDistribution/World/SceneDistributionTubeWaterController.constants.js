@@ -8,8 +8,3 @@ export const FILLED_TUBE_COLOR = '#4ea7ff'
 export const FILLED_TUBE_EMISSIVE = '#2d7bc2'
 export const FILLED_TUBE_EMISSIVE_INTENSITY = 0.32
 export const FILL_EDGE_SOFTNESS = 0.04
-export const TUBE_GROUPS_BY_VALVE_TOKEN = {
-    vanne: ['tube-water_1', 'tube-water_2'],
-    vanne1: ['tube-water_4', 'tube-water_5'],
-    vanne2: ['tube-water_7', 'tube-water_8']
-}
