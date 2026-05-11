@@ -5,8 +5,8 @@ export function setupSceneRecuperationTubeWaterControllerDebug()
         return
     }
 
-    this.debugFolder = this.debug.addFolder('Flux des tuyaux', {
-        parent: this.debugParentFolder || this.debug.ui,
+    this.debugOwnsFolder = !this.debugParentFolder
+    this.debugFolder = this.debugParentFolder || this.debug.addFolder('Tuyaux', {
         expanded: false
     })
     this.debug.addBinding(this.debugFolder, this.flow, 'fillSpeed', {
@@ -61,11 +61,4 @@ export function setupSceneRecuperationTubeWaterControllerDebug()
     this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveBase', { label: 'Emission de base', min: 0, max: 2, step: 0.01 })
     this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveFoam', { label: 'Emission de la mousse', min: 0, max: 2, step: 0.01 })
     this.debug.addBinding(this.debugShaderFolder, this.waterShader, 'emissiveFront', { label: 'Emission du front', min: 0, max: 2, step: 0.01 })
-    const foamColorBinding = this.debug.addColorBinding(this.debugShaderFolder, this.waterShader, 'foamColor', {
-        label: 'Couleur de la mousse'
-    })
-    foamColorBinding?.on?.('change', () =>
-    {
-        this.foamColor.set(this.waterShader.foamColor)
-    })
 }

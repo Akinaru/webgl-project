@@ -3,29 +3,72 @@ import Experience from '../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { recuperationWaterVisibleGradientShaderChunks } from './Shaders/Water/visibleGradientShaderChunks.js'
 
-const WATER_COLOR_A = '#5bc2b9'
-const WATER_COLOR_B = '#13375f'
+const WATER_BASE_COLOR = '#1F9CD2'
+const WATER_DEEP_FOAM_COLOR = '#9AF6FE'
+const WATER_SURFACE_FOAM_COLOR = '#FDFDF7'
 const WATER_OPACITY = 1
+const WATER_PATTERN_SCALE = 4.48
+const WATER_NOISE_SPEED = 0.09
+const WATER_NOISE_FREQUENCY = 5.04
+const WATER_THRESHOLD = 0.72
+const WATER_INTENSITY = 1.17
+const WATER_FOAM_SOFTNESS = 0.511
+const WATER_FOAM_CUTOFF = 0.446
+const WATER_DEEP_FOAM_THRESHOLD = 0.21
+const WATER_DEEP_FOAM_INTENSITY = 1.79
+const WATER_DEEP_FOAM_SOFTNESS = 0.152
+const WATER_BAND_ANGLE = -2.3902
+const WATER_EDGE_CONTRAST = 0
+const WATER_PLAN_MESH_NAMES = ['water']
+const WATER_BASE_TINT_MESH_NAMES = ['shad_plat', 'shad_plat 1']
 
 export default class SceneRecuperationWater
 {
-    constructor({ recuperationModel = null, debugParentFolder = null } = {})
+    constructor({ recuperationModel = null, debugParentFolder = null, sharedWaterColors = null } = {})
     {
         this.experience = new Experience()
         this.debug = this.experience.debug
         this.resources = this.experience.resources
         this.recuperationModel = recuperationModel
         this.debugParentFolder = debugParentFolder
+        this.sharedWaterColors = sharedWaterColors
         this.waterDistributionTexture = this.resources.items.recuperationWaterDistributionTexture ?? null
         this.runtimeMaterials = []
-        this.waterColorA = new THREE.Color(WATER_COLOR_A)
-        this.waterColorB = new THREE.Color(WATER_COLOR_B)
+        this.baseColor = new THREE.Color(WATER_BASE_COLOR)
+        this.deepFoamColor = new THREE.Color(WATER_DEEP_FOAM_COLOR)
+        this.surfaceFoamColor = new THREE.Color(WATER_SURFACE_FOAM_COLOR)
         this.opacity = WATER_OPACITY
+        this.patternScale = WATER_PATTERN_SCALE
+        this.noiseSpeed = WATER_NOISE_SPEED
+        this.noiseFrequency = WATER_NOISE_FREQUENCY
+        this.threshold = WATER_THRESHOLD
+        this.intensity = WATER_INTENSITY
+        this.foamSoftness = WATER_FOAM_SOFTNESS
+        this.foamCutoff = WATER_FOAM_CUTOFF
+        this.deepFoamThreshold = WATER_DEEP_FOAM_THRESHOLD
+        this.deepFoamIntensity = WATER_DEEP_FOAM_INTENSITY
+        this.deepFoamSoftness = WATER_DEEP_FOAM_SOFTNESS
+        this.bandAngle = WATER_BAND_ANGLE
+        this.edgeContrast = WATER_EDGE_CONTRAST
         this.localTime = 0
         this.waterMeshes = this.collectWaterMeshes()
+        this.flatTintMeshes = this.collectFlatTintMeshes()
 
+        this.applySharedWaterColors()
         this.applyTexture()
         this.setDebug()
+    }
+
+    applySharedWaterColors()
+    {
+        if(this.sharedWaterColors)
+        {
+            this.baseColor.set(this.sharedWaterColors.baseColor ?? WATER_BASE_COLOR)
+            this.deepFoamColor.set(this.sharedWaterColors.deepFoamColor ?? WATER_DEEP_FOAM_COLOR)
+            this.surfaceFoamColor.set(this.sharedWaterColors.surfaceFoamColor ?? WATER_SURFACE_FOAM_COLOR)
+        }
+
+        this.syncMaterialUniforms()
     }
 
     collectWaterMeshes()
@@ -44,7 +87,34 @@ export default class SceneRecuperationWater
                 return
             }
 
-            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, ['water']))
+            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, WATER_PLAN_MESH_NAMES))
+            {
+                return
+            }
+
+            meshes.push(child)
+        })
+
+        return meshes
+    }
+
+    collectFlatTintMeshes()
+    {
+        const root = this.recuperationModel?.model
+        if(!root)
+        {
+            return []
+        }
+
+        const meshes = []
+        root.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, WATER_BASE_TINT_MESH_NAMES))
             {
                 return
             }
@@ -88,6 +158,23 @@ export default class SceneRecuperationWater
             const clonedMaterials = sourceMaterials.map((material) => this.createWaterMaterial(material))
             mesh.material = Array.isArray(mesh.material) ? clonedMaterials : clonedMaterials[0]
         }
+
+        this.applyBaseTintToFlatMeshes()
+    }
+
+    applyBaseTintToFlatMeshes()
+    {
+        for(const mesh of this.flatTintMeshes)
+        {
+            if(!(mesh instanceof THREE.Mesh))
+            {
+                continue
+            }
+
+            const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            const tintedMaterials = sourceMaterials.map((material) => this.createFlatTintMaterial(material))
+            mesh.material = Array.isArray(mesh.material) ? tintedMaterials : tintedMaterials[0]
+        }
     }
 
     createWaterMaterial(baseMaterial)
@@ -107,19 +194,45 @@ export default class SceneRecuperationWater
         material.userData.isRecuperationVisibleGradientMaterial = true
         material.userData.recuperationVisibleGradientUniforms = {
             waterMask: { value: this.waterDistributionTexture },
-            waterColorA: { value: this.waterColorA.clone() },
-            waterColorB: { value: this.waterColorB.clone() },
+            baseColor: { value: this.baseColor.clone() },
+            deepFoamColor: { value: this.deepFoamColor.clone() },
+            surfaceFoamColor: { value: this.surfaceFoamColor.clone() },
             localTime: { value: this.localTime },
-            opacity: { value: this.opacity }
+            opacity: { value: this.opacity },
+            patternScale: { value: this.patternScale },
+            noiseSpeed: { value: this.noiseSpeed },
+            noiseFrequency: { value: this.noiseFrequency },
+            threshold: { value: this.threshold },
+            intensity: { value: this.intensity },
+            foamSoftness: { value: this.foamSoftness },
+            foamCutoff: { value: this.foamCutoff },
+            deepFoamThreshold: { value: this.deepFoamThreshold },
+            deepFoamIntensity: { value: this.deepFoamIntensity },
+            deepFoamSoftness: { value: this.deepFoamSoftness },
+            bandAngle: { value: this.bandAngle },
+            edgeContrast: { value: this.edgeContrast }
         }
         material.onBeforeCompile = (shader) =>
         {
             const uniforms = material.userData.recuperationVisibleGradientUniforms
             shader.uniforms.uWaterMask = uniforms.waterMask
-            shader.uniforms.uRecuperationWaterColorA = uniforms.waterColorA
-            shader.uniforms.uRecuperationWaterColorB = uniforms.waterColorB
+            shader.uniforms.uRecuperationWaterBaseColor = uniforms.baseColor
+            shader.uniforms.uRecuperationWaterDeepFoamColor = uniforms.deepFoamColor
+            shader.uniforms.uRecuperationWaterSurfaceFoamColor = uniforms.surfaceFoamColor
             shader.uniforms.uRecuperationWaterTime = uniforms.localTime
             shader.uniforms.uOpacity = uniforms.opacity
+            shader.uniforms.uRecuperationWaterPatternScale = uniforms.patternScale
+            shader.uniforms.uRecuperationWaterNoiseSpeed = uniforms.noiseSpeed
+            shader.uniforms.uRecuperationWaterNoiseFrequency = uniforms.noiseFrequency
+            shader.uniforms.uRecuperationWaterThreshold = uniforms.threshold
+            shader.uniforms.uRecuperationWaterIntensity = uniforms.intensity
+            shader.uniforms.uRecuperationWaterFoamSoftness = uniforms.foamSoftness
+            shader.uniforms.uRecuperationWaterFoamCutoff = uniforms.foamCutoff
+            shader.uniforms.uRecuperationWaterDeepFoamThreshold = uniforms.deepFoamThreshold
+            shader.uniforms.uRecuperationWaterDeepFoamIntensity = uniforms.deepFoamIntensity
+            shader.uniforms.uRecuperationWaterDeepFoamSoftness = uniforms.deepFoamSoftness
+            shader.uniforms.uRecuperationWaterBandAngle = uniforms.bandAngle
+            shader.uniforms.uRecuperationWaterEdgeContrast = uniforms.edgeContrast
 
             applyStandardMaterialPatch(shader, recuperationWaterVisibleGradientShaderChunks)
         }
@@ -135,6 +248,21 @@ export default class SceneRecuperationWater
         return material
     }
 
+    createFlatTintMaterial(baseMaterial)
+    {
+        const material = baseMaterial?.clone?.() ?? baseMaterial
+        if(!material)
+        {
+            return material
+        }
+
+        material.color?.copy?.(this.baseColor)
+        material.emissive?.set?.(0x000000)
+        material.needsUpdate = true
+        this.runtimeMaterials.push(material)
+        return material
+    }
+
     setDebug()
     {
         if(!this.debug?.isDebugEnabled)
@@ -142,27 +270,132 @@ export default class SceneRecuperationWater
             return
         }
 
-        this.debugFolder = this.debug.addFolder('Water Recuperation', {
-            parent: this.debugParentFolder,
+        this.debugFolder = this.debugParentFolder || this.debug.addFolder('Plan', {
             expanded: false
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'waterColorA', {
-            label: 'Couleur bord'
-        }).on('change', () =>
-        {
-            this.syncMaterialUniforms()
-        })
-
-        this.debug.addColorBinding(this.debugFolder, this, 'waterColorB', {
-            label: 'Couleur centre'
-        }).on('change', () =>
-        {
-            this.syncMaterialUniforms()
         })
 
         this.debug.addBinding(this.debugFolder, this, 'opacity', {
             label: 'Opacite',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'patternScale', {
+            label: 'Echelle motif',
+            min: 0.1,
+            max: 8,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'noiseSpeed', {
+            label: 'Vitesse bruit',
+            min: -4,
+            max: 4,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'noiseFrequency', {
+            label: 'Frequence bruit',
+            min: 0,
+            max: 16,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'threshold', {
+            label: 'Seuil mousse',
+            min: 0,
+            max: 1.5,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'intensity', {
+            label: 'Intensite mousse',
+            min: 0,
+            max: 3,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'foamSoftness', {
+            label: 'Douceur mousse',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'foamCutoff', {
+            label: 'Seuil net mousse',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'deepFoamThreshold', {
+            label: 'Seuil mousse profonde',
+            min: 0,
+            max: 1.5,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'deepFoamIntensity', {
+            label: 'Intensite mousse profonde',
+            min: 0,
+            max: 3,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'deepFoamSoftness', {
+            label: 'Douceur mousse profonde',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'bandAngle', {
+            label: 'Angle bandes',
+            min: -3.1416,
+            max: 3.1416,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncMaterialUniforms()
+        })
+
+        this.debug.addBinding(this.debugFolder, this, 'edgeContrast', {
+            label: 'Contraste bord',
             min: 0,
             max: 1,
             step: 0.01
@@ -182,9 +415,23 @@ export default class SceneRecuperationWater
                 continue
             }
 
-            uniforms.waterColorA.value.copy(this.waterColorA)
-            uniforms.waterColorB.value.copy(this.waterColorB)
+            uniforms.baseColor.value.copy(this.baseColor)
+            uniforms.deepFoamColor.value.copy(this.deepFoamColor)
+            uniforms.surfaceFoamColor.value.copy(this.surfaceFoamColor)
             uniforms.opacity.value = this.opacity
+            uniforms.patternScale.value = this.patternScale
+            uniforms.noiseSpeed.value = this.noiseSpeed
+            uniforms.noiseFrequency.value = this.noiseFrequency
+            uniforms.threshold.value = this.threshold
+            uniforms.intensity.value = this.intensity
+            uniforms.foamSoftness.value = this.foamSoftness
+            uniforms.foamCutoff.value = this.foamCutoff
+            uniforms.deepFoamThreshold.value = this.deepFoamThreshold
+            uniforms.deepFoamIntensity.value = this.deepFoamIntensity
+            uniforms.deepFoamSoftness.value = this.deepFoamSoftness
+            uniforms.bandAngle.value = this.bandAngle
+            uniforms.edgeContrast.value = this.edgeContrast
+            material.color?.copy?.(this.baseColor)
         }
     }
 
@@ -213,6 +460,7 @@ export default class SceneRecuperationWater
 
         this.runtimeMaterials = []
         this.waterMeshes = null
+        this.flatTintMeshes = null
         this.recuperationModel = null
     }
 }

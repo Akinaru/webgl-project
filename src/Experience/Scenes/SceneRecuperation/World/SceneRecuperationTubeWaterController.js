@@ -15,8 +15,8 @@ const REQUIRED_B_BRANCH_INDEX_FOR_MERGE = 9
 const REQUIRED_T_BRANCH_INDEX_FOR_MERGE = 3
 const ROTATION_EPSILON = 0.02
 const DISCONNECTED_COLOR = '#4a5665'
-const CONNECTED_COLOR = '#4ea7ff'
-const CONNECTED_EMISSIVE = '#2d7bc2'
+const CONNECTED_COLOR = '#00CEFF'
+const CONNECTED_EMISSIVE = '#9AF6FE'
 const FLOW_FILL_SPEED_PER_SECOND = 0.45
 const ROTATION_SPEED_PER_SECOND = Math.PI * 2
 const FLOW_PROGRESS_EPSILON = 1e-4
@@ -37,12 +37,13 @@ const AFTER_20_WINDOW_KEY = 'fenetre-blue_2'
 
 export default class SceneRecuperationTubeWaterController
 {
-    constructor({ recuperationModel, debugParentFolder = null } = {})
+    constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = null } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
+        this.sharedWaterColors = sharedWaterColors
         this.recuperationModel = recuperationModel
         this.tubeMeshes = this.recuperationModel?.getTubeWaterMeshes?.() ?? []
         this.rotationTargets = this.recuperationModel?.getTubeWaterRotationTargets?.() ?? []
@@ -78,7 +79,7 @@ export default class SceneRecuperationTubeWaterController
             emissiveBase: 0.55,
             emissiveFoam: 0.22,
             emissiveFront: 0.45,
-            foamColor: '#f4fbff'
+            foamColor: '#FDFDF7'
         }
 
         this.centerRaycaster = new CenterScreenRaycaster({
@@ -156,8 +157,20 @@ export default class SceneRecuperationTubeWaterController
         this.randomizeInitialRotations()
         this.resetFlowAnimation()
         this.recuperationModel?.refreshCollisionBoxes?.()
+        this.applySharedWaterColors()
         this.setDebug()
         this.setEvents()
+    }
+
+    applySharedWaterColors()
+    {
+        const baseColor = this.sharedWaterColors?.baseColor ?? CONNECTED_COLOR
+        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? CONNECTED_EMISSIVE
+        const surfaceFoamColor = this.sharedWaterColors?.surfaceFoamColor ?? this.waterShader.foamColor
+
+        this.waterShader.foamColor = surfaceFoamColor
+        this.foamColor.set(surfaceFoamColor)
+        this.setTubeFlowColor(baseColor, deepFoamColor)
     }
 
     setDebug()
@@ -2607,7 +2620,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             : Boolean(material.userData.tubeDepthWriteDefault)
     }
 
-    setTubeFlowColor(colorValue)
+    setTubeFlowColor(colorValue, emissiveColorValue = null)
     {
         if(colorValue === null || colorValue === undefined)
         {
@@ -2620,9 +2633,9 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         {
             this.tmpColor.set(colorValue)
             this.tubeConnectedColor.copy(this.tmpColor)
-            this.tubeConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
+            this.tubeConnectedEmissiveColor.copy(emissiveColorValue ? new THREE.Color(emissiveColorValue) : this.tmpColor).lerp(this.emissiveOffColor, 0.44)
             this.windowConnectedColor.copy(this.tmpColor)
-            this.windowConnectedEmissiveColor.copy(this.tmpColor).lerp(this.emissiveOffColor, 0.44)
+            this.windowConnectedEmissiveColor.copy(emissiveColorValue ? new THREE.Color(emissiveColorValue) : this.tmpColor).lerp(this.emissiveOffColor, 0.44)
         }
 
         for(const shaderMaterials of this.flowShaderMaterialsByTubeUuid.values())
@@ -2763,7 +2776,10 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     destroy()
     {
         this.inputs?.off?.('sceneinteractdown.recuperationTubeWater')
-        this.debugFolder?.dispose?.()
+        if(this.debugOwnsFolder)
+        {
+            this.debugFolder?.dispose?.()
+        }
         this.debugFolder = null
         this.hoveredTubeMesh = null
         this.turnDirectionByMeshUuid.clear()

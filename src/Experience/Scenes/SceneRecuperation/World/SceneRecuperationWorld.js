@@ -68,17 +68,25 @@ export default class SceneRecuperationWorld
         this.isSetUp = true
 
         this.setDebug()
+        this.sharedWaterColors = {
+            baseColor: new THREE.Color('#1F9CD2'),
+            deepFoamColor: new THREE.Color('#9AF6FE'),
+            surfaceFoamColor: new THREE.Color('#FDFDF7')
+        }
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel({
             debugParentFolder: this.debugFolder
         })
         this.cascadeTubes = new SceneRecuperationCascadeTubes({
             recuperationModel: this.recuperationModel,
-            debugParentFolder: this.debugFolder
+            debugTubeFolder: this.waterTubesDebugFolder,
+            debugSlopeFolder: this.waterSlopesDebugFolder,
+            sharedWaterColors: this.sharedWaterColors
         })
         this.water = new SceneRecuperationWater({
             recuperationModel: this.recuperationModel,
-            debugParentFolder: this.debugFolder
+            debugParentFolder: this.waterPlanDebugFolder,
+            sharedWaterColors: this.sharedWaterColors
         })
         this.door = new Door({
             recuperationModel: this.recuperationModel,
@@ -115,8 +123,10 @@ export default class SceneRecuperationWorld
 
         this.tubeWaterController = new SceneRecuperationTubeWaterController({
             recuperationModel: this.recuperationModel,
-            debugParentFolder: this.debugFolder
+            debugParentFolder: this.waterTubesDebugFolder,
+            sharedWaterColors: this.sharedWaterColors
         })
+        this.setWaterDebugBindings()
         this.scoring = new SceneRecuperationScoring({
             getTubeWaterController: () => this.tubeWaterController
         })
@@ -155,6 +165,34 @@ export default class SceneRecuperationWorld
     setDebug()
     {
         setupSceneRecuperationWorldDebug.call(this)
+    }
+
+    setWaterDebugBindings()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || !this.waterColorsDebugFolder || this.waterColorsBound)
+        {
+            return
+        }
+
+        this.waterColorsBound = true
+        const syncSharedColors = () =>
+        {
+            this.water?.applySharedWaterColors?.()
+            this.cascadeTubes?.applySharedWaterColors?.()
+            this.tubeWaterController?.applySharedWaterColors?.()
+        }
+
+        this.experience.debug.addColorBinding(this.waterColorsDebugFolder, this.sharedWaterColors, 'baseColor', {
+            label: 'Couleur eau'
+        })?.on?.('change', syncSharedColors)
+
+        this.experience.debug.addColorBinding(this.waterColorsDebugFolder, this.sharedWaterColors, 'deepFoamColor', {
+            label: 'Mousse profonde'
+        })?.on?.('change', syncSharedColors)
+
+        this.experience.debug.addColorBinding(this.waterColorsDebugFolder, this.sharedWaterColors, 'surfaceFoamColor', {
+            label: 'Mousse surface'
+        })?.on?.('change', syncSharedColors)
     }
 
     update(delta = this.experience.time.delta)
