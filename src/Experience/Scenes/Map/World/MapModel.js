@@ -18,13 +18,27 @@ const FOUNTAIN_TOP_COLLISION_STRICT_INSET = 0.12
 const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
 const PLAN_NOISE_TEXTURE_RESOLUTION = 128
 const PALM_MASTER_NAME = 'palmier_master'
-const PALM_PLACEMENT_NAME_PATTERN = /^palmier_\d+$/i
+const PALM_PLACEMENT_NAME_PATTERN = /^palmier_[^_]+_nul$/i
 const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
 const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
 const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
+const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
+const USER_DATA_REPEATABLE_PLACEMENT = 'isRepeatablePlacementMesh'
 const SCALE_EPSILON = 1e-5
 const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
 const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_nul_\d+$/i
+const REPEATABLE_INSTANCE_CONFIGS = [
+    {
+        key: 'build_tour',
+        masterName: 'build_tour_master',
+        placementPattern: /^build_tour_[^_]+_nul$/i
+    },
+    {
+        key: 'build_feuille',
+        masterName: 'build_feuille_master1',
+        placementPattern: /^build_feuille_[^_]+_nul$/i
+    }
+]
 
 export default class MapModel
 {
@@ -107,6 +121,7 @@ export default class MapModel
         this.collisionBoxes = []
         this.collisionMeshes = []
         this.setupPalmTreeInstances()
+        this.setupRepeatableInstances()
 
         this.model.traverse((child) =>
         {
@@ -305,6 +320,162 @@ export default class MapModel
             placement.userData[USER_DATA_PALM_PLACEMENT] = true
             placement.userData[USER_DATA_EXCLUDE_COLLISION] = true
         }
+    }
+
+    setupRepeatableInstances()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.updateMatrixWorld(true)
+
+        for(const config of REPEATABLE_INSTANCE_CONFIGS)
+        {
+            this.setupRepeatableInstanceGroup(config)
+        }
+    }
+
+    setupRepeatableInstanceGroup({
+        key,
+        masterName,
+        placementPattern
+    } = {})
+    {
+        const masterRoot = this.findFirstObjectByName(masterName)
+        const placements = this.findObjectsByNamePattern(placementPattern)
+        if(!masterRoot || placements.length === 0)
+        {
+            return
+        }
+
+        const instancedByKey = new Map()
+        const modelWorldInverse = new THREE.Matrix4().copy(this.model.matrixWorld).invert()
+        const masterWorldInverse = new THREE.Matrix4().copy(masterRoot.matrixWorld).invert()
+        const masterLocalMatrix = new THREE.Matrix4()
+        const instanceWorldMatrix = new THREE.Matrix4()
+        const instanceLocalMatrix = new THREE.Matrix4()
+        const composedPosition = new THREE.Vector3()
+        const composedQuaternion = new THREE.Quaternion()
+        const composedScale = new THREE.Vector3()
+
+        masterRoot.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh) || !child.geometry || !child.material)
+            {
+                return
+            }
+
+            child.userData[USER_DATA_REPEATABLE_MASTER] = true
+            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+
+            const material = child.material
+            const materialKey = Array.isArray(material)
+                ? material.map((entry) => entry?.uuid ?? 'none').join(',')
+                : material.uuid
+            const mapKey = `${child.geometry.uuid}::${materialKey}`
+            if(instancedByKey.has(mapKey))
+            {
+                return
+            }
+
+            const instanced = new THREE.InstancedMesh(
+                child.geometry,
+                material,
+                placements.length
+            )
+            instanced.name = `__instanced_${key}_${child.name || child.uuid}`
+            instanced.castShadow = child.castShadow
+            instanced.receiveShadow = child.receiveShadow
+            instanced.frustumCulled = true
+            instanced.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            instancedByKey.set(mapKey, {
+                instanced,
+                sourceMesh: child
+            })
+        })
+
+        for(const { instanced, sourceMesh } of instancedByKey.values())
+        {
+            masterLocalMatrix.copy(sourceMesh.matrixWorld).premultiply(masterWorldInverse)
+
+            for(let index = 0; index < placements.length; index++)
+            {
+                const placement = placements[index]
+                instanceWorldMatrix.copy(masterLocalMatrix).premultiply(placement.matrixWorld)
+                instanceLocalMatrix.copy(instanceWorldMatrix).premultiply(modelWorldInverse)
+                instanceLocalMatrix.decompose(composedPosition, composedQuaternion, composedScale)
+                instanceLocalMatrix.compose(composedPosition, composedQuaternion, composedScale)
+                instanced.setMatrixAt(index, instanceLocalMatrix)
+            }
+
+            instanced.instanceMatrix.needsUpdate = true
+            instanced.computeBoundingSphere()
+            this.model.add(instanced)
+        }
+
+        masterRoot.visible = false
+        masterRoot.traverse((child) =>
+        {
+            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+        })
+
+        for(const placement of placements)
+        {
+            placement.visible = false
+            placement.userData[USER_DATA_REPEATABLE_PLACEMENT] = true
+            placement.userData[USER_DATA_EXCLUDE_COLLISION] = true
+        }
+    }
+
+    findFirstObjectByName(name)
+    {
+        if(!this.model)
+        {
+            return null
+        }
+
+        let result = null
+        const normalizedName = String(name || '').trim().toLowerCase()
+        this.model.traverse((object) =>
+        {
+            if(result)
+            {
+                return
+            }
+
+            const currentName = String(object?.name || '').trim().toLowerCase()
+            if(currentName === normalizedName)
+            {
+                result = object
+            }
+        })
+        return result
+    }
+
+    findObjectsByNamePattern(pattern)
+    {
+        if(!this.model || !(pattern instanceof RegExp))
+        {
+            return []
+        }
+
+        const objects = []
+        this.model.traverse((object) =>
+        {
+            if(!(object instanceof THREE.Object3D))
+            {
+                return
+            }
+
+            const currentName = String(object.name || '').trim().toLowerCase()
+            if(pattern.test(currentName))
+            {
+                objects.push(object)
+            }
+        })
+        return objects
     }
 
     findPalmMasterRoot()
