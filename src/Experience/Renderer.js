@@ -2,6 +2,27 @@ import * as THREE from 'three'
 import Experience from './Experience.js'
 import EventEnum from './Enum/EventEnum.js'
 
+const GRAPHICS_QUALITY_STORAGE_KEY = 'bloom.graphics.quality'
+const GRAPHICS_QUALITY = Object.freeze({
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high'
+})
+const GRAPHICS_QUALITY_PRESETS = Object.freeze({
+    [GRAPHICS_QUALITY.LOW]: Object.freeze({
+        pixelRatioScale: 0.7,
+        shadowsEnabled: false
+    }),
+    [GRAPHICS_QUALITY.MEDIUM]: Object.freeze({
+        pixelRatioScale: 0.88,
+        shadowsEnabled: true
+    }),
+    [GRAPHICS_QUALITY.HIGH]: Object.freeze({
+        pixelRatioScale: 1,
+        shadowsEnabled: true
+    })
+})
+
 export default class Renderer
 {
     constructor()
@@ -13,6 +34,8 @@ export default class Renderer
         this.debug = this.experience.debug
 
         this.setInstance()
+        this.restoreGraphicsQuality()
+        this.applyGraphicsQualityPreset(this.graphicsQuality)
         this.setScene(this.experience.scene)
         this.setDebug()
         this.syncInspectorContext()
@@ -35,7 +58,7 @@ export default class Renderer
         this.instance.shadowMap.enabled = true
         this.instance.shadowMap.type = THREE.PCFSoftShadowMap
         this.instance.setSize(this.sizes.width, this.sizes.height)
-        this.instance.setPixelRatio(this.sizes.pixelRatio)
+        this.instance.setPixelRatio(this.getEffectivePixelRatio())
     }
 
     setDebug()
@@ -192,7 +215,73 @@ export default class Renderer
     resize()
     {
         this.instance.setSize(this.sizes.width, this.sizes.height)
-        this.instance.setPixelRatio(this.sizes.pixelRatio)
+        this.instance.setPixelRatio(this.getEffectivePixelRatio())
+    }
+
+    getEffectivePixelRatio()
+    {
+        const preset = GRAPHICS_QUALITY_PRESETS[this.graphicsQuality] || GRAPHICS_QUALITY_PRESETS[GRAPHICS_QUALITY.HIGH]
+        const scale = Number.isFinite(preset.pixelRatioScale) ? Math.max(0.1, preset.pixelRatioScale) : 1
+        return Math.min(this.sizes.pixelRatio * scale, 2)
+    }
+
+    restoreGraphicsQuality()
+    {
+        let storedQuality = ''
+        try
+        {
+            storedQuality = String(window.localStorage.getItem(GRAPHICS_QUALITY_STORAGE_KEY) || '').trim().toLowerCase()
+        }
+        catch(error)
+        {
+            storedQuality = ''
+        }
+
+        this.graphicsQuality = GRAPHICS_QUALITY_PRESETS[storedQuality]
+            ? storedQuality
+            : GRAPHICS_QUALITY.HIGH
+    }
+
+    persistGraphicsQuality()
+    {
+        try
+        {
+            window.localStorage.setItem(GRAPHICS_QUALITY_STORAGE_KEY, this.graphicsQuality)
+        }
+        catch(error)
+        {
+            // Persistence best effort.
+        }
+    }
+
+    applyGraphicsQualityPreset(quality)
+    {
+        const safeQuality = GRAPHICS_QUALITY_PRESETS[quality]
+            ? quality
+            : GRAPHICS_QUALITY.HIGH
+        const preset = GRAPHICS_QUALITY_PRESETS[safeQuality]
+
+        this.graphicsQuality = safeQuality
+        if(this.instance)
+        {
+            this.instance.shadowMap.enabled = Boolean(preset.shadowsEnabled)
+            this.instance.setPixelRatio(this.getEffectivePixelRatio())
+        }
+    }
+
+    setGraphicsQuality(quality, { persist = true } = {})
+    {
+        this.applyGraphicsQualityPreset(quality)
+        if(persist)
+        {
+            this.persistGraphicsQuality()
+        }
+        return this.graphicsQuality
+    }
+
+    getGraphicsQuality()
+    {
+        return this.graphicsQuality
     }
 
     setScene(scene)

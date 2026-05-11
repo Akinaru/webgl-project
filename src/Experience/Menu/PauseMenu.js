@@ -14,6 +14,7 @@ const SELECTORS = Object.freeze({
     musicVolumeValue: '#pauseMusicVolumeValue',
     sfxVolumeSlider: '#pauseSfxVolume',
     sfxVolumeValue: '#pauseSfxVolumeValue',
+    graphicsQualityButtons: '[data-gfx-quality]',
     keybindButtons: '[data-keybind-action]',
     resetAllButton: '#pauseSettingsResetAll'
 })
@@ -27,6 +28,11 @@ const VOLUME_PREVIEW_SOUND_BY_TYPE = Object.freeze({
 })
 const KEYBIND_CAPTURE_LABEL = 'Appuyer...'
 const KEYBIND_ERROR_FLASH_MS = 320
+const GRAPHICS_QUALITY = Object.freeze({
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high'
+})
 const KEYBIND_CODE_LABELS = Object.freeze({
     Space: 'Espace',
     Escape: 'Echap',
@@ -89,6 +95,7 @@ export default class PauseMenu extends EventEmitter
         this.musicVolumeValue = document.querySelector(SELECTORS.musicVolumeValue)
         this.sfxVolumeSlider = document.querySelector(SELECTORS.sfxVolumeSlider)
         this.sfxVolumeValue = document.querySelector(SELECTORS.sfxVolumeValue)
+        this.graphicsQualityButtons = Array.from(document.querySelectorAll(SELECTORS.graphicsQualityButtons))
         this.keybindButtons = Array.from(document.querySelectorAll(SELECTORS.keybindButtons))
         this.resetAllButton = document.querySelector(SELECTORS.resetAllButton)
 
@@ -102,6 +109,7 @@ export default class PauseMenu extends EventEmitter
             && this.musicVolumeValue
             && this.sfxVolumeSlider
             && this.sfxVolumeValue
+            && this.graphicsQualityButtons.length > 0
             && this.keybindButtons.length > 0
             && this.resetAllButton
         )
@@ -242,6 +250,22 @@ export default class PauseMenu extends EventEmitter
             this.playVolumePreview('sfx')
         }
 
+        this.onGraphicsQualityClick = (event) =>
+        {
+            event.preventDefault()
+            const button = event.currentTarget instanceof HTMLElement
+                ? event.currentTarget
+                : null
+            const quality = String(button?.dataset?.gfxQuality || '').trim().toLowerCase()
+            if(!quality)
+            {
+                return
+            }
+
+            this.applyGraphicsQuality(quality)
+            this.experience?.sound?.playMenuClick?.()
+        }
+
         this.onKeybindButtonClick = (event) =>
         {
             event.preventDefault()
@@ -376,6 +400,10 @@ export default class PauseMenu extends EventEmitter
         this.settingsCloseButton.addEventListener('click', this.onSettingsCloseClick)
         this.musicVolumeSlider.addEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.addEventListener('input', this.onSfxVolumeInput)
+        for(const button of this.graphicsQualityButtons)
+        {
+            button.addEventListener('click', this.onGraphicsQualityClick)
+        }
         this.resetAllButton.addEventListener('click', this.onResetAllClick)
         for(const button of this.keybindButtons)
         {
@@ -383,6 +411,7 @@ export default class PauseMenu extends EventEmitter
         }
         this.root.addEventListener('click', this.onRootClick)
         this.syncSettingsVolumeUI()
+        this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
     }
 
@@ -519,6 +548,7 @@ export default class PauseMenu extends EventEmitter
         }
 
         this.syncSettingsVolumeUI()
+        this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
         this.clearKeybindError()
         this.settingsModal.classList.add(VISIBLE_CLASS)
@@ -556,6 +586,40 @@ export default class PauseMenu extends EventEmitter
         this.updateVolumeValueLabel(this.sfxVolumeValue, sfxPercent)
         this.updateSliderFill(this.musicVolumeSlider, musicPercent)
         this.updateSliderFill(this.sfxVolumeSlider, sfxPercent)
+    }
+
+    getGraphicsQuality()
+    {
+        return this.experience?.renderer?.getGraphicsQuality?.() || GRAPHICS_QUALITY.HIGH
+    }
+
+    applyGraphicsQuality(quality)
+    {
+        const safeQuality = String(quality || '').trim().toLowerCase()
+        this.experience?.renderer?.setGraphicsQuality?.(safeQuality)
+        this.syncGraphicsQualityUI()
+    }
+
+    syncGraphicsQualityUI()
+    {
+        const activeQuality = this.getGraphicsQuality()
+        for(const button of this.graphicsQualityButtons)
+        {
+            if(!(button instanceof HTMLElement))
+            {
+                continue
+            }
+
+            const quality = String(button.dataset?.gfxQuality || '').trim().toLowerCase()
+            if(quality === activeQuality)
+            {
+                button.classList.add('is-active')
+            }
+            else
+            {
+                button.classList.remove('is-active')
+            }
+        }
     }
 
     updateVolumeValueLabel(element, percent)
@@ -734,10 +798,12 @@ export default class PauseMenu extends EventEmitter
     {
         this.experience?.sound?.setMusicVolume?.(1)
         this.experience?.sound?.setSfxVolume?.(1)
+        this.experience?.renderer?.setGraphicsQuality?.(GRAPHICS_QUALITY.HIGH)
         this.inputs?.resetActionBindings?.()
         this.cancelKeybindCapture()
         this.clearKeybindError()
         this.syncSettingsVolumeUI()
+        this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
     }
 
@@ -828,6 +894,10 @@ export default class PauseMenu extends EventEmitter
         this.settingsCloseButton.removeEventListener('click', this.onSettingsCloseClick)
         this.musicVolumeSlider.removeEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.removeEventListener('input', this.onSfxVolumeInput)
+        for(const button of this.graphicsQualityButtons)
+        {
+            button.removeEventListener('click', this.onGraphicsQualityClick)
+        }
         this.resetAllButton.removeEventListener('click', this.onResetAllClick)
         for(const button of this.keybindButtons)
         {
