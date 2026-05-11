@@ -32,7 +32,7 @@ export default class SceneDistributionGaugeDisplay
         this.distributionModel = distributionModel
         this.debugParentFolder = debugParentFolder
         this.settings = {
-            screenScaleX: 1.01,
+            screenScaleX: 1.072,
             screenScaleY: 1.01,
             fitMode: 'contain'
         }
