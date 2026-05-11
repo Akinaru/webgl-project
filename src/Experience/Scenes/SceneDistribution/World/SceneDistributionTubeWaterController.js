@@ -8,10 +8,15 @@ import {
     FILLED_TUBE_COLOR,
     FILLED_TUBE_EMISSIVE,
     FILLED_TUBE_EMISSIVE_INTENSITY,
-    FILL_EDGE_SOFTNESS,
-    TUBE_GROUPS_BY_VALVE_TOKEN
+    FILL_EDGE_SOFTNESS
 } from './SceneDistributionTubeWaterController.constants.js'
 import { setupSceneDistributionTubeWaterControllerDebug } from './SceneDistributionTubeWaterController.debug.js'
+import {
+    buildDistributionChannelSlotMap,
+    DISTRIBUTION_CHANNEL_LABELS,
+    DISTRIBUTION_CHANNEL_ORDER,
+    resolveDistributionChannelTokenFromObject
+} from './SceneDistributionFlow.constants.js'
 
 const FILL_COORD_ATTRIBUTE = 'aDistributionFillCoord'
 const FILL_UNIFORM = 'uDistributionFillProgress'
@@ -53,14 +58,7 @@ export default class SceneDistributionTubeWaterController
 
     buildTubeEntries()
     {
-        const groupByName = new Map()
-        for(const [valveToken, tubeNames] of Object.entries(TUBE_GROUPS_BY_VALVE_TOKEN))
-        {
-            for(const tubeName of tubeNames)
-            {
-                groupByName.set(String(tubeName).toLowerCase(), valveToken)
-            }
-        }
+        const slotMap = buildDistributionChannelSlotMap(this.tubeWaterMeshes)
 
         for(const mesh of this.tubeWaterMeshes)
         {
@@ -69,8 +67,7 @@ export default class SceneDistributionTubeWaterController
                 continue
             }
 
-            const meshName = String(mesh.name || '').toLowerCase()
-            const valveToken = groupByName.get(meshName) ?? null
+            const valveToken = resolveDistributionChannelTokenFromObject(mesh, slotMap)
 
             this.ensureFillCoordAttribute(mesh)
             this.prepareTubeMaterials(mesh)
@@ -332,6 +329,41 @@ export default class SceneDistributionTubeWaterController
         this.fillProgressByMeshUuid.clear()
         this.debugFolder?.dispose?.()
         this.debugFolder = null
+    }
+
+    getFillStateForValveToken(valveToken = '')
+    {
+        const normalizedToken = String(valveToken || '').toLowerCase()
+        const entries = this.tubeEntriesByValveToken.get(normalizedToken) ?? []
+        if(entries.length === 0)
+        {
+            return {
+                token: normalizedToken,
+                label: DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
+                filledUnits: 0,
+                capacityUnits: 0,
+                normalizedFill: 0
+            }
+        }
+
+        const filledUnits = entries.reduce(
+            (sum, entry) => sum + (this.fillProgressByMeshUuid.get(entry.mesh.uuid) ?? 0),
+            0
+        )
+        const capacityUnits = entries.length
+
+        return {
+            token: normalizedToken,
+            label: DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
+            filledUnits,
+            capacityUnits,
+            normalizedFill: capacityUnits > 0 ? filledUnits / capacityUnits : 0
+        }
+    }
+
+    getOrderedFillStates()
+    {
+        return DISTRIBUTION_CHANNEL_ORDER.map((token) => this.getFillStateForValveToken(token))
     }
 
     canRotateValveDirection(valveToken, direction = 1)

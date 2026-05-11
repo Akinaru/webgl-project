@@ -363,6 +363,91 @@ export default class SceneDistributionModel
         return this.boundaryBox ? { ...this.boundaryBox } : null
     }
 
+    getMeshesForNameTokens(tokens = [], { exact = false } = {})
+    {
+        const root = this.model ?? this.fallback
+        if(!root || !Array.isArray(tokens) || tokens.length === 0)
+        {
+            return []
+        }
+
+        const normalizedTokens = tokens
+            .map((token) => String(token || '').toLowerCase().trim())
+            .filter(Boolean)
+        if(normalizedTokens.length === 0)
+        {
+            return []
+        }
+
+        const meshes = []
+        root.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const nodeName = String(child?.name || '').toLowerCase().trim()
+            if(nodeName === '')
+            {
+                return
+            }
+
+            const isMatch = exact
+                ? normalizedTokens.includes(nodeName)
+                : normalizedTokens.some((token) => nodeName.includes(token))
+            if(isMatch)
+            {
+                meshes.push(child)
+            }
+        })
+
+        return meshes
+    }
+
+    getFirstObjectForNameTokens(tokens = [], { exact = false } = {})
+    {
+        const root = this.model ?? this.fallback
+        if(!root || !Array.isArray(tokens) || tokens.length === 0)
+        {
+            return null
+        }
+
+        const normalizedTokens = tokens
+            .map((token) => String(token || '').toLowerCase().trim())
+            .filter(Boolean)
+        if(normalizedTokens.length === 0)
+        {
+            return null
+        }
+
+        let matchedObject = null
+        root.traverse((child) =>
+        {
+            if(matchedObject)
+            {
+                return
+            }
+
+            const nodeName = String(child?.name || '').toLowerCase().trim()
+            if(nodeName === '')
+            {
+                return
+            }
+
+            const isMatch = exact
+                ? normalizedTokens.includes(nodeName)
+                : normalizedTokens.some((token) => nodeName.includes(token))
+
+            if(isMatch)
+            {
+                matchedObject = child
+            }
+        })
+
+        return matchedObject
+    }
+
     destroy()
     {
         if(this.model)
