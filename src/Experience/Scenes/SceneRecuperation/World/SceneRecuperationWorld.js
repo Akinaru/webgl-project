@@ -38,6 +38,7 @@ export default class SceneRecuperationWorld
         this.materialTestElapsed = 0
         this.currentMaterialSelection = null
         this.isMaterialChoiceValidated = false
+        this.hasStartedRecuperationDialogue = false
 
         if(this.resources.isReady)
         {
@@ -136,11 +137,6 @@ export default class SceneRecuperationWorld
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
-
-        // Lancement du dialogue après un court délai
-        setTimeout(() => {
-            this.experience.dialogueManager?.startByKey?.('recuperation')
-        }, 2500)
     }
 
     setDebug()
@@ -316,6 +312,11 @@ export default class SceneRecuperationWorld
 
         this.hasStartedRoom2Flow = true
         this.tubeWaterController?.startFlowAnimation?.()
+        if(!this.hasStartedRecuperationDialogue)
+        {
+            this.hasStartedRecuperationDialogue = true
+            this.experience.dialogueManager?.startByKey?.('recuperation')
+        }
     }
 
     checkPuzzleCompletionReturn()
@@ -648,6 +649,7 @@ export default class SceneRecuperationWorld
         this.nextWallCrossTeleportAt = 0
         this.room2FlowTrigger = null
         this.hasStartedRoom2Flow = false
+        this.hasStartedRecuperationDialogue = false
         this.currentMaterialSelection = null
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
