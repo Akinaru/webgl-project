@@ -94,6 +94,7 @@ export default class MapWorld
         this.shallowWaterSplashCooldownMs = 0
         this.wasInsideBush = false
         this.bushTriggerCooldownMs = 0
+        this.hasBoundBloomContext = false
 
         if(this.resources.isReady)
         {
@@ -151,15 +152,7 @@ export default class MapWorld
             getFocusPosition: () => this.player?.position ?? null
         })
 
-        if(this.experience.bloom)
-        {
-            this.experience.bloom.setSceneContext({
-                scene: this.experience.scene,
-                groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-                rails: BLOOM_RAILS,
-                target: this.player
-            })
-        }
+        this.syncBloomContext()
 
         this.collisionDebug = new MapCollisionDebug({
             player: this.player,
@@ -171,6 +164,7 @@ export default class MapWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.syncBloomContext()
         this.light?.update?.(delta)
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
@@ -181,6 +175,28 @@ export default class MapWorld
         this.updateBushSound(delta)
         this.updateTeleportZoneVisual()
         this.checkTeleportTrigger()
+    }
+
+    syncBloomContext()
+    {
+        const bloom = this.experience.bloom
+        if(!bloom || !this.player || !this.mapModel)
+        {
+            return
+        }
+
+        if(this.hasBoundBloomContext)
+        {
+            return
+        }
+
+        bloom.setSceneContext({
+            scene: this.experience.scene,
+            groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
+            rails: BLOOM_RAILS,
+            target: this.player
+        })
+        this.hasBoundBloomContext = true
     }
 
     updateBushSound(deltaMs = this.experience.time.delta)

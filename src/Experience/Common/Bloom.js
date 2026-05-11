@@ -4,7 +4,9 @@ import BloomRailSystem from './BloomRailSystem.js'
 import {
     BLOOM_FACING_OFFSET_RADIANS,
     BLOOM_UV_ZOOM,
-    ARM_MESH_NAME_TOKEN
+    ARM_MESH_NAME_TOKEN,
+    BLOOM_MOVEMENT_FACING_MIN_STEP,
+    BLOOM_FACE_PLAYER_MIN_DISTANCE
 } from './Bloom.constants.js'
 
 export default class Bloom
@@ -39,6 +41,7 @@ export default class Bloom
         this.direction = new THREE.Vector3()
         this.movementDelta = new THREE.Vector3()
         this.movementDirection = new THREE.Vector3(0, 0, 1)
+        this.lastFacingDirection = new THREE.Vector3(0, 0, 1)
         this.followTargetPosition = new THREE.Vector3()
         this.previousAnchorPosition = new THREE.Vector3()
         this.railAnchorPosition = new THREE.Vector3()
@@ -109,6 +112,7 @@ export default class Bloom
 
         if(this.model)
         {
+            this.spawnOnRailNodeIfAvailable()
             this.railAnchorPosition.copy(this.model.position)
             this.railAnchorPosition.y -= this.baseY
             this.previousAnchorPosition.copy(this.railAnchorPosition)
@@ -159,6 +163,36 @@ export default class Bloom
         })
 
         this.scene.add(this.model)
+    }
+
+    spawnOnRailNodeIfAvailable()
+    {
+        if(!this.model || !this.rails?.hasRails?.())
+        {
+            return
+        }
+
+        const firstNodeId = this.rails.graph?.nodes?.[0]?.id
+        if(typeof firstNodeId !== 'string' || firstNodeId.trim() === '')
+        {
+            return
+        }
+
+        const spawnPosition = this.rails.getNodePosition(firstNodeId)
+        if(!(spawnPosition instanceof THREE.Vector3))
+        {
+            return
+        }
+
+        const groundY = this.resolveGroundYAt(
+            spawnPosition.x,
+            spawnPosition.z,
+            spawnPosition.y
+        )
+
+        this.model.position.x = spawnPosition.x
+        this.model.position.z = spawnPosition.z
+        this.model.position.y = groundY + this.motion.heightOffset + this.baseY
     }
 
     isBloomTargetMesh(mesh)
@@ -568,26 +602,6 @@ export default class Bloom
             }
 
             this.rails?.setScene?.(this.scene)
-
-            if(target)
-            {
-                this.railAnchorPosition.copy(target.position)
-                this.railAnchorPosition.x += 1.5
-                this.railAnchorPosition.z += 1.5
-                
-                const groundY = this.resolveGroundYAt(
-                    this.railAnchorPosition.x,
-                    this.railAnchorPosition.z,
-                    this.railAnchorPosition.y
-                )
-                this.railAnchorPosition.y = groundY + this.motion.heightOffset
-                
-                if(this.model)
-                {
-                    this.model.position.copy(this.railAnchorPosition)
-                    this.model.position.y += this.baseY
-                }
-            }
         }
 
         if(Array.isArray(groundMeshes))
@@ -603,6 +617,40 @@ export default class Bloom
         if(target)
         {
             this.follow.target = target
+            this.follow.enabled = true
+        }
+
+        if(this.rails?.hasRails?.())
+        {
+            this.spawnOnRailNodeIfAvailable()
+            if(this.model)
+            {
+                this.railAnchorPosition.copy(this.model.position)
+                this.railAnchorPosition.y -= this.baseY
+                this.previousAnchorPosition.copy(this.railAnchorPosition)
+            }
+            return
+        }
+
+        if(target?.position instanceof THREE.Vector3)
+        {
+            this.railAnchorPosition.copy(target.position)
+            this.railAnchorPosition.x += 1.5
+            this.railAnchorPosition.z += 1.5
+
+            const groundY = this.resolveGroundYAt(
+                this.railAnchorPosition.x,
+                this.railAnchorPosition.z,
+                this.railAnchorPosition.y
+            )
+            this.railAnchorPosition.y = groundY + this.motion.heightOffset
+
+            if(this.model)
+            {
+                this.model.position.copy(this.railAnchorPosition)
+                this.model.position.y += this.baseY
+            }
+            this.previousAnchorPosition.copy(this.railAnchorPosition)
         }
     }
 
@@ -753,7 +801,6 @@ export default class Bloom
         if(this.model)
         {
             this.updateMotion(deltaSeconds)
-            this.updateFacingTowardsPlayer(deltaSeconds)
             this.updateArms()
             return
         }
@@ -791,6 +838,7 @@ export default class Bloom
     updateDirectFollowMotion(deltaSeconds, bobOffset)
     {
         this.previousAnchorPosition.copy(this.railAnchorPosition)
+        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
 
         // On définit une distance de confort autour du joueur
         const comfortDistance = 1.8
@@ -821,15 +869,13 @@ export default class Bloom
         this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
         this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
-
-        if(this.movementDirection.lengthSq() > 1e-8)
+        if(this.movementDelta.lengthSq() > minFacingMovementStepSq)
         {
             this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
+            return
         }
-        else
-        {
-            this.updateFacingTowardsPlayer(deltaSeconds)
-        }
+
+        this.updateFacingTowardsPlayer(deltaSeconds)
     }
 
     updateRailMotion(deltaSeconds, bobOffset)
@@ -855,48 +901,15 @@ export default class Bloom
         this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
         this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
-
-        if(this.movementDirection.lengthSq() > 1e-8)
+        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
+        const isMovingOnRail = didMove && this.movementDelta.lengthSq() > minFacingMovementStepSq
+        if(isMovingOnRail)
         {
             this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
             return
         }
 
-        if(didMove)
-        {
-            return
-        }
-
-        const playerPosition = this.follow.target?.position
-        if(playerPosition instanceof THREE.Vector3)
-        {
-            this.direction
-                .set(
-                    playerPosition.x - this.model.position.x,
-                    0,
-                    playerPosition.z - this.model.position.z
-                )
-
-            if(this.direction.lengthSq() > 1e-8)
-            {
-                this.direction.normalize()
-                this.updateFacingFromDirection(this.direction, deltaSeconds)
-                return
-            }
-        }
-
-        this.direction
-            .set(
-                this.followTargetPosition.x - this.model.position.x,
-                0,
-                this.followTargetPosition.z - this.model.position.z
-            )
-
-        if(this.direction.lengthSq() > 1e-8)
-        {
-            this.direction.normalize()
-            this.updateFacingFromDirection(this.direction, deltaSeconds)
-        }
+        this.updateFacingTowardsPlayer(deltaSeconds)
     }
 
     updateIdleMotion(elapsed, deltaSeconds, bobOffset)
@@ -918,9 +931,23 @@ export default class Bloom
         this.model.position.z = this.railAnchorPosition.z
         this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
-        this.direction.set(-Math.sin(angle), 0, Math.cos(angle))
         this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
-        this.updateFacingFromDirection(this.direction, deltaSeconds)
+        if(this.updateFacingTowardsPlayer(deltaSeconds))
+        {
+            return
+        }
+
+        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
+        if(this.movementDelta.lengthSq() > minFacingMovementStepSq)
+        {
+            this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
+            return
+        }
+
+        if(this.lastFacingDirection.lengthSq() > 1e-8)
+        {
+            this.updateFacingFromDirection(this.lastFacingDirection, deltaSeconds)
+        }
     }
 
     resolveFollowTargetPosition()
@@ -1078,30 +1105,62 @@ export default class Bloom
         }
 
         const targetYaw = Math.atan2(direction.x, direction.z)
-        const currentYaw = this.model.rotation.y - this.baseYaw
-        const deltaYaw = Math.atan2(Math.sin(targetYaw - currentYaw), Math.cos(targetYaw - currentYaw))
+        const rawCurrentYaw = this.model.rotation.y - this.baseYaw
+        const currentYaw = Math.atan2(Math.sin(rawCurrentYaw), Math.cos(rawCurrentYaw))
+        const deltaYaw = Math.atan2(
+            Math.sin(targetYaw - currentYaw),
+            Math.cos(targetYaw - currentYaw)
+        )
         const rotationAlpha = 1 - Math.exp(-this.tuning.lookTurnSpeed * Math.max(0, deltaSeconds))
-        this.model.rotation.y = this.baseYaw + currentYaw + (deltaYaw * rotationAlpha)
+        const unclampedYawStep = deltaYaw * rotationAlpha
+        const maxYawStep = (Math.PI * 1.25) * Math.max(0, deltaSeconds)
+        const clampedYawStep = THREE.MathUtils.clamp(unclampedYawStep, -maxYawStep, maxYawStep)
+        this.model.rotation.y = this.baseYaw + currentYaw + clampedYawStep
+        this.lastFacingDirection.copy(direction).normalize()
     }
 
     updateFacingTowardsPlayer(deltaSeconds)
     {
         const playerTarget = this.follow.target ?? this.experience?.player ?? null
-        if(!this.model || !(playerTarget?.position instanceof THREE.Vector3))
+        if(!this.model)
         {
             return false
         }
 
-        this.direction
-            .set(
-                this.model.position.x - playerTarget.position.x,
-                0,
-                this.model.position.z - playerTarget.position.z
-            )
-
-        if(this.direction.lengthSq() <= 1e-8)
+        if(playerTarget?.position instanceof THREE.Vector3)
+        {
+            this.direction
+                .set(
+                    playerTarget.position.x - this.model.position.x,
+                    0,
+                    playerTarget.position.z - this.model.position.z
+                )
+        }
+        else if(this.resolveFollowTargetPosition())
+        {
+            this.direction
+                .set(
+                    this.followTargetPosition.x - this.model.position.x,
+                    0,
+                    this.followTargetPosition.z - this.model.position.z
+                )
+        }
+        else
         {
             return false
+        }
+
+        const minDistanceSq = BLOOM_FACE_PLAYER_MIN_DISTANCE * BLOOM_FACE_PLAYER_MIN_DISTANCE
+        const distanceSq = this.direction.lengthSq()
+        if(distanceSq <= minDistanceSq)
+        {
+            if(this.lastFacingDirection.lengthSq() <= 1e-8)
+            {
+                return false
+            }
+
+            this.updateFacingFromDirection(this.lastFacingDirection, deltaSeconds)
+            return true
         }
 
         this.direction.normalize()

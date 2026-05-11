@@ -23,8 +23,8 @@ const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
 const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
 const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 const SCALE_EPSILON = 1e-5
-const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_\d+$/i
-const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_\d+$/i
+const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
+const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_nul_\d+$/i
 
 export default class MapModel
 {

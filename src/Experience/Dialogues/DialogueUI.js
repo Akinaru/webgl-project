@@ -10,6 +10,7 @@ export default class DialogueUI
         this.visible = false
         this.choiceCursorMode = false
         this.cursorVisible = false
+        this.hintProgressTimer = null
         this.virtualCursorPosition = {
             x: window.innerWidth * 0.5,
             y: window.innerHeight * 0.5
@@ -75,7 +76,7 @@ export default class DialogueUI
             if(event.code === 'Enter' && !this.dialogueManager.isWaitingChoice())
             {
                 event.preventDefault()
-                this.dialogueManager.continue()
+                this.dialogueManager.skipCurrentNode?.()
             }
         }
 
@@ -221,7 +222,7 @@ export default class DialogueUI
         }
 
         this.setChoiceCursorMode(false)
-        this.hint.textContent = 'Entrer pour continuer'
+        this.updateContinueHint()
     }
 
     show()
@@ -234,6 +235,7 @@ export default class DialogueUI
         this.visible = true
         this.root.classList.add('is-visible')
         document.body.classList.add('is-dialogue-open')
+        this.startHintProgressLoop()
     }
 
     hide()
@@ -247,6 +249,51 @@ export default class DialogueUI
         this.root.classList.remove('is-visible')
         document.body.classList.remove('is-dialogue-open')
         this.setChoiceCursorMode(false)
+        this.stopHintProgressLoop()
+    }
+
+    startHintProgressLoop()
+    {
+        this.stopHintProgressLoop()
+
+        this.hintProgressTimer = window.setInterval(() =>
+        {
+            if(!this.visible || this.dialogueManager.isWaitingChoice())
+            {
+                return
+            }
+
+            this.updateContinueHint()
+        }, 50)
+    }
+
+    stopHintProgressLoop()
+    {
+        if(this.hintProgressTimer !== null)
+        {
+            window.clearInterval(this.hintProgressTimer)
+            this.hintProgressTimer = null
+        }
+    }
+
+    updateContinueHint()
+    {
+        const continueState = this.dialogueManager.getContinuePromptState?.() ?? { locked: false, progress: 1 }
+        const progress = Number.isFinite(continueState.progress)
+            ? Math.max(0, Math.min(1, continueState.progress))
+            : 0
+
+        this.hint.textContent = 'Cliquer sur la touche Entrer pour continuer'
+        if(continueState.locked === true)
+        {
+            this.hint.textContent = 'Cliquer sur la touche Entrer pour passer au dialogue suivant'
+        }
+        else
+        {
+            this.hint.textContent = 'Cliquer sur la touche Entrer pour passer au dialogue suivant'
+        }
+        this.hint.classList.toggle('is-locked', continueState.locked === true)
+        this.hint.style.setProperty('--dialogue-hint-progress', `${progress}`)
     }
 
     setChoiceCursorMode(isEnabled)
@@ -360,6 +407,7 @@ export default class DialogueUI
 
     destroy()
     {
+        this.stopHintProgressLoop()
         this.inputs?.off?.('keydown.dialogueUI')
         this.inputs?.off?.('mousemove.dialogueUI')
         this.inputs?.off?.('mousedown.dialogueUI')

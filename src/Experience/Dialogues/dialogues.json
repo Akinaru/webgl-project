@@ -118,6 +118,24 @@
         }
       }
     },
+    "recuperation_tuyaux": {
+      "key": "recuperation_tuyaux",
+      "once": false,
+      "startNode": "recuperation_006",
+      "nodes": {
+        "recuperation_006": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPlus tu es efficace, moins de gouttes d’eau seront perdues.",
+          "next": "recuperation_tuyaux_end",
+          "actions": []
+        },
+        "recuperation_tuyaux_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
     "recyclage_1": {
       "key": "recyclage_1",
       "once": false,

@@ -273,7 +273,8 @@ export default class SoundManager
         const sourceNode = context.createBufferSource()
         sourceNode.buffer = buffer
         sourceNode.loop = Boolean(definition.loop)
-        sourceNode.playbackRate.value = Math.max(0.05, playbackRate * definition.playbackRate)
+        const effectivePlaybackRate = Math.max(0.05, playbackRate * definition.playbackRate)
+        sourceNode.playbackRate.value = effectivePlaybackRate
 
         const gainNode = context.createGain()
         const targetGain = Math.max(0, definition.volume * volume)
@@ -295,6 +296,18 @@ export default class SoundManager
             soundName,
             channel: definition.channel || 'default',
             sourceType: 'buffer',
+            startedAtMs: performance.now(),
+            expectedDurationMs: sourceNode.loop ? null : ((buffer.duration / effectivePlaybackRate) * 1000),
+            getProgress: ({ startedAtMs, expectedDurationMs }) =>
+            {
+                if(!Number.isFinite(startedAtMs) || !Number.isFinite(expectedDurationMs) || expectedDurationMs <= 0)
+                {
+                    return null
+                }
+
+                const elapsed = performance.now() - startedAtMs
+                return Math.max(0, Math.min(1, elapsed / expectedDurationMs))
+            },
             defaultFadeOutMs: Number.isFinite(definition.fadeOutMs) ? Math.max(0, definition.fadeOutMs) : 0,
             stop: ({ fadeOutMs = 0 } = {}) =>
             {
@@ -387,6 +400,17 @@ export default class SoundManager
             soundName,
             channel: definition.channel || 'default',
             sourceType: 'htmlAudio',
+            startedAtMs: performance.now(),
+            getProgress: () =>
+            {
+                const duration = audio.duration
+                if(!Number.isFinite(duration) || duration <= 0)
+                {
+                    return null
+                }
+
+                return Math.max(0, Math.min(1, audio.currentTime / duration))
+            },
             stop: () =>
             {
                 audio.pause()
@@ -422,6 +446,9 @@ export default class SoundManager
         soundName,
         channel = 'default',
         sourceType,
+        startedAtMs = null,
+        expectedDurationMs = null,
+        getProgress = null,
         defaultFadeOutMs = 0,
         stop,
         cleanup
@@ -434,6 +461,9 @@ export default class SoundManager
             soundName,
             channel,
             sourceType,
+            startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : null,
+            expectedDurationMs: Number.isFinite(expectedDurationMs) ? expectedDurationMs : null,
+            getProgress: typeof getProgress === 'function' ? getProgress : null,
             defaultFadeOutMs,
             stop,
             cleanup
@@ -484,6 +514,55 @@ export default class SoundManager
         }
 
         return stoppedCount
+    }
+
+    isChannelPlaying(channel = 'default')
+    {
+        if(typeof channel !== 'string' || channel.trim() === '')
+        {
+            return false
+        }
+
+        for(const voice of this.activeVoices.values())
+        {
+            if(voice.channel === channel)
+            {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    getChannelProgress(channel = 'default')
+    {
+        if(typeof channel !== 'string' || channel.trim() === '')
+        {
+            return {
+                isPlaying: false,
+                progress: 1
+            }
+        }
+
+        const voices = Array.from(this.activeVoices.values())
+            .filter((voice) => voice.channel === channel)
+            .sort((a, b) => (b.startedAtMs ?? 0) - (a.startedAtMs ?? 0))
+
+        if(voices.length === 0)
+        {
+            return {
+                isPlaying: false,
+                progress: 1
+            }
+        }
+
+        const activeVoice = voices[0]
+        const progress = activeVoice.getProgress?.(activeVoice)
+
+        return {
+            isPlaying: true,
+            progress: Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : null
+        }
     }
 
     normalizeDialogueDefinition(definition)

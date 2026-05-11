@@ -22,6 +22,8 @@ import {
 } from './SceneRecuperationWorld.constants.js'
 
 let recuperationWorldInstanceIndex = 0
+const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation'
+const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_tuyaux'
 
 export default class SceneRecuperationWorld
 {
@@ -38,6 +40,8 @@ export default class SceneRecuperationWorld
         this.materialTestElapsed = 0
         this.currentMaterialSelection = null
         this.isMaterialChoiceValidated = false
+        this.hasStartedRecuperationDialogue = false
+        this.hasStartedArrivalDialogue = false
 
         if(this.resources.isReady)
         {
@@ -136,11 +140,7 @@ export default class SceneRecuperationWorld
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
-
-        // Lancement du dialogue après un court délai
-        setTimeout(() => {
-            this.experience.dialogueManager?.startByKey?.('recuperation')
-        }, 2500)
+        this.startArrivalDialogue()
     }
 
     setDebug()
@@ -316,6 +316,22 @@ export default class SceneRecuperationWorld
 
         this.hasStartedRoom2Flow = true
         this.tubeWaterController?.startFlowAnimation?.()
+        if(!this.hasStartedRecuperationDialogue)
+        {
+            this.hasStartedRecuperationDialogue = true
+            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY)
+        }
+    }
+
+    startArrivalDialogue()
+    {
+        if(this.hasStartedArrivalDialogue)
+        {
+            return
+        }
+
+        this.hasStartedArrivalDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_ARRIVAL_DIALOGUE_KEY)
     }
 
     checkPuzzleCompletionReturn()
@@ -648,6 +664,7 @@ export default class SceneRecuperationWorld
         this.nextWallCrossTeleportAt = 0
         this.room2FlowTrigger = null
         this.hasStartedRoom2Flow = false
+        this.hasStartedRecuperationDialogue = false
         this.currentMaterialSelection = null
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
