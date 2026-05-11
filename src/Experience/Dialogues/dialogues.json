@@ -308,28 +308,48 @@
           "speaker": "Bloom",
           "text": "👨‍🔬 SI TU ES INVENTEUR :\nTu as choisi la carapace scarabé. Tu as simulé la pluie plusieurs fois. Tu as utilisé peu de tuyaux, mais avec précision. Tu as nettoyé tous les nanobots, rapidement.\nTu es celui qui imagine les solutions de demain. Qui analyse, qui innove, qui construit les circuits de l’avenir.\nBienvenue, Inventeur. Altera a besoin de ton esprit.",
           "next": "resultat_end",
-          "actions": []
+          "actions": [
+            {
+              "type": "showDistributionResult",
+              "metier": "INVENTEUR"
+            }
+          ]
         },
         "resultat_travailleur": {
           "type": "line",
           "speaker": "Bloom",
           "text": "👷 SI TU ES TRAVAILLEUR :\nTu as choisi le verre. Tu as utilisé beaucoup de tuyaux. Tu as planté peu de champignons, mais tu as nettoyé les nanobots avec acharnement. Tu as respecté les quotas, sans dépasser.\nTu es celui qui met les mains dans le cambouis. Qui installe, qui vide, qui transporte. Sans toi, rien ne fonctionne.\nBienvenue, Travailleur. Altera repose sur tes épaules.",
           "next": "resultat_end",
-          "actions": []
+          "actions": [
+            {
+              "type": "showDistributionResult",
+              "metier": "TRAVAILLEUR"
+            }
+          ]
         },
         "resultat_botaniste": {
           "type": "line",
           "speaker": "Bloom",
           "text": "🌿 SI TU ES BOTANISTE :\nTu as regardé l’arbre au début. Tu as planté beaucoup de champignons, sur la terre. Tu as pris ton temps pour la distribution.\nTu es celui qui écoute la nature. Qui plante, qui trie, qui protège la faune et la flore. Tu sais que l’eau vit grâce à la vie.\nBienvenue, Botaniste. Altera respire grâce à toi.",
           "next": "resultat_end",
-          "actions": []
+          "actions": [
+            {
+              "type": "showDistributionResult",
+              "metier": "BOTANISTE"
+            }
+          ]
         },
         "resultat_meneur": {
           "type": "line",
           "speaker": "Bloom",
           "text": "🧭 SI TU ES MENEUR :\nTu as simulé la pluie zero fois - tu as préféré agir. Tu as dirigé les tuyaux avec rapidité. Tu as distribué l’eau sans dépasser, en temps record.\nTu es celui qui organise, qui décide, qui répartit. Tu gères les crises, tu inspires les autres, tu assures l’équité.\nBienvenue, Meneur. Altera te suit.",
           "next": "resultat_end",
-          "actions": []
+          "actions": [
+            {
+              "type": "showDistributionResult",
+              "metier": "MENEUR"
+            }
+          ]
         },
         "resultat_end": {
           "type": "end",

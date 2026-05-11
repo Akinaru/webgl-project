@@ -155,6 +155,23 @@ export default class MetierManager extends EventEmitter
         return values
     }
 
+    getSortedMetiers()
+    {
+        return this.getAll()
+            .map((metier) => ({
+                id: metier.id,
+                label: metier.label,
+                color: metier.color,
+                value: metier.value
+            }))
+            .sort((a, b) => b.value - a.value)
+    }
+
+    getLeadingMetier()
+    {
+        return this.getSortedMetiers()[0] ?? null
+    }
+
     setDebug()
     {
         if(!this.debug.isDebugEnabled)

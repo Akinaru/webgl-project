@@ -73,6 +73,10 @@ export default class DialogueActionExecutor
                 this.moveBloomToRailNode(action)
                 break
 
+            case 'showDistributionResult':
+                this.showDistributionResult(action)
+                break
+
             case 'emit':
                 if(typeof action.event === 'string' && action.event.trim() !== '')
                 {
@@ -145,5 +149,28 @@ export default class DialogueActionExecutor
         {
             console.warn(`[Dialogue] Node rail introuvable pour Bloom: ${nodeId}`)
         }
+    }
+
+    showDistributionResult(action = {})
+    {
+        const currentWorld = this.experience.sceneManager?.currentScene?.world ?? null
+        const resultDisplay = currentWorld?.resultDisplay ?? null
+        if(!resultDisplay || typeof resultDisplay.showMetierResult !== 'function')
+        {
+            console.warn('[Dialogue] Result display indisponible pour showDistributionResult')
+            return
+        }
+
+        const metierId = action.metier
+            ? this.resolveMetierId(action.metier)
+            : (this.experience.metierManager?.getLeadingMetier?.()?.id ?? null)
+
+        if(!metierId)
+        {
+            console.warn('[Dialogue] Metier introuvable pour showDistributionResult')
+            return
+        }
+
+        resultDisplay.showMetierResult(metierId)
     }
 }

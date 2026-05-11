@@ -4,9 +4,7 @@ import { DISTRIBUTION_CHANNEL_ORDER } from './SceneDistributionFlow.constants.js
 
 const CANVAS_WIDTH = 1024
 const CANVAS_HEIGHT = 512
-const BACKGROUND_COLOR = '#06121b'
-const PANEL_COLOR = '#0d2333'
-const PANEL_BORDER_COLOR = '#1f4054'
+const BACKGROUND_COLOR = '#000000'
 const TITLE_COLOR = '#dff2ff'
 const SUBTITLE_COLOR = '#7ba7c4'
 const TRACK_COLOR = '#163246'
@@ -35,7 +33,8 @@ export default class SceneDistributionGaugeDisplay
         this.debugParentFolder = debugParentFolder
         this.settings = {
             screenScaleX: 1.01,
-            screenScaleY: 1.01
+            screenScaleY: 1.01,
+            fitMode: 'contain'
         }
         this.state = {
             isSolved: false,
@@ -59,6 +58,9 @@ export default class SceneDistributionGaugeDisplay
         this.texture.colorSpace = THREE.SRGBColorSpace
         this.texture.minFilter = THREE.LinearFilter
         this.texture.magFilter = THREE.LinearFilter
+        this.texture.generateMipmaps = false
+        this.texture.wrapS = THREE.ClampToEdgeWrapping
+        this.texture.wrapT = THREE.ClampToEdgeWrapping
         this.applyTextureTransform()
     }
 
@@ -77,6 +79,53 @@ export default class SceneDistributionGaugeDisplay
             (1 + scaleY) * 0.5
         )
         this.texture.needsUpdate = true
+    }
+
+    autoFitToScreen()
+    {
+        const primaryEntry = this.screenEntries[0] ?? null
+        const mesh = primaryEntry?.mesh ?? null
+        if(!(mesh instanceof THREE.Mesh))
+        {
+            return
+        }
+
+        const bounds = new THREE.Box3().setFromObject(mesh)
+        const size = bounds.getSize(new THREE.Vector3())
+        const meshAspect = size.x > 1e-6 && size.y > 1e-6
+            ? size.x / size.y
+            : 1
+        const textureAspect = CANVAS_WIDTH / CANVAS_HEIGHT
+
+        let scaleX = 1
+        let scaleY = 1
+
+        if(this.settings.fitMode === 'cover')
+        {
+            if(meshAspect > textureAspect)
+            {
+                scaleX = meshAspect / textureAspect
+            }
+            else
+            {
+                scaleY = textureAspect / meshAspect
+            }
+        }
+        else
+        {
+            if(meshAspect > textureAspect)
+            {
+                scaleY = textureAspect / meshAspect
+            }
+            else
+            {
+                scaleX = meshAspect / textureAspect
+            }
+        }
+
+        this.settings.screenScaleX = scaleX
+        this.settings.screenScaleY = scaleY
+        this.applyTextureTransform()
     }
 
     setScreens()
@@ -98,6 +147,7 @@ export default class SceneDistributionGaugeDisplay
             }
 
             runtimeMaterial.color?.set?.('#ffffff')
+            runtimeMaterial.transparent = true
             if('map' in runtimeMaterial)
             {
                 runtimeMaterial.map = this.texture
@@ -120,6 +170,7 @@ export default class SceneDistributionGaugeDisplay
             mesh: primaryScreen,
             materials: runtimeMaterials
         })
+        this.autoFitToScreen()
     }
 
     resolvePrimaryScreenMesh(screenMeshes = [])
@@ -180,13 +231,6 @@ export default class SceneDistributionGaugeDisplay
         context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
         context.fillStyle = BACKGROUND_COLOR
         context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
-        context.fillStyle = PANEL_COLOR
-        context.strokeStyle = PANEL_BORDER_COLOR
-        context.lineWidth = 4
-        this.roundRect(context, 36, 36, CANVAS_WIDTH - 72, CANVAS_HEIGHT - 72, 28)
-        context.fill()
-        context.stroke()
 
         context.fillStyle = TITLE_COLOR
         context.font = '700 44px sans-serif'
@@ -338,12 +382,28 @@ export default class SceneDistributionGaugeDisplay
 
         this.debug.addBinding(this.debugFolder, this.settings, 'screenScaleY', {
             label: 'screen scale Y',
-            min: 1,
-            max: 1.2,
+            min: 0.2,
+            max: 2,
             step: 0.001
         }).on('change', () =>
         {
             this.applyTextureTransform()
+        })
+
+        this.debug.addBinding(this.debugFolder, this.settings, 'fitMode', {
+            label: 'fit mode',
+            options: {
+                contain: 'contain',
+                cover: 'cover'
+            }
+        })
+
+        this.debug.addButton(this.debugFolder, {
+            title: 'Auto-fit screen',
+            onClick: () =>
+            {
+                this.autoFitToScreen()
+            }
         })
     }
 
