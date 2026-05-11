@@ -96,11 +96,12 @@ export default class MapWorld
         this.wasInsideBush = false
         this.bushTriggerCooldownMs = 0
         this.hasBoundBloomContext = false
+        this.hasTriggeredIntroTeleport = false
         this.onDialogueEnd = ({ key } = {}) =>
         {
             if(key === 'intro')
             {
-                this.refreshTeleportAvailability()
+                this.teleportToRecuperationAfterIntro()
             }
         }
         this.experience.dialogueManager?.on?.('end.mapWorldTeleport', this.onDialogueEnd)
@@ -518,6 +519,18 @@ export default class MapWorld
         }
     }
 
+    teleportToRecuperationAfterIntro()
+    {
+        if(this.hasTriggeredIntroTeleport)
+        {
+            return
+        }
+
+        this.hasTriggeredIntroTeleport = true
+        this.isTeleporting = true
+        this.experience.sceneManager?.switchTo?.(SceneEnum.RECUPERATION)
+    }
+
     refreshTeleportAvailability()
     {
         const introCompleted = this.experience.dialogueManager?.hasFlag?.(INTRO_DIALOGUE_COMPLETED_FLAG) === true
@@ -670,6 +683,7 @@ export default class MapWorld
         this.teleportZones = null
 
         this.isSetUp = false
+        this.hasTriggeredIntroTeleport = false
     }
 
     getFootstepPlaybackRate(soundName = null)
