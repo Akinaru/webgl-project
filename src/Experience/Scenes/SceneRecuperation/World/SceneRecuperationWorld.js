@@ -22,6 +22,8 @@ import {
 } from './SceneRecuperationWorld.constants.js'
 
 let recuperationWorldInstanceIndex = 0
+const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation'
+const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_tuyaux'
 
 export default class SceneRecuperationWorld
 {
@@ -39,6 +41,7 @@ export default class SceneRecuperationWorld
         this.currentMaterialSelection = null
         this.isMaterialChoiceValidated = false
         this.hasStartedRecuperationDialogue = false
+        this.hasStartedArrivalDialogue = false
 
         if(this.resources.isReady)
         {
@@ -137,6 +140,7 @@ export default class SceneRecuperationWorld
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
+        this.startArrivalDialogue()
     }
 
     setDebug()
@@ -315,8 +319,19 @@ export default class SceneRecuperationWorld
         if(!this.hasStartedRecuperationDialogue)
         {
             this.hasStartedRecuperationDialogue = true
-            this.experience.dialogueManager?.startByKey?.('recuperation')
+            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY)
         }
+    }
+
+    startArrivalDialogue()
+    {
+        if(this.hasStartedArrivalDialogue)
+        {
+            return
+        }
+
+        this.hasStartedArrivalDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_ARRIVAL_DIALOGUE_KEY)
     }
 
     checkPuzzleCompletionReturn()

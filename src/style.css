@@ -1048,6 +1048,7 @@ body.is-recuperation-material-cursor .dialogue__cursor
 
 .dialogue__hint
 {
+    --dialogue-hint-progress: 1;
     margin-top: 0.72rem;
     width: fit-content;
     max-width: min(92vw, 680px);
@@ -1068,6 +1069,31 @@ body.is-recuperation-material-cursor .dialogue__cursor
     letter-spacing: 0.01em;
     text-align: center;
     pointer-events: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.dialogue__hint::before
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: calc(var(--dialogue-hint-progress) * 100%);
+    background: linear-gradient(90deg, rgba(125, 212, 255, 0.3), rgba(201, 242, 255, 0.46));
+    pointer-events: none;
+    z-index: 0;
+    transition: width 80ms linear;
+}
+
+.dialogue__hint > *
+{
+    position: relative;
+    z-index: 1;
+}
+
+.dialogue__hint.is-locked
+{
+    color: rgba(231, 245, 255, 0.92);
 }
 
 body.is-dialogue-cursor,

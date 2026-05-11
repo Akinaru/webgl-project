@@ -21,6 +21,8 @@ export default class DialogueManager extends EventEmitter
         this.flags = {}
         this.queue = []
         this.state = this.createEmptyState()
+        this.autoAdvancePollTimer = null
+        this.autoAdvanceDelayTimer = null
 
         this.setDebug()
     }
@@ -35,7 +37,9 @@ export default class DialogueManager extends EventEmitter
             node: null,
             waitingChoice: false,
             choices: [],
-            context: {}
+            context: {},
+            continueLocked: false,
+            continueProgress: 1
         }
     }
 
@@ -148,10 +152,11 @@ export default class DialogueManager extends EventEmitter
         const autoSoundPath = node.type === 'line' ? `sounds/dialogues/${this.state.dialogueKey}/${nextNodeId}.mp3` : null
         const soundToPlay = node.sound || (autoSoundPath ? { path: autoSoundPath, name: nextNodeId } : null)
 
+        let hasStartedNodeAudio = false
         if(soundToPlay)
         {
             this.experience?.sound?.unlock?.()
-            this.experience?.sound?.playDialogue?.(soundToPlay)
+            hasStartedNodeAudio = this.experience?.sound?.playDialogue?.(soundToPlay) === true
         }
         else if(!this.state.dialogue?.sound)
         {
@@ -163,10 +168,12 @@ export default class DialogueManager extends EventEmitter
         switch(node.type)
         {
             case 'line':
+                this.configureContinueGateForLine({ hasStartedNodeAudio })
                 this.emitState()
                 break
 
             case 'choice':
+                this.unlockContinueGate()
                 this.prepareChoices(node)
                 this.emitState()
                 break
@@ -219,6 +226,31 @@ export default class DialogueManager extends EventEmitter
         {
             return
         }
+
+        if(!this.canContinueCurrentNode())
+        {
+            return
+        }
+
+        const next = this.state.node?.next
+        if(next)
+        {
+            this.goToNode(next)
+            return
+        }
+
+        this.endCurrentDialogue()
+    }
+
+    skipCurrentNode()
+    {
+        if(!this.isRunning() || this.state.waitingChoice)
+        {
+            return
+        }
+
+        this.clearAutoAdvanceTimers()
+        this.experience?.sound?.stopDialogue?.()
 
         const next = this.state.node?.next
         if(next)
@@ -278,6 +310,8 @@ export default class DialogueManager extends EventEmitter
             return
         }
 
+        this.clearAutoAdvanceTimers()
+
         if(node?.type === 'end')
         {
             this.actionExecutor.executeMany(node.actions, this.createActionContext())
@@ -312,9 +346,118 @@ export default class DialogueManager extends EventEmitter
 
     emitState()
     {
+        this.refreshContinueGateState()
         this.trigger('state', [{
             ...this.state
         }])
+    }
+
+    configureContinueGateForLine({ hasStartedNodeAudio = false } = {})
+    {
+        this.state.continueLocked = Boolean(hasStartedNodeAudio)
+        this.state.continueProgress = this.state.continueLocked ? 0 : 1
+        this.refreshContinueGateState()
+        this.scheduleAutoAdvanceForLine()
+    }
+
+    unlockContinueGate()
+    {
+        this.state.continueLocked = false
+        this.state.continueProgress = 1
+    }
+
+    refreshContinueGateState()
+    {
+        if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+        {
+            this.unlockContinueGate()
+            return
+        }
+
+        if(!this.state.continueLocked)
+        {
+            this.state.continueProgress = 1
+            return
+        }
+
+        const channelPlayback = this.experience?.sound?.getChannelProgress?.('dialogue')
+        const isPlaying = channelPlayback?.isPlaying === true
+
+        if(!isPlaying)
+        {
+            this.unlockContinueGate()
+            return
+        }
+
+        this.state.continueProgress = Number.isFinite(channelPlayback?.progress)
+            ? channelPlayback.progress
+            : this.state.continueProgress
+    }
+
+    canContinueCurrentNode()
+    {
+        this.refreshContinueGateState()
+        return this.state.continueLocked !== true
+    }
+
+    getContinuePromptState()
+    {
+        this.refreshContinueGateState()
+        return {
+            locked: this.state.continueLocked === true,
+            progress: Number.isFinite(this.state.continueProgress) ? this.state.continueProgress : 0
+        }
+    }
+
+    scheduleAutoAdvanceForLine()
+    {
+        this.clearAutoAdvanceTimers()
+        if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+        {
+            return
+        }
+
+        this.autoAdvancePollTimer = window.setInterval(() =>
+        {
+            if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+            {
+                this.clearAutoAdvanceTimers()
+                return
+            }
+
+            this.refreshContinueGateState()
+            if(this.state.continueLocked)
+            {
+                return
+            }
+
+            this.clearAutoAdvanceTimers()
+            this.autoAdvanceDelayTimer = window.setTimeout(() =>
+            {
+                this.autoAdvanceDelayTimer = null
+                if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+                {
+                    return
+                }
+
+                this.continue()
+            }, 1000)
+        }, 50)
+    }
+
+    clearAutoAdvanceTimers()
+    {
+        if(this.autoAdvancePollTimer !== null)
+        {
+            window.clearInterval(this.autoAdvancePollTimer)
+            this.autoAdvancePollTimer = null
+        }
+
+        if(this.autoAdvanceDelayTimer !== null)
+        {
+            window.clearTimeout(this.autoAdvanceDelayTimer)
+            this.autoAdvanceDelayTimer = null
+        }
     }
 
     createActionContext(extra = {})
@@ -405,6 +548,7 @@ export default class DialogueManager extends EventEmitter
     destroy()
     {
         this.experience?.sound?.stopDialogue?.()
+        this.clearAutoAdvanceTimers()
         this.ui.destroy()
         this.debugFolder?.dispose?.()
         this.queue.length = 0
