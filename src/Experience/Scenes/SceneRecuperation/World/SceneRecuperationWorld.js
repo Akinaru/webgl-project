@@ -17,6 +17,7 @@ import SceneRecuperationRoom2Trigger from './SceneRecuperationRoom2Trigger.js'
 import { setupSceneRecuperationWorldDebug } from './SceneRecuperationWorld.debug.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
+import SceneRecuperationScoring from './SceneRecuperationScoring.js'
 import {
     EXIT_TELEPORT_INACTIVE_COLOR,
     FINAL_TUBE_MODULE_NAME
@@ -115,6 +116,9 @@ export default class SceneRecuperationWorld
         this.tubeWaterController = new SceneRecuperationTubeWaterController({
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
+        })
+        this.scoring = new SceneRecuperationScoring({
+            getTubeWaterController: () => this.tubeWaterController
         })
         this.collisionDebug = new SceneRecuperationCollisionDebug({
             player: this.player,
@@ -238,6 +242,7 @@ export default class SceneRecuperationWorld
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
         const result = this.buildMaterialTestResult(this.currentMaterialSelection)
+        this.scoring?.markMaterialTest?.(this.currentMaterialSelection?.key ?? null)
         this.television?.setTestResult?.(result)
     }
 
@@ -327,6 +332,7 @@ export default class SceneRecuperationWorld
 
     handleRoom2Enter()
     {
+        this.scoring?.markTubePuzzleStart?.()
         this.tubeWaterController?.startFlowAnimation?.()
         if(!this.hasStartedRecuperationDialogue)
         {
@@ -348,6 +354,7 @@ export default class SceneRecuperationWorld
             return
         }
 
+        this.scoring?.finalize?.()
         this.isReturningToMap = true
         this.experience.sceneManager?.switchTo?.(SceneEnum.DISTRIBUTION)
     }
@@ -593,6 +600,12 @@ export default class SceneRecuperationWorld
         {
             this.materiau.destroy?.()
             this.materiau = null
+        }
+
+        if(this.scoring)
+        {
+            this.scoring.destroy?.()
+            this.scoring = null
         }
 
         if(this.tubeWaterController)
