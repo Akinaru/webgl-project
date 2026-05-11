@@ -1,4 +1,9 @@
 {
+  "runtime": {
+    "tutorial": {
+      "completedDialogueKey": "intro"
+    }
+  },
   "dialogues": {
     "intro": {
       "key": "intro",
