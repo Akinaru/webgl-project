@@ -522,6 +522,12 @@ export default class MapModel
         referenceHeight
     } = {})
     {
+        const normalizedPlacementName = String(placement?.name || '').trim().toLowerCase()
+        if(normalizedPlacementName.includes('_nul'))
+        {
+            return 1
+        }
+
         if(!(placement instanceof THREE.Mesh))
         {
             return 1
