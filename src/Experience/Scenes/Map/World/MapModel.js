@@ -23,6 +23,8 @@ const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
 const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
 const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 const SCALE_EPSILON = 1e-5
+const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_\d+$/i
+const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_\d+$/i
 
 export default class MapModel
 {
@@ -115,9 +117,12 @@ export default class MapModel
 
             if(this.isBushSocketMesh(child))
             {
-                child.visible = false
-                child.castShadow = false
-                child.receiveShadow = false
+                if(this.isExteriorBushSocketMesh(child))
+                {
+                    child.visible = false
+                    child.castShadow = false
+                    child.receiveShadow = false
+                }
             }
 
             if(this.isPlanMeshName(child.name))
@@ -176,8 +181,19 @@ export default class MapModel
 
     isBushSocketMesh(mesh)
     {
-        const name = (mesh?.name || '').toLowerCase()
-        return name.includes('socle_bush')
+        return this.isExteriorBushSocketMesh(mesh) || this.isInteriorBushSocketMesh(mesh)
+    }
+
+    isExteriorBushSocketMesh(mesh)
+    {
+        const name = String(mesh?.name || '').trim()
+        return BUSH_SOCKET_EXTERIOR_NAME_PATTERN.test(name)
+    }
+
+    isInteriorBushSocketMesh(mesh)
+    {
+        const name = String(mesh?.name || '').trim()
+        return BUSH_SOCKET_INTERIOR_NAME_PATTERN.test(name)
     }
 
     setupPalmTreeInstances()
@@ -1924,8 +1940,7 @@ export default class MapModel
                 return
             }
 
-            const name = (child.name || '').toLowerCase()
-            if(name.includes('socle_bush'))
+            if(this.isBushSocketMesh(child))
             {
                 sockets.push(child)
             }
