@@ -325,6 +325,10 @@ export default class DialogueManager extends EventEmitter
         const endedKey = this.state.dialogueKey
         this.experience?.sound?.stopDialogue?.()
         this.state = this.createEmptyState()
+        if(typeof endedKey === 'string' && endedKey.trim() !== '')
+        {
+            this.setFlag(`dialogue.completed.${endedKey}`, true)
+        }
 
         this.trigger('end', [{
             key: endedKey
