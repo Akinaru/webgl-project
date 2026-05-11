@@ -15,6 +15,10 @@ const DISABLED_BUTTON_COLOR = '#243444'
 const BUTTON_ENABLED_LIFT = 0.02
 const BUTTON_PRESS_DEPTH = 0.02
 const BUTTON_RELEASE_DURATION = 0.12
+const BUTTON_TEXTURE_BY_KEY = Object.freeze({
+    test: 'recuperationSimulationButtonTexture',
+    validate: 'recuperationValidationButtonTexture'
+})
 
 export default class Television
 {
@@ -27,6 +31,7 @@ export default class Television
     {
         this.experience = new Experience()
         this.debug = this.experience.debug
+        this.resources = this.experience.resources
         this.recuperationModel = recuperationModel
         this.debugParentFolder = debugParentFolder
         this.onTestRequest = typeof onTestRequest === 'function' ? onTestRequest : null
@@ -147,11 +152,11 @@ export default class Television
         this.rightButton = this.recuperationModel?.getFirstObjectForNameTokens?.(['button_right'], { exact: true }) ?? null
 
         this.buttonStates.clear()
-        this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR)
-        this.registerButton('validate', this.rightButton, VALIDATE_BUTTON_COLOR)
+        this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.test)
+        this.registerButton('validate', this.rightButton, VALIDATE_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.validate)
     }
 
-    registerButton(key, object, colorHex)
+    registerButton(key, object, colorHex, textureResourceName = '')
     {
         if(!(object instanceof THREE.Mesh))
         {
@@ -161,11 +166,18 @@ export default class Television
         const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
         const runtimeMaterials = sourceMaterials.map((material) => material?.clone?.() ?? material)
         object.material = Array.isArray(object.material) ? runtimeMaterials : runtimeMaterials[0]
+        const texture = this.getButtonTexture(textureResourceName)
+
+        if(texture)
+        {
+            this.applyButtonTexture(runtimeMaterials, texture)
+        }
 
         this.buttonStates.set(key, {
             key,
             object,
             runtimeMaterials,
+            texture,
             colorHex,
             baseY: object.position.y,
             pressOffsetY: 0,
@@ -174,6 +186,54 @@ export default class Television
             phase: 'idle',
             timer: 0
         })
+    }
+
+    getButtonTexture(resourceName = '')
+    {
+        const normalizedName = typeof resourceName === 'string' ? resourceName.trim() : ''
+        if(normalizedName === '')
+        {
+            return null
+        }
+
+        const texture = this.resources?.items?.[normalizedName] ?? null
+        if(!(texture instanceof THREE.Texture))
+        {
+            return null
+        }
+
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.flipY = false
+        texture.needsUpdate = true
+        return texture
+    }
+
+    applyButtonTexture(materials = [], texture = null)
+    {
+        if(!(texture instanceof THREE.Texture))
+        {
+            return
+        }
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if('map' in material)
+            {
+                material.map = texture
+            }
+            if('emissiveMap' in material)
+            {
+                material.emissiveMap = texture
+            }
+            material.color?.set?.('#ffffff')
+            material.transparent = true
+            material.needsUpdate = true
+        }
     }
 
     setDebug()
@@ -519,14 +579,16 @@ export default class Television
                     continue
                 }
 
+                const hasTexture = state.texture instanceof THREE.Texture
                 const displayColor = state.isEnabled ? state.colorHex : DISABLED_BUTTON_COLOR
-                material.color?.set?.(displayColor)
+                material.color?.set?.(hasTexture ? '#ffffff' : displayColor)
+                material.opacity = state.isEnabled ? 1 : 0.45
                 if(material.emissive)
                 {
-                    material.emissive.set(displayColor)
+                    material.emissive.set(hasTexture ? '#ffffff' : displayColor)
                     material.emissiveIntensity = state.isEnabled
-                        ? (isHovered ? 0.6 : 0.28)
-                        : 0.06
+                        ? (isHovered ? 0.52 : 0.26)
+                        : 0.08
                 }
                 material.needsUpdate = true
             }

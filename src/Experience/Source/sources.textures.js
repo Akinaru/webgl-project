@@ -33,5 +33,15 @@ export default [
         name: 'recuperationWaterDistributionTexture',
         type: 'texture',
         path: 'textures/water/uvWaterDistribution.jpg'
+    },
+    {
+        name: 'recuperationSimulationButtonTexture',
+        type: 'texture',
+        path: 'textures/recuperation/ButtonSimulation.webp'
+    },
+    {
+        name: 'recuperationValidationButtonTexture',
+        type: 'texture',
+        path: 'textures/recuperation/ButtonValidation.webp'
     }
 ]
