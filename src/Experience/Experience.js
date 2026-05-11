@@ -98,7 +98,11 @@ export default class Experience
                 }
 
                 this.hasStartedIntroDialogue = true
-                this.dialogueManager?.startByKey?.('bloom.followup')
+                const configuredDialogueKey = this.dialogueManager?.repository?.getTutorialCompletedDialogueKey?.()
+                if(configuredDialogueKey)
+                {
+                    this.dialogueManager?.startByKey?.(configuredDialogueKey)
+                }
             })
         })
 

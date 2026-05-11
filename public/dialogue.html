@@ -937,6 +937,11 @@
 
       const state = {
         dialogues: {},
+        runtime: {
+          tutorial: {
+            completedDialogueKey: ''
+          }
+        },
         layouts: {},
         file: {
           sourceLabel: 'Aucune source'
@@ -1043,6 +1048,7 @@
           version: 1,
           savedAt: new Date().toISOString(),
           sourceLabel: state.file.sourceLabel,
+          runtime: deepClone(state.runtime),
           dialogues: deepClone(state.dialogues),
           layouts: deepClone(state.layouts)
         })
@@ -1100,10 +1106,12 @@
 
       function applyDialoguesState(dialoguesMap, {
         layouts = null,
+        runtime = null,
         sourceLabel = 'Aucune source',
         persist = true
       } = {}) {
         state.dialogues = normalizeData(dialoguesMap)
+        state.runtime = normalizeRuntimeConfig(runtime)
         if(layouts && typeof layouts === 'object') {
           state.layouts = deepClone(layouts)
           Object.keys(state.dialogues).forEach((key) => {
@@ -1149,6 +1157,7 @@
 
         applyDialoguesState(savedDialogues, {
           layouts: parsed?.layouts,
+          runtime: parsed?.runtime,
           sourceLabel: parsed?.sourceLabel || 'Sauvegarde locale',
           persist: false
         })
@@ -1533,6 +1542,21 @@
           normalized[key] = normalizeDialogue(key, map[key])
         }
         return normalized
+      }
+
+      function normalizeRuntimeConfig(rawRuntime) {
+        const tutorial = rawRuntime?.tutorial && typeof rawRuntime.tutorial === 'object'
+          ? rawRuntime.tutorial
+          : {}
+        const completedDialogueKey = typeof tutorial.completedDialogueKey === 'string'
+          ? tutorial.completedDialogueKey.trim()
+          : ''
+
+        return {
+          tutorial: {
+            completedDialogueKey
+          }
+        }
       }
 
       function currentDialogue() {
@@ -2678,6 +2702,24 @@
         const root = refs.dialogueMetaSection
         root.innerHTML = '<h2>Configuration du dialogue</h2>'
 
+        const tutorialStartSelect = document.createElement('select')
+        tutorialStartSelect.innerHTML = '<option value="">Aucun dialogue</option>'
+        Object.keys(state.dialogues).sort().forEach((key) => {
+          const option = document.createElement('option')
+          option.value = key
+          option.textContent = key
+          tutorialStartSelect.appendChild(option)
+        })
+        tutorialStartSelect.value = state.runtime?.tutorial?.completedDialogueKey || ''
+        tutorialStartSelect.addEventListener('change', () => {
+          state.runtime.tutorial.completedDialogueKey = tutorialStartSelect.value || ''
+        })
+        root.appendChild(createField({
+          label: 'Dialogue lance apres le tutoriel',
+          element: tutorialStartSelect,
+          help: 'Dialogue demarre automatiquement une fois le tutoriel termine.'
+        }))
+
         if(!dialogue) {
           const empty = document.createElement('div')
           empty.className = 'empty'
@@ -3326,6 +3368,7 @@
 
       function exportJson() {
         const payload = {
+          runtime: deepClone(state.runtime),
           dialogues: deepClone(state.dialogues)
         }
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -3370,6 +3413,7 @@
           }
 
           applyDialoguesState(json, {
+            runtime: json?.runtime,
             sourceLabel: `Projet (${loadedPath || 'fichier'})`
           })
 
@@ -3391,6 +3435,7 @@
           try {
             const parsed = JSON.parse(String(reader.result || '{}'))
             applyDialoguesState(parsed, {
+              runtime: parsed?.runtime,
               sourceLabel: `Import (${file.name})`
             })
             setStatus(`Import reussi: ${file.name}`, 'ok')

@@ -2,6 +2,23 @@ import Experience from '../Experience.js'
 import EventEmitter from './EventEmitter.js'
 import { INPUT_ACTION } from '../Inputs/InputBindings.constants.js'
 
+const TUTORIAL_STEP_IDS = Object.freeze({
+    LOOK: 'look',
+    MOVE_FORWARD: 'moveForward',
+    MOVE_BACKWARD: 'moveBackward',
+    MOVE_LEFT: 'moveLeft',
+    MOVE_RIGHT: 'moveRight'
+})
+
+const CODE_LABELS = Object.freeze({
+    Space: 'Espace',
+    Escape: 'Echap',
+    ArrowUp: 'Fleche haut',
+    ArrowDown: 'Fleche bas',
+    ArrowLeft: 'Fleche gauche',
+    ArrowRight: 'Fleche droite'
+})
+
 export const TUTORIAL_STATUS = {
     PENDING: 'pending',
     ACTIVE: 'active',
@@ -15,51 +32,52 @@ export default class Tutoriel extends EventEmitter
         super()
         this.experience = new Experience()
         this.inputs = this.experience.inputs
+        this.keyboardLayoutMap = null
         
         this.status = TUTORIAL_STATUS.PENDING
         this.currentStepIndex = 0
         this.steps = [
             {
-                id: 'look',
+                id: TUTORIAL_STEP_IDS.LOOK,
                 title: 'Regarder',
                 instruction: 'Bougez la souris pour regarder autour de vous',
-                keys: [],
+                action: null,
                 validate: () => true, // Géré par mousemove
                 progress: 0,
                 targetProgress: 1200
             },
             {
-                id: 'moveForward',
+                id: TUTORIAL_STEP_IDS.MOVE_FORWARD,
                 title: 'Avancer',
                 instruction: 'Appuyez sur la touche pour avancer',
-                keys: ['Z'],
+                action: INPUT_ACTION.MOVE_FORWARD,
                 validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_FORWARD),
                 progress: 0,
                 targetProgress: 600
             },
             {
-                id: 'moveBackward',
+                id: TUTORIAL_STEP_IDS.MOVE_BACKWARD,
                 title: 'Reculer',
                 instruction: 'Appuyez sur la touche pour reculer',
-                keys: ['S'],
+                action: INPUT_ACTION.MOVE_BACKWARD,
                 validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_BACKWARD),
                 progress: 0,
                 targetProgress: 600
             },
             {
-                id: 'moveLeft',
+                id: TUTORIAL_STEP_IDS.MOVE_LEFT,
                 title: 'Gauche',
                 instruction: 'Appuyez sur la touche pour aller à gauche',
-                keys: ['Q'],
+                action: INPUT_ACTION.MOVE_LEFT,
                 validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_LEFT),
                 progress: 0,
                 targetProgress: 600
             },
             {
-                id: 'moveRight',
+                id: TUTORIAL_STEP_IDS.MOVE_RIGHT,
                 title: 'Droite',
                 instruction: 'Appuyez sur la touche pour aller à droite',
-                keys: ['D'],
+                action: INPUT_ACTION.MOVE_RIGHT,
                 validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_RIGHT),
                 progress: 0,
                 targetProgress: 600
@@ -73,13 +91,14 @@ export default class Tutoriel extends EventEmitter
             if (this.status !== TUTORIAL_STATUS.ACTIVE) return
 
             const step = this.steps[this.currentStepIndex]
-            if (step && step.id === 'look')
+            if (step && step.id === TUTORIAL_STEP_IDS.LOOK)
             {
                 const moveAmount = Math.abs(event.movementX) + Math.abs(event.movementY)
                 step.progress += moveAmount * 0.5
             }
         }
         this.inputs.on('mousemove', this.onMouseMove)
+        this.resolveKeyboardLayoutMap()
     }
     
     setUI()
@@ -132,7 +151,7 @@ export default class Tutoriel extends EventEmitter
         
         // Update keys
         this.keysElement.innerHTML = ''
-        step.keys.forEach(key => {
+        this.getStepKeys(step).forEach((key) => {
             const keyEl = document.createElement('span')
             keyEl.className = 'tutorial-key'
             keyEl.textContent = key
@@ -151,7 +170,7 @@ export default class Tutoriel extends EventEmitter
         const step = this.steps[this.currentStepIndex]
         if (!step) return
         
-        if (step.id !== 'look' && step.validate())
+        if (step.id !== TUTORIAL_STEP_IDS.LOOK && step.validate())
         {
             step.progress += delta
         }
@@ -202,5 +221,73 @@ export default class Tutoriel extends EventEmitter
         this.container?.remove()
         this.off('start')
         this.off('finished')
+    }
+
+    async resolveKeyboardLayoutMap()
+    {
+        try
+        {
+            const map = await navigator?.keyboard?.getLayoutMap?.()
+            this.keyboardLayoutMap = map || null
+        }
+        catch(error)
+        {
+            this.keyboardLayoutMap = null
+        }
+
+        if(this.status === TUTORIAL_STATUS.ACTIVE)
+        {
+            this.showStep(this.currentStepIndex)
+        }
+    }
+
+    getStepKeys(step)
+    {
+        const action = step?.action || null
+        if(!action)
+        {
+            return []
+        }
+
+        const primaryCode = this.inputs?.getActionBinding?.(action) || ''
+        if(primaryCode === '')
+        {
+            return []
+        }
+
+        return [this.formatKeyCodeLabel(primaryCode)]
+    }
+
+    formatKeyCodeLabel(code)
+    {
+        const normalizedCode = String(code || '').trim()
+        if(normalizedCode === '')
+        {
+            return '-'
+        }
+
+        const directLabel = CODE_LABELS[normalizedCode]
+        if(directLabel)
+        {
+            return directLabel
+        }
+
+        const layoutLabel = this.keyboardLayoutMap?.get?.(normalizedCode)
+        if(typeof layoutLabel === 'string' && layoutLabel.trim() !== '')
+        {
+            return layoutLabel.toUpperCase()
+        }
+
+        if(normalizedCode.startsWith('Key') && normalizedCode.length === 4)
+        {
+            return normalizedCode.slice(3)
+        }
+
+        if(normalizedCode.startsWith('Digit'))
+        {
+            return normalizedCode.slice(5)
+        }
+
+        return normalizedCode
     }
 }
