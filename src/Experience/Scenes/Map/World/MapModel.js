@@ -25,6 +25,7 @@ const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
 const USER_DATA_REPEATABLE_PLACEMENT = 'isRepeatablePlacementMesh'
 const SCALE_EPSILON = 1e-5
+const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = -0.58
 const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
 const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_nul_\d+$/i
 const REPEATABLE_INSTANCE_CONFIGS = [
@@ -47,9 +48,14 @@ export default class MapModel
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
+        this.debug = this.experience.debug
         this.runtimeMaterials = []
         this.planMeshes = []
         this.terrainTintMeshes = []
+        this.repeatableInstanceGroups = []
+        this.instancePlacementDebugState = {
+            offsetYBuildings: BUILDING_INSTANCE_Y_OFFSET_DEFAULT
+        }
         this.planVisible = false
         this.terrainWaterlineSettings = {
             minY: 1.20,
@@ -89,6 +95,8 @@ export default class MapModel
         {
             this.setFallback()
         }
+
+        this.setDebug()
     }
 
     setModel()
@@ -120,6 +128,7 @@ export default class MapModel
         this.model.scale.set(1, 1, 1)
         this.collisionBoxes = []
         this.collisionMeshes = []
+        this.repeatableInstanceGroups = []
         this.setupPalmTreeInstances()
         this.setupRepeatableInstances()
 
@@ -228,10 +237,15 @@ export default class MapModel
 
         this.model.updateMatrixWorld(true)
 
-        const instancedByKey = new Map()
+        const instancedEntries = []
         const modelWorldInverse = new THREE.Matrix4().copy(this.model.matrixWorld).invert()
         const masterWorldInverse = new THREE.Matrix4().copy(palmMasterRoot.matrixWorld).invert()
         const masterLocalMatrix = new THREE.Matrix4()
+        const bottomAlignmentMatrix = new THREE.Matrix4().makeTranslation(
+            0,
+            -this.computeObjectRootMinY(palmMasterRoot),
+            0
+        )
         const instanceWorldMatrix = new THREE.Matrix4()
         const instanceLocalMatrix = new THREE.Matrix4()
         const placementScaleMatrix = new THREE.Matrix4()
@@ -254,35 +268,25 @@ export default class MapModel
             child.userData[USER_DATA_PALM_MASTER] = true
             child.userData[USER_DATA_EXCLUDE_COLLISION] = true
 
-            const material = child.material
-            const materialKey = Array.isArray(material)
-                ? material.map((entry) => entry?.uuid ?? 'none').join(',')
-                : material.uuid
-            const key = `${child.geometry.uuid}::${materialKey}`
-            if(instancedByKey.has(key))
-            {
-                return
-            }
-
             const instanced = new THREE.InstancedMesh(
                 child.geometry,
-                material,
+                child.material,
                 palmPlacements.length
             )
             instanced.name = `__instancedPalm_${child.name || child.uuid}`
             instanced.castShadow = child.castShadow
             instanced.receiveShadow = child.receiveShadow
             instanced.frustumCulled = true
-            instanced.userData[USER_DATA_EXCLUDE_COLLISION] = true
-            instancedByKey.set(key, {
+            instancedEntries.push({
                 instanced,
                 sourceMesh: child
             })
         })
 
-        for(const { instanced, sourceMesh } of instancedByKey.values())
+        for(const { instanced, sourceMesh } of instancedEntries)
         {
             masterLocalMatrix.copy(sourceMesh.matrixWorld).premultiply(masterWorldInverse)
+            masterLocalMatrix.premultiply(bottomAlignmentMatrix)
 
             for(let index = 0; index < palmPlacements.length; index++)
             {
@@ -350,15 +354,21 @@ export default class MapModel
             return
         }
 
-        const instancedByKey = new Map()
+        const instancedEntries = []
         const modelWorldInverse = new THREE.Matrix4().copy(this.model.matrixWorld).invert()
         const masterWorldInverse = new THREE.Matrix4().copy(masterRoot.matrixWorld).invert()
         const masterLocalMatrix = new THREE.Matrix4()
+        const bottomAlignmentMatrix = new THREE.Matrix4().makeTranslation(
+            0,
+            -this.computeObjectRootMinY(masterRoot),
+            0
+        )
         const instanceWorldMatrix = new THREE.Matrix4()
         const instanceLocalMatrix = new THREE.Matrix4()
         const composedPosition = new THREE.Vector3()
         const composedQuaternion = new THREE.Quaternion()
         const composedScale = new THREE.Vector3()
+        const yOffsetMatrix = new THREE.Matrix4().makeTranslation(0, this.getRepeatableGroupYOffset(key), 0)
 
         masterRoot.traverse((child) =>
         {
@@ -370,35 +380,26 @@ export default class MapModel
             child.userData[USER_DATA_REPEATABLE_MASTER] = true
             child.userData[USER_DATA_EXCLUDE_COLLISION] = true
 
-            const material = child.material
-            const materialKey = Array.isArray(material)
-                ? material.map((entry) => entry?.uuid ?? 'none').join(',')
-                : material.uuid
-            const mapKey = `${child.geometry.uuid}::${materialKey}`
-            if(instancedByKey.has(mapKey))
-            {
-                return
-            }
-
             const instanced = new THREE.InstancedMesh(
                 child.geometry,
-                material,
+                child.material,
                 placements.length
             )
             instanced.name = `__instanced_${key}_${child.name || child.uuid}`
             instanced.castShadow = child.castShadow
             instanced.receiveShadow = child.receiveShadow
             instanced.frustumCulled = true
-            instanced.userData[USER_DATA_EXCLUDE_COLLISION] = true
-            instancedByKey.set(mapKey, {
+            instancedEntries.push({
                 instanced,
                 sourceMesh: child
             })
         })
 
-        for(const { instanced, sourceMesh } of instancedByKey.values())
+        for(const { instanced, sourceMesh } of instancedEntries)
         {
             masterLocalMatrix.copy(sourceMesh.matrixWorld).premultiply(masterWorldInverse)
+            masterLocalMatrix.premultiply(bottomAlignmentMatrix)
+            masterLocalMatrix.premultiply(yOffsetMatrix)
 
             for(let index = 0; index < placements.length; index++)
             {
@@ -414,6 +415,13 @@ export default class MapModel
             instanced.computeBoundingSphere()
             this.model.add(instanced)
         }
+
+        this.repeatableInstanceGroups.push({
+            key,
+            masterRoot,
+            placements: placements.slice(),
+            instancedEntries
+        })
 
         masterRoot.visible = false
         masterRoot.traverse((child) =>
@@ -476,6 +484,151 @@ export default class MapModel
             }
         })
         return objects
+    }
+
+    getRepeatableGroupYOffset(key)
+    {
+        const normalizedKey = String(key || '').trim().toLowerCase()
+        if(normalizedKey.startsWith('build_'))
+        {
+            return this.instancePlacementDebugState?.offsetYBuildings ?? BUILDING_INSTANCE_Y_OFFSET_DEFAULT
+        }
+
+        return 0
+    }
+
+    refreshRepeatableInstanceGroups()
+    {
+        if(!this.model || !Array.isArray(this.repeatableInstanceGroups) || this.repeatableInstanceGroups.length === 0)
+        {
+            return
+        }
+
+        this.model.updateMatrixWorld(true)
+        const modelWorldInverse = new THREE.Matrix4().copy(this.model.matrixWorld).invert()
+        const masterWorldInverse = new THREE.Matrix4()
+        const masterLocalMatrix = new THREE.Matrix4()
+        const instanceWorldMatrix = new THREE.Matrix4()
+        const instanceLocalMatrix = new THREE.Matrix4()
+        const composedPosition = new THREE.Vector3()
+        const composedQuaternion = new THREE.Quaternion()
+        const composedScale = new THREE.Vector3()
+
+        for(const group of this.repeatableInstanceGroups)
+        {
+            const masterRoot = group?.masterRoot
+            const placements = group?.placements ?? []
+            const instancedEntries = group?.instancedEntries ?? []
+            if(!masterRoot || placements.length === 0 || instancedEntries.length === 0)
+            {
+                continue
+            }
+
+            const bottomAlignmentMatrix = new THREE.Matrix4().makeTranslation(
+                0,
+                -this.computeObjectRootMinY(masterRoot),
+                0
+            )
+            const yOffsetMatrix = new THREE.Matrix4().makeTranslation(
+                0,
+                this.getRepeatableGroupYOffset(group.key),
+                0
+            )
+            masterWorldInverse.copy(masterRoot.matrixWorld).invert()
+
+            for(const { instanced, sourceMesh } of instancedEntries)
+            {
+                masterLocalMatrix.copy(sourceMesh.matrixWorld).premultiply(masterWorldInverse)
+                masterLocalMatrix.premultiply(bottomAlignmentMatrix)
+                masterLocalMatrix.premultiply(yOffsetMatrix)
+
+                for(let index = 0; index < placements.length; index++)
+                {
+                    const placement = placements[index]
+                    instanceWorldMatrix.copy(masterLocalMatrix).premultiply(placement.matrixWorld)
+                    instanceLocalMatrix.copy(instanceWorldMatrix).premultiply(modelWorldInverse)
+                    instanceLocalMatrix.decompose(composedPosition, composedQuaternion, composedScale)
+                    instanceLocalMatrix.compose(composedPosition, composedQuaternion, composedScale)
+                    instanced.setMatrixAt(index, instanceLocalMatrix)
+                }
+
+                instanced.instanceMatrix.needsUpdate = true
+                instanced.computeBoundingSphere()
+            }
+        }
+
+        this.buildCollisionBoxes()
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('🏗 Instances', { expanded: false })
+        this.debug.addBinding(this.debugFolder, this.instancePlacementDebugState, 'offsetYBuildings', {
+            label: 'Offset Y batiments',
+            min: -5,
+            max: 5,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.refreshRepeatableInstanceGroups()
+        })
+    }
+
+    computeObjectRootMinY(root)
+    {
+        if(!root)
+        {
+            return 0
+        }
+
+        root.updateWorldMatrix?.(true, true)
+        const rootWorldInverse = new THREE.Matrix4().copy(root.matrixWorld).invert()
+        const worldMatrix = new THREE.Matrix4()
+        const localBounds = new THREE.Box3()
+        const transformedBounds = new THREE.Box3()
+        let hasBounds = false
+
+        root.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh) || !child.geometry)
+            {
+                return
+            }
+
+            if(!child.geometry.boundingBox)
+            {
+                child.geometry.computeBoundingBox?.()
+            }
+
+            if(!child.geometry.boundingBox)
+            {
+                return
+            }
+
+            worldMatrix.copy(rootWorldInverse).multiply(child.matrixWorld)
+            transformedBounds.copy(child.geometry.boundingBox).applyMatrix4(worldMatrix)
+
+            if(!hasBounds)
+            {
+                localBounds.copy(transformedBounds)
+                hasBounds = true
+                return
+            }
+
+            localBounds.union(transformedBounds)
+        })
+
+        if(!hasBounds || !Number.isFinite(localBounds.min.y))
+        {
+            return 0
+        }
+
+        return localBounds.min.y
     }
 
     findPalmMasterRoot()
@@ -2425,6 +2578,8 @@ export default class MapModel
 
     destroy()
     {
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
         this.disposeRuntimeMaterials()
         this.disposePlanWaterMaskContext()
 
@@ -2449,5 +2604,8 @@ export default class MapModel
         this.planWaterMaskSettings = null
         this.planWaterMaskContext = null
         this.runtimeMaterials = null
+        this.repeatableInstanceGroups = null
+        this.instancePlacementDebugState = null
+        this.debug = null
     }
 }
