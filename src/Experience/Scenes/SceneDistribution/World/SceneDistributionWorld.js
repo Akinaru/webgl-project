@@ -72,6 +72,21 @@ export default class SceneDistributionWorld
             getFocusPosition: () => this.player?.position ?? null,
             debugParentFolder: this.debugFolder
         })
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
+                groundMeshes: this.distributionModel.getGroundMeshes?.() ?? [],
+                rails: [],
+                target: this.player
+            })
+        }
+
+        // Lancement du dialogue après un court délai
+        setTimeout(() => {
+            this.experience.dialogueManager?.startByKey?.('distribution')
+        }, 2500)
     }
 
     setDebug()

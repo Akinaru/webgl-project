@@ -1,42 +1,78 @@
-# bloom
+# Bloom
 
-Exemple concret d'architecture modulaire:
+Projet Vite + Three.js construit autour d'une architecture "Experience" unique.
+Le but de cette passe de doc est simple: permettre de comprendre la structure, les flux runtime et les responsabilites de chaque dossier sans devoir relire tout le code.
 
-- `Experience` (classe centrale + singleton)
-- `Utils` (`Sizes`, `Time`, `EventEmitter`, `Resources`, `Debug`)
-- `Camera` (camera pure, pilotee par le joueur)
-- `Renderer`
-- `World` (`Player`, `Floor`, `Fox`, `Environment`)
-- `InputController` (gestion clavier centralisee)
-
-## Lancer le projet
+## Demarrage
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Debug UI
+Build de production:
 
-Ajoute `#debug` a l'URL pour afficher `lil-gui`.
+```bash
+npm run build
+```
+
+## Philosophie d'architecture
+
+- `src/script.js` reste un bootstrap tres fin.
+- `src/Experience/Experience.js` orchestre tout le runtime.
+- `SceneManager` commute les scenes.
+- Chaque scene compose un `World` local.
+- Les systemes transverses vivent dans des domaines dedies: `Inputs`, `Dialogues`, `Audio`, `Utils`, `Common`, `Metiers`.
+- Les assets sont declares dans un manifest central dans `src/Experience/Source`.
+
+## Points d'entree a lire en premier
+
+1. `src/script.js`: gate device + creation du canvas runtime.
+2. `src/Experience/Experience.js`: composition root du projet.
+3. `src/Experience/Scenes/SceneManager.js`: choix et cycle de vie des scenes.
+4. `src/Experience/Scenes/*/World/*.js`: logique locale de chaque scene.
+
+## Navigation conseillee
+
+- `src/README.md`: vue d'ensemble du code applicatif.
+- `src/Experience/README.md`: lecture du runtime central.
+- `src/Experience/Scenes/README.md`: organisation des scenes.
+- `public/README.md`: organisation des assets servis par Vite.
+- `tools/README.md`: outillage local du projet.
+
+## Runtime en resume
+
+1. Le navigateur charge `index.html` puis `src/script.js`.
+2. Le bootstrap bloque mobile/touch et cree `new Experience(canvas)`.
+3. `Experience` instancie inputs, debug, ressources, son, camera, renderer, scenes, UI et dialogues.
+4. `Menu` lance le chargement et libere l'entree dans l'experience.
+5. `SceneManager` active une scene (`map`, `recuperation`, `distribution`).
+6. Le `World` courant met a jour ses systemes a chaque tick.
+
+## Debug utile
+
+- `#debug`: panneau Tweakpane complet.
+- `#stats`: statistiques runtime/rendu.
+- `#inspector`: contexte pour l'inspecteur Three.js quand disponible.
 
 Exemple:
 
 `http://localhost:5173/#debug`
 
-## Controles FPS
+## Ce que contient le depot
 
-- Clique dans le canvas pour entrer en mode premiere personne (pointer lock).
-- `ZQSD` ou `WASD` pour se deplacer.
-- `Shift` pour sprinter.
-- `Space` pour sauter.
-- `Esc` pour sortir du mode FPS.
+- `src/`: code applicatif.
+- `public/`: assets bruts servis tels quels.
+- `tools/`: plugins et scripts de dev.
+- `folio-2025/`: reference locale d'architecture/inspiration, hors runtime principal.
+- `dist/`: sortie de build.
 
-## Ajouter les assets du tuto
+## Intention de cette documentation
 
-Le projet fonctionne deja sans assets, mais tu peux brancher les assets du tuto en:
+Chaque dossier important du runtime possede maintenant son `README.md`.
+L'idee n'est pas de lister uniquement les fichiers, mais d'expliquer:
 
-1. Ajoutant les fichiers dans `public/textures` et `public/models`.
-2. Decommentant les sources dans `src/Experience/sources.js`.
-
-La logique de chargement centralise (`Resources`) et de demarrage conditionnel (`World` apres `ready`) est deja en place.
+- pourquoi le dossier existe,
+- quelles classes il heberge,
+- comment elles collaborent,
+- ou brancher une nouvelle feature sans casser l'architecture.

@@ -1,11 +1,31 @@
 # Shaders Map
 
-- `Terrain/`: shader de teinte du relief sous la ligne d eau.
-- `Water/`: shader de masque d eau sur le plan.
-- `Clouds/`: shader proceduraux des nuages de la map.
-- `Common/`: helpers d injection/parse pour patcher les materials Three.js.
+Shaders specifiques a la map.
 
-Chaque shader metier est decoupe en 2 fichiers GLSL (`vertex`, `fragment`) avec des sections:
+## Sous-dossiers
+
+- `Common/`: helpers de patch Three.js et parsing de sections GLSL.
+- `Terrain/`: teinte/lecture du relief autour de la ligne d'eau.
+- `Water/`: masque du plan d'eau.
+- `Clouds/`: nuages proceduraux.
+- `Foliage/`: animation de vegetation.
+- `Grass/`: reserve pour extensions futures.
+
+## Convention locale
+
+Un effet metier doit rester decoupe ainsi:
+
+- un `*.vertex.glsl`,
+- un `*.fragment.glsl`,
+- un petit fichier JS qui mappe les chunks si l'injection est necessaire.
+
+## Sections GLSL attendues
+
 - `// @header`
-- `// @project` (vertex)
-- `// @diffuse` (fragment)
+- `// @project` cote vertex
+- `// @diffuse` cote fragment
+
+## Frontiere de responsabilite
+
+Le gros du code metier doit rester hors des strings GLSL.
+Le JS prepare le contexte, et les GLSL se concentrent sur la transformation/presentation graphique.

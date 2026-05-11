@@ -113,6 +113,17 @@ export default class SceneRecuperationWorld
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
+                groundMeshes: this.recuperationModel.getGroundMeshes?.() ?? [],
+                rails: [],
+                target: this.player
+            })
+        }
+
         this.materiau = new Materiau({
             recuperationModel: this.recuperationModel,
             isExternalHoverActive: () =>
@@ -125,6 +136,11 @@ export default class SceneRecuperationWorld
         this.setRoom2FlowTrigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
+
+        // Lancement du dialogue après un court délai
+        setTimeout(() => {
+            this.experience.dialogueManager?.startByKey?.('recuperation')
+        }, 2500)
     }
 
     setDebug()

@@ -1,10 +1,11 @@
-// Shader des tubes de cascade: bruit anime, mousse et chute vers le bas.
+// Shader de la pente de cascade: bruit anime, mousse et chute vers le bas.
 // @header
 uniform float uCascadeTime;
 uniform vec3 uCascadeBaseColor;
 uniform vec3 uCascadeFoamColor;
 uniform float uCascadeFlowSpeed;
 uniform float uCascadeFlowScale;
+uniform float uCascadeFlowAngle;
 uniform float uCascadeFoamSpeed;
 uniform float uCascadeFoamNoiseFrequency;
 uniform float uCascadeFoamThreshold;
@@ -44,10 +45,12 @@ float cascadeNoise(vec2 p)
 }
 
 // @diffuse
-float cascadeAngle = atan(vCascadeLocalPosition.z, vCascadeLocalPosition.x) / 6.28318530718;
+vec2 flowDirection = vec2(cos(uCascadeFlowAngle), sin(uCascadeFlowAngle));
+vec2 crossDirection = vec2(-flowDirection.y, flowDirection.x);
+vec2 slopePlanePosition = vCascadeLocalPosition.xz * uCascadeFlowScale;
 vec2 baseUv = vec2(
-    fract(cascadeAngle + 0.5 + uCascadeSeamOffset),
-    (vCascadeLocalPosition.y * uCascadeFlowScale) + (uCascadeTime * uCascadeFlowSpeed) + uCascadePatternOffset.y
+    dot(slopePlanePosition, crossDirection) + uCascadePatternOffset.y + uCascadeSeamOffset,
+    dot(slopePlanePosition, flowDirection) + (uCascadeTime * uCascadeFlowSpeed)
 );
 
 vec3 waterColor = uCascadeBaseColor;

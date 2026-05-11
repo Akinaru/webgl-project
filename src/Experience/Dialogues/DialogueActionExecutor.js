@@ -130,8 +130,7 @@ export default class DialogueActionExecutor
             return
         }
 
-        const currentWorld = this.experience.sceneManager?.currentScene?.world
-        const bloom = currentWorld?.bloom
+        const bloom = this.experience.bloom
         if(!bloom || typeof bloom.moveToRailNode !== 'function')
         {
             console.warn(`[Dialogue] Bloom indisponible pour moveBloomToRailNode(${nodeId})`)

@@ -543,6 +543,69 @@ export default class Bloom
         }
     }
 
+    setSceneContext({ scene = null, groundMeshes = null, rails = null, target = null } = {})
+    {
+        if(scene && scene !== this.scene)
+        {
+            if(this.model)
+            {
+                this.scene.remove(this.model)
+            }
+            if(this.fallback)
+            {
+                this.scene.remove(this.fallback)
+            }
+
+            this.scene = scene
+
+            if(this.model)
+            {
+                this.scene.add(this.model)
+            }
+            if(this.fallback)
+            {
+                this.scene.add(this.fallback)
+            }
+
+            this.rails?.setScene?.(this.scene)
+
+            if(target)
+            {
+                this.railAnchorPosition.copy(target.position)
+                this.railAnchorPosition.x += 1.5
+                this.railAnchorPosition.z += 1.5
+                
+                const groundY = this.resolveGroundYAt(
+                    this.railAnchorPosition.x,
+                    this.railAnchorPosition.z,
+                    this.railAnchorPosition.y
+                )
+                this.railAnchorPosition.y = groundY + this.motion.heightOffset
+                
+                if(this.model)
+                {
+                    this.model.position.copy(this.railAnchorPosition)
+                    this.model.position.y += this.baseY
+                }
+            }
+        }
+
+        if(Array.isArray(groundMeshes))
+        {
+            this.follow.groundMeshes = groundMeshes
+        }
+
+        if(rails)
+        {
+            this.rails?.setRails?.(rails)
+        }
+
+        if(target)
+        {
+            this.follow.target = target
+        }
+    }
+
     setDebug()
     {
         if(!this.debug?.isDebugEnabled)
@@ -709,13 +772,64 @@ export default class Bloom
         this.walkCyclePhase += deltaSeconds * walkFrequency * Math.PI * 2
         const bobOffset = Math.sin(this.walkCyclePhase) * this.motion.bobAmplitude
 
-        if((this.follow.enabled || this.followOverride.nodeId) && this.resolveFollowTargetPosition() && this.rails.hasRails())
+        if((this.follow.enabled || this.followOverride.nodeId) && this.resolveFollowTargetPosition())
         {
-            this.updateRailMotion(deltaSeconds, bobOffset)
+            if(this.rails.hasRails())
+            {
+                this.updateRailMotion(deltaSeconds, bobOffset)
+            }
+            else
+            {
+                this.updateDirectFollowMotion(deltaSeconds, bobOffset)
+            }
             return
         }
 
         this.updateIdleMotion(elapsed, deltaSeconds, bobOffset)
+    }
+
+    updateDirectFollowMotion(deltaSeconds, bobOffset)
+    {
+        this.previousAnchorPosition.copy(this.railAnchorPosition)
+
+        // On définit une distance de confort autour du joueur
+        const comfortDistance = 1.8
+        const targetPos = this.followTargetPosition.clone()
+        
+        // Direction vers la cible
+        const toTarget = new THREE.Vector3().subVectors(targetPos, this.railAnchorPosition)
+        const distance = toTarget.length()
+        
+        if(distance > comfortDistance)
+        {
+            const moveSpeed = this.rails.settings.speed
+            const step = moveSpeed * deltaSeconds
+            toTarget.normalize().multiplyScalar(Math.min(step, distance - comfortDistance))
+            this.railAnchorPosition.add(toTarget)
+        }
+
+        const fallbackGroundY = this.railAnchorPosition.y
+        const groundY = this.resolveGroundYAt(
+            this.railAnchorPosition.x,
+            this.railAnchorPosition.z,
+            fallbackGroundY
+        )
+        this.railAnchorPosition.y = groundY + this.motion.heightOffset
+
+        this.model.position.x = this.railAnchorPosition.x
+        this.model.position.z = this.railAnchorPosition.z
+        this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
+
+        this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
+
+        if(this.movementDirection.lengthSq() > 1e-8)
+        {
+            this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
+        }
+        else
+        {
+            this.updateFacingTowardsPlayer(deltaSeconds)
+        }
     }
 
     updateRailMotion(deltaSeconds, bobOffset)
