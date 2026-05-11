@@ -380,6 +380,7 @@ export default class SceneDistributionValveController
             this.activeValve = this.hoveredValve
             this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             this.resetGesturePointerFromActiveValve()
+            this.setPlayerLookEnabled(false)
             document.body.classList.add(VALVE_DRAGGING_CLASS)
         }
 
@@ -388,6 +389,7 @@ export default class SceneDistributionValveController
             this.activeValve = null
             this.activeHitPointWorld = null
             this.stopValveTurningSound()
+            this.setPlayerLookEnabled(true)
             document.body.classList.remove(VALVE_DRAGGING_CLASS)
         }
 
@@ -662,6 +664,12 @@ export default class SceneDistributionValveController
         this.isValveTurningSoundPlaying = false
     }
 
+    setPlayerLookEnabled(isEnabled = true)
+    {
+        const player = this.experience?.sceneManager?.currentScene?.world?.player ?? null
+        player?.setLookEnabled?.(isEnabled)
+    }
+
     destroy()
     {
         this.inputs?.off?.('mousemove.distributionValve')
@@ -677,6 +685,7 @@ export default class SceneDistributionValveController
         this.activeValve = null
         this.activeHitPointWorld = null
         this.stopValveTurningSound()
+        this.setPlayerLookEnabled(true)
         this.valves = []
         this.valveByUuid.clear()
         this.accumulatedRightTurnByValveToken.clear()

@@ -34,7 +34,12 @@ const MATERIAL_DEFINITIONS = Object.freeze([
 
 export default class Materiau
 {
-    constructor({ recuperationModel, isExternalHoverActive = null, onSelectionChange = null } = {})
+    constructor({
+        recuperationModel,
+        isExternalHoverActive = null,
+        isInteractionLocked = null,
+        onSelectionChange = null
+    } = {})
     {
         this.experience = new Experience()
         this.inputs = this.experience.inputs
@@ -42,6 +47,9 @@ export default class Materiau
         this.recuperationModel = recuperationModel
         this.isExternalHoverActive = typeof isExternalHoverActive === 'function'
             ? isExternalHoverActive
+            : null
+        this.isInteractionLocked = typeof isInteractionLocked === 'function'
+            ? isInteractionLocked
             : null
         this.onSelectionChange = typeof onSelectionChange === 'function'
             ? onSelectionChange
@@ -386,7 +394,7 @@ export default class Materiau
 
     isInteractionActive()
     {
-        return !Boolean(this.dialogueManager?.isRunning?.())
+        return !Boolean(this.dialogueManager?.isRunning?.()) && !Boolean(this.isInteractionLocked?.())
     }
 
     ensureCursorElement()

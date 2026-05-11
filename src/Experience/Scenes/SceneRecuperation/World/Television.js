@@ -12,9 +12,18 @@ const BODY_COLOR = '#99abc0'
 const TEST_BUTTON_COLOR = '#4c7fff'
 const VALIDATE_BUTTON_COLOR = '#34c26a'
 const DISABLED_BUTTON_COLOR = '#243444'
+const BUTTON_LOCKED_OFFSET_Y = -0.05
 const BUTTON_ENABLED_LIFT = 0.02
 const BUTTON_PRESS_DEPTH = 0.02
 const BUTTON_RELEASE_DURATION = 0.12
+const BUTTON_TEXTURE_BY_KEY = Object.freeze({
+    test: 'recuperationSimulationButtonTexture',
+    validate: 'recuperationValidationButtonTexture'
+})
+const BUTTON_NAME_TOKENS = Object.freeze({
+    test: ['button_left-buttonsimulation', 'button_left', 'buttonsimulation'],
+    validate: ['button_right-buttonvalidation', 'button_right', 'buttonvalidation']
+})
 
 export default class Television
 {
@@ -27,6 +36,7 @@ export default class Television
     {
         this.experience = new Experience()
         this.debug = this.experience.debug
+        this.resources = this.experience.resources
         this.recuperationModel = recuperationModel
         this.debugParentFolder = debugParentFolder
         this.onTestRequest = typeof onTestRequest === 'function' ? onTestRequest : null
@@ -42,6 +52,7 @@ export default class Television
         this.testResult = null
         this.screenMode = 'idle'
         this.buttonStates = new Map()
+        this.areButtonsUnlocked = false
         this.settings = {
             screenScaleX: 1.08,
             screenScaleY: 1.08
@@ -143,37 +154,134 @@ export default class Television
 
     setButtons()
     {
-        this.leftButton = this.recuperationModel?.getFirstObjectForNameTokens?.(['button_left'], { exact: true }) ?? null
-        this.rightButton = this.recuperationModel?.getFirstObjectForNameTokens?.(['button_right'], { exact: true }) ?? null
+        this.leftButton = this.resolveButtonObject('button_left', BUTTON_NAME_TOKENS.test)
+        this.rightButton = this.resolveButtonObject('button_right', BUTTON_NAME_TOKENS.validate)
 
         this.buttonStates.clear()
-        this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR)
-        this.registerButton('validate', this.rightButton, VALIDATE_BUTTON_COLOR)
+        this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.test)
+        this.registerButton('validate', this.rightButton, VALIDATE_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.validate)
     }
 
-    registerButton(key, object, colorHex)
+    resolveButtonObject(exactName = '', fallbackTokens = [])
     {
-        if(!(object instanceof THREE.Mesh))
+        const normalizedExactName = typeof exactName === 'string' ? exactName.trim() : ''
+        if(normalizedExactName !== '')
+        {
+            const exactObject = this.recuperationModel?.getFirstObjectForNameTokens?.([normalizedExactName], { exact: true }) ?? null
+            if(exactObject instanceof THREE.Object3D)
+            {
+                return exactObject
+            }
+        }
+
+        const matches = this.recuperationModel?.getMeshesForNameTokens?.(fallbackTokens, { exact: false }) ?? []
+        return matches.find((mesh) => mesh instanceof THREE.Mesh)?.parent ?? null
+    }
+
+    registerButton(key, object, colorHex, textureResourceName = '')
+    {
+        if(!(object instanceof THREE.Object3D))
         {
             return
         }
 
-        const sourceMaterials = Array.isArray(object.material) ? object.material : [object.material]
-        const runtimeMaterials = sourceMaterials.map((material) => material?.clone?.() ?? material)
-        object.material = Array.isArray(object.material) ? runtimeMaterials : runtimeMaterials[0]
+        const buttonMeshes = this.collectButtonMeshes(object)
+        if(buttonMeshes.length === 0)
+        {
+            return
+        }
+
+        const runtimeMaterials = []
+        for(const mesh of buttonMeshes)
+        {
+            const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            const nextMaterials = sourceMaterials.map((material) => material?.clone?.() ?? material)
+            mesh.material = Array.isArray(mesh.material) ? nextMaterials : nextMaterials[0]
+            runtimeMaterials.push(...nextMaterials)
+        }
+        const texture = this.getButtonTexture(textureResourceName)
+
+        if(texture)
+        {
+            this.applyButtonTexture(runtimeMaterials, texture)
+        }
 
         this.buttonStates.set(key, {
             key,
             object,
+            meshes: buttonMeshes,
             runtimeMaterials,
+            texture,
             colorHex,
             baseY: object.position.y,
+            lockedOffsetY: 0,
             pressOffsetY: 0,
             enabledLift: 0,
             isEnabled: false,
             phase: 'idle',
             timer: 0
         })
+    }
+
+    collectButtonMeshes(object)
+    {
+        const meshes = []
+        object.traverse((child) =>
+        {
+            if(child instanceof THREE.Mesh)
+            {
+                meshes.push(child)
+            }
+        })
+        return meshes
+    }
+
+    getButtonTexture(resourceName = '')
+    {
+        const normalizedName = typeof resourceName === 'string' ? resourceName.trim() : ''
+        if(normalizedName === '')
+        {
+            return null
+        }
+
+        const texture = this.resources?.items?.[normalizedName] ?? null
+        if(!(texture instanceof THREE.Texture))
+        {
+            return null
+        }
+
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.flipY = false
+        texture.needsUpdate = true
+        return texture
+    }
+
+    applyButtonTexture(materials = [], texture = null)
+    {
+        if(!(texture instanceof THREE.Texture))
+        {
+            return
+        }
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if('map' in material)
+            {
+                material.map = texture
+            }
+            if('emissiveMap' in material)
+            {
+                material.emissiveMap = texture
+            }
+            material.color?.set?.('#ffffff')
+            material.transparent = true
+            material.needsUpdate = true
+        }
     }
 
     setDebug()
@@ -291,9 +399,9 @@ export default class Television
         const objects = []
         for(const state of this.buttonStates.values())
         {
-            if(state?.object)
+            if(Array.isArray(state?.meshes))
             {
-                objects.push(state.object)
+                objects.push(...state.meshes)
             }
         }
         return objects
@@ -309,7 +417,7 @@ export default class Television
 
         for(const [key, state] of this.buttonStates.entries())
         {
-            if(state.object === hit)
+            if(state.object === hit || state.meshes?.includes?.(hit))
             {
                 return key
             }
@@ -356,21 +464,28 @@ export default class Television
         this.renderScreen()
     }
 
+    setButtonsUnlocked(isUnlocked)
+    {
+        this.areButtonsUnlocked = Boolean(isUnlocked)
+        this.syncButtons()
+    }
+
     syncButtons()
     {
         const hasSelection = Boolean(this.selectedMaterial)
         const isTesting = this.screenMode === 'testing'
+        const canUseButtons = this.areButtonsUnlocked
 
         const testState = this.buttonStates.get('test')
         if(testState)
         {
-            testState.isEnabled = hasSelection && !isTesting
+            testState.isEnabled = canUseButtons && hasSelection && !isTesting
         }
 
         const validateState = this.buttonStates.get('validate')
         if(validateState)
         {
-            validateState.isEnabled = hasSelection && !isTesting
+            validateState.isEnabled = canUseButtons && hasSelection && !isTesting
         }
     }
 
@@ -507,9 +622,11 @@ export default class Television
                 }
             }
 
-            const targetLift = state.isEnabled ? BUTTON_ENABLED_LIFT : 0
+            const targetLockedOffset = this.areButtonsUnlocked ? 0 : BUTTON_LOCKED_OFFSET_Y
+            state.lockedOffsetY = THREE.MathUtils.damp(state.lockedOffsetY, targetLockedOffset, 10, deltaSeconds)
+            const targetLift = this.areButtonsUnlocked && state.isEnabled ? BUTTON_ENABLED_LIFT : 0
             state.enabledLift = THREE.MathUtils.damp(state.enabledLift, targetLift, 10, deltaSeconds)
-            state.object.position.y = state.baseY + state.enabledLift + state.pressOffsetY
+            state.object.position.y = state.baseY + state.lockedOffsetY + state.enabledLift + state.pressOffsetY
 
             const isHovered = this.hoveredButtonKey === state.key
             for(const material of state.runtimeMaterials)
@@ -519,14 +636,18 @@ export default class Television
                     continue
                 }
 
+                const hasTexture = state.texture instanceof THREE.Texture
                 const displayColor = state.isEnabled ? state.colorHex : DISABLED_BUTTON_COLOR
-                material.color?.set?.(displayColor)
+                material.color?.set?.(hasTexture ? '#ffffff' : displayColor)
+                material.opacity = this.areButtonsUnlocked
+                    ? (state.isEnabled ? 1 : 0.45)
+                    : 0.3
                 if(material.emissive)
                 {
-                    material.emissive.set(displayColor)
-                    material.emissiveIntensity = state.isEnabled
-                        ? (isHovered ? 0.6 : 0.28)
-                        : 0.06
+                    material.emissive.set(hasTexture ? '#ffffff' : displayColor)
+                    material.emissiveIntensity = state.isEnabled && this.areButtonsUnlocked
+                        ? (isHovered ? 0.52 : 0.26)
+                        : 0.04
                 }
                 material.needsUpdate = true
             }

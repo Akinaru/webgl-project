@@ -112,6 +112,7 @@ export default class Player
         this.pitch = spawnPitch
         this.isOnGround = true
         this.isPointerLocked = false
+        this.isLookEnabled = true
         this.currentGroundObject = null
 
         this.setCamera()
@@ -174,7 +175,7 @@ export default class Player
 
         this.onMouseMove = (event) =>
         {
-            if(!this.isPointerLocked)
+            if(!this.isPointerLocked || !this.isLookEnabled)
             {
                 return
             }
@@ -189,6 +190,11 @@ export default class Player
         this.inputs?.on?.('mousemove.player', this.onMouseMove)
         this.isPointerLocked = this.inputs?.isPointerLocked?.(this.canvas) || false
         document.body.classList.toggle('is-pointer-locked', this.isPointerLocked)
+    }
+
+    setLookEnabled(isEnabled = true)
+    {
+        this.isLookEnabled = Boolean(isEnabled)
     }
 
     setDebug()

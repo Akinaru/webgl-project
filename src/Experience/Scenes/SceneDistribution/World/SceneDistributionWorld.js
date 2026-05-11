@@ -9,6 +9,8 @@ import SceneDistributionTubeWaterController from './SceneDistributionTubeWaterCo
 import SceneDistributionGaugeDisplay from './SceneDistributionGaugeDisplay.js'
 import SceneDistributionBalanceMonitor from './SceneDistributionBalanceMonitor.js'
 import SceneDistributionDoorController from './SceneDistributionDoorController.js'
+import SceneDistributionResultTrigger from './SceneDistributionResultTrigger.js'
+import SceneDistributionResultDisplay from './SceneDistributionResultDisplay.js'
 import { setupSceneDistributionWorldDebug } from './SceneDistributionWorld.debug.js'
 
 let distributionWorldInstanceIndex = 0
@@ -20,6 +22,7 @@ export default class SceneDistributionWorld
         this.experience = new Experience()
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.distributionWorld${distributionWorldInstanceIndex++}`
+        this.hasStartedResultSequence = false
 
         if(this.resources.isReady)
         {
@@ -82,6 +85,10 @@ export default class SceneDistributionWorld
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
         })
+        this.resultDisplay = new SceneDistributionResultDisplay({
+            distributionModel: this.distributionModel,
+            debugParentFolder: this.debugFolder
+        })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
             this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
         )
@@ -100,6 +107,13 @@ export default class SceneDistributionWorld
                 target: this.player
             })
         }
+
+        this.resultTrigger = new SceneDistributionResultTrigger({
+            distributionModel: this.distributionModel,
+            player: this.player,
+            debugParentFolder: this.debugFolder,
+            onEnter: () => this.startResultSequence()
+        })
 
         // Lancement du dialogue après un court délai
         setTimeout(() => {
@@ -121,6 +135,18 @@ export default class SceneDistributionWorld
         this.tubeWaterController?.update?.(delta)
         this.balanceMonitor?.update?.()
         this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
+        this.resultTrigger?.update?.(delta)
+    }
+
+    startResultSequence()
+    {
+        if(this.hasStartedResultSequence)
+        {
+            return
+        }
+
+        this.hasStartedResultSequence = true
+        this.experience.dialogueManager?.startByKey?.('resultat')
     }
 
     destroy()
@@ -134,6 +160,10 @@ export default class SceneDistributionWorld
         this.balanceMonitor = null
         this.gaugeDisplay?.destroy?.()
         this.gaugeDisplay = null
+        this.resultDisplay?.destroy?.()
+        this.resultDisplay = null
+        this.resultTrigger?.destroy?.()
+        this.resultTrigger = null
         this.exitDoors?.destroy?.()
         this.exitDoors = null
 

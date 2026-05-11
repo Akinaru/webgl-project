@@ -13,6 +13,7 @@ import Television from './Television.js'
 import ShowerParticles from './ShowerParticles.js'
 import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
+import SceneRecuperationRoom2Trigger from './SceneRecuperationRoom2Trigger.js'
 import { setupSceneRecuperationWorldDebug } from './SceneRecuperationWorld.debug.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
 import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
@@ -22,8 +23,9 @@ import {
 } from './SceneRecuperationWorld.constants.js'
 
 let recuperationWorldInstanceIndex = 0
-const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation'
-const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_tuyaux'
+const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
+const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
+const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_2'
 
 export default class SceneRecuperationWorld
 {
@@ -42,6 +44,7 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = false
         this.hasStartedRecuperationDialogue = false
         this.hasStartedArrivalDialogue = false
+        this.hasStartedValidationDialogue = false
 
         if(this.resources.isReady)
         {
@@ -86,6 +89,7 @@ export default class SceneRecuperationWorld
             onTestRequest: () => this.startMaterialTest(),
             onValidateRequest: () => this.validateMaterialChoice()
         })
+        this.television.setButtonsUnlocked(false)
         this.showerParticles = new ShowerParticles({
             recuperationModel: this.recuperationModel
         })
@@ -133,11 +137,12 @@ export default class SceneRecuperationWorld
             isExternalHoverActive: () =>
                 (this.tubeWaterController?.isHoveringTube?.() ?? false) ||
                 (this.television?.isHoveringInteractive?.() ?? false),
+            isInteractionLocked: () => this.isMaterialTestRunning,
             onSelectionChange: (selection) => this.handleMaterialSelection(selection)
         })
 
         this.television.setSelection(null)
-        this.setRoom2FlowTrigger()
+        this.setRoom2Trigger()
         this.setWallCrossTeleport()
         this.setExitTeleportActive(false)
         this.startArrivalDialogue()
@@ -158,7 +163,7 @@ export default class SceneRecuperationWorld
         this.light?.update?.(delta)
         this.windTurbine?.update?.(delta)
         this.player?.update(delta)
-        this.checkRoom2FlowTrigger()
+        this.room2Trigger?.update?.()
         this.tubeWaterController?.update?.()
         this.collisionDebug?.update?.()
         this.materiau?.update(delta)
@@ -275,52 +280,17 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = true
         this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
+        this.startValidationDialogue()
     }
 
-    setRoom2FlowTrigger()
+    setRoom2Trigger()
     {
-        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(['room2'], { exact: false })
-            ?? this.recuperationModel?.getBoundsForNameTokens?.(['sol-room2'], { exact: false })
-        if(!room2Bounds)
-        {
-            this.room2FlowTrigger = null
-            this.hasStartedRoom2Flow = true
-            return
-        }
-
-        this.room2FlowTrigger = room2Bounds.clone()
-        this.hasStartedRoom2Flow = false
-    }
-
-    checkRoom2FlowTrigger()
-    {
-        if(this.hasStartedRoom2Flow || !this.room2FlowTrigger || !this.player?.position)
-        {
-            return
-        }
-
-        const position = this.player.position
-        const margin = 0.05
-        const isInsideRoom2 = (
-            position.x >= (this.room2FlowTrigger.min.x - margin) &&
-            position.x <= (this.room2FlowTrigger.max.x + margin) &&
-            position.y >= (this.room2FlowTrigger.min.y - 2) &&
-            position.y <= (this.room2FlowTrigger.max.y + 3) &&
-            position.z >= (this.room2FlowTrigger.min.z - margin) &&
-            position.z <= (this.room2FlowTrigger.max.z + margin)
-        )
-        if(!isInsideRoom2)
-        {
-            return
-        }
-
-        this.hasStartedRoom2Flow = true
-        this.tubeWaterController?.startFlowAnimation?.()
-        if(!this.hasStartedRecuperationDialogue)
-        {
-            this.hasStartedRecuperationDialogue = true
-            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY)
-        }
+        this.room2Trigger = new SceneRecuperationRoom2Trigger({
+            recuperationModel: this.recuperationModel,
+            player: this.player,
+            debugParentFolder: this.debugFolder,
+            onEnter: () => this.handleRoom2Enter()
+        })
     }
 
     startArrivalDialogue()
@@ -331,7 +301,38 @@ export default class SceneRecuperationWorld
         }
 
         this.hasStartedArrivalDialogue = true
+        this.onArrivalDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== RECUPERATION_ARRIVAL_DIALOGUE_KEY)
+            {
+                return
+            }
+
+            this.television?.setButtonsUnlocked?.(true)
+        }
+        this.experience.dialogueManager?.on?.('end.recuperationButtonsUnlock', this.onArrivalDialogueEnd)
         this.experience.dialogueManager?.startByKey?.(RECUPERATION_ARRIVAL_DIALOGUE_KEY)
+    }
+
+    startValidationDialogue()
+    {
+        if(this.hasStartedValidationDialogue)
+        {
+            return
+        }
+
+        this.hasStartedValidationDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY)
+    }
+
+    handleRoom2Enter()
+    {
+        this.tubeWaterController?.startFlowAnimation?.()
+        if(!this.hasStartedRecuperationDialogue)
+        {
+            this.hasStartedRecuperationDialogue = true
+            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY)
+        }
     }
 
     checkPuzzleCompletionReturn()
@@ -579,6 +580,8 @@ export default class SceneRecuperationWorld
     destroy()
     {
         this.resources.off(this.readyEventName)
+        this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
+        this.onArrivalDialogueEnd = null
 
         if(this.player)
         {
@@ -602,6 +605,12 @@ export default class SceneRecuperationWorld
         {
             this.collisionDebug.destroy?.()
             this.collisionDebug = null
+        }
+
+        if(this.room2Trigger)
+        {
+            this.room2Trigger.destroy?.()
+            this.room2Trigger = null
         }
 
         if(this.windTurbine)
@@ -662,9 +671,8 @@ export default class SceneRecuperationWorld
 
         this.wallCrossTeleport = null
         this.nextWallCrossTeleportAt = 0
-        this.room2FlowTrigger = null
-        this.hasStartedRoom2Flow = false
         this.hasStartedRecuperationDialogue = false
+        this.hasStartedValidationDialogue = false
         this.currentMaterialSelection = null
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
