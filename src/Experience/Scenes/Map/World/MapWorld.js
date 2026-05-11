@@ -76,6 +76,7 @@ function getWindowRailsOverride()
 const importedRails = normalizeRails(bloomRails)
 const windowRailsOverride = normalizeRails(getWindowRailsOverride())
 const BLOOM_RAILS = Object.freeze(hasRails(windowRailsOverride) ? windowRailsOverride : importedRails)
+const INTRO_DIALOGUE_COMPLETED_FLAG = 'dialogue.completed.intro'
 
 let mapWorldInstanceIndex = 0
 
@@ -95,6 +96,14 @@ export default class MapWorld
         this.wasInsideBush = false
         this.bushTriggerCooldownMs = 0
         this.hasBoundBloomContext = false
+        this.onDialogueEnd = ({ key } = {}) =>
+        {
+            if(key === 'intro')
+            {
+                this.refreshTeleportAvailability()
+            }
+        }
+        this.experience.dialogueManager?.on?.('end.mapWorldTeleport', this.onDialogueEnd)
 
         if(this.resources.isReady)
         {
@@ -165,6 +174,7 @@ export default class MapWorld
     update(delta = this.experience.time.delta)
     {
         this.syncBloomContext()
+        this.refreshTeleportAvailability()
         this.light?.update?.(delta)
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
@@ -351,6 +361,7 @@ export default class MapWorld
                 ...recuperationZone,
                 id: 'recuperation',
                 targetScene: SceneEnum.RECUPERATION,
+                isActive: false,
                 colors: {
                     pad: '#5fb2ff',
                     padEmissive: '#173b63',
@@ -367,6 +378,7 @@ export default class MapWorld
                 ...distributionZone,
                 id: 'distribution',
                 targetScene: SceneEnum.DISTRIBUTION,
+                isActive: false,
                 colors: {
                     pad: '#ff9e57',
                     padEmissive: '#5a2e11',
@@ -445,6 +457,8 @@ export default class MapWorld
                 light: teleportLight
             })
         }
+
+        this.refreshTeleportAvailability()
     }
 
     updateTeleportZoneVisual()
@@ -457,6 +471,11 @@ export default class MapWorld
         const elapsed = this.experience.time.elapsed * 0.001
         for(const entry of this.teleportEntries)
         {
+            if(!entry.zone?.isActive)
+            {
+                continue
+            }
+
             const pulse = 0.72 + (Math.sin(elapsed * (entry.zone.pulseSpeed ?? 4.2)) * 0.26)
 
             entry.pad.material.emissiveIntensity = 0.5 + (pulse * 0.35)
@@ -479,6 +498,11 @@ export default class MapWorld
 
         for(const zone of this.teleportZones)
         {
+            if(!zone?.isActive)
+            {
+                continue
+            }
+
             const dx = this.player.position.x - zone.x
             const dz = this.player.position.z - zone.z
             const distanceSq = (dx * dx) + (dz * dz)
@@ -491,6 +515,39 @@ export default class MapWorld
             this.isTeleporting = true
             this.experience.sceneManager?.switchTo?.(zone.targetScene ?? SceneEnum.RECUPERATION)
             return
+        }
+    }
+
+    refreshTeleportAvailability()
+    {
+        const introCompleted = this.experience.dialogueManager?.hasFlag?.(INTRO_DIALOGUE_COMPLETED_FLAG) === true
+        const canActivateRecuperation = Boolean(introCompleted)
+        const canActivateDistribution = Boolean(introCompleted)
+
+        if(Array.isArray(this.teleportZones))
+        {
+            for(const zone of this.teleportZones)
+            {
+                if(zone.id === 'recuperation')
+                {
+                    zone.isActive = canActivateRecuperation
+                    continue
+                }
+
+                if(zone.id === 'distribution')
+                {
+                    zone.isActive = canActivateDistribution
+                }
+            }
+        }
+
+        if(Array.isArray(this.teleportEntries))
+        {
+            for(const entry of this.teleportEntries)
+            {
+                const isActive = entry.zone?.isActive === true
+                entry.group.visible = isActive
+            }
         }
     }
 
@@ -526,6 +583,7 @@ export default class MapWorld
 
     destroy()
     {
+        this.experience.dialogueManager?.off?.('end.mapWorldTeleport')
         this.resources.off(this.readyEventName)
         this.experience.sound?.stopChannel?.('underwater')
         this.experience.sound?.stopChannel?.('footsteps')
