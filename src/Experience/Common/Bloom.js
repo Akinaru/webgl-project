@@ -112,6 +112,7 @@ export default class Bloom
 
         if(this.model)
         {
+            this.spawnOnRailNodeIfAvailable()
             this.railAnchorPosition.copy(this.model.position)
             this.railAnchorPosition.y -= this.baseY
             this.previousAnchorPosition.copy(this.railAnchorPosition)
@@ -162,6 +163,36 @@ export default class Bloom
         })
 
         this.scene.add(this.model)
+    }
+
+    spawnOnRailNodeIfAvailable()
+    {
+        if(!this.model || !this.rails?.hasRails?.())
+        {
+            return
+        }
+
+        const firstNodeId = this.rails.graph?.nodes?.[0]?.id
+        if(typeof firstNodeId !== 'string' || firstNodeId.trim() === '')
+        {
+            return
+        }
+
+        const spawnPosition = this.rails.getNodePosition(firstNodeId)
+        if(!(spawnPosition instanceof THREE.Vector3))
+        {
+            return
+        }
+
+        const groundY = this.resolveGroundYAt(
+            spawnPosition.x,
+            spawnPosition.z,
+            spawnPosition.y
+        )
+
+        this.model.position.x = spawnPosition.x
+        this.model.position.z = spawnPosition.z
+        this.model.position.y = groundY + this.motion.heightOffset + this.baseY
     }
 
     isBloomTargetMesh(mesh)
@@ -571,26 +602,6 @@ export default class Bloom
             }
 
             this.rails?.setScene?.(this.scene)
-
-            if(target)
-            {
-                this.railAnchorPosition.copy(target.position)
-                this.railAnchorPosition.x += 1.5
-                this.railAnchorPosition.z += 1.5
-                
-                const groundY = this.resolveGroundYAt(
-                    this.railAnchorPosition.x,
-                    this.railAnchorPosition.z,
-                    this.railAnchorPosition.y
-                )
-                this.railAnchorPosition.y = groundY + this.motion.heightOffset
-                
-                if(this.model)
-                {
-                    this.model.position.copy(this.railAnchorPosition)
-                    this.model.position.y += this.baseY
-                }
-            }
         }
 
         if(Array.isArray(groundMeshes))
@@ -606,6 +617,40 @@ export default class Bloom
         if(target)
         {
             this.follow.target = target
+            this.follow.enabled = true
+        }
+
+        if(this.rails?.hasRails?.())
+        {
+            this.spawnOnRailNodeIfAvailable()
+            if(this.model)
+            {
+                this.railAnchorPosition.copy(this.model.position)
+                this.railAnchorPosition.y -= this.baseY
+                this.previousAnchorPosition.copy(this.railAnchorPosition)
+            }
+            return
+        }
+
+        if(target?.position instanceof THREE.Vector3)
+        {
+            this.railAnchorPosition.copy(target.position)
+            this.railAnchorPosition.x += 1.5
+            this.railAnchorPosition.z += 1.5
+
+            const groundY = this.resolveGroundYAt(
+                this.railAnchorPosition.x,
+                this.railAnchorPosition.z,
+                this.railAnchorPosition.y
+            )
+            this.railAnchorPosition.y = groundY + this.motion.heightOffset
+
+            if(this.model)
+            {
+                this.model.position.copy(this.railAnchorPosition)
+                this.model.position.y += this.baseY
+            }
+            this.previousAnchorPosition.copy(this.railAnchorPosition)
         }
     }
 
