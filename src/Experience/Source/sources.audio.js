@@ -63,5 +63,10 @@ export default [
         name: 'valveTurningSound',
         type: 'audioBuffer',
         path: 'sounds/effects/distribution/valve_turning.wav'
+    },
+    {
+        name: 'recuperationAmbientWavesSound',
+        type: 'audioBuffer',
+        path: 'sounds/ambience/recuperation-waves.mp3'
     }
 ]

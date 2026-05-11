@@ -121,5 +121,17 @@
     "fadeOutMs": 90,
     "channel": "valveTurning",
     "audioType": "sfx"
+  },
+  "recuperationAmbientWaves": {
+    "label": "Recuperation ambient waves",
+    "resourceKey": "recuperationAmbientWavesSound",
+    "fallbackPath": "sounds/ambience/recuperation-waves.mp3",
+    "volume": 0.1,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 900,
+    "fadeOutMs": 700,
+    "channel": "recuperationAmbience",
+    "audioType": "music"
   }
 }

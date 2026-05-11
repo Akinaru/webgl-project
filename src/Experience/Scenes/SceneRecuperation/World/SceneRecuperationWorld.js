@@ -159,6 +159,7 @@ export default class SceneRecuperationWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.syncAmbientSound()
         this.cascadeTubes?.update?.(delta)
         this.water?.update?.(delta)
         this.door?.update?.(delta)
@@ -175,6 +176,16 @@ export default class SceneRecuperationWorld
         this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
         this.checkWallCrossTeleport()
+    }
+
+    syncAmbientSound()
+    {
+        if(this.experience.sound?.isChannelPlaying?.('recuperationAmbience'))
+        {
+            return
+        }
+
+        this.experience.sound?.play?.('recuperationAmbientWaves')
     }
 
     handleMaterialSelection(selection)
@@ -588,6 +599,7 @@ export default class SceneRecuperationWorld
     {
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
+        this.experience.sound?.stopChannel?.('recuperationAmbience')
         this.onArrivalDialogueEnd = null
 
         if(this.player)
