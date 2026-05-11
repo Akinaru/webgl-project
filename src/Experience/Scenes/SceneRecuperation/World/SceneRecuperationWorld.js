@@ -349,7 +349,7 @@ export default class SceneRecuperationWorld
         }
 
         this.isReturningToMap = true
-        this.experience.sceneManager?.switchTo?.(SceneEnum.MAP)
+        this.experience.sceneManager?.switchTo?.(SceneEnum.DISTRIBUTION)
     }
 
     setWallCrossTeleport()
