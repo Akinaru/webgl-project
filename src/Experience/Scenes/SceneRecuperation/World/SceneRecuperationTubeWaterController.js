@@ -107,6 +107,7 @@ export default class SceneRecuperationTubeWaterController
         this.windowSourceByTubeUuid = new Map()
         this.startAlignedTubeUuids = new Set()
         this.activeTubeRotationsByUuid = new Map()
+        this.playerRotatedTubeUuids = new Set()
         this.flowAnimationStarted = false
         this.hoveredTubeMesh = null
 
@@ -1634,8 +1635,14 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return
         }
 
+        this.playerRotatedTubeUuids.add(rotationTarget.uuid)
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
         this.queueTubeRotation(rotationTarget, QUARTER_TURN * direction)
+    }
+
+    getUniqueRotatedTubeCount()
+    {
+        return this.playerRotatedTubeUuids.size
     }
 
     rotateTubeAssembly(tubeTarget, angle)
@@ -2773,6 +2780,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         this.dualInflowByTubeUuid.clear()
         this.rotationTargetUuidByName.clear()
         this.activeTubeRotationsByUuid.clear()
+        this.playerRotatedTubeUuids.clear()
         this.blueWindowMeshes = []
         this.blueWindowMeshesByName.clear()
         this.blueWindowShaderMaterialsByMeshUuid.clear()
