@@ -65,8 +65,8 @@
         }
       }
     },
-    "recuperation": {
-      "key": "recuperation",
+    "recuperation_0": {
+      "key": "recuperation_0",
       "once": false,
       "startNode": "recuperation_001",
       "nodes": {
@@ -95,21 +95,25 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Choisis, applique et simules la pluie pour trouver le meilleur matériau.",
-          "next": "recuperation_005",
+          "next": "recuperation_end",
           "actions": []
         },
         "recuperation_005": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Hourra ! Tu as choisis un super matériau, l’eau peut circuler !",
-          "next": "recuperation_006",
+          "next": "recuperation_validation_end",
+          "actions": []
+        },
+        "recuperation_validation_end": {
+          "type": "end",
           "actions": []
         },
         "recuperation_006": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPlus tu es efficace, moins de gouttes d’eau seront perdues.",
-          "next": "recuperation_end",
+          "next": "recuperation_tuyaux_end",
           "actions": []
         },
         "recuperation_end": {
@@ -118,8 +122,26 @@
         }
       }
     },
-    "recuperation_tuyaux": {
-      "key": "recuperation_tuyaux",
+    "recuperation_1": {
+      "key": "recuperation_1",
+      "once": false,
+      "startNode": "recuperation_005",
+      "nodes": {
+        "recuperation_005": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Hourra ! Tu as choisis un super matériau, l’eau peut circuler !",
+          "next": "recuperation_validation_end",
+          "actions": []
+        },
+        "recuperation_validation_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "recuperation_2": {
+      "key": "recuperation_2",
       "once": false,
       "startNode": "recuperation_006",
       "nodes": {
