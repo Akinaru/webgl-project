@@ -89,6 +89,7 @@ export default class Tutoriel extends EventEmitter
         this.onMouseMove = (event) =>
         {
             if (this.status !== TUTORIAL_STATUS.ACTIVE) return
+            if (this.isPauseMenuOpen()) return
 
             const step = this.steps[this.currentStepIndex]
             if (step && step.id === TUTORIAL_STEP_IDS.LOOK)
@@ -166,6 +167,7 @@ export default class Tutoriel extends EventEmitter
     update(delta)
     {
         if (this.status !== TUTORIAL_STATUS.ACTIVE) return
+        if (this.isPauseMenuOpen()) return
         
         const step = this.steps[this.currentStepIndex]
         if (!step) return
@@ -289,5 +291,10 @@ export default class Tutoriel extends EventEmitter
         }
 
         return normalizedCode
+    }
+
+    isPauseMenuOpen()
+    {
+        return this.experience?.menu?.isPauseOpen?.() === true
     }
 }
