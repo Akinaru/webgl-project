@@ -15,6 +15,8 @@ export default class SceneManager
         this.sceneFactories = new Map()
         this.currentKey = null
         this.currentScene = null
+        this.isTransitioning = false
+        this.pendingSwitchKey = null
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
@@ -58,10 +60,16 @@ export default class SceneManager
             return
         }
 
+        if(this.isTransitioning)
+        {
+            this.pendingSwitchKey = key
+            return
+        }
+
         this.performSceneSwitch(key)
     }
 
-    performSceneSwitch(key)
+    async performSceneSwitch(key)
     {
         if(this.currentKey === key)
         {
@@ -74,7 +82,12 @@ export default class SceneManager
             throw new Error(`Scene introuvable: ${key}`)
         }
 
+        this.isTransitioning = true
         const previousKey = this.currentKey
+        await this.showTransitionOverlay({
+            fromKey: previousKey,
+            toKey: key
+        })
 
         if(this.currentScene)
         {
@@ -90,6 +103,21 @@ export default class SceneManager
 
         this.currentScene.enter?.(previousKey)
         this.currentScene.resize?.()
+
+        await this.completeTransitionOverlay({
+            toKey: key
+        })
+        this.isTransitioning = false
+
+        if(this.pendingSwitchKey && this.pendingSwitchKey !== this.currentKey)
+        {
+            const nextKey = this.pendingSwitchKey
+            this.pendingSwitchKey = null
+            this.switchTo(nextKey)
+            return
+        }
+
+        this.pendingSwitchKey = null
     }
 
     setTransitionOverlay()
@@ -125,6 +153,92 @@ export default class SceneManager
         this.transitionLabelElement = overlay.querySelector('[data-scene-transition-label]')
         this.transitionFillElement = overlay.querySelector('[data-scene-transition-fill]')
         this.transitionValueElement = overlay.querySelector('[data-scene-transition-value]')
+    }
+
+    async showTransitionOverlay({ fromKey = null, toKey = null } = {})
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        this.updateTransitionProgress(0, this.getTransitionLabel({ fromKey, toKey }))
+        this.transitionElement.classList.add('is-visible')
+        await this.wait(120)
+        this.updateTransitionProgress(18)
+        await this.wait(90)
+        this.updateTransitionProgress(44)
+        await this.wait(110)
+        this.updateTransitionProgress(72)
+        await this.wait(90)
+    }
+
+    async completeTransitionOverlay({ toKey = null } = {})
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        this.updateTransitionProgress(92, this.getTransitionLabel({ toKey }))
+        await this.wait(70)
+        this.updateTransitionProgress(100)
+        await this.wait(180)
+        this.transitionElement.classList.remove('is-visible')
+        await this.wait(120)
+        this.updateTransitionProgress(0)
+    }
+
+    updateTransitionProgress(progress = 0, label = null)
+    {
+        const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)))
+        if(this.transitionFillElement)
+        {
+            this.transitionFillElement.style.width = `${clampedProgress}%`
+        }
+        if(this.transitionValueElement)
+        {
+            this.transitionValueElement.textContent = `${clampedProgress}%`
+        }
+        if(this.transitionLabelElement && typeof label === 'string' && label.trim() !== '')
+        {
+            this.transitionLabelElement.textContent = label
+        }
+    }
+
+    getTransitionLabel({ fromKey = null, toKey = null } = {})
+    {
+        const nextSceneName = this.getSceneLabel(toKey)
+        if(fromKey)
+        {
+            return `Chargement ${nextSceneName}`
+        }
+
+        return `Ouverture ${nextSceneName}`
+    }
+
+    getSceneLabel(key)
+    {
+        switch(key)
+        {
+            case SceneEnum.RECUPERATION:
+                return 'Recuperation'
+
+            case SceneEnum.DISTRIBUTION:
+                return 'Distribution'
+
+            case SceneEnum.MAP:
+            default:
+                return 'Map'
+        }
+    }
+
+    wait(durationMs = 0)
+    {
+        return new Promise((resolve) =>
+        {
+            window.setTimeout(resolve, Math.max(0, durationMs))
+        })
     }
 
     update(delta)
