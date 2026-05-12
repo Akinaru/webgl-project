@@ -6,7 +6,7 @@ Dossier reserve pour les effets de citerne de la scene Distribution.
 
 Si la citerne doit recevoir un shader dedie, le code GLSL et son assembleur JS doivent vivre ici plutot que dans le controller runtime.
 
-## Intention documentaire
+## Role
 
 Ce README existe surtout pour signaler la frontiere d'architecture:
 

@@ -8,7 +8,7 @@ Shaders specifiques a la scene de recuperation.
 - `CascadeTubes/`: eau dans les tubes/cascades.
 - `Water/`: gradients et visibilite de l'eau.
 
-## Intention
+## Role
 
 Ces shaders servent surtout a rendre lisible la progression du flux d'eau dans le puzzle.
 

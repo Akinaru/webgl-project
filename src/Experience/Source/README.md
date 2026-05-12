@@ -21,7 +21,7 @@ Quand un systeme a besoin d'une ressource:
 3. `Resources` le charge,
 4. le systeme le recupere via `experience.resources.items.<nom>`.
 
-## Pourquoi ce dossier est important
+## Role
 
 `Resources` ne devine rien.
 Tout asset charge par la couche de ressources doit etre declare ici avec:

@@ -1,7 +1,6 @@
 # Bloom
 
-Projet Vite + Three.js construit autour d'une architecture "Experience" unique.
-Le but de cette passe de doc est simple: permettre de comprendre la structure, les flux runtime et les responsabilites de chaque dossier sans devoir relire tout le code.
+Projet Vite + Three.js construit autour d'une architecture `Experience`.
 
 ## Demarrage
 
@@ -32,18 +31,17 @@ npm run build
 3. `src/Experience/Scenes/SceneManager.js`: choix et cycle de vie des scenes.
 4. `src/Experience/Scenes/*/World/*.js`: logique locale de chaque scene.
 
-## Lecture conseillee si tu reprends le projet
+## Ordre de lecture recommande
 
-Si tu veux comprendre le projet sans l'avoir ecrit, la lecture la plus rentable est:
+Pour une lecture progressive du projet:
 
 1. lire `src/README.md` pour la carte generale,
 2. ouvrir `src/Experience/README.md` pour comprendre qui cree quoi,
 3. choisir une scene et lire son `README.md`,
 4. seulement ensuite descendre dans les classes `World/*`,
-5. garder les README shaders sous la main quand un effet visuel devient difficile a suivre.
+5. consulter les README shaders pour les effets visuels les plus techniques.
 
-L'idee des README du depot n'est pas de remplacer le code.
-Elle est de te donner:
+Les README de dossier couvrent principalement:
 
 - le role de chaque dossier,
 - le vocabulaire metier employe,
@@ -97,17 +95,16 @@ Exemple:
 - `folio-2025/`: reference locale d'architecture/inspiration, hors runtime principal.
 - `dist/`: sortie de build.
 
-## Intention de cette documentation
+## Documentation du depot
 
-Chaque dossier important du runtime possede maintenant son `README.md`.
-L'idee n'est pas de lister uniquement les fichiers, mais d'expliquer:
+Les dossiers importants du runtime disposent d'un `README.md` qui decrit:
 
 - pourquoi le dossier existe,
 - quelles classes il heberge,
 - comment elles collaborent,
 - ou brancher une nouvelle feature sans casser l'architecture.
 
-Quand un morceau de code est visuellement ou mentalement plus complexe que la moyenne, la doc est volontairement dupliquee a deux niveaux:
+Les zones plus techniques sont documentees a deux niveaux:
 
 - un `README.md` de dossier pour la vue d'ensemble,
 - quelques commentaires directement dans le code ou dans les shaders pour guider la lecture ligne par ligne.

@@ -49,7 +49,7 @@ Cette scene contient davantage d'UI "dans le monde 3D" que les autres:
 
 ## Debug a connaitre
 
-Le dossier `Scene recuperation` dans Tweakpane est important pour reprendre la main rapidement.
+Le dossier `Scene recuperation` dans Tweakpane regroupe les reglages utiles pour lire et ajuster la scene.
 On y trouve notamment:
 
 - un groupe `Eau`,

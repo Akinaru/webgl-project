@@ -7,7 +7,7 @@ Helpers partages pour les shaders de la map.
 - `applyStandardMaterialPatch.js`: injecte des chunks dans des materials standards Three.js.
 - `parseShaderSections.js`: extrait les sections balisees d'un fichier GLSL.
 
-## Pourquoi ce dossier est important
+## Role
 
 La map n'utilise pas uniquement des `ShaderMaterial` faits maison.
 Une grande partie des effets est appliquee en patchant des materials GLTF standards deja produits par Blender.
