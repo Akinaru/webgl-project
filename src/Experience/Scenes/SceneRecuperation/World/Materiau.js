@@ -1,19 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import {
-    BUILDING_TEST_BLEU_NAME_TOKENS,
-    BUTTON_PRESS_DEPTH,
-    BUTTON_RELEASE_DURATION,
-    CURSOR_OWNER_CLASS,
-    FLOAT_AMPLITUDE,
-    FLOAT_SPEED,
-    IDLE_EMISSIVE_INTENSITY,
-    MATERIAL_DEFINITIONS,
-    MATERIAL_TEXTURE_COLORS,
-    SELECTED_EMISSIVE_INTENSITY,
-    TEXTURE_SIZE
-} from './Materiau.constants.js'
+import * as MateriauConstants from './Materiau.constants.js'
 
 export default class Materiau
 {
@@ -38,7 +26,7 @@ export default class Materiau
             ? onSelectionChange
             : null
         this.clickableMeshes = this.recuperationModel?.getClickableMaterialMeshes?.() ?? []
-        this.buildingMeshes = this.recuperationModel?.getMeshesForNameTokens?.(BUILDING_TEST_BLEU_NAME_TOKENS, { exact: true }) ?? []
+        this.buildingMeshes = this.recuperationModel?.getMeshesForNameTokens?.(MateriauConstants.BUILDING_TEST_BLEU_NAME_TOKENS, { exact: true }) ?? []
 
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
@@ -65,7 +53,7 @@ export default class Materiau
     {
         this.definitionTextures.clear()
 
-        for(const definition of MATERIAL_DEFINITIONS)
+        for(const definition of MateriauConstants.MATERIAL_DEFINITIONS)
         {
             this.definitionTextures.set(definition.key, this.createTextureForDefinition(definition))
         }
@@ -74,8 +62,8 @@ export default class Materiau
     createTextureForDefinition(definition)
     {
         const canvas = document.createElement('canvas')
-        canvas.width = TEXTURE_SIZE
-        canvas.height = TEXTURE_SIZE
+        canvas.width = MateriauConstants.TEXTURE_SIZE
+        canvas.height = MateriauConstants.TEXTURE_SIZE
         const context = canvas.getContext('2d')
 
         if(definition.key === 'materiau0')
@@ -102,7 +90,7 @@ export default class Materiau
     drawScarabShellTexture(context)
     {
         context.fillStyle = '#2b170b'
-        context.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+        context.fillRect(0, 0, MateriauConstants.TEXTURE_SIZE, MateriauConstants.TEXTURE_SIZE)
 
         for(let row = 0; row < 8; row++)
         {
@@ -124,19 +112,19 @@ export default class Materiau
             const x = index * 64
             context.beginPath()
             context.moveTo(x, 0)
-            context.lineTo(x, TEXTURE_SIZE)
+            context.lineTo(x, MateriauConstants.TEXTURE_SIZE)
             context.stroke()
         }
     }
 
     drawGlassTexture(context)
     {
-        const gradient = context.createLinearGradient(0, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+        const gradient = context.createLinearGradient(0, 0, MateriauConstants.TEXTURE_SIZE, MateriauConstants.TEXTURE_SIZE)
         gradient.addColorStop(0, '#dff7ff')
         gradient.addColorStop(0.5, '#86d4ea')
         gradient.addColorStop(1, '#3f7ea7')
         context.fillStyle = gradient
-        context.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+        context.fillRect(0, 0, MateriauConstants.TEXTURE_SIZE, MateriauConstants.TEXTURE_SIZE)
 
         context.strokeStyle = 'rgba(255, 255, 255, 0.45)'
         context.lineWidth = 6
@@ -145,7 +133,7 @@ export default class Materiau
             const offset = index * 48
             context.beginPath()
             context.moveTo(offset, 0)
-            context.lineTo(offset + 180, TEXTURE_SIZE)
+            context.lineTo(offset + 180, MateriauConstants.TEXTURE_SIZE)
             context.stroke()
         }
     }
@@ -153,14 +141,14 @@ export default class Materiau
     drawVegetationTexture(context)
     {
         context.fillStyle = '#183821'
-        context.fillRect(0, 0, TEXTURE_SIZE, TEXTURE_SIZE)
+        context.fillRect(0, 0, MateriauConstants.TEXTURE_SIZE, MateriauConstants.TEXTURE_SIZE)
 
         for(let index = 0; index < 140; index++)
         {
-            const x = Math.random() * TEXTURE_SIZE
-            const y = Math.random() * TEXTURE_SIZE
+            const x = Math.random() * MateriauConstants.TEXTURE_SIZE
+            const y = Math.random() * MateriauConstants.TEXTURE_SIZE
             const radius = 10 + Math.random() * 22
-            context.fillStyle = MATERIAL_TEXTURE_COLORS[index % MATERIAL_TEXTURE_COLORS.length]
+            context.fillStyle = MateriauConstants.MATERIAL_TEXTURE_COLORS[index % MateriauConstants.MATERIAL_TEXTURE_COLORS.length]
             context.beginPath()
             context.arc(x, y, radius, 0, Math.PI * 2)
             context.fill()
@@ -206,7 +194,7 @@ export default class Materiau
 
     getDefinitionByKey(key)
     {
-        return MATERIAL_DEFINITIONS.find((definition) => definition.key === key) ?? null
+        return MateriauConstants.MATERIAL_DEFINITIONS.find((definition) => definition.key === key) ?? null
     }
 
     setBuildingEntries()
@@ -320,8 +308,8 @@ export default class Materiau
             if(material.emissive)
             {
                 material.emissiveIntensity = isSelected
-                    ? Math.max(baseEmissiveIntensity, SELECTED_EMISSIVE_INTENSITY)
-                    : Math.max(baseEmissiveIntensity, IDLE_EMISSIVE_INTENSITY)
+                    ? Math.max(baseEmissiveIntensity, MateriauConstants.SELECTED_EMISSIVE_INTENSITY)
+                    : Math.max(baseEmissiveIntensity, MateriauConstants.IDLE_EMISSIVE_INTENSITY)
             }
 
             material.needsUpdate = true
@@ -405,7 +393,7 @@ export default class Materiau
 
         this.activePressedMeshUuid = mesh.uuid
         state.phase = 'hold'
-        state.pressOffsetY = -BUTTON_PRESS_DEPTH
+        state.pressOffsetY = -MateriauConstants.BUTTON_PRESS_DEPTH
         state.timer = 0
     }
 
@@ -505,13 +493,13 @@ export default class Materiau
 
             if(state.phase === 'hold')
             {
-                state.pressOffsetY = -BUTTON_PRESS_DEPTH
+                state.pressOffsetY = -MateriauConstants.BUTTON_PRESS_DEPTH
             }
             else if(state.phase === 'release')
             {
                 state.timer += deltaSeconds
-                const progress = Math.min(1, state.timer / BUTTON_RELEASE_DURATION)
-                state.pressOffsetY = -BUTTON_PRESS_DEPTH * (1 - progress)
+                const progress = Math.min(1, state.timer / MateriauConstants.BUTTON_RELEASE_DURATION)
+                state.pressOffsetY = -MateriauConstants.BUTTON_PRESS_DEPTH * (1 - progress)
 
                 if(progress >= 1)
                 {
@@ -528,9 +516,9 @@ export default class Materiau
                 6,
                 deltaSeconds
             )
-            state.floatPhase += deltaSeconds * FLOAT_SPEED
+            state.floatPhase += deltaSeconds * MateriauConstants.FLOAT_SPEED
 
-            const floatOffset = Math.sin(state.floatPhase) * FLOAT_AMPLITUDE * state.floatWeight
+            const floatOffset = Math.sin(state.floatPhase) * MateriauConstants.FLOAT_AMPLITUDE * state.floatWeight
             state.mesh.position.y = state.baseY + state.pressOffsetY + floatOffset
         }
     }
@@ -544,7 +532,7 @@ export default class Materiau
         }
 
         this.ownsCursor = true
-        document.body.classList.add(CURSOR_OWNER_CLASS)
+        document.body.classList.add(MateriauConstants.CURSOR_OWNER_CLASS)
         this.cursorElement.style.left = `${this.centerScreen.x}px`
         this.cursorElement.style.top = `${this.centerScreen.y}px`
         this.cursorElement.classList.add('is-visible')
@@ -560,7 +548,7 @@ export default class Materiau
         }
 
         this.ownsCursor = false
-        document.body.classList.remove(CURSOR_OWNER_CLASS)
+        document.body.classList.remove(MateriauConstants.CURSOR_OWNER_CLASS)
 
         if(this.cursorElement instanceof HTMLElement)
         {

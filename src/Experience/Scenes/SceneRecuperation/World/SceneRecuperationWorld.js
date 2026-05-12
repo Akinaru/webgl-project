@@ -14,15 +14,7 @@ import ShowerParticles from './ShowerParticles.js'
 import SceneRecuperationWindTurbine from './SceneRecuperationWindTurbine.js'
 import SceneRecuperationTubeWaterController from './SceneRecuperationTubeWaterController.js'
 import SceneRecuperationRoom2Trigger from './SceneRecuperationRoom2Trigger.js'
-import { setupSceneRecuperationWorldDebug } from './SceneRecuperationWorld.debug.js'
-import SceneRecuperationCollisionDebug from './SceneRecuperationCollisionDebug.js'
-import SceneRecuperationCascadeTubes from './SceneRecuperationCascadeTubes.js'
-import SceneRecuperationScoring from './SceneRecuperationScoring.js'
-import {
-    EXIT_TELEPORT_INACTIVE_COLOR,
-    FINAL_TUBE_MODULE_NAME
-} from './SceneRecuperationWorld.constants.js'
-
+import * as SceneRecuperationWorldConstants from './SceneRecuperationWorld.constants.js'
 let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
 const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
@@ -397,7 +389,7 @@ export default class SceneRecuperationWorld
             return
         }
 
-        const isComplete = this.tubeWaterController.isModuleFlowComplete?.(FINAL_TUBE_MODULE_NAME)
+        const isComplete = this.tubeWaterController.isModuleFlowComplete?.(SceneRecuperationWorldConstants.FINAL_TUBE_MODULE_NAME)
         if(!isComplete)
         {
             return

@@ -1,5 +1,5 @@
 import EventEmitter from '../Utils/EventEmitter.js'
-import { INPUT_ACTION } from '../Inputs/InputBindings.constants.js'
+import * as InputBindingsConstants from '../Inputs/InputBindings.constants.js'
 
 const DISPLAYED_CLASS = 'is-displayed'
 const VISIBLE_CLASS = 'is-visible'
@@ -132,7 +132,7 @@ export default class PauseMenu extends EventEmitter
                 return
             }
 
-            const pauseCodes = this.inputs?.getActionCodes?.(INPUT_ACTION.PAUSE) ?? ['Escape']
+            const pauseCodes = this.inputs?.getActionCodes?.(InputBindingsConstants.INPUT_ACTION.PAUSE) ?? ['Escape']
             if(!pauseCodes.includes(event.code))
             {
                 return

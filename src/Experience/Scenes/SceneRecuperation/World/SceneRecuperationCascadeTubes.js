@@ -1,43 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
-import { cascadeTubeShaderChunks } from './Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
-import { cascadeSlopeShaderChunks } from './Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
-import {
-    CASCADE_BLUE_TUBE_NAME_TOKENS,
-    CASCADE_GROUP_SALLE_CHOIX,
-    CASCADE_GROUP_SALLE_TUBE,
-    CASCADE_PLAN_NAME_TOKENS,
-    CASCADE_PLANTS_NAME_TOKENS,
-    DEFAULT_BASE_COLOR,
-    DEFAULT_FLOW_ANGLE,
-    DEFAULT_FLOW_SCALE,
-    DEFAULT_FLOW_SPEED,
-    DEFAULT_FOAM_BAND_ANGLE,
-    DEFAULT_FOAM_COLOR,
-    DEFAULT_FOAM_INTENSITY,
-    DEFAULT_FOAM_NOISE_FREQUENCY,
-    DEFAULT_FOAM_OPACITY,
-    DEFAULT_FOAM_SPEED,
-    DEFAULT_FOAM_THRESHOLD,
-    DEFAULT_OPACITY,
-    DEFAULT_OVERLAY_DIAMETER_SCALE,
-    DEFAULT_OVERLAY_FLOW_SPEED,
-    DEFAULT_OVERLAY_FOAM_BAND_ANGLE,
-    DEFAULT_OVERLAY_FOAM_COLOR,
-    DEFAULT_OVERLAY_FOAM_INTENSITY,
-    DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY,
-    DEFAULT_OVERLAY_FOAM_OPACITY,
-    DEFAULT_OVERLAY_FOAM_SPEED,
-    DEFAULT_OVERLAY_FOAM_THRESHOLD,
-    DEFAULT_ROTATION_SALLE_CHOIX,
-    DEFAULT_ROTATION_SALLE_TUBE,
-    FLOW_SPEED_VARIATION_AMPLITUDE,
-    FOAM_SPEED_VARIATION_AMPLITUDE,
-    SURFACE_TYPE_SLOPE,
-    SURFACE_TYPE_TUBE
-} from './SceneRecuperationCascadeTubes.constants.js'
-
+import * as SceneRecuperationCascadeTubesConstants from './SceneRecuperationCascadeTubes.constants.js'
 export default class SceneRecuperationCascadeTubes
 {
     constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null } = {})
@@ -54,8 +17,8 @@ export default class SceneRecuperationCascadeTubes
 
         this.tubeSettings = this.createTubeDefaultSurfaceSettings()
         this.slopeSettings = this.createSlopeDefaultSurfaceSettings()
-        this.rotationSalleChoix = DEFAULT_ROTATION_SALLE_CHOIX
-        this.rotationSalleTube = DEFAULT_ROTATION_SALLE_TUBE
+        this.rotationSalleChoix = SceneRecuperationCascadeTubesConstants.DEFAULT_ROTATION_SALLE_CHOIX
+        this.rotationSalleTube = SceneRecuperationCascadeTubesConstants.DEFAULT_ROTATION_SALLE_TUBE
 
         this.applySharedWaterColors()
         this.cascadeSurfaceEntries = this.collectCascadeSurfaceEntries()
@@ -65,9 +28,9 @@ export default class SceneRecuperationCascadeTubes
 
     applySharedWaterColors()
     {
-        const baseColor = this.sharedWaterColors?.baseColor ?? DEFAULT_BASE_COLOR
-        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? DEFAULT_FOAM_COLOR
-        const surfaceFoamColor = this.sharedWaterColors?.surfaceFoamColor ?? DEFAULT_OVERLAY_FOAM_COLOR
+        const baseColor = this.sharedWaterColors?.baseColor ?? SceneRecuperationCascadeTubesConstants.DEFAULT_BASE_COLOR
+        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_COLOR
+        const surfaceFoamColor = this.sharedWaterColors?.surfaceFoamColor ?? SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_COLOR
 
         for(const settings of [this.tubeSettings, this.slopeSettings])
         {
@@ -82,27 +45,27 @@ export default class SceneRecuperationCascadeTubes
     createDefaultSurfaceSettings()
     {
         return {
-            baseColor: new THREE.Color(DEFAULT_BASE_COLOR),
-            foamColor: new THREE.Color(DEFAULT_FOAM_COLOR),
-            flowSpeed: DEFAULT_FLOW_SPEED,
-            flowScale: DEFAULT_FLOW_SCALE,
-            flowAngle: DEFAULT_FLOW_ANGLE,
-            foamSpeed: DEFAULT_FOAM_SPEED,
-            foamNoiseFrequency: DEFAULT_FOAM_NOISE_FREQUENCY,
-            foamThreshold: DEFAULT_FOAM_THRESHOLD,
-            foamIntensity: DEFAULT_FOAM_INTENSITY,
-            foamOpacity: DEFAULT_FOAM_OPACITY,
-            foamBandAngle: DEFAULT_FOAM_BAND_ANGLE,
-            opacity: DEFAULT_OPACITY,
-            overlayFoamColor: new THREE.Color(DEFAULT_OVERLAY_FOAM_COLOR),
-            overlayFlowSpeed: DEFAULT_OVERLAY_FLOW_SPEED,
-            overlayFoamSpeed: DEFAULT_OVERLAY_FOAM_SPEED,
-            overlayFoamNoiseFrequency: DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY,
-            overlayFoamThreshold: DEFAULT_OVERLAY_FOAM_THRESHOLD,
-            overlayFoamIntensity: DEFAULT_OVERLAY_FOAM_INTENSITY,
-            overlayFoamOpacity: DEFAULT_OVERLAY_FOAM_OPACITY,
-            overlayFoamBandAngle: DEFAULT_OVERLAY_FOAM_BAND_ANGLE,
-            overlayDiameterScale: DEFAULT_OVERLAY_DIAMETER_SCALE
+            baseColor: new THREE.Color(SceneRecuperationCascadeTubesConstants.DEFAULT_BASE_COLOR),
+            foamColor: new THREE.Color(SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_COLOR),
+            flowSpeed: SceneRecuperationCascadeTubesConstants.DEFAULT_FLOW_SPEED,
+            flowScale: SceneRecuperationCascadeTubesConstants.DEFAULT_FLOW_SCALE,
+            flowAngle: SceneRecuperationCascadeTubesConstants.DEFAULT_FLOW_ANGLE,
+            foamSpeed: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_SPEED,
+            foamNoiseFrequency: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_NOISE_FREQUENCY,
+            foamThreshold: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_THRESHOLD,
+            foamIntensity: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_INTENSITY,
+            foamOpacity: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_OPACITY,
+            foamBandAngle: SceneRecuperationCascadeTubesConstants.DEFAULT_FOAM_BAND_ANGLE,
+            opacity: SceneRecuperationCascadeTubesConstants.DEFAULT_OPACITY,
+            overlayFoamColor: new THREE.Color(SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_COLOR),
+            overlayFlowSpeed: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FLOW_SPEED,
+            overlayFoamSpeed: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_SPEED,
+            overlayFoamNoiseFrequency: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY,
+            overlayFoamThreshold: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_THRESHOLD,
+            overlayFoamIntensity: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_INTENSITY,
+            overlayFoamOpacity: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_OPACITY,
+            overlayFoamBandAngle: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_FOAM_BAND_ANGLE,
+            overlayDiameterScale: SceneRecuperationCascadeTubesConstants.DEFAULT_OVERLAY_DIAMETER_SCALE
         }
     }
 
@@ -136,8 +99,8 @@ export default class SceneRecuperationCascadeTubes
                 return
             }
 
-            const isPlanMesh = this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_PLAN_NAME_TOKENS)
-            const isTubeMesh = this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_PLANTS_NAME_TOKENS)
+            const isPlanMesh = this.recuperationModel?.hasNameInHierarchy?.(child, SceneRecuperationCascadeTubesConstants.CASCADE_PLAN_NAME_TOKENS)
+            const isTubeMesh = this.recuperationModel?.hasNameInHierarchy?.(child, SceneRecuperationCascadeTubesConstants.CASCADE_PLANTS_NAME_TOKENS)
                 && this.recuperationModel?.hasNameInHierarchy?.(child, CASCADE_BLUE_TUBE_NAME_TOKENS)
 
             if(!isPlanMesh && !isTubeMesh)
@@ -147,7 +110,7 @@ export default class SceneRecuperationCascadeTubes
 
             entries.push({
                 mesh: child,
-                surfaceType: isPlanMesh ? SURFACE_TYPE_SLOPE : SURFACE_TYPE_TUBE
+                surfaceType: isPlanMesh ? SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE : SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE
             })
         })
 
@@ -171,15 +134,15 @@ export default class SceneRecuperationCascadeTubes
 
     getSurfaceSettings(surfaceType)
     {
-        return surfaceType === SURFACE_TYPE_SLOPE ? this.slopeSettings : this.tubeSettings
+        return surfaceType === SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE ? this.slopeSettings : this.tubeSettings
     }
 
     getShaderChunks(surfaceType)
     {
-        return surfaceType === SURFACE_TYPE_SLOPE ? cascadeSlopeShaderChunks : cascadeTubeShaderChunks
+        return surfaceType === SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE ? cascadeSlopeShaderChunks : cascadeTubeShaderChunks
     }
 
-    createCascadeTubeMaterial(baseMaterial, mesh, { isOverlay = false, surfaceType = SURFACE_TYPE_TUBE } = {})
+    createCascadeTubeMaterial(baseMaterial, mesh, { isOverlay = false, surfaceType = SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE } = {})
     {
         const material = baseMaterial?.clone?.() ?? baseMaterial
         if(!material)
@@ -366,8 +329,8 @@ export default class SceneRecuperationCascadeTubes
         const foamNoise = Math.sin((worldPosition.x * 2.517) + (worldPosition.z * 5.201) + (worldPosition.y * 1.173) + (phase * 1.7))
 
         return {
-            flowSpeedOffset: flowNoise * FLOW_SPEED_VARIATION_AMPLITUDE,
-            foamSpeedOffset: foamNoise * FOAM_SPEED_VARIATION_AMPLITUDE
+            flowSpeedOffset: flowNoise * SceneRecuperationCascadeTubesConstants.FLOW_SPEED_VARIATION_AMPLITUDE,
+            foamSpeedOffset: foamNoise * SceneRecuperationCascadeTubesConstants.FOAM_SPEED_VARIATION_AMPLITUDE
         }
     }
 
@@ -383,23 +346,23 @@ export default class SceneRecuperationCascadeTubes
 
             if(normalizedName === 'cascade+plantes_1' || normalizedName === 'cascade_plantes_1')
             {
-                return CASCADE_GROUP_SALLE_TUBE
+                return SceneRecuperationCascadeTubesConstants.CASCADE_GROUP_SALLE_TUBE
             }
 
             if(normalizedName === 'cascade+plantes' || normalizedName === 'cascade_plantes')
             {
-                return CASCADE_GROUP_SALLE_CHOIX
+                return SceneRecuperationCascadeTubesConstants.CASCADE_GROUP_SALLE_CHOIX
             }
 
             current = current.parent
         }
 
-        return CASCADE_GROUP_SALLE_CHOIX
+        return SceneRecuperationCascadeTubesConstants.CASCADE_GROUP_SALLE_CHOIX
     }
 
     getRotationValueForGroup(groupKey)
     {
-        if(groupKey === CASCADE_GROUP_SALLE_CHOIX)
+        if(groupKey === SceneRecuperationCascadeTubesConstants.CASCADE_GROUP_SALLE_CHOIX)
         {
             return this.rotationSalleChoix
         }
@@ -422,8 +385,8 @@ export default class SceneRecuperationCascadeTubes
         this.slopeDebugFolder = this.debugSlopeFolder || this.debug.addFolder('Pentes', {
             expanded: false
         })
-        this.buildSurfaceDebug(this.tubeDebugFolder, this.tubeSettings, SURFACE_TYPE_TUBE)
-        this.buildSurfaceDebug(this.slopeDebugFolder, this.slopeSettings, SURFACE_TYPE_SLOPE)
+        this.buildSurfaceDebug(this.tubeDebugFolder, this.tubeSettings, SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE)
+        this.buildSurfaceDebug(this.slopeDebugFolder, this.slopeSettings, SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE)
 
         this.debug.addBinding(this.slopeDebugFolder, this, 'rotationSalleChoix', {
             label: 'Rotation salle choix',
@@ -453,7 +416,7 @@ export default class SceneRecuperationCascadeTubes
 
         this.debug.addBinding(parentFolder, surfaceSettings, 'flowSpeed', { label: 'Vitesse du flux', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(parentFolder, surfaceSettings, 'flowScale', { label: 'Echelle du motif', min: 0.02, max: 2, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
-        if(surfaceType === SURFACE_TYPE_SLOPE)
+        if(surfaceType === SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE)
         {
             this.debug.addBinding(parentFolder, surfaceSettings, 'flowAngle', { label: 'Angle du flux', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
         }
@@ -474,7 +437,7 @@ export default class SceneRecuperationCascadeTubes
         this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamOpacity', { label: 'Opacite mousse overlay', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(outerFolder, surfaceSettings, 'overlayDiameterScale', { label: 'Diametre overlay', min: 1, max: 1.5, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
 
-        if(surfaceType === SURFACE_TYPE_TUBE)
+        if(surfaceType === SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE)
         {
             this.tubeInnerFoamDebugFolder = innerFolder
             this.tubeOuterFoamDebugFolder = outerFolder

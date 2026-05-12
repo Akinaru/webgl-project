@@ -1,14 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    DEFAULT_MARGIN_Y,
-    DEFAULT_MIN_SIZE_Y,
-    ROOM2_BOUNDS_NAME_TOKENS,
-    ROOM2_FALLBACK_BOUNDS_NAME_TOKENS,
-    ROOM2_TRIGGER_HELPER_COLOR,
-    ROOM2_TRIGGER_TRIGGERED_COLOR
-} from './SceneRecuperationRoom2Trigger.constants.js'
-
+import * as SceneRecuperationRoom2TriggerConstants from './SceneRecuperationRoom2Trigger.constants.js'
 export default class SceneRecuperationRoom2Trigger
 {
     constructor({
@@ -40,15 +32,15 @@ export default class SceneRecuperationRoom2Trigger
 
     setDefaultState()
     {
-        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(ROOM2_BOUNDS_NAME_TOKENS, { exact: false })
-            ?? this.recuperationModel?.getBoundsForNameTokens?.(ROOM2_FALLBACK_BOUNDS_NAME_TOKENS, { exact: false })
+        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(SceneRecuperationRoom2TriggerConstants.ROOM2_BOUNDS_NAME_TOKENS, { exact: false })
+            ?? this.recuperationModel?.getBoundsForNameTokens?.(SceneRecuperationRoom2TriggerConstants.ROOM2_FALLBACK_BOUNDS_NAME_TOKENS, { exact: false })
             ?? null
 
         if(room2Bounds)
         {
             room2Bounds.getCenter(this.center)
             room2Bounds.getSize(this.size)
-            this.size.y = Math.max(DEFAULT_MIN_SIZE_Y, this.size.y + DEFAULT_MARGIN_Y)
+            this.size.y = Math.max(SceneRecuperationRoom2TriggerConstants.DEFAULT_MIN_SIZE_Y, this.size.y + SceneRecuperationRoom2TriggerConstants.DEFAULT_MARGIN_Y)
         }
         else
         {
@@ -70,7 +62,7 @@ export default class SceneRecuperationRoom2Trigger
 
     setHelper()
     {
-        this.helper = new THREE.Box3Helper(this.bounds, new THREE.Color(ROOM2_TRIGGER_HELPER_COLOR))
+        this.helper = new THREE.Box3Helper(this.bounds, new THREE.Color(SceneRecuperationRoom2TriggerConstants.ROOM2_TRIGGER_HELPER_COLOR))
         this.helper.visible = false
         this.helper.material.depthTest = false
         this.helper.renderOrder = 10
@@ -97,7 +89,7 @@ export default class SceneRecuperationRoom2Trigger
     {
         this.updateBoundsFromState()
         this.helper.box = this.bounds
-        this.helper.material.color.set(this.hasTriggered ? ROOM2_TRIGGER_TRIGGERED_COLOR : ROOM2_TRIGGER_HELPER_COLOR)
+        this.helper.material.color.set(this.hasTriggered ? SceneRecuperationRoom2TriggerConstants.ROOM2_TRIGGER_TRIGGERED_COLOR : SceneRecuperationRoom2TriggerConstants.ROOM2_TRIGGER_HELPER_COLOR)
 
         if(!this.state.enabled || !this.player?.position)
         {

@@ -1,14 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../Experience.js'
 import BloomRailSystem from './BloomRailSystem.js'
-import {
-    BLOOM_FACING_OFFSET_RADIANS,
-    BLOOM_UV_ZOOM,
-    ARM_MESH_NAME_TOKEN,
-    BLOOM_MOVEMENT_FACING_MIN_STEP,
-    BLOOM_FACE_PLAYER_MIN_DISTANCE
-} from './Bloom.constants.js'
-
+import * as BloomConstants from './Bloom.constants.js'
 export default class Bloom
 {
     constructor({
@@ -31,8 +24,8 @@ export default class Bloom
         this.bloomReflectionEnvTexture = this.resources.items.bloomReflectionEnvTexture ?? null
 
         this.tuning = {
-            facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
-            uvZoom: BLOOM_UV_ZOOM,
+            facingOffsetRadians: BloomConstants.BLOOM_FACING_OFFSET_RADIANS,
+            uvZoom: BloomConstants.BLOOM_UV_ZOOM,
             lookTurnSpeed: rails.lookTurnSpeed ?? 11,
             envMapIntensity: 1,
             roughness: 0.25,
@@ -459,7 +452,7 @@ export default class Bloom
     getTransmissionTextureForMesh(mesh)
     {
         const meshName = String(mesh?.name || '').trim().toLowerCase()
-        if(meshName.includes(ARM_MESH_NAME_TOKEN) && this.bloomTransmissionTexture2)
+        if(meshName.includes(BloomConstants.ARM_MESH_NAME_TOKEN) && this.bloomTransmissionTexture2)
         {
             return this.bloomTransmissionTexture2
         }
@@ -470,7 +463,7 @@ export default class Bloom
     getColorTextureForMesh(mesh)
     {
         const meshName = String(mesh?.name || '').trim().toLowerCase()
-        if(meshName.includes(ARM_MESH_NAME_TOKEN) && this.bloomColorTexture2)
+        if(meshName.includes(BloomConstants.ARM_MESH_NAME_TOKEN) && this.bloomColorTexture2)
         {
             return this.bloomColorTexture2
         }
@@ -1191,7 +1184,7 @@ export default class Bloom
     updateDirectFollowMotion(deltaSeconds, bobOffset)
     {
         this.previousAnchorPosition.copy(this.railAnchorPosition)
-        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
+        const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
 
         // On définit une distance de confort autour du joueur
         const comfortDistance = 1.8
@@ -1254,7 +1247,7 @@ export default class Bloom
         this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
         this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
-        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
+        const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
         const isMovingOnRail = didMove && this.movementDelta.lengthSq() > minFacingMovementStepSq
         if(isMovingOnRail)
         {
@@ -1290,7 +1283,7 @@ export default class Bloom
             return
         }
 
-        const minFacingMovementStepSq = BLOOM_MOVEMENT_FACING_MIN_STEP * BLOOM_MOVEMENT_FACING_MIN_STEP
+        const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
         if(this.movementDelta.lengthSq() > minFacingMovementStepSq)
         {
             this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
@@ -1503,7 +1496,7 @@ export default class Bloom
             return false
         }
 
-        const minDistanceSq = BLOOM_FACE_PLAYER_MIN_DISTANCE * BLOOM_FACE_PLAYER_MIN_DISTANCE
+        const minDistanceSq = BloomConstants.BLOOM_FACE_PLAYER_MIN_DISTANCE * BloomConstants.BLOOM_FACE_PLAYER_MIN_DISTANCE
         const distanceSq = this.direction.lengthSq()
         if(distanceSq <= minDistanceSq)
         {

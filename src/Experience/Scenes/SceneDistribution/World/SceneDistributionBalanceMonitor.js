@@ -1,9 +1,4 @@
-import {
-    DISTRIBUTION_CHANNEL_LABELS,
-    DISTRIBUTION_CHANNEL_ORDER,
-    DISTRIBUTION_TARGET_WINDOWS
-} from './SceneDistributionFlow.constants.js'
-
+import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
 export default class SceneDistributionBalanceMonitor
 {
     constructor({
@@ -20,11 +15,11 @@ export default class SceneDistributionBalanceMonitor
     {
         return {
             isSolved: false,
-            channels: DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
+            channels: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
                 token,
-                label: DISTRIBUTION_CHANNEL_LABELS[token] ?? token,
+                label: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_LABELS[token] ?? token,
                 normalizedFill: 0,
-                targetWindow: { ...(DISTRIBUTION_TARGET_WINDOWS[token] ?? { min: 0, max: 0 }) },
+                targetWindow: { ...(SceneDistributionFlowConstants.DISTRIBUTION_TARGET_WINDOWS[token] ?? { min: 0, max: 0 }) },
                 isInGreenZone: false,
                 status: 'probleme'
             }))
@@ -44,16 +39,16 @@ export default class SceneDistributionBalanceMonitor
 
     computeState()
     {
-        const channels = DISTRIBUTION_CHANNEL_ORDER.map((token) =>
+        const channels = SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) =>
         {
             const fillState = this.tubeWaterController?.getFillStateForValveToken?.(token) ?? null
             const normalizedFill = fillState?.normalizedFill ?? 0
 
             return {
                 token,
-                label: DISTRIBUTION_CHANNEL_LABELS[token] ?? token,
+                label: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_LABELS[token] ?? token,
                 normalizedFill,
-                targetWindow: { ...(DISTRIBUTION_TARGET_WINDOWS[token] ?? { min: 0, max: 0 }) },
+                targetWindow: { ...(SceneDistributionFlowConstants.DISTRIBUTION_TARGET_WINDOWS[token] ?? { min: 0, max: 0 }) },
                 isInGreenZone: false,
                 status: 'probleme'
             }

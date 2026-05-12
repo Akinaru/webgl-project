@@ -1,14 +1,5 @@
 import Experience from '../../../Experience.js'
-import {
-    RECUPERATION_MATERIAL_TEST_EFFECTS_BY_KEY,
-    RECUPERATION_RESOLUTION_DURATION_EFFECTS,
-    RECUPERATION_RESOLUTION_DURATION_GOOD_RANGE_SECONDS,
-    RECUPERATION_SIMULATION_EFFECTS,
-    RECUPERATION_SIMULATION_INVENTEUR_THRESHOLD,
-    RECUPERATION_TUBE_USAGE_EFFECTS,
-    RECUPERATION_TUBE_USAGE_GOOD_RANGE
-} from './SceneRecuperationScoring.constants.js'
-
+import * as SceneRecuperationScoringConstants from './SceneRecuperationScoring.constants.js'
 function isValueInRange(value, range)
 {
     if(!Number.isFinite(value) || !range)
@@ -49,7 +40,7 @@ export default class SceneRecuperationScoring
         }
 
         this.testedMaterialKeys.add(materialKey)
-        this.applyEffects(RECUPERATION_MATERIAL_TEST_EFFECTS_BY_KEY[materialKey] ?? [])
+        this.applyEffects(SceneRecuperationScoringConstants.RECUPERATION_MATERIAL_TEST_EFFECTS_BY_KEY[materialKey] ?? [])
     }
 
     markTubePuzzleStart()
@@ -79,22 +70,22 @@ export default class SceneRecuperationScoring
     {
         if(this.simulationCount === 0)
         {
-            this.applyEffects(RECUPERATION_SIMULATION_EFFECTS.zero)
+            this.applyEffects(SceneRecuperationScoringConstants.RECUPERATION_SIMULATION_EFFECTS.zero)
             return
         }
 
-        if(this.simulationCount > RECUPERATION_SIMULATION_INVENTEUR_THRESHOLD)
+        if(this.simulationCount > SceneRecuperationScoringConstants.RECUPERATION_SIMULATION_INVENTEUR_THRESHOLD)
         {
-            this.applyEffects(RECUPERATION_SIMULATION_EFFECTS.aboveThreshold)
+            this.applyEffects(SceneRecuperationScoringConstants.RECUPERATION_SIMULATION_EFFECTS.aboveThreshold)
         }
     }
 
     applyTubeUsageEffects()
     {
         const tubeUsageCount = Number(this.getTubeWaterController?.()?.getUniqueRotatedTubeCount?.() ?? 0)
-        const effects = isValueInRange(tubeUsageCount, RECUPERATION_TUBE_USAGE_GOOD_RANGE)
-            ? RECUPERATION_TUBE_USAGE_EFFECTS.inRange
-            : RECUPERATION_TUBE_USAGE_EFFECTS.outOfRange
+        const effects = isValueInRange(tubeUsageCount, SceneRecuperationScoringConstants.RECUPERATION_TUBE_USAGE_GOOD_RANGE)
+            ? SceneRecuperationScoringConstants.RECUPERATION_TUBE_USAGE_EFFECTS.inRange
+            : SceneRecuperationScoringConstants.RECUPERATION_TUBE_USAGE_EFFECTS.outOfRange
 
         this.applyEffects(effects)
     }
@@ -104,9 +95,9 @@ export default class SceneRecuperationScoring
         const nowElapsedMs = Number(this.experience.time?.elapsed ?? this.sceneStartElapsedMs)
         const startElapsedMs = this.room2StartElapsedMs ?? this.sceneStartElapsedMs
         const durationSeconds = Math.max(0, (nowElapsedMs - startElapsedMs) * 0.001)
-        const effects = isValueInRange(durationSeconds, RECUPERATION_RESOLUTION_DURATION_GOOD_RANGE_SECONDS)
-            ? RECUPERATION_RESOLUTION_DURATION_EFFECTS.inRange
-            : RECUPERATION_RESOLUTION_DURATION_EFFECTS.outOfRange
+        const effects = isValueInRange(durationSeconds, SceneRecuperationScoringConstants.RECUPERATION_RESOLUTION_DURATION_GOOD_RANGE_SECONDS)
+            ? SceneRecuperationScoringConstants.RECUPERATION_RESOLUTION_DURATION_EFFECTS.inRange
+            : SceneRecuperationScoringConstants.RECUPERATION_RESOLUTION_DURATION_EFFECTS.outOfRange
 
         this.applyEffects(effects)
     }

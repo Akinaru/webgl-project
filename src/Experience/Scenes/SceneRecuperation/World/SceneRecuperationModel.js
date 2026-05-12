@@ -1,13 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    NON_COLLIDABLE_NAME_TOKENS,
-    FORCE_COLLIDABLE_NAME_TOKENS,
-    WALKABLE_GROUND_NAME_TOKENS,
-    CLICKABLE_MATERIAL_NAMES,
-    TUBE_WATER_NAME_TOKEN,
-    MODULE_ROTATION_TARGET_PATTERN
-} from './SceneRecuperationModel.constants.js'
+import * as SceneRecuperationModelConstants from './SceneRecuperationModel.constants.js'
 export default class SceneRecuperationModel
 {
     constructor({ debugParentFolder = null } = {})
@@ -155,12 +148,12 @@ export default class SceneRecuperationModel
 
     shouldUseForCollision(mesh)
     {
-        if(this.hasNameInHierarchy(mesh, FORCE_COLLIDABLE_NAME_TOKENS))
+        if(this.hasNameInHierarchy(mesh, SceneRecuperationModelConstants.FORCE_COLLIDABLE_NAME_TOKENS))
         {
             return true
         }
 
-        return !this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS)
+        return !this.hasNameInHierarchy(mesh, SceneRecuperationModelConstants.NON_COLLIDABLE_NAME_TOKENS)
     }
 
     refreshCollisionBoxes()
@@ -176,7 +169,7 @@ export default class SceneRecuperationModel
 
     isWalkableGroundMesh(mesh)
     {
-        return this.hasNameInHierarchy(mesh, WALKABLE_GROUND_NAME_TOKENS)
+        return this.hasNameInHierarchy(mesh, SceneRecuperationModelConstants.WALKABLE_GROUND_NAME_TOKENS)
     }
 
     applyCollisionMaterialFixes(mesh)
@@ -202,12 +195,12 @@ export default class SceneRecuperationModel
         const normalizedName = (mesh?.name || '')
             .toLowerCase()
             .replace(/[\s_-]+/g, '')
-        return CLICKABLE_MATERIAL_NAMES.has(normalizedName)
+        return SceneRecuperationModelConstants.CLICKABLE_MATERIAL_NAMES.has(normalizedName)
     }
 
     isTubeWaterMesh(mesh)
     {
-        return this.hasNameInHierarchy(mesh, [TUBE_WATER_NAME_TOKEN])
+        return this.hasNameInHierarchy(mesh, [SceneRecuperationModelConstants.TUBE_WATER_NAME_TOKEN])
     }
 
     getTubeWaterRotationTargetFromObject(object)
@@ -216,12 +209,12 @@ export default class SceneRecuperationModel
         while(current)
         {
             const name = String(current.name || '').toLowerCase()
-            if(MODULE_ROTATION_TARGET_PATTERN.test(name))
+            if(SceneRecuperationModelConstants.MODULE_ROTATION_TARGET_PATTERN.test(name))
             {
                 return current
             }
 
-            if(name.includes(TUBE_WATER_NAME_TOKEN))
+            if(name.includes(SceneRecuperationModelConstants.TUBE_WATER_NAME_TOKEN))
             {
                 return current
             }

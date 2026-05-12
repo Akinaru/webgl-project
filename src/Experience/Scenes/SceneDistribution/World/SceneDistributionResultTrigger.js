@@ -1,10 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    RESULT_ZONE_HELPER_COLOR,
-    RESULT_ZONE_TRIGGERED_COLOR
-} from './SceneDistributionResult.constants.js'
-
+import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
 const DEFAULT_MARGIN_Y = 1.4
 const DEFAULT_MIN_SIZE_Y = 2.5
 
@@ -66,7 +62,7 @@ export default class SceneDistributionResultTrigger
 
     setHelper()
     {
-        this.helper = new THREE.Box3Helper(this.bounds, new THREE.Color(RESULT_ZONE_HELPER_COLOR))
+        this.helper = new THREE.Box3Helper(this.bounds, new THREE.Color(SceneDistributionResultConstants.RESULT_ZONE_HELPER_COLOR))
         this.helper.visible = false
         this.helper.material.depthTest = false
         this.helper.renderOrder = 10
@@ -93,7 +89,7 @@ export default class SceneDistributionResultTrigger
     {
         this.updateBoundsFromState()
         this.helper.box = this.bounds
-        this.helper.material.color.set(this.hasTriggered ? RESULT_ZONE_TRIGGERED_COLOR : RESULT_ZONE_HELPER_COLOR)
+        this.helper.material.color.set(this.hasTriggered ? SceneDistributionResultConstants.RESULT_ZONE_TRIGGERED_COLOR : SceneDistributionResultConstants.RESULT_ZONE_HELPER_COLOR)
 
         if(!this.state.enabled || !this.player?.position)
         {
