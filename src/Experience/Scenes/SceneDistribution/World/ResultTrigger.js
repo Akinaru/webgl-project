@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
-import * as SceneDistributionResultTriggerConstants from './SceneDistributionResultTrigger.constants.js'
+import * as SceneDistributionResultConstants from './Result.constants.js'
+import * as SceneDistributionResultTriggerConstants from './ResultTrigger.constants.js'
 
 export default class SceneDistributionResultTrigger
 {

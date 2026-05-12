@@ -1,6 +1,6 @@
 import BaseScene from '../BaseScene.js'
 import SceneEnum from '../../Enum/SceneEnum.js'
-import SceneDistributionWorld from './World/SceneDistributionWorld.js'
+import SceneDistributionWorld from './World/World.js'
 
 export default class SceneDistributionScene extends BaseScene
 {

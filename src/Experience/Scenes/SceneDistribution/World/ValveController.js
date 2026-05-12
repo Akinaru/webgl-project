@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import * as SceneDistributionValveControllerConstants from './SceneDistributionValveController.constants.js'
-import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
+import * as SceneDistributionValveControllerConstants from './ValveController.constants.js'
+import * as SceneDistributionFlowConstants from './Flow.constants.js'
 const GESTURE_MIN_RADIUS_SQ = SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS * SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS
 
 class Valve

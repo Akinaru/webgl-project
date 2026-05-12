@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
-import * as SceneDistributionGaugeDisplayConstants from './SceneDistributionGaugeDisplay.constants.js'
+import * as SceneDistributionFlowConstants from './Flow.constants.js'
+import * as SceneDistributionGaugeDisplayConstants from './GaugeDisplay.constants.js'
 
 export default class SceneDistributionGaugeDisplay
 {

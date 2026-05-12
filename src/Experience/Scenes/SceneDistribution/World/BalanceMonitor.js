@@ -1,4 +1,4 @@
-import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
+import * as SceneDistributionFlowConstants from './Flow.constants.js'
 export default class SceneDistributionBalanceMonitor
 {
     constructor({

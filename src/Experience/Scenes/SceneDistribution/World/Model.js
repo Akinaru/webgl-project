@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionModelConstants from './SceneDistributionModel.constants.js'
+import * as SceneDistributionModelConstants from './Model.constants.js'
 export default class SceneDistributionModel
 {
     constructor()

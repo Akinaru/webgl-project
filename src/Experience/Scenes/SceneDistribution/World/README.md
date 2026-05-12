@@ -4,14 +4,14 @@ World local du puzzle de distribution.
 
 ## Fichiers clefs
 
-- `SceneDistributionWorld.js`: composition generale.
-- `SceneDistributionModel.js`: acces au GLTF et extraction des maillages utiles.
-- `SceneDistributionValveController.js`: interaction joueur avec les vannes.
-- `SceneDistributionTubeWaterController.js`: propagation visuelle de l'eau dans les tubes.
-- `SceneDistributionBalanceMonitor.js`: verifie l'etat de resolution du puzzle.
-- `SceneDistributionGaugeDisplay.js`: retour visuel de mesure.
-- `SceneDistributionDoorController.js`: ouverture/fermeture des portes de sortie.
-- `SceneDistributionResultTrigger.js` et `SceneDistributionResultDisplay.js`: declenchement et affichage de la sequence finale.
+- `World.js`: composition generale.
+- `Model.js`: acces au GLTF et extraction des maillages utiles.
+- `ValveController.js`: interaction joueur avec les vannes.
+- `TubeWaterController.js`: propagation visuelle de l'eau dans les tubes.
+- `BalanceMonitor.js`: verifie l'etat de resolution du puzzle.
+- `GaugeDisplay.js`: retour visuel de mesure.
+- `DoorController.js`: ouverture/fermeture des portes de sortie.
+- `ResultTrigger.js` et `ResultDisplay.js`: declenchement et affichage de la sequence finale.
 - `*.constants.js`: parametres et tokens nommes.
 - `*.debug.js`: outils Tweakpane du domaine.
 

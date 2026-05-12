@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import * as SceneDistributionTubeWaterControllerConstants from './SceneDistributionTubeWaterController.constants.js'
-import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
+import * as SceneDistributionTubeWaterControllerConstants from './TubeWaterController.constants.js'
+import * as SceneDistributionFlowConstants from './Flow.constants.js'
 const FILL_COORD_ATTRIBUTE = 'aDistributionFillCoord'
 const FILL_UNIFORM = 'uDistributionFillProgress'
 const FILL_EDGE_UNIFORM = 'uDistributionFillEdge'

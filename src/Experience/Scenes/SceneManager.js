@@ -2,7 +2,7 @@ import Experience from '../Experience.js'
 import SceneEnum from '../Enum/SceneEnum.js'
 import MapScene from './Map/MapScene.js'
 import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
-import SceneDistributionScene from './SceneDistribution/SceneDistributionScene.js'
+import SceneDistributionScene from './SceneDistribution/Scene.js'
 
 export default class SceneManager
 {

@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
+import * as SceneDistributionResultConstants from './Result.constants.js'
 import MetierEnum from '../../../Enum/MetierEnum.js'
-import * as SceneDistributionResultDisplayConstants from './SceneDistributionResultDisplay.constants.js'
+import * as SceneDistributionResultDisplayConstants from './ResultDisplay.constants.js'
 
 export default class SceneDistributionResultDisplay
 {

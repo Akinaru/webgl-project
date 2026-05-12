@@ -4,7 +4,7 @@ Scene de puzzle basee sur des vannes et des tubes d'eau.
 
 ## Composition
 
-- `SceneDistributionScene.js`: enveloppe de scene.
+- ``: enveloppe de scene.
 - `World/`: logique locale du puzzle.
 
 ## Idee de gameplay

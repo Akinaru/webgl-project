@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionDoorControllerConstants from './SceneDistributionDoorController.constants.js'
+import * as SceneDistributionDoorControllerConstants from './DoorController.constants.js'
 
 export default class SceneDistributionDoorController
 {
