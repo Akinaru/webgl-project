@@ -34,6 +34,7 @@ export default class Renderer
         this.debug = this.experience.debug
 
         this.setInstance()
+        this.prepareWebGLRenderBreakpoint()
         this.restoreGraphicsQuality()
         this.applyGraphicsQualityPreset(this.graphicsQuality)
         this.setScene(this.experience.scene)
@@ -59,6 +60,29 @@ export default class Renderer
         this.instance.shadowMap.type = THREE.PCFSoftShadowMap
         this.instance.setSize(this.sizes.width, this.sizes.height)
         this.instance.setPixelRatio(this.getEffectivePixelRatio())
+    }
+
+    prepareWebGLRenderBreakpoint()
+    {
+        const shouldBreakOnRender = this.debug?.flags?.has?.('breakrender')
+        if(!shouldBreakOnRender || !this.instance?.render)
+        {
+            return
+        }
+
+        const originalRender = this.instance.render.bind(this.instance)
+        let hasBrokenOnce = false
+
+        this.instance.render = (...args) =>
+        {
+            if(!hasBrokenOnce)
+            {
+                hasBrokenOnce = true
+                debugger
+            }
+
+            return originalRender(...args)
+        }
     }
 
     setDebug()
