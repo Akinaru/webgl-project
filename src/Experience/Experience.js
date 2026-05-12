@@ -20,6 +20,9 @@ import Tutoriel from './Utils/Tutoriel.js'
 import Bloom from './Common/Bloom.js'
 
 let instance = null
+const DEBUG_TUTORIAL_FOLDER_TITLE = '🎓 Tutoriel'
+const DEBUG_TUTORIAL_COMPLETED_KEY = 'tutorialCompleted'
+const DEBUG_TUTORIAL_COMPLETED_LABEL = 'tutoriel termine'
 
 export default class Experience
 {
@@ -85,6 +88,10 @@ export default class Experience
 
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
+        this.debugTutorialFolder = null
+        this.debugTutorialState = {
+            [DEBUG_TUTORIAL_COMPLETED_KEY]: false
+        }
 
         this.menu.start().then(() =>
         {
@@ -103,8 +110,12 @@ export default class Experience
                 {
                     this.dialogueManager?.startByKey?.(configuredDialogueKey)
                 }
+
+                this.setTutorialCompleted(true)
             })
         })
+
+        this.setDebugTutorial()
 
         this.time.on(`${EventEnum.TICK}.experience`, () =>
         {
@@ -141,6 +152,8 @@ export default class Experience
         this.bloom?.destroy?.()
         this.menu?.destroy?.()
         this.sound?.destroy?.()
+        this.debugTutorialFolder?.dispose?.()
+        this.debugTutorialFolder = null
         this.debug.destroy()
         this.inputs?.destroy?.()
         this.camera.destroy?.()
@@ -155,5 +168,39 @@ export default class Experience
         {
             delete window.experience
         }
+    }
+
+    setTutorialCompleted(isCompleted)
+    {
+        this.debugTutorialState[DEBUG_TUTORIAL_COMPLETED_KEY] = isCompleted === true
+    }
+
+    setDebugTutorial()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugTutorialFolder = this.debug.addFolder(DEBUG_TUTORIAL_FOLDER_TITLE, { expanded: false })
+        this.debug
+            .addBinding(this.debugTutorialFolder, this.debugTutorialState, DEBUG_TUTORIAL_COMPLETED_KEY, {
+                label: DEBUG_TUTORIAL_COMPLETED_LABEL
+            })
+            ?.on?.('change', (event) =>
+            {
+                const shouldBeCompleted = event.value === true
+                if(shouldBeCompleted)
+                {
+                    this.tutoriel?.complete?.({
+                        immediate: true,
+                        emitFinished: true
+                    })
+                    return
+                }
+
+                this.setTutorialCompleted(false)
+                this.tutoriel?.restart?.()
+            })
     }
 }

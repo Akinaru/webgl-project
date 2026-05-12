@@ -13,6 +13,7 @@ export default class Tutoriel extends EventEmitter
         this.keyboardLayoutMap = null
         
         this.status = TutorielConstants.TUTORIAL_STATUS.PENDING
+        this.finishTimeoutId = null
         this.currentStepIndex = 0
         this.steps = [
             {
@@ -107,11 +108,62 @@ export default class Tutoriel extends EventEmitter
     start()
     {
         if (this.status !== TutorielConstants.TUTORIAL_STATUS.PENDING) return
-        
+
+        this.clearFinishTimeout()
         this.status = TutorielConstants.TUTORIAL_STATUS.ACTIVE
+        this.container.style.display = ''
+        this.container.classList.remove('is-finished')
         this.container.classList.add('is-active')
         this.showStep(0)
         this.trigger('start')
+    }
+
+    restart()
+    {
+        this.clearFinishTimeout()
+        this.resetProgress()
+        this.container.style.display = ''
+        this.container.classList.remove('is-active')
+        this.container.classList.remove('is-finished')
+        this.status = TutorielConstants.TUTORIAL_STATUS.PENDING
+        this.start()
+    }
+
+    complete({ immediate = false, emitFinished = true } = {})
+    {
+        if(this.status === TutorielConstants.TUTORIAL_STATUS.FINISHED)
+        {
+            if(immediate)
+            {
+                this.container.style.display = 'none'
+            }
+            return
+        }
+
+        this.clearFinishTimeout()
+        this.status = TutorielConstants.TUTORIAL_STATUS.FINISHED
+        this.container.classList.remove('is-active')
+        this.container.classList.add('is-finished')
+
+        if(immediate)
+        {
+            this.container.style.display = 'none'
+            if(emitFinished)
+            {
+                this.trigger('finished')
+            }
+            return
+        }
+
+        this.finishTimeoutId = setTimeout(() =>
+        {
+            this.container.style.display = 'none'
+            if(emitFinished)
+            {
+                this.trigger('finished')
+            }
+            this.finishTimeoutId = null
+        }, 800)
     }
     
     showStep(index)
@@ -184,23 +236,39 @@ export default class Tutoriel extends EventEmitter
     
     finish()
     {
-        if (this.status === TutorielConstants.TUTORIAL_STATUS.FINISHED) return
-        
-        this.status = TutorielConstants.TUTORIAL_STATUS.FINISHED
-        this.container.classList.add('is-finished')
-        
-        setTimeout(() => {
-            this.container.style.display = 'none'
-            this.trigger('finished')
-        }, 800)
+        this.complete({
+            immediate: false,
+            emitFinished: true
+        })
     }
     
     destroy()
     {
+        this.clearFinishTimeout()
         this.inputs.off('mousemove', this.onMouseMove)
         this.container?.remove()
         this.off('start')
         this.off('finished')
+    }
+
+    resetProgress()
+    {
+        this.currentStepIndex = 0
+        for(const step of this.steps)
+        {
+            step.progress = 0
+        }
+    }
+
+    clearFinishTimeout()
+    {
+        if(this.finishTimeoutId === null)
+        {
+            return
+        }
+
+        clearTimeout(this.finishTimeoutId)
+        this.finishTimeoutId = null
     }
 
     async resolveKeyboardLayoutMap()
