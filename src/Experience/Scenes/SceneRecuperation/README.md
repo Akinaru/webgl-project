@@ -20,14 +20,6 @@ Par rapport aux autres scenes, celle-ci melange plusieurs couches en meme temps:
 - plusieurs rendus d'eau stylises,
 - un circuit de tubes rotatifs qui sert a la lisibilite du puzzle.
 
-## Ordre de lecture recommande
-
-1. `World/README.md`
-2. `World/SceneRecuperationWorld.js`
-3. `World/SceneRecuperationModel.js`
-4. `World/Television.js` et `World/Materiau.js`
-5. les modules d'eau et leurs README shaders
-
 ## Questions auxquelles cette scene repond
 
 - comment l'etat d'un puzzle ouvre une porte,

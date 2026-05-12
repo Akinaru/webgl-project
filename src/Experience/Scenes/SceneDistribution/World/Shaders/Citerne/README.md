@@ -8,7 +8,7 @@ Si la citerne doit recevoir un shader dedie, le code GLSL et son assembleur JS d
 
 ## Role
 
-Ce README existe surtout pour signaler la frontiere d'architecture:
+Ce dossier accueille les effets de citerne qui deviennent suffisamment autonomes pour sortir du controller runtime.
 
-- ce qui est simple et etroitement couple au puzzle peut rester dans le controller,
-- ce qui devient un vrai effet graphique autonome doit migrer ici.
+Les effets simples et tres couples au puzzle peuvent rester dans le controller.
+Les effets graphiques plus riches ou reutilisables doivent etre deplaces ici.

@@ -29,6 +29,5 @@ Le but est la lisibilite:
 
 ## Conseils de lecture
 
-- lire d'abord les README de sous-dossiers,
 - regarder les uniforms exposes par le JS,
-- puis seulement plonger dans les fonctions de bruit et les masques binaires.
+- puis plonger dans les fonctions de bruit et les masques binaires.

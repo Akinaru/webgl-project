@@ -29,7 +29,7 @@ Si une classe depend surtout d'un gameplay ou d'une scene concrete, elle ne doit
 
 ## Fichiers a lire en priorite
 
-- `Resources.js` si tu veux comprendre le chargement.
-- `Debug.js` si tu veux ajouter des sliders ou exporter des presets.
-- `Time.js` si tu veux suivre la boucle runtime.
-- `EventEmitter.js` si tu veux suivre qui ecoute quoi.
+- `Resources.js`: chargement et disponibilite des assets.
+- `Debug.js`: panneau debug, bindings et export de presets.
+- `Time.js`: ticker, delta et temps ecoule.
+- `EventEmitter.js`: souscription et emission d'evenements.

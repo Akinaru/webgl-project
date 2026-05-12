@@ -36,5 +36,3 @@ Le fichier `planMask.fragment.glsl` contient a la fois:
 - la logique de presence de l'eau,
 - la mousse de rive,
 - un traitement specifique quand on regarde le plan par dessous.
-
-C'est l'un des shaders a lire avec le README a cote si tu le modifies.
