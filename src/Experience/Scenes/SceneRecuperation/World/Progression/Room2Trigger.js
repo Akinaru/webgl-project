@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
+import Experience from '../../../../Experience.js'
 import * as SceneRecuperationRoom2TriggerConstants from './Room2Trigger.constants.js'
 export default class SceneRecuperationRoom2Trigger
 {

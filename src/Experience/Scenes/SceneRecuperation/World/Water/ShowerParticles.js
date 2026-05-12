@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
+import Experience from '../../../../Experience.js'
 import * as ShowerParticlesConstants from './ShowerParticles.constants.js'
 export default class ShowerParticles
 {
