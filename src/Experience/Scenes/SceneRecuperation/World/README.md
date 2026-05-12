@@ -19,7 +19,7 @@ World local de la scene de recuperation.
 - `WindTurbine.js`: element interactif/visuel de scene.
 - `Scoring.js`: lecture synthese de l'etat du puzzle de tubes.
 - `Room2Trigger.js`: trigger de progression/dialogue local.
-- `CollisionDebug.js` et `*.debug.js`: lecture debug.
+- `SceneRecuperationCollision.debug.js` et `*.debug.js`: lecture debug.
 
 ## Logique de haut niveau
 

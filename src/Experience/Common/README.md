@@ -7,7 +7,7 @@ Ce dossier regroupe les systemes 3D reutilisables entre plusieurs scenes.
 - `Player.js`: controle FPS, gravite, collisions et camera.
 - `Bloom.js`: personnage/compagnon runtime.
 - `BloomRailSystem.js`: deplacement de Bloom sur un graphe de rails.
-- `CollisionDebug.js`: visualisation des collisions.
+- `Collision.debug.js`: visualisation des collisions.
 - `Bloom.constants.js`: constantes de configuration partagees.
 
 ## Role

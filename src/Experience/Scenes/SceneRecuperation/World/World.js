@@ -14,6 +14,7 @@ import ShowerParticles from './ShowerParticles.js'
 import SceneRecuperationWindTurbine from './WindTurbine.js'
 import SceneRecuperationTubeWaterController from './TubeWaterController.js'
 import SceneRecuperationRoom2Trigger from './Room2Trigger.js'
+import SceneRecuperationCollisionDebug from './SceneRecuperationCollision.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
 let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'

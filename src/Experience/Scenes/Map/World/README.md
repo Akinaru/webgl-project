@@ -14,7 +14,7 @@ Le monde de la map compose la plupart des systemes visuels et interactifs du hub
 - `Water.js`: logique d'eau locale.
 - `Bushes.js` et `Foliage.js`: vegetation et interactions associees.
 - `CloudLayer.js`: nuages proceduraux.
-- `MapCollisionDebug.js` et `MapVisibilityDebug.js`: outils de lecture runtime.
+- `MapCollision.debug.js` et `MapVisibility.debug.js`: outils de lecture runtime.
 - `MapWorld.constants.js`: constantes de gameplay/audio/teleport.
 
 ## Responsabilites runtime
