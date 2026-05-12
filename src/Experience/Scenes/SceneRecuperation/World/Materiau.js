@@ -1,36 +1,19 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-
-const CURSOR_OWNER_CLASS = 'is-recuperation-material-cursor'
-const BUTTON_PRESS_DEPTH = 0.045
-const BUTTON_RELEASE_DURATION = 0.14
-const FLOAT_AMPLITUDE = 0.04
-const FLOAT_SPEED = 2.4
-const SELECTED_EMISSIVE_INTENSITY = 0.35
-const IDLE_EMISSIVE_INTENSITY = 0.08
-const TEXTURE_SIZE = 512
-
-const MATERIAL_DEFINITIONS = Object.freeze([
-    {
-        key: 'materiau0',
-        label: 'Carapace de Scarabe',
-        description: 'Materiau organique',
-        accentColor: '#7a4a21'
-    },
-    {
-        key: 'materiau1',
-        label: 'Verre',
-        description: 'Materiau translucide',
-        accentColor: '#7ec6df'
-    },
-    {
-        key: 'materiau2',
-        label: 'Vegetation',
-        description: 'Materiau vivant',
-        accentColor: '#4f9f57'
-    }
-])
+import {
+    BUILDING_TEST_BLEU_NAME_TOKENS,
+    BUTTON_PRESS_DEPTH,
+    BUTTON_RELEASE_DURATION,
+    CURSOR_OWNER_CLASS,
+    FLOAT_AMPLITUDE,
+    FLOAT_SPEED,
+    IDLE_EMISSIVE_INTENSITY,
+    MATERIAL_DEFINITIONS,
+    MATERIAL_TEXTURE_COLORS,
+    SELECTED_EMISSIVE_INTENSITY,
+    TEXTURE_SIZE
+} from './Materiau.constants.js'
 
 export default class Materiau
 {
@@ -55,7 +38,7 @@ export default class Materiau
             ? onSelectionChange
             : null
         this.clickableMeshes = this.recuperationModel?.getClickableMaterialMeshes?.() ?? []
-        this.buildingMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['building_test-Bleu'], { exact: true }) ?? []
+        this.buildingMeshes = this.recuperationModel?.getMeshesForNameTokens?.(BUILDING_TEST_BLEU_NAME_TOKENS, { exact: true }) ?? []
 
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
@@ -177,7 +160,7 @@ export default class Materiau
             const x = Math.random() * TEXTURE_SIZE
             const y = Math.random() * TEXTURE_SIZE
             const radius = 10 + Math.random() * 22
-            context.fillStyle = ['#2f6f39', '#4a9a49', '#74b75b'][index % 3]
+            context.fillStyle = MATERIAL_TEXTURE_COLORS[index % MATERIAL_TEXTURE_COLORS.length]
             context.beginPath()
             context.arc(x, y, radius, 0, Math.PI * 2)
             context.fill()

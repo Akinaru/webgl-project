@@ -1,9 +1,11 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const DEFAULT_CLOSED_Y = 1.5
-const DEFAULT_OPEN_Y = 3.4
-const DEFAULT_ANIMATION_SPEED = 5.5
+import {
+    DEFAULT_ANIMATION_SPEED,
+    DEFAULT_CLOSED_Y,
+    DEFAULT_OPEN_Y,
+    DOOR_NAME_TOKENS
+} from './Door.constants.js'
 
 export default class Door
 {
@@ -14,7 +16,7 @@ export default class Door
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
 
-        this.object = this.recuperationModel?.getFirstObjectForNameTokens?.(['porte'], { exact: true }) ?? null
+        this.object = this.recuperationModel?.getFirstObjectForNameTokens?.(DOOR_NAME_TOKENS, { exact: true }) ?? null
         this.settings = {
             closedY: DEFAULT_CLOSED_Y,
             openY: DEFAULT_OPEN_Y,

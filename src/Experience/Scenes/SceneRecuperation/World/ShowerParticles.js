@@ -1,11 +1,13 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const DROP_COUNT = 48
-const DROP_RADIUS = 0.028
-const DROP_LENGTH = 0.16
-const FALL_SPEED_MIN = 1.8
-const FALL_SPEED_MAX = 3.4
+import {
+    DROP_COUNT,
+    DROP_LENGTH,
+    DROP_RADIUS,
+    FALL_SPEED_MAX,
+    FALL_SPEED_MIN,
+    SHOWER_NAME_TOKENS
+} from './ShowerParticles.constants.js'
 
 export default class ShowerParticles
 {
@@ -24,7 +26,7 @@ export default class ShowerParticles
         this.spread = new THREE.Vector3(0.35, 0, 0.35)
         this.floorY = -2.5
 
-        this.shower = this.recuperationModel?.getFirstObjectForNameTokens?.(['shower'], { exact: true }) ?? null
+        this.shower = this.recuperationModel?.getFirstObjectForNameTokens?.(SHOWER_NAME_TOKENS, { exact: true }) ?? null
         this.setBoundsFromShower()
         this.setMesh()
         this.resetDrops()
