@@ -174,6 +174,7 @@ export default class MapWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.syncAmbientSound()
         this.syncBloomContext()
         this.refreshTeleportAvailability()
         this.light?.update?.(delta)
@@ -186,6 +187,18 @@ export default class MapWorld
         this.updateBushSound(delta)
         this.updateTeleportZoneVisual()
         this.checkTeleportTrigger()
+    }
+
+    syncAmbientSound()
+    {
+        if(this.experience.sound?.isChannelPlaying?.('mapAmbience'))
+        {
+            return
+        }
+
+        this.experience.sound?.play?.('recuperationAmbientWaves', {
+            channel: 'mapAmbience'
+        })
     }
 
     syncBloomContext()
@@ -598,6 +611,7 @@ export default class MapWorld
     {
         this.experience.dialogueManager?.off?.('end.mapWorldTeleport')
         this.resources.off(this.readyEventName)
+        this.experience.sound?.stopChannel?.('mapAmbience')
         this.experience.sound?.stopChannel?.('underwater')
         this.experience.sound?.stopChannel?.('footsteps')
         this.isUnderwaterLoopPlaying = false

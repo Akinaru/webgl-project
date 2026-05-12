@@ -10,8 +10,8 @@ const CASCADE_PLAN_NAME_TOKENS = ['shad_pente']
 const SURFACE_TYPE_TUBE = 'tube'
 const SURFACE_TYPE_SLOPE = 'slope'
 
-const DEFAULT_BASE_COLOR = '#2161a8'
-const DEFAULT_FOAM_COLOR = '#103d6f'
+const DEFAULT_BASE_COLOR = '#00CEFF'
+const DEFAULT_FOAM_COLOR = '#9AF6FE'
 const DEFAULT_FLOW_SPEED = 0.35
 const DEFAULT_FLOW_SCALE = 0.34
 const DEFAULT_FLOW_ANGLE = 0
@@ -22,7 +22,7 @@ const DEFAULT_FOAM_INTENSITY = 1.63
 const DEFAULT_FOAM_OPACITY = 0.76
 const DEFAULT_FOAM_BAND_ANGLE = 1.5708
 const DEFAULT_OPACITY = 1
-const DEFAULT_OVERLAY_FOAM_COLOR = '#f4fbff'
+const DEFAULT_OVERLAY_FOAM_COLOR = '#FDFDF7'
 const DEFAULT_OVERLAY_FLOW_SPEED = 0.35
 const DEFAULT_OVERLAY_FOAM_SPEED = 0
 const DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY = 4.43
@@ -40,12 +40,14 @@ const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'
 
 export default class SceneRecuperationCascadeTubes
 {
-    constructor({ recuperationModel = null, debugParentFolder = null } = {})
+    constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null } = {})
     {
         this.experience = new Experience()
         this.debug = this.experience.debug
         this.recuperationModel = recuperationModel
-        this.debugParentFolder = debugParentFolder
+        this.debugTubeFolder = debugTubeFolder
+        this.debugSlopeFolder = debugSlopeFolder
+        this.sharedWaterColors = sharedWaterColors
         this.runtimeMaterials = []
         this.overlayMeshes = []
         this.localTime = 0
@@ -55,9 +57,26 @@ export default class SceneRecuperationCascadeTubes
         this.rotationSalleChoix = DEFAULT_ROTATION_SALLE_CHOIX
         this.rotationSalleTube = DEFAULT_ROTATION_SALLE_TUBE
 
+        this.applySharedWaterColors()
         this.cascadeSurfaceEntries = this.collectCascadeSurfaceEntries()
         this.applyMaterials()
         this.setDebug()
+    }
+
+    applySharedWaterColors()
+    {
+        const baseColor = this.sharedWaterColors?.baseColor ?? DEFAULT_BASE_COLOR
+        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? DEFAULT_FOAM_COLOR
+        const surfaceFoamColor = this.sharedWaterColors?.surfaceFoamColor ?? DEFAULT_OVERLAY_FOAM_COLOR
+
+        for(const settings of [this.tubeSettings, this.slopeSettings])
+        {
+            settings.baseColor.set(baseColor)
+            settings.foamColor.set(deepFoamColor)
+            settings.overlayFoamColor.set(surfaceFoamColor)
+        }
+
+        this.syncMaterialUniforms()
     }
 
     createDefaultSurfaceSettings()
@@ -395,29 +414,25 @@ export default class SceneRecuperationCascadeTubes
             return
         }
 
-        this.debugFolder = this.debug.addFolder('Cascade de tuyaux', {
-            parent: this.debugParentFolder || this.debug.ui,
+        this.ownsTubeDebugFolder = !this.debugTubeFolder
+        this.ownsSlopeDebugFolder = !this.debugSlopeFolder
+        this.tubeDebugFolder = this.debugTubeFolder || this.debug.addFolder('Tuyaux', {
             expanded: false
         })
-        this.tubeDebugFolder = this.debug.addFolder('Tuyaux', {
-            parent: this.debugFolder,
-            expanded: false
-        })
-        this.slopeDebugFolder = this.debug.addFolder('Pente', {
-            parent: this.debugFolder,
+        this.slopeDebugFolder = this.debugSlopeFolder || this.debug.addFolder('Pentes', {
             expanded: false
         })
         this.buildSurfaceDebug(this.tubeDebugFolder, this.tubeSettings, SURFACE_TYPE_TUBE)
         this.buildSurfaceDebug(this.slopeDebugFolder, this.slopeSettings, SURFACE_TYPE_SLOPE)
 
-        this.debug.addBinding(this.debugFolder, this, 'rotationSalleChoix', {
+        this.debug.addBinding(this.slopeDebugFolder, this, 'rotationSalleChoix', {
             label: 'Rotation salle choix',
             min: 0,
             max: 1,
             step: 0.001
         }).on('change', () => this.syncMaterialUniforms())
 
-        this.debug.addBinding(this.debugFolder, this, 'rotationSalleTube', {
+        this.debug.addBinding(this.tubeDebugFolder, this, 'rotationSalleTube', {
             label: 'Rotation salle tube',
             min: 0,
             max: 1,
@@ -436,7 +451,6 @@ export default class SceneRecuperationCascadeTubes
             expanded: false
         })
 
-        this.debug.addColorBinding(parentFolder, surfaceSettings, 'baseColor', { label: 'Couleur de base' }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(parentFolder, surfaceSettings, 'flowSpeed', { label: 'Vitesse du flux', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(parentFolder, surfaceSettings, 'flowScale', { label: 'Echelle du motif', min: 0.02, max: 2, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         if(surfaceType === SURFACE_TYPE_SLOPE)
@@ -445,14 +459,12 @@ export default class SceneRecuperationCascadeTubes
         }
         this.debug.addBinding(parentFolder, surfaceSettings, 'opacity', { label: 'Opacite du flux', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
 
-        this.debug.addColorBinding(innerFolder, surfaceSettings, 'foamColor', { label: 'Couleur de mousse' }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(innerFolder, surfaceSettings, 'foamSpeed', { label: 'Vitesse de la mousse', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(innerFolder, surfaceSettings, 'foamBandAngle', { label: 'Angle des bandes', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(innerFolder, surfaceSettings, 'foamNoiseFrequency', { label: 'Frequence du bruit de mousse', min: 0, max: 12, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(innerFolder, surfaceSettings, 'foamThreshold', { label: 'Largeur de mousse', min: 0, max: 1, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(innerFolder, surfaceSettings, 'foamIntensity', { label: 'Intensite de mousse', min: 0, max: 3, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
 
-        this.debug.addColorBinding(outerFolder, surfaceSettings, 'overlayFoamColor', { label: 'Couleur mousse overlay' }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFlowSpeed', { label: 'Vitesse flux overlay', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamSpeed', { label: 'Vitesse mousse overlay', min: -4, max: 4, step: 0.01 }).on('change', () => this.syncMaterialUniforms())
         this.debug.addBinding(outerFolder, surfaceSettings, 'overlayFoamBandAngle', { label: 'Angle des bandes overlay', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.syncMaterialUniforms())
@@ -547,13 +559,16 @@ export default class SceneRecuperationCascadeTubes
         this.slopeInnerFoamDebugFolder = null
         this.slopeOuterFoamDebugFolder?.dispose?.()
         this.slopeOuterFoamDebugFolder = null
-        this.tubeDebugFolder?.dispose?.()
+        if(this.ownsTubeDebugFolder)
+        {
+            this.tubeDebugFolder?.dispose?.()
+        }
         this.tubeDebugFolder = null
-        this.slopeDebugFolder?.dispose?.()
+        if(this.ownsSlopeDebugFolder)
+        {
+            this.slopeDebugFolder?.dispose?.()
+        }
         this.slopeDebugFolder = null
-        this.debugFolder?.dispose?.()
-        this.debugFolder = null
-
         for(const overlayMesh of this.overlayMeshes)
         {
             overlayMesh.parent?.remove?.(overlayMesh)
