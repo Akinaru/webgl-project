@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import { setupSceneRecuperationTubeWaterControllerDebug } from './TubeWaterController.debug.js'
 import * as SceneRecuperationTubeWaterControllerConstants from './TubeWaterController.constants.js'
 
 import * as setupMethods from './TubeWaterController/setup.js'
@@ -14,6 +13,9 @@ import * as lifecycleMethods from './TubeWaterController/lifecycle.js'
 
 export default class SceneRecuperationTubeWaterController
 {
+/**
+ * Initialise le contrôleur des tuyaux: état runtime, caches, dépendances, matériaux et événements.
+ */
 constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = null } = {})
 {
     this.experience = new Experience()

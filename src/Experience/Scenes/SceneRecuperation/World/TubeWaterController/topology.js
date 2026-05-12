@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 
+/**
+ * Associe chaque module de rotation aux objets de jonction qui doivent tourner avec lui.
+ */
 export function collectJoinTargets()
 {
     this.joinTargetsByTubeUuid.clear()
@@ -20,6 +23,9 @@ export function collectJoinTargets()
 }
 
 
+/**
+ * Construit l ordre global des modules à partir des noms de nœuds du modèle.
+ */
 export function buildTubeOrder()
 {
     this.targetMetaByUuid.clear()
@@ -69,6 +75,9 @@ export function buildTubeOrder()
 }
 
 
+/**
+ * Extrait les métadonnées de tri (ordre, type de branche, index) d un module.
+ */
 export function getTargetMeta(target, fallbackIndex)
 {
     const name = this.getModuleNameForTarget(target)
@@ -94,6 +103,9 @@ export function getTargetMeta(target, fallbackIndex)
 }
 
 
+/**
+ * Retrouve le nom de module pertinent en remontant la hiérarchie des parents.
+ */
 export function getModuleNameForTarget(target)
 {
     let current = target
@@ -114,6 +126,9 @@ export function getModuleNameForTarget(target)
 }
 
 
+/**
+ * Donne la priorité de tri entre tronc principal et branches.
+ */
 export function getBranchSortWeight(branchType)
 {
     if(branchType === 'main')
@@ -135,6 +150,9 @@ export function getBranchSortWeight(branchType)
 }
 
 
+/**
+ * Construit les dépendances de flux entre modules (main, branches, gates spéciaux).
+ */
 export function buildConnectionDependencies()
 {
     this.connectionDependencyGroupsByUuid.clear()
@@ -167,6 +185,9 @@ export function buildConnectionDependencies()
 }
 
 
+/**
+ * Filtre et trie les modules selon un prédicat de métadonnées.
+ */
 export function getTargetsByMeta(predicate)
 {
     return this.rotationTargets
@@ -190,6 +211,9 @@ export function getTargetsByMeta(predicate)
 }
 
 
+/**
+ * Construit les dépendances en chaîne pour une branche donnée (t ou b).
+ */
 export function buildBranchDependencies(branchType)
 {
     const branchTargets = this.getTargetsByMeta((meta) =>
@@ -220,6 +244,9 @@ export function buildBranchDependencies(branchType)
 }
 
 
+/**
+ * Trouve le dernier module principal avant un ordre donné.
+ */
 export function getLastMainBeforeOrder(order)
 {
     let candidate = null
@@ -249,6 +276,9 @@ export function getLastMainBeforeOrder(order)
 }
 
 
+/**
+ * Retourne le module principal exact pour un ordre donné.
+ */
 export function getMainAtOrder(order)
 {
     for(const target of this.rotationTargets)
@@ -274,6 +304,9 @@ export function getMainAtOrder(order)
 }
 
 
+/**
+ * Ajoute les dépendances spéciales de fusion entre branches et tronc principal.
+ */
 export function applySpecialGateDependencies()
 {
     const mergeTargets = this.getTargetsByMeta((meta) =>
@@ -325,6 +358,9 @@ export function applySpecialGateDependencies()
 }
 
 
+/**
+ * Ajoute les dépendances bidirectionnelles entre modules consécutifs de la branche b.
+ */
 export function applyBidirectionalBBranchDependencies()
 {
     const bBranchByIndex = new Map()
@@ -377,6 +413,9 @@ export function applyBidirectionalBBranchDependencies()
 }
 
 
+/**
+ * Ajoute les dépendances bidirectionnelles entre modules consécutifs de la branche t.
+ */
 export function applyBidirectionalTBranchDependencies()
 {
     const tBranchByIndex = new Map()
@@ -429,6 +468,9 @@ export function applyBidirectionalTBranchDependencies()
 }
 
 
+/**
+ * Déclare quels modules nécessitent des fenêtres bleues remplies pour avancer.
+ */
 export function buildWindowTubeDependencies()
 {
     this.requiredWindowByTubeUuid.clear()
@@ -460,6 +502,9 @@ export function buildWindowTubeDependencies()
 }
 
 
+/**
+ * Retrouve l UUID d un module de branche par type et index.
+ */
 export function findBranchUuid(branchType, branchIndex)
 {
     for(const target of this.rotationTargets)
@@ -485,6 +530,9 @@ export function findBranchUuid(branchType, branchIndex)
 }
 
 
+/**
+ * Recherche les objets de jonction à faire tourner avec un tube/module.
+ */
 export function findJoinTargetsForTube(tubeTarget)
 {
     const name = String(tubeTarget?.name || '').toLowerCase()
@@ -518,6 +566,9 @@ export function findJoinTargetsForTube(tubeTarget)
 }
 
 
+/**
+ * Mélange l orientation initiale des modules pour créer le puzzle.
+ */
 export function randomizeInitialRotations()
 {
     this.tubeIndexByUuid.clear()
@@ -553,6 +604,9 @@ export function randomizeInitialRotations()
 }
 
 
+/**
+ * Définit les modules qui démarrent volontairement déjà alignés.
+ */
 export function computeStartAlignedTubes()
 {
     this.startAlignedTubeUuids.clear()

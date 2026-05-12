@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 
+/**
+ * Nettoie les events et toutes les structures mémoire du contrôleur.
+ */
 export function destroy()
 {
     this.inputs?.off?.('sceneinteractdown.recuperationTubeWater')

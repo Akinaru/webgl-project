@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 
+/**
+ * Applique visuellement la progression des fenêtres bleues sur leurs meshes.
+ */
 export function applyBlueWindowColors()
 {
     if(this.blueWindowMeshes.length === 0)
@@ -46,6 +49,9 @@ export function applyBlueWindowColors()
 }
 
 
+/**
+ * Applique l état visuel (shader/couleur/emissive) d une fenêtre donnée.
+ */
 export function applyBlueWindowMeshState(mesh, flowProgress)
 {
     const colorLerp = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
@@ -92,6 +98,9 @@ export function applyBlueWindowMeshState(mesh, flowProgress)
 }
 
 
+/**
+ * Gère l opacité/transparence d une fenêtre selon son niveau de remplissage.
+ */
 export function applyWindowMaterialTransparency(material, flowProgress)
 {
     if(typeof material.opacity !== 'number')
@@ -128,6 +137,9 @@ export function applyWindowMaterialTransparency(material, flowProgress)
 }
 
 
+/**
+ * Applique la progression de flux aux shaders et matériaux des tuyaux.
+ */
 export function applyTubeFlowColors()
 {
     for(const target of this.rotationTargets)
@@ -225,6 +237,9 @@ export function applyTubeFlowColors()
 }
 
 
+/**
+ * Gère l opacité/transparence d un matériau de tuyau selon son remplissage.
+ */
 export function applyTubeMaterialTransparency(material, flowProgress)
 {
     if(typeof material.opacity !== 'number')
@@ -261,6 +276,9 @@ export function applyTubeMaterialTransparency(material, flowProgress)
 }
 
 
+/**
+ * Met à jour la couleur de référence du flux pour tuyaux et fenêtres.
+ */
 export function setTubeFlowColor(colorValue, emissiveColorValue = null)
 {
     if(colorValue === null || colorValue === undefined)

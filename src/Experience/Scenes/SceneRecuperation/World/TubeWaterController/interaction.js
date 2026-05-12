@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 
+/**
+ * Enregistre les événements d interaction joueur pour tourner les tuyaux.
+ */
 export function setEvents()
 {
     this.onMouseDown = (event) =>
@@ -18,12 +21,18 @@ export function setEvents()
 }
 
 
+/**
+ * Renvoie le mesh de tuyau actuellement visé au centre de l écran.
+ */
 export function getTubeMeshAtCenter()
 {
     return this.centerRaycaster.intersectFirst(this.tubeMeshes, false)
 }
 
 
+/**
+ * Boucle runtime du contrôleur: hover, rotations animées et mise à jour du flux.
+ */
 export function update()
 {
     this.hoveredTubeMesh = this.getTubeMeshAtCenter()
@@ -35,12 +44,18 @@ export function update()
 }
 
 
+/**
+ * Indique si le joueur vise actuellement un tuyau interactif.
+ */
 export function isHoveringTube()
 {
     return Boolean(this.hoveredTubeMesh)
 }
 
 
+/**
+ * Demande une rotation quart de tour du tuyau sélectionné.
+ */
 export function rotateTubeByQuarterTurn(mesh)
 {
     const rotationTarget = this.recuperationModel?.getTubeWaterRotationTargetFromObject?.(mesh) ?? mesh
@@ -61,12 +76,18 @@ export function rotateTubeByQuarterTurn(mesh)
 }
 
 
+/**
+ * Retourne le nombre de tuyaux distincts manipulés par le joueur.
+ */
 export function getUniqueRotatedTubeCount()
 {
     return this.playerRotatedTubeUuids.size
 }
 
 
+/**
+ * Applique une rotation immédiate à un module et ses jonctions.
+ */
 export function rotateTubeAssembly(tubeTarget, angle)
 {
     if(!tubeTarget)
@@ -82,6 +103,9 @@ export function rotateTubeAssembly(tubeTarget, angle)
 }
 
 
+/**
+ * Fait tourner le module et ses pièces associées autour d un axe monde.
+ */
 export function rotateTubeAssemblyAroundAxis(tubeTarget, pivotWorld, axisWorld, angle)
 {
     this.rotateObjectAroundWorldAxis(tubeTarget, pivotWorld, axisWorld, angle)
@@ -94,6 +118,9 @@ export function rotateTubeAssemblyAroundAxis(tubeTarget, pivotWorld, axisWorld, 
 }
 
 
+/**
+ * Empile une rotation à animer pour un module donné.
+ */
 export function queueTubeRotation(tubeTarget, angle)
 {
     if(!tubeTarget || !Number.isFinite(angle) || Math.abs(angle) <= 1e-6)
@@ -122,6 +149,9 @@ export function queueTubeRotation(tubeTarget, angle)
 }
 
 
+/**
+ * Avance les rotations animées en cours puis rafraîchit les collisions.
+ */
 export function updateTubeRotations(deltaSeconds)
 {
     if(this.activeTubeRotationsByUuid.size === 0)

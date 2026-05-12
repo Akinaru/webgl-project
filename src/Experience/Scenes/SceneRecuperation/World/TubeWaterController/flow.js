@@ -1,6 +1,9 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 
+/**
+ * Recalcule le chemin de flux, la progression et les couleurs des tuyaux/fenêtres.
+ */
 export function updateFlowState(deltaSeconds = this.getDeltaSeconds())
 {
     const { flowPathUuids, flowEntryByTubeUuid } = this.computeSequentialFlowPathUuids()
@@ -12,6 +15,9 @@ export function updateFlowState(deltaSeconds = this.getDeltaSeconds())
 }
 
 
+/**
+ * Réinitialise totalement les progressions de flux du puzzle.
+ */
 export function resetFlowAnimation()
 {
     this.flowAnimationStarted = false
@@ -36,6 +42,9 @@ export function resetFlowAnimation()
 }
 
 
+/**
+ * Démarre l animation de flux si elle n est pas déjà active.
+ */
 export function startFlowAnimation()
 {
     if(this.flowAnimationStarted)
@@ -48,6 +57,9 @@ export function startFlowAnimation()
 }
 
 
+/**
+ * Met à jour la progression de remplissage des fenêtres bleues selon les gates.
+ */
 export function updateBlueWindowFlowProgress(deltaSeconds)
 {
     const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND)
@@ -73,6 +85,9 @@ export function updateBlueWindowFlowProgress(deltaSeconds)
 }
 
 
+/**
+ * Retourne la progression de flux d un module nommé.
+ */
 export function getModuleFlowProgress(moduleName)
 {
     const normalizedName = this.normalizeObjectName(moduleName)
@@ -87,6 +102,9 @@ export function getModuleFlowProgress(moduleName)
 }
 
 
+/**
+ * Retourne la progression max parmi plusieurs modules.
+ */
 export function getMaxModuleFlowProgress(moduleNames = [])
 {
     let maxProgress = 0
@@ -98,12 +116,18 @@ export function getMaxModuleFlowProgress(moduleNames = [])
 }
 
 
+/**
+ * Indique si un module est rempli à 100% (avec epsilon).
+ */
 export function isModuleFlowComplete(moduleName)
 {
     return this.getModuleFlowProgress(moduleName) >= (1 - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
 }
 
 
+/**
+ * Indique si une fenêtre bleue est considérée complètement remplie.
+ */
 export function isBlueWindowFlowComplete(windowName)
 {
     const flowProgress = this.blueWindowFlowProgressByName.get(windowName) ?? 0
@@ -111,6 +135,9 @@ export function isBlueWindowFlowComplete(windowName)
 }
 
 
+/**
+ * Indique si la source fenêtre requise pour un tube est prête.
+ */
 export function isWindowSourceReady(tubeUuid)
 {
     const windowName = this.windowSourceByTubeUuid.get(tubeUuid)
@@ -123,6 +150,9 @@ export function isWindowSourceReady(tubeUuid)
 }
 
 
+/**
+ * Construit le chemin de flux valide en respectant ordre, rotation et dépendances.
+ */
 export function computeSequentialFlowPathUuids()
 {
     const connected = new Set()
@@ -172,6 +202,9 @@ export function computeSequentialFlowPathUuids()
 }
 
 
+/**
+ * Retourne la dépendance d entrée effectivement satisfaite pour un tube.
+ */
 export function getSatisfiedEntryDependencyUuid(tubeUuid, connectedTubeIds)
 {
     const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
@@ -192,6 +225,9 @@ export function getSatisfiedEntryDependencyUuid(tubeUuid, connectedTubeIds)
 }
 
 
+/**
+ * Fait progresser le remplissage des tubes validés et remet à zéro les autres.
+ */
 export function updateTubeFlowProgress(flowPathUuids, deltaSeconds)
 {
     const flowPathSet = new Set(flowPathUuids)
@@ -246,6 +282,9 @@ export function updateTubeFlowProgress(flowPathUuids, deltaSeconds)
 }
 
 
+/**
+ * Indique si un tube peut être rempli immédiatement.
+ */
 export function canTubeFillNow(tubeUuid)
 {
     const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
@@ -258,6 +297,9 @@ export function canTubeFillNow(tubeUuid)
 }
 
 
+/**
+ * Résout les sources actives de remplissage (tubes voisins ou fenêtre).
+ */
 export function resolveTubeFillSources(tubeUuid)
 {
     const requiredWindowName = this.requiredWindowByTubeUuid.get(tubeUuid)
@@ -288,6 +330,9 @@ export function resolveTubeFillSources(tubeUuid)
 }
 
 
+/**
+ * Retourne les dépendances prêtes à alimenter un tube.
+ */
 export function getReadyDependencySourceUuids(tubeUuid)
 {
     const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
@@ -322,6 +367,9 @@ export function getReadyDependencySourceUuids(tubeUuid)
 }
 
 
+/**
+ * Indique si un tube de branche doit se remplir en double inflow.
+ */
 export function shouldUseDualInflow(tubeUuid, fillSources)
 {
     if(!this.isBranchTube(tubeUuid))
@@ -334,6 +382,9 @@ export function shouldUseDualInflow(tubeUuid, fillSources)
 }
 
 
+/**
+ * Indique si un tube appartient à une branche spéciale du puzzle.
+ */
 export function isBranchTube(tubeUuid)
 {
     const meta = this.targetMetaByUuid.get(tubeUuid)
@@ -341,6 +392,9 @@ export function isBranchTube(tubeUuid)
 }
 
 
+/**
+ * Avance progressivement une valeur vers une cible avec pas maximum.
+ */
 export function moveTowards(value, target, maxStep)
 {
     if(maxStep <= 0)
@@ -362,6 +416,9 @@ export function moveTowards(value, target, maxStep)
 }
 
 
+/**
+ * Vérifie si au moins un groupe de dépendances est satisfait pour un tube.
+ */
 export function areDependencyGroupsSatisfied(tubeUuid, connectedTubeIds)
 {
     const dependencyGroups = this.connectionDependencyGroupsByUuid.get(tubeUuid) ?? []
@@ -382,6 +439,9 @@ export function areDependencyGroupsSatisfied(tubeUuid, connectedTubeIds)
 }
 
 
+/**
+ * Vérifie si un tube est revenu à une orientation compatible avec le flux.
+ */
 export function isTubeAtInitialRotation(tubeUuid)
 {
     const target = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
@@ -415,6 +475,9 @@ export function isTubeAtInitialRotation(tubeUuid)
 }
 
 
+/**
+ * Indique si le module correspond à un tube droit.
+ */
 export function isStraightTube(tubeUuid)
 {
     const target = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
@@ -428,6 +491,9 @@ export function isStraightTube(tubeUuid)
 }
 
 
+/**
+ * Indique si le module correspond à un tube coudé.
+ */
 export function isAngleTube(tubeUuid)
 {
     const target = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
@@ -441,6 +507,9 @@ export function isAngleTube(tubeUuid)
 }
 
 
+/**
+ * Indique si le sens d écoulement d un tube droit doit être inversé.
+ */
 export function isStraightTubeFlowReversed(tubeUuid)
 {
     if(!this.isStraightTube(tubeUuid))
@@ -453,6 +522,9 @@ export function isStraightTubeFlowReversed(tubeUuid)
 }
 
 
+/**
+ * Détermine la direction d écoulement courante d un tube.
+ */
 export function getTubeFlowDirection(tubeUuid)
 {
     const activeSource = this.activeFlowSourceByTubeUuid.get(tubeUuid)
@@ -493,6 +565,9 @@ export function getTubeFlowDirection(tubeUuid)
 }
 
 
+/**
+ * Déduit la direction du flux à partir de la position d une fenêtre source.
+ */
 export function inferFlowDirectionFromWindow(tubeUuid, windowName)
 {
     const worldPosition = this.getWindowSourceWorldPosition(windowName)
@@ -505,6 +580,9 @@ export function inferFlowDirectionFromWindow(tubeUuid, windowName)
 }
 
 
+/**
+ * Calcule la position monde utilisée comme source pour une fenêtre.
+ */
 export function getWindowSourceWorldPosition(windowName)
 {
     const meshes = this.blueWindowMeshesByName.get(windowName) ?? []
@@ -539,6 +617,9 @@ export function getWindowSourceWorldPosition(windowName)
 }
 
 
+/**
+ * Déduit la direction du flux à partir d un tube voisin.
+ */
 export function inferFlowDirectionFromNeighbor(tubeUuid, neighborTubeUuid)
 {
     const currentTube = this.rotationTargets.find((item) => item?.uuid === tubeUuid)
@@ -563,6 +644,9 @@ export function inferFlowDirectionFromNeighbor(tubeUuid, neighborTubeUuid)
 }
 
 
+/**
+ * Déduit la direction du flux à partir d une position monde projetée localement.
+ */
 export function inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
 {
     const currentTubeMeshes = this.tubeMeshesByTargetUuid.get(tubeUuid) ?? []
@@ -584,6 +668,9 @@ export function inferFlowDirectionFromWorldPosition(tubeUuid, worldPosition)
 }
 
 
+/**
+ * Retourne le tube source principal du puzzle.
+ */
 export function getSourceTubeTarget()
 {
     let sourceTarget = null

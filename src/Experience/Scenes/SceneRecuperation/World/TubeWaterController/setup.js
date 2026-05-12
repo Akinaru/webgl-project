@@ -2,6 +2,9 @@ import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 import { setupSceneRecuperationTubeWaterControllerDebug } from '../TubeWaterController.debug.js'
 
+/**
+ * Applique la palette partagée de la scène aux couleurs de flux des tuyaux et des fenêtres.
+ */
 export function applySharedWaterColors()
 {
     const baseColor = this.sharedWaterColors?.baseColor ?? SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR
@@ -14,12 +17,18 @@ export function applySharedWaterColors()
 }
 
 
+/**
+ * Branche les contrôles debug dédiés au puzzle des tuyaux.
+ */
 export function setDebug()
 {
     setupSceneRecuperationTubeWaterControllerDebug.call(this)
 }
 
 
+/**
+ * Capture la rotation de référence de chaque module pour savoir plus tard si un tube est réaligné.
+ */
 export function captureInitialRotations()
 {
     this.initialRotationByTubeUuid.clear()
@@ -41,6 +50,9 @@ export function captureInitialRotations()
 }
 
 
+/**
+ * Prépare les matériaux des meshes de tuyaux et attache les hooks shader de flux.
+ */
 export function setupTubeMaterials()
 {
     this.tubeMeshesByTargetUuid.clear()
@@ -82,6 +94,9 @@ export function setupTubeMaterials()
 }
 
 
+/**
+ * Détecte les fenêtres bleues, clone leurs matériaux et prépare leur pilotage visuel.
+ */
 export function setupBlueWindowMeshes()
 {
     this.blueWindowMeshes = []
@@ -143,6 +158,9 @@ export function setupBlueWindowMeshes()
 }
 
 
+/**
+ * Calcule un attribut de progression locale pour animer le remplissage d une fenêtre.
+ */
 export function setupBlueWindowCoordAttribute(mesh)
 {
     const geometry = mesh?.geometry
@@ -183,6 +201,9 @@ export function setupBlueWindowCoordAttribute(mesh)
 }
 
 
+/**
+ * Injecte les uniforms et patchs shader pour colorer dynamiquement une fenêtre bleue.
+ */
 export function setupBlueWindowShaderMaterial(material, mesh)
 {
     if(!material || typeof material.onBeforeCompile !== 'function')
@@ -270,6 +291,9 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
 }
 
 
+/**
+ * Injecte les uniforms et patchs shader pour afficher la progression d eau dans un tuyau.
+ */
 export function setupFlowShaderMaterial(material, mesh, tubeTarget)
 {
     if(!material || typeof material.onBeforeCompile !== 'function')
@@ -561,6 +585,9 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 }
 
 
+/**
+ * Calcule les coordonnées locales utilisées par le shader pour dessiner le front d eau.
+ */
 export function setupFlowCoordAttribute(mesh, tubeUuid)
 {
     const geometry = mesh?.geometry
@@ -642,6 +669,9 @@ export function setupFlowCoordAttribute(mesh, tubeUuid)
 }
 
 
+/**
+ * Produit une valeur pseudo-aléatoire stable dans [0,1] à partir d une chaîne.
+ */
 export function hashStringToUnit(value = '')
 {
     let hash = 2166136261
@@ -657,6 +687,9 @@ export function hashStringToUnit(value = '')
 }
 
 
+/**
+ * Construit la projection de flux pour un tube coudé (arc angulaire).
+ */
 export function computeAngleFlowProjection(positionAttribute, bounds)
 {
     const corners = [
@@ -727,6 +760,9 @@ export function computeAngleFlowProjection(positionAttribute, bounds)
 }
 
 
+/**
+ * Ajuste la projection angulaire en tenant compte des jonctions du module.
+ */
 export function refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tubeUuid, bounds)
 {
     if(!angleProjection || !mesh || !tubeUuid || !bounds)
@@ -817,6 +853,9 @@ export function refineAngleFlowProjectionWithTubeJoins(angleProjection, mesh, tu
 }
 
 
+/**
+ * Récupère les centres des jonctions du tube dans l espace local du mesh.
+ */
 export function getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
 {
     const joinTargets = this.joinTargetsByTubeUuid.get(tubeUuid) ?? []
@@ -860,6 +899,9 @@ export function getTubeJoinCentersInMeshLocal(mesh, tubeUuid)
 }
 
 
+/**
+ * Convertit un angle local en progression normalisée sur un arc donné.
+ */
 export function getAngleArcProgress(theta, angleMin, angleRange)
 {
     const safeRange = Math.max(angleRange, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
@@ -884,6 +926,9 @@ export function getAngleArcProgress(theta, angleMin, angleRange)
 }
 
 
+/**
+ * Calcule la coordonnée de flux locale d un point sur un mesh de tuyau.
+ */
 export function computeLocalFlowCoord(mesh, localPosition)
 {
     const flowProjection = mesh?.geometry?.userData?.flowProjection
