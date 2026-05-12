@@ -1,26 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import { DISTRIBUTION_CHANNEL_ORDER } from './SceneDistributionFlow.constants.js'
-import {
-    BACKGROUND_COLOR,
-    CANVAS_HEIGHT,
-    CANVAS_WIDTH,
-    CHIP_BG_COLOR,
-    CHIP_TEXT_COLOR,
-    FILL_COLOR,
-    FILL_SOLVED_COLOR,
-    FILL_WARNING_COLOR,
-    LABEL_COLOR,
-    SCREEN_GRIS_FONCE_NAME_TOKENS,
-    SOLVED_COLOR,
-    SUBTITLE_COLOR,
-    TARGET_ZONE_BORDER_COLOR,
-    TARGET_ZONE_COLOR,
-    TITLE_COLOR,
-    TRACK_BORDER_COLOR,
-    TRACK_COLOR,
-    WARNING_COLOR
-} from './SceneDistributionGaugeDisplay.constants.js'
+import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
+import * as SceneDistributionGaugeDisplayConstants from './SceneDistributionGaugeDisplay.constants.js'
 
 export default class SceneDistributionGaugeDisplay
 {
@@ -53,8 +34,8 @@ export default class SceneDistributionGaugeDisplay
     setCanvas()
     {
         this.canvas = document.createElement('canvas')
-        this.canvas.width = CANVAS_WIDTH
-        this.canvas.height = CANVAS_HEIGHT
+        this.canvas.width = SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH
+        this.canvas.height = SceneDistributionGaugeDisplayConstants.CANVAS_HEIGHT
         this.context = this.canvas.getContext('2d')
         this.texture = new THREE.CanvasTexture(this.canvas)
         this.texture.colorSpace = THREE.SRGBColorSpace
@@ -97,7 +78,7 @@ export default class SceneDistributionGaugeDisplay
         const meshAspect = size.x > 1e-6 && size.y > 1e-6
             ? size.x / size.y
             : 1
-        const textureAspect = CANVAS_WIDTH / CANVAS_HEIGHT
+        const textureAspect = SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH / SceneDistributionGaugeDisplayConstants.CANVAS_HEIGHT
 
         let scaleX = 1
         let scaleY = 1
@@ -132,7 +113,7 @@ export default class SceneDistributionGaugeDisplay
 
     setScreens()
     {
-        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.(SCREEN_GRIS_FONCE_NAME_TOKENS, { exact: true }) ?? []
+        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.(SceneDistributionGaugeDisplayConstants.SCREEN_GRIS_FONCE_NAME_TOKENS, { exact: true }) ?? []
         const primaryScreen = this.resolvePrimaryScreenMesh(screenMeshes)
         if(!(primaryScreen instanceof THREE.Mesh))
         {
@@ -210,7 +191,7 @@ export default class SceneDistributionGaugeDisplay
         const channelByToken = new Map((safeState.channels ?? []).map((channel) => [channel.token, channel]))
         this.state = {
             isSolved: Boolean(safeState.isSolved),
-            channels: DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
+            channels: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
                 token,
                 label: channelByToken.get(token)?.label ?? token,
                 normalizedFill: channelByToken.get(token)?.normalizedFill ?? 0,
@@ -230,15 +211,15 @@ export default class SceneDistributionGaugeDisplay
         }
 
         const { context } = this
-        context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-        context.fillStyle = BACKGROUND_COLOR
-        context.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+        context.clearRect(0, 0, SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH, SceneDistributionGaugeDisplayConstants.CANVAS_HEIGHT)
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.BACKGROUND_COLOR
+        context.fillRect(0, 0, SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH, SceneDistributionGaugeDisplayConstants.CANVAS_HEIGHT)
 
-        context.fillStyle = TITLE_COLOR
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.TITLE_COLOR
         context.font = '700 44px sans-serif'
         context.fillText('Stabilisation du reseau', 84, 102)
 
-        context.fillStyle = SUBTITLE_COLOR
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.SUBTITLE_COLOR
         context.font = '500 22px sans-serif'
         context.fillText('Ajuste les vannes jusqu a avoir 3 voyants verts.', 84, 140)
 
@@ -264,23 +245,23 @@ export default class SceneDistributionGaugeDisplay
             const targetZoneStart = gaugeX + gaugeWidth * THREE.MathUtils.clamp(channel.targetWindow?.min ?? 0, 0, 1)
             const targetZoneWidth = gaugeWidth * Math.max(0, (channel.targetWindow?.max ?? 0) - (channel.targetWindow?.min ?? 0))
             const fillColor = this.state.isSolved
-                ? FILL_SOLVED_COLOR
-                : (channel.isInGreenZone ? FILL_COLOR : FILL_WARNING_COLOR)
+                ? SceneDistributionGaugeDisplayConstants.FILL_SOLVED_COLOR
+                : (channel.isInGreenZone ? SceneDistributionGaugeDisplayConstants.FILL_COLOR : SceneDistributionGaugeDisplayConstants.FILL_WARNING_COLOR)
 
-            this.context.fillStyle = LABEL_COLOR
+            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.LABEL_COLOR
             this.context.font = '700 27px sans-serif'
             this.context.textAlign = 'start'
             this.context.fillText(channel.label, 90, y + 24)
 
-            this.context.fillStyle = TRACK_COLOR
-            this.context.strokeStyle = TRACK_BORDER_COLOR
+            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
+            this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TRACK_BORDER_COLOR
             this.context.lineWidth = 3
             this.roundRect(this.context, gaugeX, y, gaugeWidth, gaugeHeight, 16)
             this.context.fill()
             this.context.stroke()
 
-            this.context.fillStyle = TARGET_ZONE_COLOR
-            this.context.strokeStyle = TARGET_ZONE_BORDER_COLOR
+            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TARGET_ZONE_COLOR
+            this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TARGET_ZONE_BORDER_COLOR
             this.context.lineWidth = 2
             this.roundRect(
                 this.context,
@@ -323,11 +304,11 @@ export default class SceneDistributionGaugeDisplay
         const width = 110
         const height = 42
 
-        this.context.fillStyle = isActive ? TARGET_ZONE_BORDER_COLOR : CHIP_BG_COLOR
+        this.context.fillStyle = isActive ? SceneDistributionGaugeDisplayConstants.TARGET_ZONE_BORDER_COLOR : SceneDistributionGaugeDisplayConstants.CHIP_BG_COLOR
         this.roundRect(this.context, x, y, width, height, 14)
         this.context.fill()
 
-        this.context.fillStyle = isActive ? '#052012' : CHIP_TEXT_COLOR
+        this.context.fillStyle = isActive ? '#052012' : SceneDistributionGaugeDisplayConstants.CHIP_TEXT_COLOR
         this.context.font = '700 22px sans-serif'
         this.context.textAlign = 'center'
         this.context.fillText(text.toUpperCase(), x + width * 0.5, y + 28)
@@ -339,7 +320,7 @@ export default class SceneDistributionGaugeDisplay
         const message = this.state.isSolved
             ? 'Reseau stabilise. Les portes de sortie sont ouvertes.'
             : 'Place les 3 niveaux dans la zone verte pour stabiliser la pression.'
-        const messageColor = this.state.isSolved ? SOLVED_COLOR : WARNING_COLOR
+        const messageColor = this.state.isSolved ? SceneDistributionGaugeDisplayConstants.SOLVED_COLOR : SceneDistributionGaugeDisplayConstants.WARNING_COLOR
 
         this.context.fillStyle = messageColor
         this.context.font = '600 24px sans-serif'

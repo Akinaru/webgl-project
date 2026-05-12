@@ -1,29 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import {
-    BACKGROUND_COLOR,
-    BODY_COLOR,
-    BORDER_COLOR,
-    BUTTON_ENABLED_LIFT,
-    BUTTON_LEFT_EXACT_NAME_TOKENS,
-    BUTTON_LOCKED_OFFSET_Y,
-    BUTTON_NAME_TOKENS,
-    BUTTON_PRESS_DEPTH,
-    BUTTON_RELEASE_DURATION,
-    BUTTON_RIGHT_EXACT_NAME_TOKENS,
-    BUTTON_TEXTURE_BY_KEY,
-    CANVAS_HEIGHT,
-    CANVAS_WIDTH,
-    DISABLED_BUTTON_COLOR,
-    SCREEN_VISIBLE_EXACT_NAME_TOKENS,
-    SCREEN_VISIBLE_FALLBACK_NAME_TOKENS,
-    TEST_BUTTON_COLOR,
-    TEXT_COLOR,
-    TITLE_COLOR,
-    VALIDATE_BUTTON_COLOR
-} from './Television.constants.js'
-
+import * as TelevisionConstants from './Television.constants.js'
 export default class Television
 {
     constructor({
@@ -73,8 +51,8 @@ export default class Television
     setCanvas()
     {
         this.canvas = document.createElement('canvas')
-        this.canvas.width = CANVAS_WIDTH
-        this.canvas.height = CANVAS_HEIGHT
+        this.canvas.width = TelevisionConstants.CANVAS_WIDTH
+        this.canvas.height = TelevisionConstants.CANVAS_HEIGHT
         this.context = this.canvas.getContext('2d')
         this.texture = new THREE.CanvasTexture(this.canvas)
         this.texture.colorSpace = THREE.SRGBColorSpace
@@ -105,8 +83,8 @@ export default class Television
 
     setScreens()
     {
-        const exactContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(SCREEN_VISIBLE_EXACT_NAME_TOKENS, { exact: true }) ?? []
-        const fallbackContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(SCREEN_VISIBLE_FALLBACK_NAME_TOKENS, { exact: false }) ?? []
+        const exactContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(TelevisionConstants.SCREEN_VISIBLE_EXACT_NAME_TOKENS, { exact: true }) ?? []
+        const fallbackContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(TelevisionConstants.SCREEN_VISIBLE_FALLBACK_NAME_TOKENS, { exact: false }) ?? []
         const screenMeshes = exactContentMeshes.length > 0 ? exactContentMeshes : fallbackContentMeshes
 
         for(const mesh of screenMeshes)
@@ -153,12 +131,12 @@ export default class Television
 
     setButtons()
     {
-        this.leftButton = this.resolveButtonObject(BUTTON_LEFT_EXACT_NAME_TOKENS[0], BUTTON_NAME_TOKENS.test)
-        this.rightButton = this.resolveButtonObject(BUTTON_RIGHT_EXACT_NAME_TOKENS[0], BUTTON_NAME_TOKENS.validate)
+        this.leftButton = this.resolveButtonObject(TelevisionConstants.BUTTON_LEFT_EXACT_NAME_TOKENS[0], TelevisionConstants.BUTTON_NAME_TOKENS.test)
+        this.rightButton = this.resolveButtonObject(TelevisionConstants.BUTTON_RIGHT_EXACT_NAME_TOKENS[0], TelevisionConstants.BUTTON_NAME_TOKENS.validate)
 
         this.buttonStates.clear()
-        this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.test)
-        this.registerButton('validate', this.rightButton, VALIDATE_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.validate)
+        this.registerButton('test', this.leftButton, TelevisionConstants.TEST_BUTTON_COLOR, TelevisionConstants.BUTTON_TEXTURE_BY_KEY.test)
+        this.registerButton('validate', this.rightButton, TelevisionConstants.VALIDATE_BUTTON_COLOR, TelevisionConstants.BUTTON_TEXTURE_BY_KEY.validate)
     }
 
     resolveButtonObject(exactName = '', fallbackTokens = [])
@@ -339,7 +317,7 @@ export default class Television
 
             this.activePressedButtonKey = buttonKey
             state.phase = 'hold'
-            state.pressOffsetY = -BUTTON_PRESS_DEPTH
+            state.pressOffsetY = -TelevisionConstants.BUTTON_PRESS_DEPTH
             state.timer = 0
         }
 
@@ -496,16 +474,16 @@ export default class Television
         }
 
         const ctx = this.context
-        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+        ctx.clearRect(0, 0, TelevisionConstants.CANVAS_WIDTH, TelevisionConstants.CANVAS_HEIGHT)
 
-        ctx.fillStyle = BACKGROUND_COLOR
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+        ctx.fillStyle = TelevisionConstants.BACKGROUND_COLOR
+        ctx.fillRect(0, 0, TelevisionConstants.CANVAS_WIDTH, TelevisionConstants.CANVAS_HEIGHT)
 
-        ctx.strokeStyle = BORDER_COLOR
+        ctx.strokeStyle = TelevisionConstants.BORDER_COLOR
         ctx.lineWidth = 10
         
 
-        ctx.fillStyle = TITLE_COLOR
+        ctx.fillStyle = TelevisionConstants.TITLE_COLOR
         ctx.font = '600 42px sans-serif'
         ctx.textAlign = 'left'
         ctx.fillText('Station de test', 72, 110)
@@ -513,38 +491,38 @@ export default class Television
         if(this.screenMode === 'testing' && this.selectedMaterial)
         {
             this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = BODY_COLOR
+            ctx.fillStyle = TelevisionConstants.BODY_COLOR
             ctx.font = '400 36px sans-serif'
             this.drawWrappedText('Test en cours sous la douche. Analyse de la reaction a l eau...', 72, 320, 880, 46)
         }
         else if(this.screenMode === 'result' && this.selectedMaterial && this.testResult)
         {
             this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = BODY_COLOR
+            ctx.fillStyle = TelevisionConstants.BODY_COLOR
             ctx.font = '400 34px sans-serif'
             this.drawWrappedText(this.testResult.summary, 72, 320, 880, 42)
         }
         else if(this.screenMode === 'validated' && this.selectedMaterial)
         {
             this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = BODY_COLOR
+            ctx.fillStyle = TelevisionConstants.BODY_COLOR
             ctx.font = '400 36px sans-serif'
             this.drawWrappedText('Choix valide. La porte est ouverte.', 72, 320, 880, 46)
         }
         else if(this.selectedMaterial)
         {
             this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = BODY_COLOR
+            ctx.fillStyle = TelevisionConstants.BODY_COLOR
             ctx.font = '400 36px sans-serif'
             this.drawWrappedText('Lancez un test avec le bouton gauche, puis validez votre choix avec le bouton droit.', 72, 320, 880, 46)
         }
         else
         {
-            ctx.fillStyle = TEXT_COLOR
+            ctx.fillStyle = TelevisionConstants.TEXT_COLOR
             ctx.font = '700 62px sans-serif'
             this.drawWrappedText('Aucun materiau', 72, 236, 880, 72)
 
-            ctx.fillStyle = BODY_COLOR
+            ctx.fillStyle = TelevisionConstants.BODY_COLOR
             ctx.font = '400 34px sans-serif'
             this.drawWrappedText('Choisissez un materiau pour afficher ses informations.', 72, 332, 880, 42)
         }
@@ -554,7 +532,7 @@ export default class Television
 
     drawMaterialHeader(label)
     {
-        this.context.fillStyle = TEXT_COLOR
+        this.context.fillStyle = TelevisionConstants.TEXT_COLOR
         this.context.font = '700 76px sans-serif'
         this.drawWrappedText(label, 72, 236, 880, 88)
     }
@@ -606,13 +584,13 @@ export default class Television
 
             if(state.phase === 'hold')
             {
-                state.pressOffsetY = -BUTTON_PRESS_DEPTH
+                state.pressOffsetY = -TelevisionConstants.BUTTON_PRESS_DEPTH
             }
             else if(state.phase === 'release')
             {
                 state.timer += deltaSeconds
-                const progress = Math.min(1, state.timer / BUTTON_RELEASE_DURATION)
-                state.pressOffsetY = -BUTTON_PRESS_DEPTH * (1 - progress)
+                const progress = Math.min(1, state.timer / TelevisionConstants.BUTTON_RELEASE_DURATION)
+                state.pressOffsetY = -TelevisionConstants.BUTTON_PRESS_DEPTH * (1 - progress)
                 if(progress >= 1)
                 {
                     state.phase = 'idle'
@@ -621,9 +599,9 @@ export default class Television
                 }
             }
 
-            const targetLockedOffset = this.areButtonsUnlocked ? 0 : BUTTON_LOCKED_OFFSET_Y
+            const targetLockedOffset = this.areButtonsUnlocked ? 0 : TelevisionConstants.BUTTON_LOCKED_OFFSET_Y
             state.lockedOffsetY = THREE.MathUtils.damp(state.lockedOffsetY, targetLockedOffset, 10, deltaSeconds)
-            const targetLift = this.areButtonsUnlocked && state.isEnabled ? BUTTON_ENABLED_LIFT : 0
+            const targetLift = this.areButtonsUnlocked && state.isEnabled ? TelevisionConstants.BUTTON_ENABLED_LIFT : 0
             state.enabledLift = THREE.MathUtils.damp(state.enabledLift, targetLift, 10, deltaSeconds)
             state.object.position.y = state.baseY + state.lockedOffsetY + state.enabledLift + state.pressOffsetY
 
@@ -636,7 +614,7 @@ export default class Television
                 }
 
                 const hasTexture = state.texture instanceof THREE.Texture
-                const displayColor = state.isEnabled ? state.colorHex : DISABLED_BUTTON_COLOR
+                const displayColor = state.isEnabled ? state.colorHex : TelevisionConstants.DISABLED_BUTTON_COLOR
                 material.color?.set?.(hasTexture ? '#ffffff' : displayColor)
                 material.opacity = this.areButtonsUnlocked
                     ? (state.isEnabled ? 1 : 0.45)

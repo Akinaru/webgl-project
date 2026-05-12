@@ -1,9 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    RESULT_IMAGE_BY_METIER,
-    RESULT_SCREEN_EMISSIVE_INTENSITY
-} from './SceneDistributionResult.constants.js'
+import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
 import MetierEnum from '../../../Enum/MetierEnum.js'
 
 const RESULT_SCREEN_TARGET_NAME_PREFIX = 'screen-gris-foncé'
@@ -35,7 +32,7 @@ export default class SceneDistributionResultDisplay
         this.screenEntries = []
         this.activeMetier = null
         this.settings = {
-            emissiveIntensity: RESULT_SCREEN_EMISSIVE_INTENSITY
+            emissiveIntensity: SceneDistributionResultConstants.RESULT_SCREEN_EMISSIVE_INTENSITY
         }
 
         this.setScreens()
@@ -151,7 +148,7 @@ export default class SceneDistributionResultDisplay
             return this.textureByMetier.get(metierId)
         }
 
-        const imagePath = RESULT_IMAGE_BY_METIER[metierId] ?? null
+        const imagePath = SceneDistributionResultConstants.RESULT_IMAGE_BY_METIER[metierId] ?? null
         if(!imagePath)
         {
             return null

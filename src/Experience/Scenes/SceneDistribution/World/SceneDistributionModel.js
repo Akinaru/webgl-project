@@ -1,18 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    NON_COLLIDABLE_NAME_TOKENS,
-    COLLIDABLE_OVERRIDE_NAME_TOKENS,
-    VANNE_NAME_TOKENS,
-    WALKABLE_GROUND_NAME_TOKENS,
-    PALM_TREE_NAME_TOKENS,
-    PALM_TRUNK_NAME_TOKENS,
-    TRANSPARENT_EXACT_NAMES,
-    TRANSPARENT_PREFIXES,
-    TRANSPARENT_OPACITY,
-    TUBE_WATER_NAME_TOKENS
-} from './SceneDistributionModel.constants.js'
-
+import * as SceneDistributionModelConstants from './SceneDistributionModel.constants.js'
 export default class SceneDistributionModel
 {
     constructor()
@@ -69,7 +57,7 @@ export default class SceneDistributionModel
                 return
             }
 
-            if(this.hasNameInHierarchy(child, TUBE_WATER_NAME_TOKENS))
+            if(this.hasNameInHierarchy(child, SceneDistributionModelConstants.TUBE_WATER_NAME_TOKENS))
             {
                 this.tubeWaterMeshes.push(child)
             }
@@ -87,7 +75,7 @@ export default class SceneDistributionModel
                 this.groundMeshes.push(child)
             }
 
-            if(this.hasNameInHierarchy(child, VANNE_NAME_TOKENS))
+            if(this.hasNameInHierarchy(child, SceneDistributionModelConstants.VANNE_NAME_TOKENS))
             {
                 this.vanneMeshes.push(child)
             }
@@ -150,12 +138,12 @@ export default class SceneDistributionModel
 
     shouldUseForCollision(mesh)
     {
-        if(this.hasNameInHierarchy(mesh, COLLIDABLE_OVERRIDE_NAME_TOKENS))
+        if(this.hasNameInHierarchy(mesh, SceneDistributionModelConstants.COLLIDABLE_OVERRIDE_NAME_TOKENS))
         {
             return true
         }
 
-        if(this.hasNameInHierarchy(mesh, NON_COLLIDABLE_NAME_TOKENS))
+        if(this.hasNameInHierarchy(mesh, SceneDistributionModelConstants.NON_COLLIDABLE_NAME_TOKENS))
         {
             return false
         }
@@ -166,13 +154,13 @@ export default class SceneDistributionModel
         }
 
         const meshName = (mesh.name || '').toLowerCase()
-        const isTrunk = PALM_TRUNK_NAME_TOKENS.some((token) => meshName.includes(token))
+        const isTrunk = SceneDistributionModelConstants.PALM_TRUNK_NAME_TOKENS.some((token) => meshName.includes(token))
         return isTrunk
     }
 
     isWalkableGroundMesh(mesh)
     {
-        return this.hasNameInHierarchy(mesh, WALKABLE_GROUND_NAME_TOKENS)
+        return this.hasNameInHierarchy(mesh, SceneDistributionModelConstants.WALKABLE_GROUND_NAME_TOKENS)
     }
 
     applyCollisionMaterialFixes(mesh)
@@ -196,8 +184,8 @@ export default class SceneDistributionModel
     applyTransparentMaterialRules(mesh)
     {
         const meshName = (mesh.name || '').toLowerCase()
-        const isTransparentTarget = TRANSPARENT_EXACT_NAMES.has(meshName)
-            || TRANSPARENT_PREFIXES.some((prefix) => meshName.startsWith(prefix))
+        const isTransparentTarget = SceneDistributionModelConstants.TRANSPARENT_EXACT_NAMES.has(meshName)
+            || SceneDistributionModelConstants.TRANSPARENT_PREFIXES.some((prefix) => meshName.startsWith(prefix))
 
         if(!isTransparentTarget)
         {
@@ -216,7 +204,7 @@ export default class SceneDistributionModel
             }
 
             material.transparent = true
-            material.opacity = TRANSPARENT_OPACITY
+            material.opacity = SceneDistributionModelConstants.TRANSPARENT_OPACITY
             material.depthWrite = false
             material.needsUpdate = true
         }
@@ -301,7 +289,7 @@ export default class SceneDistributionModel
 
     isPalmTreePart(object)
     {
-        return this.hasNameInHierarchy(object, PALM_TREE_NAME_TOKENS)
+        return this.hasNameInHierarchy(object, SceneDistributionModelConstants.PALM_TREE_NAME_TOKENS)
     }
 
     removeStaleRoots()

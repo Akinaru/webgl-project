@@ -1,6 +1,6 @@
 import Experience from '../Experience.js'
 import EventEmitter from './EventEmitter.js'
-import { INPUT_ACTION } from '../Inputs/InputBindings.constants.js'
+import * as InputBindingsConstants from '../Inputs/InputBindings.constants.js'
 
 const TUTORIAL_STEP_IDS = Object.freeze({
     LOOK: 'look',
@@ -50,8 +50,8 @@ export default class Tutoriel extends EventEmitter
                 id: TUTORIAL_STEP_IDS.MOVE_FORWARD,
                 title: 'Avancer',
                 instruction: 'Appuyez sur la touche pour avancer',
-                action: INPUT_ACTION.MOVE_FORWARD,
-                validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_FORWARD),
+                action: InputBindingsConstants.INPUT_ACTION.MOVE_FORWARD,
+                validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_FORWARD),
                 progress: 0,
                 targetProgress: 600
             },
@@ -59,8 +59,8 @@ export default class Tutoriel extends EventEmitter
                 id: TUTORIAL_STEP_IDS.MOVE_BACKWARD,
                 title: 'Reculer',
                 instruction: 'Appuyez sur la touche pour reculer',
-                action: INPUT_ACTION.MOVE_BACKWARD,
-                validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_BACKWARD),
+                action: InputBindingsConstants.INPUT_ACTION.MOVE_BACKWARD,
+                validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_BACKWARD),
                 progress: 0,
                 targetProgress: 600
             },
@@ -68,8 +68,8 @@ export default class Tutoriel extends EventEmitter
                 id: TUTORIAL_STEP_IDS.MOVE_LEFT,
                 title: 'Gauche',
                 instruction: 'Appuyez sur la touche pour aller à gauche',
-                action: INPUT_ACTION.MOVE_LEFT,
-                validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_LEFT),
+                action: InputBindingsConstants.INPUT_ACTION.MOVE_LEFT,
+                validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_LEFT),
                 progress: 0,
                 targetProgress: 600
             },
@@ -77,8 +77,8 @@ export default class Tutoriel extends EventEmitter
                 id: TUTORIAL_STEP_IDS.MOVE_RIGHT,
                 title: 'Droite',
                 instruction: 'Appuyez sur la touche pour aller à droite',
-                action: INPUT_ACTION.MOVE_RIGHT,
-                validate: () => this.inputs.isActionPressed(INPUT_ACTION.MOVE_RIGHT),
+                action: InputBindingsConstants.INPUT_ACTION.MOVE_RIGHT,
+                validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_RIGHT),
                 progress: 0,
                 targetProgress: 600
             }

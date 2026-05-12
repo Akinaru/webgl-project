@@ -12,24 +12,7 @@ import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
 import MapVisibilityDebug from './MapVisibilityDebug.js'
 import bloomRails from './bloomRails.json'
-import {
-    MAP_SPAWN_POSITION,
-    MAP_SPAWN_YAW,
-    WATER_ENTRY_EPSILON,
-    PLAYER_HEAD_TOP_OFFSET,
-    SHALLOW_WATER_MOVE_SPEED_THRESHOLD,
-    SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS,
-    SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS,
-    WALKING_GRASS_SPEED_THRESHOLD,
-    TERRAIN_SAND_BLEND_HEIGHT,
-    BUSH_TRIGGER_COOLDOWN_MS,
-    BUSH_SOUND_MOVE_SPEED_THRESHOLD,
-    FOOTSTEP_RATE_EPSILON,
-    WALKING_GRASS_PLAYBACK_MULTIPLIER,
-    WALKING_SAND_PLAYBACK_MULTIPLIER,
-    WALKING_STONE_PLAYBACK_MULTIPLIER
-} from './MapWorld.constants.js'
-
+import * as MapWorldConstants from './MapWorld.constants.js'
 function isRailsGraph(value)
 {
     return Boolean(value)
@@ -142,13 +125,13 @@ export default class MapWorld
             collisionBoxes: [],
             collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
-            spawnPosition: MAP_SPAWN_POSITION,
-            spawnYaw: MAP_SPAWN_YAW
+            spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION,
+            spawnYaw: MapWorldConstants.MAP_SPAWN_YAW
         })
         this.bushes = new Bushes(
             {
                 mapModel: this.mapModel,
-                spawnPosition: MAP_SPAWN_POSITION
+                spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION
             }
         )
         this.setVegetationDebug()
@@ -240,7 +223,7 @@ export default class MapWorld
         const horizontalSpeed = Number.isFinite(playerVelocity?.x) && Number.isFinite(playerVelocity?.z)
             ? Math.hypot(playerVelocity.x, playerVelocity.z)
             : 0
-        const isMovingInBush = isInsideBush && horizontalSpeed > BUSH_SOUND_MOVE_SPEED_THRESHOLD
+        const isMovingInBush = isInsideBush && horizontalSpeed > MapWorldConstants.BUSH_SOUND_MOVE_SPEED_THRESHOLD
 
         if(isMovingInBush && this.bushTriggerCooldownMs <= 0)
         {
@@ -250,7 +233,7 @@ export default class MapWorld
             })
             if(played)
             {
-                this.bushTriggerCooldownMs = BUSH_TRIGGER_COOLDOWN_MS
+                this.bushTriggerCooldownMs = MapWorldConstants.BUSH_TRIGGER_COOLDOWN_MS
             }
         }
 
@@ -274,20 +257,20 @@ export default class MapWorld
 
         const deltaMs = Number.isFinite(this.experience?.time?.delta) ? this.experience.time.delta : 16
         const playerBottomY = playerY - playerHeight
-        const playerTopY = playerY + PLAYER_HEAD_TOP_OFFSET
+        const playerTopY = playerY + MapWorldConstants.PLAYER_HEAD_TOP_OFFSET
         const terrainSableMaxY = this.mapModel?.getTerrainWaterlineSableMaxY?.() ?? Number.NEGATIVE_INFINITY
-        const isBottomUnderWater = playerBottomY < (waterLevel - WATER_ENTRY_EPSILON)
-        const isFullyUnderWater = playerTopY < (waterLevel - WATER_ENTRY_EPSILON)
+        const isBottomUnderWater = playerBottomY < (waterLevel - MapWorldConstants.WATER_ENTRY_EPSILON)
+        const isFullyUnderWater = playerTopY < (waterLevel - MapWorldConstants.WATER_ENTRY_EPSILON)
         const isPartiallyUnderWater = isBottomUnderWater && !isFullyUnderWater
         const horizontalSpeed = Number.isFinite(playerVelocity?.x) && Number.isFinite(playerVelocity?.z)
             ? Math.hypot(playerVelocity.x, playerVelocity.z)
             : 0
-        const isMovingInShallowWater = isPartiallyUnderWater && horizontalSpeed > SHALLOW_WATER_MOVE_SPEED_THRESHOLD
-        const isAbovePlan = playerBottomY > (waterLevel + WATER_ENTRY_EPSILON)
+        const isMovingInShallowWater = isPartiallyUnderWater && horizontalSpeed > MapWorldConstants.SHALLOW_WATER_MOVE_SPEED_THRESHOLD
+        const isAbovePlan = playerBottomY > (waterLevel + MapWorldConstants.WATER_ENTRY_EPSILON)
         const isWalkingOnReliefAbovePlan = Boolean(this.player?.isOnGround)
             && isAbovePlan
-            && horizontalSpeed > WALKING_GRASS_SPEED_THRESHOLD
-        const isOnSandTintBand = playerBottomY <= (terrainSableMaxY + TERRAIN_SAND_BLEND_HEIGHT)
+            && horizontalSpeed > MapWorldConstants.WALKING_GRASS_SPEED_THRESHOLD
+        const isOnSandTintBand = playerBottomY <= (terrainSableMaxY + MapWorldConstants.TERRAIN_SAND_BLEND_HEIGHT)
         const isOnBridge = this.mapModel?.hasNameInHierarchy?.(this.player?.currentGroundObject, ['pont', 'bridge']) === true
 
         if(isBottomUnderWater && !this.wasPlayerBottomUnderWater)
@@ -303,8 +286,8 @@ export default class MapWorld
                 const splashKey = Math.random() < 0.75 ? 'waterSplash' : 'waterSplash2'
                 this.experience.sound?.play?.(splashKey)
                 this.shallowWaterSplashCooldownMs = THREE.MathUtils.randFloat(
-                    SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS,
-                    SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS
+                    MapWorldConstants.SHALLOW_WATER_SPLASH_INTERVAL_MIN_MS,
+                    MapWorldConstants.SHALLOW_WATER_SPLASH_INTERVAL_MAX_MS
                 )
             }
         }
@@ -709,10 +692,10 @@ export default class MapWorld
         }
 
         const playbackMultiplier = soundName === 'walkingSand'
-            ? WALKING_SAND_PLAYBACK_MULTIPLIER
+            ? MapWorldConstants.WALKING_SAND_PLAYBACK_MULTIPLIER
             : (soundName === 'walkingStone'
-                ? WALKING_STONE_PLAYBACK_MULTIPLIER
-                : WALKING_GRASS_PLAYBACK_MULTIPLIER)
+                ? MapWorldConstants.WALKING_STONE_PLAYBACK_MULTIPLIER
+                : MapWorldConstants.WALKING_GRASS_PLAYBACK_MULTIPLIER)
         return THREE.MathUtils.clamp(speedMultiplier * playbackMultiplier, 0.2, 8)
     }
 
@@ -726,7 +709,7 @@ export default class MapWorld
             : 1
         if(
             this.activeFootstepLoop === normalizedNext
-            && Math.abs((this.activeFootstepPlaybackRate ?? 1) - normalizedRate) <= FOOTSTEP_RATE_EPSILON
+            && Math.abs((this.activeFootstepPlaybackRate ?? 1) - normalizedRate) <= MapWorldConstants.FOOTSTEP_RATE_EPSILON
         )
         {
             return

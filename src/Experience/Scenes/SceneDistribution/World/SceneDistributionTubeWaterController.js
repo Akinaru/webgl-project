@@ -1,23 +1,6 @@
 import * as THREE from 'three'
-import {
-    DEFAULT_RADIANS_PER_TUBE_FILL,
-    FILL_PROGRESS_EPSILON,
-    EMPTY_TUBE_OPACITY,
-    FILLED_TUBE_OPACITY,
-    EMPTY_TUBE_COLOR,
-    FILLED_TUBE_COLOR,
-    FILLED_TUBE_EMISSIVE,
-    FILLED_TUBE_EMISSIVE_INTENSITY,
-    FILL_EDGE_SOFTNESS
-} from './SceneDistributionTubeWaterController.constants.js'
-import { setupSceneDistributionTubeWaterControllerDebug } from './SceneDistributionTubeWaterController.debug.js'
-import {
-    buildDistributionChannelSlotMap,
-    DISTRIBUTION_CHANNEL_LABELS,
-    DISTRIBUTION_CHANNEL_ORDER,
-    resolveDistributionChannelTokenFromObject
-} from './SceneDistributionFlow.constants.js'
-
+import * as SceneDistributionTubeWaterControllerConstants from './SceneDistributionTubeWaterController.constants.js'
+import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
 const FILL_COORD_ATTRIBUTE = 'aDistributionFillCoord'
 const FILL_UNIFORM = 'uDistributionFillProgress'
 const FILL_EDGE_UNIFORM = 'uDistributionFillEdge'
@@ -38,13 +21,13 @@ export default class SceneDistributionTubeWaterController
         this.debug = debug
         this.debugParentFolder = debugParentFolder
         this.settings = {
-            radiansPerTubeFill: DEFAULT_RADIANS_PER_TUBE_FILL,
-            fillEdgeSoftness: FILL_EDGE_SOFTNESS
+            radiansPerTubeFill: SceneDistributionTubeWaterControllerConstants.DEFAULT_RADIANS_PER_TUBE_FILL,
+            fillEdgeSoftness: SceneDistributionTubeWaterControllerConstants.FILL_EDGE_SOFTNESS
         }
 
-        this.emptyColor = new THREE.Color(EMPTY_TUBE_COLOR)
-        this.filledColor = new THREE.Color(FILLED_TUBE_COLOR)
-        this.filledEmissive = new THREE.Color(FILLED_TUBE_EMISSIVE)
+        this.emptyColor = new THREE.Color(SceneDistributionTubeWaterControllerConstants.EMPTY_TUBE_COLOR)
+        this.filledColor = new THREE.Color(SceneDistributionTubeWaterControllerConstants.FILLED_TUBE_COLOR)
+        this.filledEmissive = new THREE.Color(SceneDistributionTubeWaterControllerConstants.FILLED_TUBE_EMISSIVE)
         this.mixColor = new THREE.Color()
         this.mixEmissive = new THREE.Color()
         this.fillProgressByMeshUuid = new Map()
@@ -67,7 +50,7 @@ export default class SceneDistributionTubeWaterController
                 continue
             }
 
-            const valveToken = resolveDistributionChannelTokenFromObject(mesh, slotMap)
+            const valveToken = SceneDistributionFlowConstants.resolveDistributionChannelTokenFromObject(mesh, slotMap)
 
             this.ensureFillCoordAttribute(mesh)
             this.prepareTubeMaterials(mesh)
@@ -254,7 +237,7 @@ export default class SceneDistributionTubeWaterController
                 const nextProgress = THREE.MathUtils.clamp(totalProgress - index, 0, 1)
                 const previousProgress = this.fillProgressByMeshUuid.get(entry.mesh.uuid) ?? 0
 
-                if(Math.abs(nextProgress - previousProgress) <= FILL_PROGRESS_EPSILON)
+                if(Math.abs(nextProgress - previousProgress) <= SceneDistributionTubeWaterControllerConstants.FILL_PROGRESS_EPSILON)
                 {
                     continue
                 }
@@ -275,8 +258,8 @@ export default class SceneDistributionTubeWaterController
         for(const entry of this.tubeEntries)
         {
             const progress = this.fillProgressByMeshUuid.get(entry.mesh.uuid) ?? 0
-            const nextOpacity = THREE.MathUtils.lerp(EMPTY_TUBE_OPACITY, FILLED_TUBE_OPACITY, progress)
-            const nextEmissiveIntensity = FILLED_TUBE_EMISSIVE_INTENSITY * progress
+            const nextOpacity = THREE.MathUtils.lerp(SceneDistributionTubeWaterControllerConstants.EMPTY_TUBE_OPACITY, SceneDistributionTubeWaterControllerConstants.FILLED_TUBE_OPACITY, progress)
+            const nextEmissiveIntensity = SceneDistributionTubeWaterControllerConstants.FILLED_TUBE_EMISSIVE_INTENSITY * progress
 
             const materials = Array.isArray(entry.mesh.material) ? entry.mesh.material : [entry.mesh.material]
             for(const material of materials)
@@ -339,7 +322,7 @@ export default class SceneDistributionTubeWaterController
         {
             return {
                 token: normalizedToken,
-                label: DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
+                label: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
                 filledUnits: 0,
                 capacityUnits: 0,
                 normalizedFill: 0
@@ -354,7 +337,7 @@ export default class SceneDistributionTubeWaterController
 
         return {
             token: normalizedToken,
-            label: DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
+            label: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
             filledUnits,
             capacityUnits,
             normalizedFill: capacityUnits > 0 ? filledUnits / capacityUnits : 0
@@ -363,7 +346,7 @@ export default class SceneDistributionTubeWaterController
 
     getOrderedFillStates()
     {
-        return DISTRIBUTION_CHANNEL_ORDER.map((token) => this.getFillStateForValveToken(token))
+        return SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => this.getFillStateForValveToken(token))
     }
 
     canRotateValveDirection(valveToken, direction = 1)
@@ -379,11 +362,11 @@ export default class SceneDistributionTubeWaterController
         for(const entry of entries)
         {
             const progress = this.fillProgressByMeshUuid.get(entry.mesh.uuid) ?? 0
-            if(progress > FILL_PROGRESS_EPSILON)
+            if(progress > SceneDistributionTubeWaterControllerConstants.FILL_PROGRESS_EPSILON)
             {
                 isFullyEmpty = false
             }
-            if(progress < (1 - FILL_PROGRESS_EPSILON))
+            if(progress < (1 - SceneDistributionTubeWaterControllerConstants.FILL_PROGRESS_EPSILON))
             {
                 isFullyFull = false
             }

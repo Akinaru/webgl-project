@@ -1,29 +1,14 @@
 import * as THREE from 'three'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import {
-    CURSOR_OWNER_CLASS,
-    VALVE_DRAGGING_CLASS,
-    DEFAULT_TURN_SPEED,
-    GESTURE_POINTER_MIN_RADIUS,
-    GESTURE_POINTER_MAX_RADIUS,
-    GESTURE_ROTATION_GAIN,
-    CURSOR_VISUAL_OFFSET_MAX,
-    VALVE_TURNING_SOUND_NAME,
-    VALVE_TURNING_CHANNEL
-} from './SceneDistributionValveController.constants.js'
-import { setupSceneDistributionValveControllerDebug } from './SceneDistributionValveController.debug.js'
-import {
-    buildDistributionChannelSlotMap,
-    resolveDistributionChannelTokenFromObject
-} from './SceneDistributionFlow.constants.js'
-
-const GESTURE_MIN_RADIUS_SQ = GESTURE_POINTER_MIN_RADIUS * GESTURE_POINTER_MIN_RADIUS
+import * as SceneDistributionValveControllerConstants from './SceneDistributionValveController.constants.js'
+import * as SceneDistributionFlowConstants from './SceneDistributionFlow.constants.js'
+const GESTURE_MIN_RADIUS_SQ = SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS * SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS
 
 class Valve
 {
     constructor(mesh, {
         axisMeshes = [],
-        turnSpeed = DEFAULT_TURN_SPEED
+        turnSpeed = SceneDistributionValveControllerConstants.DEFAULT_TURN_SPEED
     } = {})
     {
         this.mesh = mesh
@@ -211,8 +196,8 @@ export default class SceneDistributionValveController
         this.debugParentFolder = debugParentFolder
         this.settings = {
             turnSpeedMultiplier: 1,
-            gestureRotationGain: GESTURE_ROTATION_GAIN,
-            maxVisualOffset: CURSOR_VISUAL_OFFSET_MAX
+            gestureRotationGain: SceneDistributionValveControllerConstants.GESTURE_ROTATION_GAIN,
+            maxVisualOffset: SceneDistributionValveControllerConstants.CURSOR_VISUAL_OFFSET_MAX
         }
 
         this.raycaster = new THREE.Raycaster()
@@ -291,7 +276,7 @@ export default class SceneDistributionValveController
 
     resolveValveToken(mesh, slotMap = null)
     {
-        return resolveDistributionChannelTokenFromObject(mesh, slotMap)
+        return SceneDistributionFlowConstants.resolveDistributionChannelTokenFromObject(mesh, slotMap)
     }
 
     isValveMesh(mesh)
@@ -381,7 +366,7 @@ export default class SceneDistributionValveController
             this.activeHitPointWorld = this.hoveredHitPointWorld?.clone?.() ?? null
             this.resetGesturePointerFromActiveValve()
             this.setPlayerLookEnabled(false)
-            document.body.classList.add(VALVE_DRAGGING_CLASS)
+            document.body.classList.add(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
         }
 
         this.onInteractUp = () =>
@@ -390,7 +375,7 @@ export default class SceneDistributionValveController
             this.activeHitPointWorld = null
             this.stopValveTurningSound()
             this.setPlayerLookEnabled(true)
-            document.body.classList.remove(VALVE_DRAGGING_CLASS)
+            document.body.classList.remove(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
         }
 
         this.onWindowResize = () =>
@@ -470,7 +455,7 @@ export default class SceneDistributionValveController
         }
 
         this.ownsCursor = true
-        document.body.classList.add(CURSOR_OWNER_CLASS)
+        document.body.classList.add(SceneDistributionValveControllerConstants.CURSOR_OWNER_CLASS)
         this.cursorElement.style.left = `${this.centerScreen.x}px`
         this.cursorElement.style.top = `${this.centerScreen.y}px`
         this.cursorElement.style.setProperty('--cursor-offset-x', '0px')
@@ -507,13 +492,13 @@ export default class SceneDistributionValveController
         this.gesturePointer.y += deltaY
 
         const length = this.gesturePointer.length()
-        if(length > GESTURE_POINTER_MAX_RADIUS)
+        if(length > SceneDistributionValveControllerConstants.GESTURE_POINTER_MAX_RADIUS)
         {
-            this.gesturePointer.multiplyScalar(GESTURE_POINTER_MAX_RADIUS / Math.max(length, 1e-6))
+            this.gesturePointer.multiplyScalar(SceneDistributionValveControllerConstants.GESTURE_POINTER_MAX_RADIUS / Math.max(length, 1e-6))
         }
-        else if(length < GESTURE_POINTER_MIN_RADIUS)
+        else if(length < SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS)
         {
-            this.gesturePointer.multiplyScalar(GESTURE_POINTER_MIN_RADIUS / Math.max(length, 1e-6))
+            this.gesturePointer.multiplyScalar(SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS / Math.max(length, 1e-6))
         }
 
         if(!Number.isFinite(signedAngularDelta) || Math.abs(signedAngularDelta) < 1e-6)
@@ -558,7 +543,7 @@ export default class SceneDistributionValveController
     {
         if(!this.activeValve || !this.camera)
         {
-            this.gesturePointer.set(GESTURE_POINTER_MIN_RADIUS, 0)
+            this.gesturePointer.set(SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS, 0)
             this.gesturePointerPrev.copy(this.gesturePointer)
             return
         }
@@ -576,17 +561,17 @@ export default class SceneDistributionValveController
         }
         else
         {
-            this.gesturePointer.set(GESTURE_POINTER_MIN_RADIUS, 0)
+            this.gesturePointer.set(SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS, 0)
         }
 
         const length = this.gesturePointer.length()
-        if(length < GESTURE_POINTER_MIN_RADIUS)
+        if(length < SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS)
         {
-            this.gesturePointer.set(GESTURE_POINTER_MIN_RADIUS, 0)
+            this.gesturePointer.set(SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS, 0)
         }
-        else if(length > GESTURE_POINTER_MAX_RADIUS)
+        else if(length > SceneDistributionValveControllerConstants.GESTURE_POINTER_MAX_RADIUS)
         {
-            this.gesturePointer.multiplyScalar(GESTURE_POINTER_MAX_RADIUS / length)
+            this.gesturePointer.multiplyScalar(SceneDistributionValveControllerConstants.GESTURE_POINTER_MAX_RADIUS / length)
         }
 
         this.gesturePointerPrev.copy(this.gesturePointer)
@@ -633,7 +618,7 @@ export default class SceneDistributionValveController
         }
 
         this.ownsCursor = false
-        document.body.classList.remove(CURSOR_OWNER_CLASS)
+        document.body.classList.remove(SceneDistributionValveControllerConstants.CURSOR_OWNER_CLASS)
 
         if(this.cursorElement instanceof HTMLElement)
         {
@@ -652,15 +637,15 @@ export default class SceneDistributionValveController
         }
 
         this.experience?.sound?.unlock?.()
-        const didPlay = this.experience?.sound?.play?.(VALVE_TURNING_SOUND_NAME, {
-            channel: VALVE_TURNING_CHANNEL
+        const didPlay = this.experience?.sound?.play?.(SceneDistributionValveControllerConstants.VALVE_TURNING_SOUND_NAME, {
+            channel: SceneDistributionValveControllerConstants.VALVE_TURNING_CHANNEL
         }) === true
         this.isValveTurningSoundPlaying = didPlay
     }
 
     stopValveTurningSound()
     {
-        this.experience?.sound?.stopChannel?.(VALVE_TURNING_CHANNEL)
+        this.experience?.sound?.stopChannel?.(SceneDistributionValveControllerConstants.VALVE_TURNING_CHANNEL)
         this.isValveTurningSoundPlaying = false
     }
 
@@ -690,7 +675,7 @@ export default class SceneDistributionValveController
         this.valveByUuid.clear()
         this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()
-        document.body.classList.remove(VALVE_DRAGGING_CLASS)
+        document.body.classList.remove(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
 
         if(this.createdCursorElement && this.cursorElement instanceof HTMLElement)
         {

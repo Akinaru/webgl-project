@@ -1,14 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import {
-    DROP_COUNT,
-    DROP_LENGTH,
-    DROP_RADIUS,
-    FALL_SPEED_MAX,
-    FALL_SPEED_MIN,
-    SHOWER_NAME_TOKENS
-} from './ShowerParticles.constants.js'
-
+import * as ShowerParticlesConstants from './ShowerParticles.constants.js'
 export default class ShowerParticles
 {
     constructor({ recuperationModel = null } = {})
@@ -26,7 +18,7 @@ export default class ShowerParticles
         this.spread = new THREE.Vector3(0.35, 0, 0.35)
         this.floorY = -2.5
 
-        this.shower = this.recuperationModel?.getFirstObjectForNameTokens?.(SHOWER_NAME_TOKENS, { exact: true }) ?? null
+        this.shower = this.recuperationModel?.getFirstObjectForNameTokens?.(ShowerParticlesConstants.SHOWER_NAME_TOKENS, { exact: true }) ?? null
         this.setBoundsFromShower()
         this.setMesh()
         this.resetDrops()
@@ -54,19 +46,19 @@ export default class ShowerParticles
 
     setMesh()
     {
-        this.geometry = new THREE.CapsuleGeometry(DROP_RADIUS, DROP_LENGTH, 2, 6)
+        this.geometry = new THREE.CapsuleGeometry(ShowerParticlesConstants.DROP_RADIUS, ShowerParticlesConstants.DROP_LENGTH, 2, 6)
         this.material = new THREE.MeshBasicMaterial({
             color: '#8fd3ff',
             transparent: true,
             opacity: 0.75,
             depthWrite: false
         })
-        this.mesh = new THREE.InstancedMesh(this.geometry, this.material, DROP_COUNT)
+        this.mesh = new THREE.InstancedMesh(this.geometry, this.material, ShowerParticlesConstants.DROP_COUNT)
         this.mesh.visible = false
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
         this.scene.add(this.mesh)
 
-        this.drops = Array.from({ length: DROP_COUNT }, () => ({
+        this.drops = Array.from({ length: ShowerParticlesConstants.DROP_COUNT }, () => ({
             position: new THREE.Vector3(),
             speed: 0
         }))
@@ -79,7 +71,7 @@ export default class ShowerParticles
             this.origin.y - (randomizeY ? Math.random() * 1.8 : 0),
             this.origin.z + (Math.random() - 0.5) * this.spread.z * 2
         )
-        drop.speed = THREE.MathUtils.lerp(FALL_SPEED_MIN, FALL_SPEED_MAX, Math.random())
+        drop.speed = THREE.MathUtils.lerp(ShowerParticlesConstants.FALL_SPEED_MIN, ShowerParticlesConstants.FALL_SPEED_MAX, Math.random())
     }
 
     resetDrops()

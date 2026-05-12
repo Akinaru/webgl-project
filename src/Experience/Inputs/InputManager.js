@@ -1,11 +1,5 @@
 import EventEmitter from '../Utils/EventEmitter.js'
-import {
-    INPUT_ACTION,
-    INPUT_BINDING_STORAGE_KEY,
-    INPUT_ACTION_DEFAULT_BINDINGS,
-    INPUT_ACTION_FALLBACK_CODES
-} from './InputBindings.constants.js'
-
+import * as InputBindingsConstants from './InputBindings.constants.js'
 export default class InputManager extends EventEmitter
 {
     constructor({ canvas = null } = {})
@@ -25,7 +19,7 @@ export default class InputManager extends EventEmitter
             wheelY: 0
         }
         this.actionBindings = {
-            ...INPUT_ACTION_DEFAULT_BINDINGS
+            ...InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS
         }
         this.restoreActionBindings()
 
@@ -129,24 +123,24 @@ export default class InputManager extends EventEmitter
     getActionBinding(action)
     {
         const actionKey = String(action || '')
-        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        if(!(actionKey in InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS))
         {
             return null
         }
 
-        return this.actionBindings[actionKey] || INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
+        return this.actionBindings[actionKey] || InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
     }
 
     getActionCodes(action)
     {
         const actionKey = String(action || '')
-        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        if(!(actionKey in InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS))
         {
             return []
         }
 
         const primaryCode = this.getActionBinding(actionKey)
-        const fallbackCodes = INPUT_ACTION_FALLBACK_CODES[actionKey] || []
+        const fallbackCodes = InputBindingsConstants.INPUT_ACTION_FALLBACK_CODES[actionKey] || []
         const codes = [primaryCode, ...fallbackCodes]
         const uniqueCodes = new Set()
 
@@ -187,7 +181,7 @@ export default class InputManager extends EventEmitter
         const actionKey = String(action || '')
         const normalizedCode = String(code || '').trim()
 
-        if(!(actionKey in INPUT_ACTION_DEFAULT_BINDINGS))
+        if(!(actionKey in InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS))
         {
             return false
         }
@@ -229,17 +223,17 @@ export default class InputManager extends EventEmitter
         let parsed = null
         try
         {
-            parsed = JSON.parse(window.localStorage.getItem(INPUT_BINDING_STORAGE_KEY) || 'null')
+            parsed = JSON.parse(window.localStorage.getItem(InputBindingsConstants.INPUT_BINDING_STORAGE_KEY) || 'null')
         }
         catch(error)
         {
             parsed = null
         }
 
-        for(const actionKey of Object.values(INPUT_ACTION))
+        for(const actionKey of Object.values(InputBindingsConstants.INPUT_ACTION))
         {
             const configuredCode = parsed?.[actionKey]
-            const fallbackCode = INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
+            const fallbackCode = InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS[actionKey]
             const normalizedCode = typeof configuredCode === 'string'
                 ? configuredCode.trim()
                 : ''
@@ -255,7 +249,7 @@ export default class InputManager extends EventEmitter
         try
         {
             window.localStorage.setItem(
-                INPUT_BINDING_STORAGE_KEY,
+                InputBindingsConstants.INPUT_BINDING_STORAGE_KEY,
                 JSON.stringify(this.actionBindings)
             )
         }
@@ -267,7 +261,7 @@ export default class InputManager extends EventEmitter
 
     resetActionBindings({ persist = true } = {})
     {
-        for(const [actionKey, defaultCode] of Object.entries(INPUT_ACTION_DEFAULT_BINDINGS))
+        for(const [actionKey, defaultCode] of Object.entries(InputBindingsConstants.INPUT_ACTION_DEFAULT_BINDINGS))
         {
             this.actionBindings[actionKey] = defaultCode
         }
