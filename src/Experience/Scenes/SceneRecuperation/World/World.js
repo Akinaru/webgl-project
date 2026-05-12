@@ -15,6 +15,9 @@ import SceneRecuperationWindTurbine from './WindTurbine.js'
 import SceneRecuperationTubeWaterController from './TubeWaterController.js'
 import SceneRecuperationRoom2Trigger from './Room2Trigger.js'
 import SceneRecuperationCollisionDebug from './SceneRecuperationCollision.debug.js'
+import SceneRecuperationCascadeTubes from './CascadeTubes.js'
+import SceneRecuperationScoring from './Scoring.js'
+import { setupSceneRecuperationWorldDebug } from './World.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
 let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
@@ -459,7 +462,7 @@ export default class SceneRecuperationWorld
         this.teleportVisualPad = new THREE.Mesh(
             new THREE.CylinderGeometry(visualRadius * 0.82, visualRadius * 0.82, 0.06, 40),
             new THREE.MeshStandardMaterial({
-                color: EXIT_TELEPORT_INACTIVE_COLOR,
+                color: SceneRecuperationWorldConstants.EXIT_TELEPORT_INACTIVE_COLOR,
                 emissive: '#131d2b',
                 emissiveIntensity: 0.25,
                 roughness: 0.28,
@@ -471,7 +474,7 @@ export default class SceneRecuperationWorld
         this.teleportVisualRing = new THREE.Mesh(
             new THREE.TorusGeometry(visualRadius, 0.06, 12, 64),
             new THREE.MeshStandardMaterial({
-                color: EXIT_TELEPORT_INACTIVE_COLOR,
+                color: SceneRecuperationWorldConstants.EXIT_TELEPORT_INACTIVE_COLOR,
                 emissive: '#17273f',
                 emissiveIntensity: 0.35,
                 roughness: 0.25,
@@ -484,7 +487,7 @@ export default class SceneRecuperationWorld
         this.teleportVisualColumn = new THREE.Mesh(
             new THREE.CylinderGeometry(visualRadius * 0.3, visualRadius * 0.5, 1.8, 24, 1, true),
             new THREE.MeshBasicMaterial({
-                color: EXIT_TELEPORT_INACTIVE_COLOR,
+                color: SceneRecuperationWorldConstants.EXIT_TELEPORT_INACTIVE_COLOR,
                 transparent: true,
                 opacity: 0.2,
                 side: THREE.DoubleSide,
@@ -493,7 +496,7 @@ export default class SceneRecuperationWorld
         )
         this.teleportVisualColumn.position.y = 0.95
 
-        this.teleportVisualLight = new THREE.PointLight(EXIT_TELEPORT_INACTIVE_COLOR, 0.95, 7.5, 2)
+        this.teleportVisualLight = new THREE.PointLight(SceneRecuperationWorldConstants.EXIT_TELEPORT_INACTIVE_COLOR, 0.95, 7.5, 2)
         this.teleportVisualLight.position.y = 1
 
         this.teleportVisualGroup.add(this.teleportVisualPad)

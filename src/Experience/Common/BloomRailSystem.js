@@ -50,7 +50,7 @@ export default class BloomRailSystem
 
     setRails(rawRails = [])
     {
-        this.graph = sanitizeGraph(rawRails)
+        this.graph = BloomRailSystemConstants.sanitizeGraph(rawRails)
         this.rebuildRuntimeData()
         this.rebuildHelpers()
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import * as SceneDistributionTubeWaterControllerConstants from './TubeWaterController.constants.js'
 import * as SceneDistributionFlowConstants from './Flow.constants.js'
+import { setupSceneDistributionTubeWaterControllerDebug } from './TubeWaterController.debug.js'
 const FILL_COORD_ATTRIBUTE = 'aDistributionFillCoord'
 const FILL_UNIFORM = 'uDistributionFillProgress'
 const FILL_EDGE_UNIFORM = 'uDistributionFillEdge'
@@ -41,7 +42,7 @@ export default class SceneDistributionTubeWaterController
 
     buildTubeEntries()
     {
-        const slotMap = buildDistributionChannelSlotMap(this.tubeWaterMeshes)
+        const slotMap = SceneDistributionFlowConstants.buildDistributionChannelSlotMap(this.tubeWaterMeshes)
 
         for(const mesh of this.tubeWaterMeshes)
         {

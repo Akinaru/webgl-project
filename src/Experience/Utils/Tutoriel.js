@@ -12,7 +12,7 @@ export default class Tutoriel extends EventEmitter
         this.inputs = this.experience.inputs
         this.keyboardLayoutMap = null
         
-        this.status = TUTORIAL_STATUS.PENDING
+        this.status = TutorielConstants.TUTORIAL_STATUS.PENDING
         this.currentStepIndex = 0
         this.steps = [
             {
@@ -66,7 +66,7 @@ export default class Tutoriel extends EventEmitter
 
         this.onMouseMove = (event) =>
         {
-            if (this.status !== TUTORIAL_STATUS.ACTIVE) return
+            if (this.status !== TutorielConstants.TUTORIAL_STATUS.ACTIVE) return
             if (this.isPauseMenuOpen()) return
 
             const step = this.steps[this.currentStepIndex]
@@ -106,9 +106,9 @@ export default class Tutoriel extends EventEmitter
     
     start()
     {
-        if (this.status !== TUTORIAL_STATUS.PENDING) return
+        if (this.status !== TutorielConstants.TUTORIAL_STATUS.PENDING) return
         
-        this.status = TUTORIAL_STATUS.ACTIVE
+        this.status = TutorielConstants.TUTORIAL_STATUS.ACTIVE
         this.container.classList.add('is-active')
         this.showStep(0)
         this.trigger('start')
@@ -144,7 +144,7 @@ export default class Tutoriel extends EventEmitter
     
     update(delta)
     {
-        if (this.status !== TUTORIAL_STATUS.ACTIVE) return
+        if (this.status !== TutorielConstants.TUTORIAL_STATUS.ACTIVE) return
         if (this.isPauseMenuOpen()) return
         
         const step = this.steps[this.currentStepIndex]
@@ -184,9 +184,9 @@ export default class Tutoriel extends EventEmitter
     
     finish()
     {
-        if (this.status === TUTORIAL_STATUS.FINISHED) return
+        if (this.status === TutorielConstants.TUTORIAL_STATUS.FINISHED) return
         
-        this.status = TUTORIAL_STATUS.FINISHED
+        this.status = TutorielConstants.TUTORIAL_STATUS.FINISHED
         this.container.classList.add('is-finished')
         
         setTimeout(() => {
@@ -215,7 +215,7 @@ export default class Tutoriel extends EventEmitter
             this.keyboardLayoutMap = null
         }
 
-        if(this.status === TUTORIAL_STATUS.ACTIVE)
+        if(this.status === TutorielConstants.TUTORIAL_STATUS.ACTIVE)
         {
             this.showStep(this.currentStepIndex)
         }

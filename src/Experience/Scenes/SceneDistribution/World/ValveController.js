@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 import * as SceneDistributionValveControllerConstants from './ValveController.constants.js'
 import * as SceneDistributionFlowConstants from './Flow.constants.js'
+import { setupSceneDistributionValveControllerDebug } from './ValveController.debug.js'
 const GESTURE_MIN_RADIUS_SQ = SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS * SceneDistributionValveControllerConstants.GESTURE_POINTER_MIN_RADIUS
 
 class Valve
@@ -267,7 +268,7 @@ export default class SceneDistributionValveController
             this.valveByUuid.set(mesh.uuid, valve)
         }
 
-        const slotMap = buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
+        const slotMap = SceneDistributionFlowConstants.buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
         for(const valve of this.valves)
         {
             valve.valveToken = this.resolveValveToken(valve.mesh, slotMap)

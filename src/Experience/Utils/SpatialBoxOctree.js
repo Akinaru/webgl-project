@@ -13,7 +13,7 @@ export default class SpatialBoxOctree
     build(items = [])
     {
         const validItems = items.filter((item) => item?.bounds instanceof THREE.Box3 && !item.bounds.isEmpty())
-        const rootBounds = computeRootBounds(validItems)
+        const rootBounds = SpatialBoxOctreeConstants.computeRootBounds(validItems)
 
         if(!rootBounds)
         {
@@ -21,7 +21,7 @@ export default class SpatialBoxOctree
             return
         }
 
-        this.root = new SpatialBoxOctreeNode(
+        this.root = new SpatialBoxOctreeConstants.SpatialBoxOctreeNode(
             rootBounds.clone(),
             0,
             this.maxDepth,

@@ -175,11 +175,11 @@ export default class Foliage
             shader.uniforms.uBushWindTimeScale = this.windUniforms.timeScale
             shader.uniforms.uBushWindStrength = this.windUniforms.strength
 
-            shader.vertexShader = prependShader(
+            shader.vertexShader = FoliageConstants.prependShader(
                 shader.vertexShader,
                 foliageWindShaderChunks.vertexHeader
             )
-            shader.vertexShader = replaceOrAppend(
+            shader.vertexShader = FoliageConstants.replaceOrAppend(
                 shader.vertexShader,
                 FoliageConstants.BEGIN_VERTEX_INCLUDE,
                 `${FoliageConstants.BEGIN_VERTEX_INCLUDE}\n${String(foliageWindShaderChunks.vertexBegin || '').trim()}`

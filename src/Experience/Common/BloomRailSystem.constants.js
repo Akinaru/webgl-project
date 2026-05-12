@@ -76,7 +76,7 @@ function createGraphFromLegacyLines(lines = [])
     return { nodes, edges }
 }
 
-function sanitizeGraph(input)
+export function sanitizeGraph(input)
 {
     if(Array.isArray(input))
     {

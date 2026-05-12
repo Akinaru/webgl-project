@@ -4,7 +4,7 @@ export const DEFAULT_MAX_DEPTH = 8
 export const DEFAULT_MAX_ITEMS_PER_NODE = 12
 export const MIN_NODE_SIZE = 0.0001
 
-function computeRootBounds(entries)
+export function computeRootBounds(entries)
 {
     const bounds = new THREE.Box3()
     let hasBounds = false
@@ -30,7 +30,7 @@ function computeRootBounds(entries)
     return hasBounds ? bounds : null
 }
 
-class SpatialBoxOctreeNode
+export class SpatialBoxOctreeNode
 {
     constructor(bounds, depth, maxDepth, maxItemsPerNode)
     {

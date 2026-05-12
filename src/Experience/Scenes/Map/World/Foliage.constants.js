@@ -8,7 +8,7 @@ export const DEFAULT_WIND_TIME_SCALE = 0.1
 export const DEFAULT_WIND_STRENGTH = 0.75
 export const BEGIN_VERTEX_INCLUDE = '#include <begin_vertex>'
 
-function prependShader(source, header)
+export function prependShader(source, header)
 {
     const trimmedHeader = String(header || '').trim()
     if(trimmedHeader.length === 0)
@@ -19,7 +19,7 @@ function prependShader(source, header)
     return `${trimmedHeader}\n${source}`
 }
 
-function replaceOrAppend(source, search, replacement)
+export function replaceOrAppend(source, search, replacement)
 {
     if(source.includes(search))
     {
