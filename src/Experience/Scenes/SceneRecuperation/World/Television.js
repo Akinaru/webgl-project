@@ -1,29 +1,28 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-
-const CANVAS_WIDTH = 1024
-const CANVAS_HEIGHT = 512
-const BACKGROUND_COLOR = '#07111c'
-const BORDER_COLOR = '#15324d'
-const TITLE_COLOR = '#6fbaff'
-const TEXT_COLOR = '#f3f8ff'
-const BODY_COLOR = '#99abc0'
-const TEST_BUTTON_COLOR = '#4c7fff'
-const VALIDATE_BUTTON_COLOR = '#34c26a'
-const DISABLED_BUTTON_COLOR = '#243444'
-const BUTTON_LOCKED_OFFSET_Y = -0.05
-const BUTTON_ENABLED_LIFT = 0.02
-const BUTTON_PRESS_DEPTH = 0.02
-const BUTTON_RELEASE_DURATION = 0.12
-const BUTTON_TEXTURE_BY_KEY = Object.freeze({
-    test: 'recuperationSimulationButtonTexture',
-    validate: 'recuperationValidationButtonTexture'
-})
-const BUTTON_NAME_TOKENS = Object.freeze({
-    test: ['button_left-buttonsimulation', 'button_left', 'buttonsimulation'],
-    validate: ['button_right-buttonvalidation', 'button_right', 'buttonvalidation']
-})
+import {
+    BACKGROUND_COLOR,
+    BODY_COLOR,
+    BORDER_COLOR,
+    BUTTON_ENABLED_LIFT,
+    BUTTON_LEFT_EXACT_NAME_TOKENS,
+    BUTTON_LOCKED_OFFSET_Y,
+    BUTTON_NAME_TOKENS,
+    BUTTON_PRESS_DEPTH,
+    BUTTON_RELEASE_DURATION,
+    BUTTON_RIGHT_EXACT_NAME_TOKENS,
+    BUTTON_TEXTURE_BY_KEY,
+    CANVAS_HEIGHT,
+    CANVAS_WIDTH,
+    DISABLED_BUTTON_COLOR,
+    SCREEN_VISIBLE_EXACT_NAME_TOKENS,
+    SCREEN_VISIBLE_FALLBACK_NAME_TOKENS,
+    TEST_BUTTON_COLOR,
+    TEXT_COLOR,
+    TITLE_COLOR,
+    VALIDATE_BUTTON_COLOR
+} from './Television.constants.js'
 
 export default class Television
 {
@@ -106,8 +105,8 @@ export default class Television
 
     setScreens()
     {
-        const exactContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen_visible-gris-foncé'], { exact: true }) ?? []
-        const fallbackContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(['screen_visible-gris'], { exact: false }) ?? []
+        const exactContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(SCREEN_VISIBLE_EXACT_NAME_TOKENS, { exact: true }) ?? []
+        const fallbackContentMeshes = this.recuperationModel?.getMeshesForNameTokens?.(SCREEN_VISIBLE_FALLBACK_NAME_TOKENS, { exact: false }) ?? []
         const screenMeshes = exactContentMeshes.length > 0 ? exactContentMeshes : fallbackContentMeshes
 
         for(const mesh of screenMeshes)
@@ -154,8 +153,8 @@ export default class Television
 
     setButtons()
     {
-        this.leftButton = this.resolveButtonObject('button_left', BUTTON_NAME_TOKENS.test)
-        this.rightButton = this.resolveButtonObject('button_right', BUTTON_NAME_TOKENS.validate)
+        this.leftButton = this.resolveButtonObject(BUTTON_LEFT_EXACT_NAME_TOKENS[0], BUTTON_NAME_TOKENS.test)
+        this.rightButton = this.resolveButtonObject(BUTTON_RIGHT_EXACT_NAME_TOKENS[0], BUTTON_NAME_TOKENS.validate)
 
         this.buttonStates.clear()
         this.registerButton('test', this.leftButton, TEST_BUTTON_COLOR, BUTTON_TEXTURE_BY_KEY.test)

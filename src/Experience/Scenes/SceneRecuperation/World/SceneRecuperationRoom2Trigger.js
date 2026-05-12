@@ -1,10 +1,13 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const ROOM2_TRIGGER_HELPER_COLOR = '#5ac8fa'
-const ROOM2_TRIGGER_TRIGGERED_COLOR = '#4fd58a'
-const DEFAULT_MARGIN_Y = 1.6
-const DEFAULT_MIN_SIZE_Y = 2.8
+import {
+    DEFAULT_MARGIN_Y,
+    DEFAULT_MIN_SIZE_Y,
+    ROOM2_BOUNDS_NAME_TOKENS,
+    ROOM2_FALLBACK_BOUNDS_NAME_TOKENS,
+    ROOM2_TRIGGER_HELPER_COLOR,
+    ROOM2_TRIGGER_TRIGGERED_COLOR
+} from './SceneRecuperationRoom2Trigger.constants.js'
 
 export default class SceneRecuperationRoom2Trigger
 {
@@ -37,8 +40,8 @@ export default class SceneRecuperationRoom2Trigger
 
     setDefaultState()
     {
-        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(['room2'], { exact: false })
-            ?? this.recuperationModel?.getBoundsForNameTokens?.(['sol-room2'], { exact: false })
+        const room2Bounds = this.recuperationModel?.getBoundsForNameTokens?.(ROOM2_BOUNDS_NAME_TOKENS, { exact: false })
+            ?? this.recuperationModel?.getBoundsForNameTokens?.(ROOM2_FALLBACK_BOUNDS_NAME_TOKENS, { exact: false })
             ?? null
 
         if(room2Bounds)

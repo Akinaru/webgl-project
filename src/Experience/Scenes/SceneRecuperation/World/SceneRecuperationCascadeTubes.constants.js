@@ -1,0 +1,34 @@
+export const CASCADE_PLANTS_NAME_TOKENS = Object.freeze(['cascade+plantes', 'cascade+tubes', 'cascade_plantes', 'pente_tubes', 'shad_tubes'])
+export const CASCADE_BLUE_TUBE_NAME_TOKENS = Object.freeze(['tube-blue', 'shad_tubes-blue'])
+export const CASCADE_PLAN_NAME_TOKENS = Object.freeze(['shad_pente'])
+
+export const SURFACE_TYPE_TUBE = 'tube'
+export const SURFACE_TYPE_SLOPE = 'slope'
+
+export const DEFAULT_BASE_COLOR = '#00CEFF'
+export const DEFAULT_FOAM_COLOR = '#9AF6FE'
+export const DEFAULT_FLOW_SPEED = 0.35
+export const DEFAULT_FLOW_SCALE = 0.34
+export const DEFAULT_FLOW_ANGLE = 0
+export const DEFAULT_FOAM_SPEED = 0.61
+export const DEFAULT_FOAM_NOISE_FREQUENCY = 7.43
+export const DEFAULT_FOAM_THRESHOLD = 0.76
+export const DEFAULT_FOAM_INTENSITY = 1.63
+export const DEFAULT_FOAM_OPACITY = 0.76
+export const DEFAULT_FOAM_BAND_ANGLE = 1.5708
+export const DEFAULT_OPACITY = 1
+export const DEFAULT_OVERLAY_FOAM_COLOR = '#FDFDF7'
+export const DEFAULT_OVERLAY_FLOW_SPEED = 0.35
+export const DEFAULT_OVERLAY_FOAM_SPEED = 0
+export const DEFAULT_OVERLAY_FOAM_NOISE_FREQUENCY = 4.43
+export const DEFAULT_OVERLAY_FOAM_THRESHOLD = 0.78
+export const DEFAULT_OVERLAY_FOAM_INTENSITY = 3
+export const DEFAULT_OVERLAY_FOAM_OPACITY = 0.63
+export const DEFAULT_OVERLAY_FOAM_BAND_ANGLE = 1.5708
+export const DEFAULT_OVERLAY_DIAMETER_SCALE = 1.087
+export const DEFAULT_ROTATION_SALLE_CHOIX = 0.174
+export const DEFAULT_ROTATION_SALLE_TUBE = 0.076
+export const FLOW_SPEED_VARIATION_AMPLITUDE = 0.012
+export const FOAM_SPEED_VARIATION_AMPLITUDE = 0.02
+export const CASCADE_GROUP_SALLE_TUBE = 'salleTube'
+export const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'

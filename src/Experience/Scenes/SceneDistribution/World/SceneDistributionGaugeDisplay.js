@@ -1,24 +1,26 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import { DISTRIBUTION_CHANNEL_ORDER } from './SceneDistributionFlow.constants.js'
-
-const CANVAS_WIDTH = 1024
-const CANVAS_HEIGHT = 512
-const BACKGROUND_COLOR = '#000000'
-const TITLE_COLOR = '#dff2ff'
-const SUBTITLE_COLOR = '#7ba7c4'
-const TRACK_COLOR = '#163246'
-const TRACK_BORDER_COLOR = '#29506a'
-const TARGET_ZONE_COLOR = '#1d5d46'
-const TARGET_ZONE_BORDER_COLOR = '#41c07f'
-const FILL_COLOR = '#51b4ff'
-const FILL_WARNING_COLOR = '#ffb85c'
-const FILL_SOLVED_COLOR = '#4fd58a'
-const LABEL_COLOR = '#d2e4f3'
-const WARNING_COLOR = '#ffcc70'
-const SOLVED_COLOR = '#8af0b0'
-const CHIP_BG_COLOR = '#102534'
-const CHIP_TEXT_COLOR = '#dcefff'
+import {
+    BACKGROUND_COLOR,
+    CANVAS_HEIGHT,
+    CANVAS_WIDTH,
+    CHIP_BG_COLOR,
+    CHIP_TEXT_COLOR,
+    FILL_COLOR,
+    FILL_SOLVED_COLOR,
+    FILL_WARNING_COLOR,
+    LABEL_COLOR,
+    SCREEN_GRIS_FONCE_NAME_TOKENS,
+    SOLVED_COLOR,
+    SUBTITLE_COLOR,
+    TARGET_ZONE_BORDER_COLOR,
+    TARGET_ZONE_COLOR,
+    TITLE_COLOR,
+    TRACK_BORDER_COLOR,
+    TRACK_COLOR,
+    WARNING_COLOR
+} from './SceneDistributionGaugeDisplay.constants.js'
 
 export default class SceneDistributionGaugeDisplay
 {
@@ -130,7 +132,7 @@ export default class SceneDistributionGaugeDisplay
 
     setScreens()
     {
-        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.(['screen-gris-foncé'], { exact: true }) ?? []
+        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.(SCREEN_GRIS_FONCE_NAME_TOKENS, { exact: true }) ?? []
         const primaryScreen = this.resolvePrimaryScreenMesh(screenMeshes)
         if(!(primaryScreen instanceof THREE.Mesh))
         {
