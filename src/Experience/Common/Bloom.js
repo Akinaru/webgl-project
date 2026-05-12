@@ -34,7 +34,14 @@ export default class Bloom
             facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
             uvZoom: BLOOM_UV_ZOOM,
             lookTurnSpeed: rails.lookTurnSpeed ?? 11,
-            envMapIntensity: 1
+            envMapIntensity: 1,
+            roughness: 0.25,
+            metalness: 0.05,
+            transmission: 1,
+            thickness: 0.25,
+            ior: 1.18,
+            specularIntensity: 1,
+            opacity: 1
         }
 
         this.tmpQuaternion = new THREE.Quaternion()
@@ -75,6 +82,15 @@ export default class Bloom
             lockToNode: false,
             arrivalDistance: 0.08
         }
+        this.animation = {
+            mixer: null,
+            action: null,
+            clips: [],
+            activeClipName: '',
+            play: true,
+            speed: 1,
+            loop: true
+        }
 
         this.rails = new BloomRailSystem({
             scene: this.scene,
@@ -99,6 +115,9 @@ export default class Bloom
         this.locomotionSpeed = 0
         this.walkCyclePhase = 0
         this.armNodes = []
+        this.armAnimationPairs = []
+        this.tmpArmDeltaQuaternion = new THREE.Quaternion()
+        this.tmpArmInverseBaseQuaternion = new THREE.Quaternion()
 
         if(this.resource?.scene)
         {
@@ -125,6 +144,7 @@ export default class Bloom
     {
         this.model = this.resource.scene.clone(true)
         this.model.name = '__bloomRoot'
+        this.setupAnimation()
 
         const bounds = new THREE.Box3().setFromObject(this.model)
         const size = bounds.getSize(new THREE.Vector3())
@@ -163,6 +183,95 @@ export default class Bloom
         })
 
         this.scene.add(this.model)
+    }
+
+    setupAnimation()
+    {
+        const sourceClips = Array.isArray(this.resource?.animations) ? this.resource.animations : []
+        if(!this.model || sourceClips.length === 0)
+        {
+            return
+        }
+
+        this.animation.mixer = new THREE.AnimationMixer(this.model)
+        this.animation.clips = sourceClips
+        this.animation.activeClipName = sourceClips[0].name || '0'
+        this.playAnimationClip(this.animation.activeClipName)
+    }
+
+    resolveAnimationClip(clipKey)
+    {
+        if(this.animation.clips.length === 0)
+        {
+            return null
+        }
+
+        const asIndex = Number.parseInt(String(clipKey), 10)
+        if(Number.isInteger(asIndex) && asIndex >= 0 && asIndex < this.animation.clips.length)
+        {
+            return this.animation.clips[asIndex]
+        }
+
+        return this.animation.clips.find((clip) => clip?.name === clipKey) || this.animation.clips[0]
+    }
+
+    playAnimationClip(clipKey)
+    {
+        if(!this.animation.mixer || this.animation.clips.length === 0)
+        {
+            return
+        }
+
+        const targetClip = this.resolveAnimationClip(clipKey)
+        if(!targetClip)
+        {
+            return
+        }
+
+        if(this.animation.action)
+        {
+            this.animation.action.stop()
+            this.animation.action = null
+        }
+
+        const action = this.animation.mixer.clipAction(targetClip)
+        action.enabled = true
+        action.clampWhenFinished = !this.animation.loop
+        action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
+        action.timeScale = this.animation.speed
+
+        if(this.animation.play)
+        {
+            action.play()
+            action.paused = false
+        }
+        else
+        {
+            action.play()
+            action.paused = true
+        }
+
+        this.animation.action = action
+        this.animation.activeClipName = targetClip.name || String(this.animation.clips.indexOf(targetClip))
+    }
+
+    refreshAnimationPlaybackState()
+    {
+        const action = this.animation.action
+        if(!action)
+        {
+            return
+        }
+
+        action.timeScale = this.animation.speed
+        action.clampWhenFinished = !this.animation.loop
+        action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
+        action.paused = !this.animation.play
+    }
+
+    isAnimationDrivingModel()
+    {
+        return Boolean(this.animation.action && this.animation.clips.length > 0)
     }
 
     spawnOnRailNodeIfAvailable()
@@ -283,8 +392,8 @@ export default class Bloom
                 : new THREE.MeshPhysicalMaterial({
                     name: sourceMaterial.name,
                     color: sourceMaterial.color?.clone?.() ?? new THREE.Color('#ffffff'),
-                    roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : 0.25,
-                    metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : 0.05
+                    roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : this.tuning.roughness,
+                    metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : this.tuning.metalness
                 })
 
             if(colorTexture)
@@ -301,14 +410,14 @@ export default class Bloom
 
             if(transmissionTexture && hasUv)
             {
-                material.transmission = 1
+                material.transmission = this.tuning.transmission
                 material.transmissionMap = transmissionTexture
-                material.thickness = 0.25
-                material.ior = 1.18
+                material.thickness = this.tuning.thickness
+                material.ior = this.tuning.ior
                 material.alphaMap = null
                 material.alphaTest = 0
                 material.transparent = true
-                material.opacity = 1
+                material.opacity = this.tuning.opacity
                 material.side = THREE.DoubleSide
             }
             else
@@ -325,13 +434,15 @@ export default class Bloom
             if(transmissionTexture && hasUv)
             {
                 material.specularIntensityMap = transmissionTexture
-                material.specularIntensity = 1
+                material.specularIntensity = this.tuning.specularIntensity
             }
             else
             {
                 material.specularIntensityMap = null
             }
 
+            material.roughness = this.tuning.roughness
+            material.metalness = this.tuning.metalness
             if(this.bloomReflectionEnvTexture)
             {
                 material.envMap = this.bloomReflectionEnvTexture
@@ -500,6 +611,49 @@ export default class Bloom
         })
     }
 
+    refreshBloomMaterialTuning()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.traverse((child) =>
+        {
+            if(!child?.isMesh || !this.isBloomTargetMesh(child))
+            {
+                return
+            }
+
+            const hasUv = Boolean(child.geometry?.getAttribute?.('uv'))
+            const hasTransmissionTexture = Boolean(this.getTransmissionTextureForMesh(child)) && hasUv
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+
+            for(const material of materials)
+            {
+                if(!(material instanceof THREE.MeshPhysicalMaterial))
+                {
+                    continue
+                }
+
+                material.roughness = this.tuning.roughness
+                material.metalness = this.tuning.metalness
+                material.envMapIntensity = this.tuning.envMapIntensity
+                material.specularIntensity = this.tuning.specularIntensity
+
+                if(hasTransmissionTexture)
+                {
+                    material.transmission = this.tuning.transmission
+                    material.thickness = this.tuning.thickness
+                    material.ior = this.tuning.ior
+                    material.opacity = this.tuning.opacity
+                }
+
+                material.needsUpdate = true
+            }
+        })
+    }
+
     ensureMeshNormals(mesh)
     {
         const geometry = mesh?.geometry
@@ -516,6 +670,8 @@ export default class Bloom
 
     setArmRig()
     {
+        const symmetryCandidates = []
+
         this.model.traverse((child) =>
         {
             const nodeName = child.name?.toLowerCase() || ''
@@ -538,7 +694,55 @@ export default class Bloom
                 phaseOffset: isArmGroup ? 0 : (isRightSide ? 0 : Math.PI),
                 frequencyMultiplier: isArmGroup ? 1 : 1.1
             })
+
+            symmetryCandidates.push({
+                node: child,
+                type: isArmGroup ? 'arm' : 'hand',
+                side: isRightSide ? 'right' : 'left',
+                baseQuaternion: child.quaternion.clone()
+            })
         })
+
+        this.armAnimationPairs = this.buildArmAnimationPairs(symmetryCandidates)
+    }
+
+    buildArmAnimationPairs(candidates)
+    {
+        const pairs = []
+        const leftByType = new Map()
+        const rightByType = new Map()
+
+        for(const candidate of candidates)
+        {
+            if(candidate.side === 'left' && !leftByType.has(candidate.type))
+            {
+                leftByType.set(candidate.type, candidate)
+            }
+
+            if(candidate.side === 'right' && !rightByType.has(candidate.type))
+            {
+                rightByType.set(candidate.type, candidate)
+            }
+        }
+
+        for(const type of ['arm', 'hand'])
+        {
+            const left = leftByType.get(type)
+            const right = rightByType.get(type)
+            if(!left || !right)
+            {
+                continue
+            }
+
+            pairs.push({
+                leftNode: left.node,
+                rightNode: right.node,
+                leftBaseQuaternion: left.baseQuaternion,
+                rightBaseQuaternion: right.baseQuaternion
+            })
+        }
+
+        return pairs
     }
 
     setFallback()
@@ -705,7 +909,12 @@ export default class Bloom
             this.refreshBloomTargetMaterials({ forceRegenerateUv: true })
         })
 
-        this.debug.addBinding(this.debugFolder, this.tuning, 'envMapIntensity', {
+        this.materialFolder = this.debug.addFolder('Materiau de Bloom', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'envMapIntensity', {
             label: 'Intensite de reflexion',
             min: 0,
             max: 5,
@@ -713,8 +922,143 @@ export default class Bloom
         }).on('change', ({ value }) =>
         {
             this.tuning.envMapIntensity = value
-            this.refreshBloomEnvMapIntensity()
+            this.refreshBloomMaterialTuning()
         })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'roughness', {
+            label: 'Rugosite',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.roughness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'metalness', {
+            label: 'Metal',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.metalness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'transmission', {
+            label: 'Transmission',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.transmission = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'thickness', {
+            label: 'Epaisseur',
+            min: 0,
+            max: 2,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.thickness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'ior', {
+            label: 'Indice de refraction',
+            min: 1,
+            max: 2.5,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.ior = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'specularIntensity', {
+            label: 'Intensite speculaire',
+            min: 0,
+            max: 2,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.specularIntensity = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'opacity', {
+            label: 'Opacite',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.opacity = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        if(this.animation.clips.length > 0)
+        {
+            this.animationFolder = this.debug.addFolder('Animation Bloom', {
+                parent: this.debugFolder,
+                expanded: false
+            })
+
+            const clipOptions = {}
+            for(let index = 0; index < this.animation.clips.length; index++)
+            {
+                const clip = this.animation.clips[index]
+                const clipName = clip?.name || `Clip ${index + 1}`
+                clipOptions[clipName] = String(index)
+            }
+
+            const hasActiveValue = Object.values(clipOptions).includes(this.animation.activeClipName)
+            if(!hasActiveValue)
+            {
+                this.animation.activeClipName = Object.values(clipOptions)[0]
+            }
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'activeClipName', {
+                label: 'Clip',
+                options: clipOptions
+            }).on('change', ({ value }) =>
+            {
+                this.animation.activeClipName = value
+                this.playAnimationClip(value)
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'play', {
+                label: 'Lecture'
+            }).on('change', ({ value }) =>
+            {
+                this.animation.play = value
+                this.refreshAnimationPlaybackState()
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'speed', {
+                label: 'Vitesse animation',
+                min: 0,
+                max: 3,
+                step: 0.01
+            }).on('change', ({ value }) =>
+            {
+                this.animation.speed = value
+                this.refreshAnimationPlaybackState()
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'loop', {
+                label: 'Boucle'
+            }).on('change', ({ value }) =>
+            {
+                this.animation.loop = value
+                this.refreshAnimationPlaybackState()
+            })
+        }
 
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
             label: 'Rayon de flottement',
@@ -798,10 +1142,19 @@ export default class Bloom
     {
         const deltaSeconds = Math.min(this.time.delta, 50) * 0.001
 
+        if(this.animation.mixer && this.animation.play)
+        {
+            this.animation.mixer.update(deltaSeconds)
+            this.applyAnimationToSecondArm()
+        }
+
         if(this.model)
         {
             this.updateMotion(deltaSeconds)
-            this.updateArms()
+            if(!this.isAnimationDrivingModel())
+            {
+                this.updateArms()
+            }
             return
         }
 
@@ -1229,9 +1582,43 @@ export default class Bloom
         }
     }
 
+    applyAnimationToSecondArm()
+    {
+        if(this.armAnimationPairs.length === 0)
+        {
+            return
+        }
+
+        for(const pair of this.armAnimationPairs)
+        {
+            const leftNode = pair.leftNode
+            const rightNode = pair.rightNode
+            if(!leftNode || !rightNode)
+            {
+                continue
+            }
+
+            const leftDelta = 1 - Math.abs(leftNode.quaternion.dot(pair.leftBaseQuaternion))
+            const rightDelta = 1 - Math.abs(rightNode.quaternion.dot(pair.rightBaseQuaternion))
+            const sourceNode = leftDelta >= rightDelta ? leftNode : rightNode
+            const sourceBase = leftDelta >= rightDelta ? pair.leftBaseQuaternion : pair.rightBaseQuaternion
+            const targetNode = leftDelta >= rightDelta ? rightNode : leftNode
+            const targetBase = leftDelta >= rightDelta ? pair.rightBaseQuaternion : pair.leftBaseQuaternion
+
+            this.tmpArmInverseBaseQuaternion.copy(sourceBase).invert()
+            this.tmpArmDeltaQuaternion.copy(this.tmpArmInverseBaseQuaternion).multiply(sourceNode.quaternion)
+            targetNode.quaternion.copy(targetBase).multiply(this.tmpArmDeltaQuaternion)
+        }
+    }
+
     destroy()
     {
         this.debugFolder?.dispose?.()
+        this.animation.action?.stop?.()
+        this.animation.mixer?.stopAllAction?.()
+        this.animation.mixer = null
+        this.animation.action = null
+        this.animation.clips = []
 
         if(this.model)
         {
@@ -1254,5 +1641,6 @@ export default class Bloom
 
         this.rails?.destroy?.()
         this.armNodes = []
+        this.armAnimationPairs = []
     }
 }

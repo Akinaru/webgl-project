@@ -1,15 +1,7 @@
 import Experience from './Experience/Experience.js'
+import { isMobileOrTouchDevice } from './Experience/Utils/Sizes.js'
 
-const MOBILE_MAX_WIDTH = 1024
 let experienceInstance = null
-
-function shouldBlockForMobileOrTouch()
-{
-    const hasTouch = (navigator.maxTouchPoints ?? 0) > 0
-        || window.matchMedia('(pointer: coarse)').matches
-    const isSmallScreen = window.innerWidth <= MOBILE_MAX_WIDTH
-    return hasTouch || isSmallScreen
-}
 
 function showDesktopRecommendationScreen()
 {
@@ -57,7 +49,7 @@ function startExperience()
 
 function applyDeviceGate()
 {
-    if(shouldBlockForMobileOrTouch())
+    if(isMobileOrTouchDevice())
     {
         showDesktopRecommendationScreen()
         return
