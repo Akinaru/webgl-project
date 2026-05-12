@@ -6,6 +6,6 @@ Dossier reserve pour des effets de vegetation supplementaires.
 
 Pas de shader actif reference ici pour le moment.
 
-## Intention
+## Role
 
 Si un futur effet concerne l'herbe ou les surfaces vegetales distinctes du feuillage, il doit etre range ici plutot que melange a `Foliage/`.

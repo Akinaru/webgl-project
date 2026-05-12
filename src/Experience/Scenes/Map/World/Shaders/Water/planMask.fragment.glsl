@@ -37,6 +37,8 @@ if(floodedMask < 0.5)
 }
 
 vec2 texel = uMapPlanTerrainDataTexelSize;
+// On reconstruit une distance approximative a la rive a partir de la data texture
+// pour concentrer la mousse sur les zones de bord.
 float shoreDistance = 0.0;
 shoreDistance += terrainDataCenter.b * 0.4;
 shoreDistance += texture2D(uMapPlanTerrainDataTexture, terrainUv + vec2(texel.x, 0.0)).b * 0.15;
@@ -62,6 +64,7 @@ foamEdgeTravel += sin((uMapPlanLocalTime * 5.0) + (vMapPlanWorldPosition.x * 0.3
 float foamShoreDistance = terrainData.b + foamEdgeTravel;
 float foamEdgeMask = 1.0 - smoothstep(foamEdgeWidth, foamEdgeWidth + foamEdgeSoftness, foamShoreDistance);
 
+// Rupture binaire de mousse: le but est un bord lisible, pas une transition trop molle.
 float foamPulse = (sin((terrainData.b * 24.0) - (uMapPlanLocalTime * 8.0) + (foamDrift * 6.28318530718)) * 0.5) + 0.5;
 float foamBreakup = step(uMapPlanFoamThreshold, (foamNoise * 0.45) + (foamDrift * 0.3) + (foamPulse * 0.25));
 float foamMask = clamp(foamEdgeMask * foamBreakup * uMapPlanFoamIntensity, 0.0, 1.0);

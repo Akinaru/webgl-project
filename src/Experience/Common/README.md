@@ -10,7 +10,7 @@ Ce dossier regroupe les systemes 3D reutilisables entre plusieurs scenes.
 - `CollisionDebug.js`: visualisation des collisions.
 - `Bloom.constants.js`: constantes de configuration partagees.
 
-## Intention
+## Role
 
 On place ici ce qui n'appartient pas a une scene unique mais reste lie au runtime 3D.
 Cela evite de dupliquer la meme logique dans `Map`, `Recuperation` et `Distribution`.
