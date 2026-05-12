@@ -1,29 +1,7 @@
 import Experience from '../Experience.js'
 import EventEmitter from './EventEmitter.js'
 import * as InputBindingsConstants from '../Inputs/InputBindings.constants.js'
-
-const TUTORIAL_STEP_IDS = Object.freeze({
-    LOOK: 'look',
-    MOVE_FORWARD: 'moveForward',
-    MOVE_BACKWARD: 'moveBackward',
-    MOVE_LEFT: 'moveLeft',
-    MOVE_RIGHT: 'moveRight'
-})
-
-const CODE_LABELS = Object.freeze({
-    Space: 'Espace',
-    Escape: 'Echap',
-    ArrowUp: 'Fleche haut',
-    ArrowDown: 'Fleche bas',
-    ArrowLeft: 'Fleche gauche',
-    ArrowRight: 'Fleche droite'
-})
-
-export const TUTORIAL_STATUS = {
-    PENDING: 'pending',
-    ACTIVE: 'active',
-    FINISHED: 'finished'
-}
+import * as TutorielConstants from './Tutoriel.constants.js'
 
 export default class Tutoriel extends EventEmitter
 {
@@ -38,7 +16,7 @@ export default class Tutoriel extends EventEmitter
         this.currentStepIndex = 0
         this.steps = [
             {
-                id: TUTORIAL_STEP_IDS.LOOK,
+                id: TutorielConstants.TUTORIAL_STEP_IDS.LOOK,
                 title: 'Regarder',
                 instruction: 'Bougez la souris pour regarder autour de vous',
                 action: null,
@@ -47,7 +25,7 @@ export default class Tutoriel extends EventEmitter
                 targetProgress: 1200
             },
             {
-                id: TUTORIAL_STEP_IDS.MOVE_FORWARD,
+                id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_FORWARD,
                 title: 'Avancer',
                 instruction: 'Appuyez sur la touche pour avancer',
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_FORWARD,
@@ -56,7 +34,7 @@ export default class Tutoriel extends EventEmitter
                 targetProgress: 600
             },
             {
-                id: TUTORIAL_STEP_IDS.MOVE_BACKWARD,
+                id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_BACKWARD,
                 title: 'Reculer',
                 instruction: 'Appuyez sur la touche pour reculer',
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_BACKWARD,
@@ -65,7 +43,7 @@ export default class Tutoriel extends EventEmitter
                 targetProgress: 600
             },
             {
-                id: TUTORIAL_STEP_IDS.MOVE_LEFT,
+                id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_LEFT,
                 title: 'Gauche',
                 instruction: 'Appuyez sur la touche pour aller à gauche',
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_LEFT,
@@ -74,7 +52,7 @@ export default class Tutoriel extends EventEmitter
                 targetProgress: 600
             },
             {
-                id: TUTORIAL_STEP_IDS.MOVE_RIGHT,
+                id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_RIGHT,
                 title: 'Droite',
                 instruction: 'Appuyez sur la touche pour aller à droite',
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_RIGHT,
@@ -92,7 +70,7 @@ export default class Tutoriel extends EventEmitter
             if (this.isPauseMenuOpen()) return
 
             const step = this.steps[this.currentStepIndex]
-            if (step && step.id === TUTORIAL_STEP_IDS.LOOK)
+            if (step && step.id === TutorielConstants.TUTORIAL_STEP_IDS.LOOK)
             {
                 const moveAmount = Math.abs(event.movementX) + Math.abs(event.movementY)
                 step.progress += moveAmount * 0.5
@@ -172,7 +150,7 @@ export default class Tutoriel extends EventEmitter
         const step = this.steps[this.currentStepIndex]
         if (!step) return
         
-        if (step.id !== TUTORIAL_STEP_IDS.LOOK && step.validate())
+        if (step.id !== TutorielConstants.TUTORIAL_STEP_IDS.LOOK && step.validate())
         {
             step.progress += delta
         }
@@ -268,7 +246,7 @@ export default class Tutoriel extends EventEmitter
             return '-'
         }
 
-        const directLabel = CODE_LABELS[normalizedCode]
+        const directLabel = TutorielConstants.CODE_LABELS[normalizedCode]
         if(directLabel)
         {
             return directLabel

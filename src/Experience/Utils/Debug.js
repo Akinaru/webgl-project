@@ -3,8 +3,7 @@ import { Pane } from 'tweakpane'
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials'
 import * as CamerakitPlugin from '@tweakpane/plugin-camerakit'
 import packageInfo from '../../../package.json'
-
-const HASH_TOKEN_SEPARATOR = /[,+|]/g
+import * as DebugConstants from './Debug.constants.js'
 
 export default class Debug
 {
@@ -48,7 +47,7 @@ export default class Debug
         }
 
         const tokens = normalizedHash
-            .split(HASH_TOKEN_SEPARATOR)
+            .split(DebugConstants.HASH_TOKEN_SEPARATOR)
             .map((token) => token.trim())
             .filter(Boolean)
             .map((token) => token.replace(/[^a-z0-9_-]/g, ''))

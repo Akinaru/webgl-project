@@ -2,15 +2,7 @@ import * as THREE from 'three'
 import Experience from '../Experience.js'
 import SpatialBoxOctree from '../Utils/SpatialBoxOctree.js'
 import * as InputBindingsConstants from '../Inputs/InputBindings.constants.js'
-
-const UP_AXIS = new THREE.Vector3(0, 1, 0)
-const GROUND_IGNORED_TOKENS = ['building', 'balcon', 'window', 'fenetre', 'fenêtre']
-const COLLISION_OCTREE_MARGIN = 0.35
-const PLAYER_HEAD_TOP_OFFSET = 0.04
-const CEILING_HIT_EPSILON = 0.02
-const COLLISION_CONTACT_EPSILON = 0.002
-const COLLISION_MIN_DISTANCE = 0.0001
-const WALL_NORMAL_MAX_Y = 0.65
+import * as PlayerConstants from './Player.constants.js'
 
 export default class Player
 {
@@ -307,8 +299,8 @@ export default class Player
         const currentSpeed = (isSprinting ? this.settings.sprintSpeed : this.settings.walkSpeed) * speedMultiplier
         const movementEnabled = this.isPointerLocked
 
-        this.forwardDirection.set(0, 0, -1).applyAxisAngle(UP_AXIS, this.yaw)
-        this.rightDirection.set(1, 0, 0).applyAxisAngle(UP_AXIS, this.yaw)
+        this.forwardDirection.set(0, 0, -1).applyAxisAngle(PlayerConstants.UP_AXIS, this.yaw)
+        this.rightDirection.set(1, 0, 0).applyAxisAngle(PlayerConstants.UP_AXIS, this.yaw)
 
         const targetVelocity = new THREE.Vector3()
         if(movementEnabled)
@@ -487,15 +479,15 @@ export default class Player
             return
         }
 
-        const previousHeadY = this.previousPosition.y + PLAYER_HEAD_TOP_OFFSET
-        const currentHeadY = this.position.y + PLAYER_HEAD_TOP_OFFSET
+        const previousHeadY = this.previousPosition.y + PlayerConstants.PLAYER_HEAD_TOP_OFFSET
+        const currentHeadY = this.position.y + PlayerConstants.PLAYER_HEAD_TOP_OFFSET
         const upwardTravel = currentHeadY - previousHeadY
         if(upwardTravel <= 1e-5)
         {
             return
         }
 
-        const rayFar = upwardTravel + CEILING_HIT_EPSILON
+        const rayFar = upwardTravel + PlayerConstants.CEILING_HIT_EPSILON
         const sampleOffset = this.settings.radius * 0.58
         const sampleOffsets = [
             [0, 0],
@@ -510,7 +502,7 @@ export default class Player
         {
             this.raycastOrigin.set(
                 this.previousPosition.x + offsetX,
-                previousHeadY - CEILING_HIT_EPSILON,
+                previousHeadY - PlayerConstants.CEILING_HIT_EPSILON,
                 this.previousPosition.z + offsetZ
             )
 
@@ -533,7 +525,7 @@ export default class Player
             return
         }
 
-        const maxAllowedPlayerY = closestCeilingY - PLAYER_HEAD_TOP_OFFSET - CEILING_HIT_EPSILON
+        const maxAllowedPlayerY = closestCeilingY - PlayerConstants.PLAYER_HEAD_TOP_OFFSET - PlayerConstants.CEILING_HIT_EPSILON
         if(this.position.y > maxAllowedPlayerY)
         {
             this.position.y = maxAllowedPlayerY
@@ -543,7 +535,7 @@ export default class Player
 
     isGroundIgnoredMesh(object)
     {
-        return this.hasNameInHierarchy(object, GROUND_IGNORED_TOKENS)
+        return this.hasNameInHierarchy(object, PlayerConstants.GROUND_IGNORED_TOKENS)
     }
 
     hasNameInHierarchy(object, tokens = [])
@@ -670,14 +662,14 @@ export default class Player
         const feetY = this.position.y - this.settings.height
         const headY = this.position.y + 0.04
         this.collisionQueryBox.min.set(
-            this.position.x - radius - COLLISION_OCTREE_MARGIN,
-            feetY - COLLISION_OCTREE_MARGIN,
-            this.position.z - radius - COLLISION_OCTREE_MARGIN
+            this.position.x - radius - PlayerConstants.COLLISION_OCTREE_MARGIN,
+            feetY - PlayerConstants.COLLISION_OCTREE_MARGIN,
+            this.position.z - radius - PlayerConstants.COLLISION_OCTREE_MARGIN
         )
         this.collisionQueryBox.max.set(
-            this.position.x + radius + COLLISION_OCTREE_MARGIN,
-            headY + COLLISION_OCTREE_MARGIN,
-            this.position.z + radius + COLLISION_OCTREE_MARGIN
+            this.position.x + radius + PlayerConstants.COLLISION_OCTREE_MARGIN,
+            headY + PlayerConstants.COLLISION_OCTREE_MARGIN,
+            this.position.z + radius + PlayerConstants.COLLISION_OCTREE_MARGIN
         )
         const collisionCandidates = this.getCollisionCandidates(this.collisionQueryBox)
         this.collisionDebugState = {
@@ -751,10 +743,10 @@ export default class Player
                     }
                 }
 
-                const distance = Math.max(Math.sqrt(distanceSq), COLLISION_MIN_DISTANCE)
+                const distance = Math.max(Math.sqrt(distanceSq), PlayerConstants.COLLISION_MIN_DISTANCE)
                 const normalX = dx / distance
                 const normalZ = dz / distance
-                const penetration = Math.max(0, radius - distance + COLLISION_CONTACT_EPSILON)
+                const penetration = Math.max(0, radius - distance + PlayerConstants.COLLISION_CONTACT_EPSILON)
 
                 this.position.x += normalX * penetration
                 this.position.z += normalZ * penetration
@@ -817,14 +809,14 @@ export default class Player
         const maxSampleY = Math.max(...sampleHeights)
 
         this.collisionQueryBox.min.set(
-            Math.min(this.previousPosition.x, this.position.x) - this.settings.radius - COLLISION_OCTREE_MARGIN,
-            minSampleY - COLLISION_OCTREE_MARGIN,
-            Math.min(this.previousPosition.z, this.position.z) - this.settings.radius - COLLISION_OCTREE_MARGIN
+            Math.min(this.previousPosition.x, this.position.x) - this.settings.radius - PlayerConstants.COLLISION_OCTREE_MARGIN,
+            minSampleY - PlayerConstants.COLLISION_OCTREE_MARGIN,
+            Math.min(this.previousPosition.z, this.position.z) - this.settings.radius - PlayerConstants.COLLISION_OCTREE_MARGIN
         )
         this.collisionQueryBox.max.set(
-            Math.max(this.previousPosition.x, this.position.x) + this.settings.radius + COLLISION_OCTREE_MARGIN,
-            maxSampleY + COLLISION_OCTREE_MARGIN,
-            Math.max(this.previousPosition.z, this.position.z) + this.settings.radius + COLLISION_OCTREE_MARGIN
+            Math.max(this.previousPosition.x, this.position.x) + this.settings.radius + PlayerConstants.COLLISION_OCTREE_MARGIN,
+            maxSampleY + PlayerConstants.COLLISION_OCTREE_MARGIN,
+            Math.max(this.previousPosition.z, this.position.z) + this.settings.radius + PlayerConstants.COLLISION_OCTREE_MARGIN
         )
 
         const collisionCandidates = this.getCollisionCandidates(this.collisionQueryBox)
@@ -877,7 +869,7 @@ export default class Player
                         continue
                     }
                     // Keep angled modules collidable while still ignoring near-horizontal surfaces.
-                    if(this.worldNormal.y > WALL_NORMAL_MAX_Y)
+                    if(this.worldNormal.y > PlayerConstants.WALL_NORMAL_MAX_Y)
                     {
                         continue
                     }

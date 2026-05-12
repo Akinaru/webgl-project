@@ -2,19 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
 import MetierEnum from '../../../Enum/MetierEnum.js'
-
-const RESULT_SCREEN_TARGET_NAME_PREFIX = 'screen-gris-foncé'
-const RESULT_SCREEN_HIERARCHY_TOKENS = [
-    'screen_right',
-    'screen_mid',
-    'screen_mid.1',
-    'screen_mid1',
-    'screen_mid_screen_right_1',
-    'screen_right_2',
-    'screen_3',
-    'screen_5',
-    'screen_7'
-]
+import * as SceneDistributionResultDisplayConstants from './SceneDistributionResultDisplay.constants.js'
 
 export default class SceneDistributionResultDisplay
 {
@@ -41,7 +29,7 @@ export default class SceneDistributionResultDisplay
 
     setScreens()
     {
-        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.([RESULT_SCREEN_TARGET_NAME_PREFIX]) ?? []
+        const screenMeshes = this.distributionModel?.getMeshesForNameTokens?.([SceneDistributionResultDisplayConstants.RESULT_SCREEN_TARGET_NAME_PREFIX]) ?? []
         const resultEntries = screenMeshes.filter((mesh) =>
             mesh instanceof THREE.Mesh
             && this.isResultScreenMesh(mesh)
@@ -74,12 +62,12 @@ export default class SceneDistributionResultDisplay
     isResultScreenMesh(mesh)
     {
         const meshName = String(mesh?.name || '').toLowerCase().trim()
-        if(!meshName.startsWith(RESULT_SCREEN_TARGET_NAME_PREFIX))
+        if(!meshName.startsWith(SceneDistributionResultDisplayConstants.RESULT_SCREEN_TARGET_NAME_PREFIX))
         {
             return false
         }
 
-        return this.hasNameTokenInHierarchy(mesh, RESULT_SCREEN_HIERARCHY_TOKENS)
+        return this.hasNameTokenInHierarchy(mesh, SceneDistributionResultDisplayConstants.RESULT_SCREEN_HIERARCHY_TOKENS)
     }
 
     hasNameTokenInHierarchy(object, tokens = [])

@@ -2,15 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
-
-const AUDIO_STORAGE_KEY = 'bloom.audio.enabled'
-const START_CLASS = 'is-starting'
-const LOADING_CLASS = 'is-loading'
-const EYE_OPENING_CLASS = 'is-eye-opening'
-const FINISHED_CLASS = 'is-finished'
-const START_DELAY_MS = 560
-const EYE_OPENING_DELAY_MS = 1860
-const FINISH_DELAY_MS = 1150
+import * as MenuConstants from './Menu.constants.js'
 
 export default class Menu
 {
@@ -203,7 +195,7 @@ export default class Menu
     {
         try
         {
-            const raw = window.localStorage.getItem(AUDIO_STORAGE_KEY)
+            const raw = window.localStorage.getItem(MenuConstants.AUDIO_STORAGE_KEY)
             return raw === null ? true : raw === '1'
         }
         catch(error)
@@ -230,7 +222,7 @@ export default class Menu
 
         try
         {
-            window.localStorage.setItem(AUDIO_STORAGE_KEY, this.audioEnabled ? '1' : '0')
+            window.localStorage.setItem(MenuConstants.AUDIO_STORAGE_KEY, this.audioEnabled ? '1' : '0')
         }
         catch(error)
         {
@@ -716,10 +708,10 @@ export default class Menu
             return
         }
 
-        this.bootScreen.classList.add(START_CLASS)
-        await this.wait(START_DELAY_MS)
-        this.bootScreen.classList.remove(START_CLASS)
-        this.bootScreen.classList.add(LOADING_CLASS)
+        this.bootScreen.classList.add(MenuConstants.START_CLASS)
+        await this.wait(MenuConstants.START_DELAY_MS)
+        this.bootScreen.classList.remove(MenuConstants.START_CLASS)
+        this.bootScreen.classList.add(MenuConstants.LOADING_CLASS)
         this.showTransitionOverlay('Chargement')
 
         this.experience?.resources?.startLoading?.()
@@ -740,12 +732,12 @@ export default class Menu
             return
         }
 
-        this.bootScreen.classList.remove(LOADING_CLASS)
-        this.bootScreen.classList.add(EYE_OPENING_CLASS)
-        await this.wait(EYE_OPENING_DELAY_MS)
+        this.bootScreen.classList.remove(MenuConstants.LOADING_CLASS)
+        this.bootScreen.classList.add(MenuConstants.EYE_OPENING_CLASS)
+        await this.wait(MenuConstants.EYE_OPENING_DELAY_MS)
 
-        this.bootScreen.classList.add(FINISHED_CLASS)
-        await this.wait(FINISH_DELAY_MS)
+        this.bootScreen.classList.add(MenuConstants.FINISHED_CLASS)
+        await this.wait(MenuConstants.FINISH_DELAY_MS)
         this.bootScreen.remove()
         this.focusGameCanvas()
     }

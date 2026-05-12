@@ -1,52 +1,6 @@
 import EventEmitter from '../Utils/EventEmitter.js'
 import * as InputBindingsConstants from '../Inputs/InputBindings.constants.js'
-
-const DISPLAYED_CLASS = 'is-displayed'
-const VISIBLE_CLASS = 'is-visible'
-const SETTINGS_OPEN_CLASS = 'is-settings-open'
-const SELECTORS = Object.freeze({
-    root: '#pauseMenu',
-    resumeButton: '#pauseResumeButton',
-    settingsButton: '#pauseSettingsButton',
-    settingsModal: '#pauseSettingsModal',
-    settingsCloseButton: '#pauseSettingsCloseButton',
-    musicVolumeSlider: '#pauseMusicVolume',
-    musicVolumeValue: '#pauseMusicVolumeValue',
-    sfxVolumeSlider: '#pauseSfxVolume',
-    sfxVolumeValue: '#pauseSfxVolumeValue',
-    graphicsQualityButtons: '[data-gfx-quality]',
-    keybindButtons: '[data-keybind-action]',
-    resetAllButton: '#pauseSettingsResetAll'
-})
-const SLIDER_GRADIENT_DARK_RGB = Object.freeze({ r: 36, g: 120, b: 186 })
-const SLIDER_GRADIENT_LIGHT_RGB = Object.freeze({ r: 123, g: 215, b: 255 })
-const SLIDER_GRADIENT_ALPHA = 0.95
-const VOLUME_PREVIEW_MIN_INTERVAL_MS = 90
-const VOLUME_PREVIEW_SOUND_BY_TYPE = Object.freeze({
-    music: 'pauseMusicPreview',
-    sfx: 'menuClick'
-})
-const KEYBIND_CAPTURE_LABEL = 'Appuyer...'
-const KEYBIND_ERROR_FLASH_MS = 320
-const GRAPHICS_QUALITY = Object.freeze({
-    LOW: 'low',
-    MEDIUM: 'medium',
-    HIGH: 'high'
-})
-const KEYBIND_CODE_LABELS = Object.freeze({
-    Space: 'Espace',
-    Escape: 'Echap',
-    ArrowUp: 'Fleche haut',
-    ArrowDown: 'Fleche bas',
-    ArrowLeft: 'Fleche gauche',
-    ArrowRight: 'Fleche droite',
-    ShiftLeft: 'Maj gauche',
-    ShiftRight: 'Maj droite',
-    ControlLeft: 'Ctrl gauche',
-    ControlRight: 'Ctrl droite',
-    AltLeft: 'Alt gauche',
-    AltRight: 'Alt droite'
-})
+import * as PauseMenuConstants from './PauseMenu.constants.js'
 
 export default class PauseMenu extends EventEmitter
 {
@@ -86,18 +40,18 @@ export default class PauseMenu extends EventEmitter
         this.keybindErrorTimeoutId = 0
         this.keybindErrorAction = null
 
-        this.root = document.querySelector(SELECTORS.root)
-        this.resumeButton = document.querySelector(SELECTORS.resumeButton)
-        this.settingsButton = document.querySelector(SELECTORS.settingsButton)
-        this.settingsModal = document.querySelector(SELECTORS.settingsModal)
-        this.settingsCloseButton = document.querySelector(SELECTORS.settingsCloseButton)
-        this.musicVolumeSlider = document.querySelector(SELECTORS.musicVolumeSlider)
-        this.musicVolumeValue = document.querySelector(SELECTORS.musicVolumeValue)
-        this.sfxVolumeSlider = document.querySelector(SELECTORS.sfxVolumeSlider)
-        this.sfxVolumeValue = document.querySelector(SELECTORS.sfxVolumeValue)
-        this.graphicsQualityButtons = Array.from(document.querySelectorAll(SELECTORS.graphicsQualityButtons))
-        this.keybindButtons = Array.from(document.querySelectorAll(SELECTORS.keybindButtons))
-        this.resetAllButton = document.querySelector(SELECTORS.resetAllButton)
+        this.root = document.querySelector(PauseMenuConstants.SELECTORS.root)
+        this.resumeButton = document.querySelector(PauseMenuConstants.SELECTORS.resumeButton)
+        this.settingsButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsButton)
+        this.settingsModal = document.querySelector(PauseMenuConstants.SELECTORS.settingsModal)
+        this.settingsCloseButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsCloseButton)
+        this.musicVolumeSlider = document.querySelector(PauseMenuConstants.SELECTORS.musicVolumeSlider)
+        this.musicVolumeValue = document.querySelector(PauseMenuConstants.SELECTORS.musicVolumeValue)
+        this.sfxVolumeSlider = document.querySelector(PauseMenuConstants.SELECTORS.sfxVolumeSlider)
+        this.sfxVolumeValue = document.querySelector(PauseMenuConstants.SELECTORS.sfxVolumeValue)
+        this.graphicsQualityButtons = Array.from(document.querySelectorAll(PauseMenuConstants.SELECTORS.graphicsQualityButtons))
+        this.keybindButtons = Array.from(document.querySelectorAll(PauseMenuConstants.SELECTORS.keybindButtons))
+        this.resetAllButton = document.querySelector(PauseMenuConstants.SELECTORS.resetAllButton)
 
         this.hasUI = Boolean(
             this.root
@@ -451,8 +405,8 @@ export default class PauseMenu extends EventEmitter
 
         this.state = PauseMenu.OPEN
         this.root.setAttribute('aria-hidden', 'false')
-        this.root.classList.add(DISPLAYED_CLASS)
-        this.root.classList.add(VISIBLE_CLASS)
+        this.root.classList.add(PauseMenuConstants.DISPLAYED_CLASS)
+        this.root.classList.add(PauseMenuConstants.VISIBLE_CLASS)
         this.closeSettings({ silent: true })
 
         if(isPointerLockedNow)
@@ -504,8 +458,8 @@ export default class PauseMenu extends EventEmitter
         this.state = PauseMenu.CLOSED
         this.closeSettings({ silent: true })
         this.root.setAttribute('aria-hidden', 'true')
-        this.root.classList.remove(VISIBLE_CLASS)
-        this.root.classList.remove(DISPLAYED_CLASS)
+        this.root.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
+        this.root.classList.remove(PauseMenuConstants.DISPLAYED_CLASS)
         this.trigger('close')
         this.trigger('closed')
 
@@ -537,7 +491,7 @@ export default class PauseMenu extends EventEmitter
 
     isSettingsOpen()
     {
-        return this.settingsModal?.classList?.contains(VISIBLE_CLASS) === true
+        return this.settingsModal?.classList?.contains(PauseMenuConstants.VISIBLE_CLASS) === true
     }
 
     openSettings()
@@ -551,9 +505,9 @@ export default class PauseMenu extends EventEmitter
         this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
         this.clearKeybindError()
-        this.settingsModal.classList.add(VISIBLE_CLASS)
+        this.settingsModal.classList.add(PauseMenuConstants.VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'false')
-        this.root.classList.add(SETTINGS_OPEN_CLASS)
+        this.root.classList.add(PauseMenuConstants.SETTINGS_OPEN_CLASS)
     }
 
     closeSettings({
@@ -565,9 +519,9 @@ export default class PauseMenu extends EventEmitter
             return
         }
 
-        this.settingsModal.classList.remove(VISIBLE_CLASS)
+        this.settingsModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'true')
-        this.root.classList.remove(SETTINGS_OPEN_CLASS)
+        this.root.classList.remove(PauseMenuConstants.SETTINGS_OPEN_CLASS)
         this.cancelKeybindCapture()
         this.clearKeybindError()
         if(!silent)
@@ -590,7 +544,7 @@ export default class PauseMenu extends EventEmitter
 
     getGraphicsQuality()
     {
-        return this.experience?.renderer?.getGraphicsQuality?.() || GRAPHICS_QUALITY.HIGH
+        return this.experience?.renderer?.getGraphicsQuality?.() || PauseMenuConstants.GRAPHICS_QUALITY.HIGH
     }
 
     applyGraphicsQuality(quality)
@@ -644,16 +598,16 @@ export default class PauseMenu extends EventEmitter
         slider.style.setProperty('--slider-fill', `${safePercent}%`)
 
         const t = safePercent / 100
-        const r = Math.round(SLIDER_GRADIENT_DARK_RGB.r + ((SLIDER_GRADIENT_LIGHT_RGB.r - SLIDER_GRADIENT_DARK_RGB.r) * t))
-        const g = Math.round(SLIDER_GRADIENT_DARK_RGB.g + ((SLIDER_GRADIENT_LIGHT_RGB.g - SLIDER_GRADIENT_DARK_RGB.g) * t))
-        const b = Math.round(SLIDER_GRADIENT_DARK_RGB.b + ((SLIDER_GRADIENT_LIGHT_RGB.b - SLIDER_GRADIENT_DARK_RGB.b) * t))
-        slider.style.setProperty('--slider-fill-end', `rgba(${r}, ${g}, ${b}, ${SLIDER_GRADIENT_ALPHA})`)
+        const r = Math.round(PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.r + ((PauseMenuConstants.SLIDER_GRADIENT_LIGHT_RGB.r - PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.r) * t))
+        const g = Math.round(PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.g + ((PauseMenuConstants.SLIDER_GRADIENT_LIGHT_RGB.g - PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.g) * t))
+        const b = Math.round(PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.b + ((PauseMenuConstants.SLIDER_GRADIENT_LIGHT_RGB.b - PauseMenuConstants.SLIDER_GRADIENT_DARK_RGB.b) * t))
+        slider.style.setProperty('--slider-fill-end', `rgba(${r}, ${g}, ${b}, ${PauseMenuConstants.SLIDER_GRADIENT_ALPHA})`)
     }
 
     playVolumePreview(type = 'sfx')
     {
         const sound = this.experience?.sound
-        const soundName = VOLUME_PREVIEW_SOUND_BY_TYPE[type]
+        const soundName = PauseMenuConstants.VOLUME_PREVIEW_SOUND_BY_TYPE[type]
         if(!sound || !soundName)
         {
             return
@@ -661,7 +615,7 @@ export default class PauseMenu extends EventEmitter
 
         const now = performance.now()
         const lastPreviewAt = this.lastVolumePreviewAt?.[type] ?? -Infinity
-        if((now - lastPreviewAt) < VOLUME_PREVIEW_MIN_INTERVAL_MS)
+        if((now - lastPreviewAt) < PauseMenuConstants.VOLUME_PREVIEW_MIN_INTERVAL_MS)
         {
             return
         }
@@ -779,7 +733,7 @@ export default class PauseMenu extends EventEmitter
         this.keybindErrorTimeoutId = window.setTimeout(() =>
         {
             this.clearKeybindError()
-        }, KEYBIND_ERROR_FLASH_MS)
+        }, PauseMenuConstants.KEYBIND_ERROR_FLASH_MS)
     }
 
     clearKeybindError()
@@ -798,7 +752,7 @@ export default class PauseMenu extends EventEmitter
     {
         this.experience?.sound?.setMusicVolume?.(1)
         this.experience?.sound?.setSfxVolume?.(1)
-        this.experience?.renderer?.setGraphicsQuality?.(GRAPHICS_QUALITY.HIGH)
+        this.experience?.renderer?.setGraphicsQuality?.(PauseMenuConstants.GRAPHICS_QUALITY.HIGH)
         this.inputs?.resetActionBindings?.()
         this.cancelKeybindCapture()
         this.clearKeybindError()
@@ -824,7 +778,7 @@ export default class PauseMenu extends EventEmitter
 
             if(this.pendingKeybindAction === action)
             {
-                button.textContent = KEYBIND_CAPTURE_LABEL
+                button.textContent = PauseMenuConstants.KEYBIND_CAPTURE_LABEL
                 button.classList.add('is-capturing')
                 if(this.keybindErrorAction === action)
                 {
@@ -859,7 +813,7 @@ export default class PauseMenu extends EventEmitter
             return '-'
         }
 
-        const directLabel = KEYBIND_CODE_LABELS[normalizedCode]
+        const directLabel = PauseMenuConstants.KEYBIND_CODE_LABELS[normalizedCode]
         if(directLabel)
         {
             return directLabel
@@ -905,12 +859,12 @@ export default class PauseMenu extends EventEmitter
         }
         this.root.removeEventListener('click', this.onRootClick)
 
-        this.root.classList.remove(VISIBLE_CLASS)
-        this.root.classList.remove(DISPLAYED_CLASS)
+        this.root.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
+        this.root.classList.remove(PauseMenuConstants.DISPLAYED_CLASS)
         this.root.setAttribute('aria-hidden', 'true')
-        this.settingsModal.classList.remove(VISIBLE_CLASS)
+        this.settingsModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'true')
-        this.root.classList.remove(SETTINGS_OPEN_CLASS)
+        this.root.classList.remove(PauseMenuConstants.SETTINGS_OPEN_CLASS)
 
         if(this.visibilityRafId)
         {

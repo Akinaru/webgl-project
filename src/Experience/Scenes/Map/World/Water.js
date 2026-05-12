@@ -2,9 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 
 // Water pilote les parametres d eau globaux et les applique au rendu de la map.
-const WATER_LEVEL_MIN = 0
-const WATER_LEVEL_MAX = 2
-const RIPPLE_TIME_SPEED_DEFAULT = 0.065
+import * as WaterConstants from './Water.constants.js'
 
 export default class Water
 {
@@ -49,8 +47,8 @@ export default class Water
     {
         this.state.hauteurEau = THREE.MathUtils.clamp(
             this.state.hauteurEau,
-            WATER_LEVEL_MIN,
-            WATER_LEVEL_MAX
+            WaterConstants.WATER_LEVEL_MIN,
+            WaterConstants.WATER_LEVEL_MAX
         )
 
         if(this.state.hauteurFond > this.state.hauteurEau)
@@ -130,8 +128,8 @@ export default class Water
 
         this.debug.addBinding(this.terrainFolder, this.state, 'hauteurEau', {
             label: 'Hauteur eau',
-            min: WATER_LEVEL_MIN,
-            max: WATER_LEVEL_MAX,
+            min: WaterConstants.WATER_LEVEL_MIN,
+            max: WaterConstants.WATER_LEVEL_MAX,
             step: 0.01
         }).on('change', () =>
         {

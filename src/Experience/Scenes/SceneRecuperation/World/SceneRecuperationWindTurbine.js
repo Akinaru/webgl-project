@@ -1,8 +1,7 @@
 import * as THREE from 'three'
 import { setupSceneRecuperationWindTurbineDebug } from './SceneRecuperationWindTurbine.debug.js'
 import Experience from '../../../Experience.js'
-
-const DEFAULT_ROTATION_SPEED = 1.8
+import * as SceneRecuperationWindTurbineConstants from './SceneRecuperationWindTurbine.constants.js'
 
 export default class SceneRecuperationWindTurbine
 {
@@ -35,7 +34,7 @@ export default class SceneRecuperationWindTurbine
         }
 
         const deltaSeconds = Math.max(0, Math.min(0.05, (deltaMs || 16.67) * 0.001))
-        const angle = deltaSeconds * DEFAULT_ROTATION_SPEED * this.state.speed
+        const angle = deltaSeconds * SceneRecuperationWindTurbineConstants.DEFAULT_ROTATION_SPEED * this.state.speed
 
         if(this.bladesGroup)
         {

@@ -6,45 +6,7 @@ import { terrainWaterlineShaderChunks } from './Shaders/Terrain/waterlineShaderC
 import { planWaterMaskShaderChunks } from './Shaders/Water/planMaskShaderChunks.js'
 
 // MapModel centralise le chargement de la map, les collisions, et les shaders eau (relief + plan).
-const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes', 'fontaine', 'fountain']
-const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
-const FOUNTAIN_NAME_TOKENS = ['fontaine', 'fountain']
-const FOUNTAIN_STRICT_COLLISION_TOKENS = ['fontaine_1']
-const FOUNTAIN_TOP_COLLISION_HEIGHT = 0.28
-const FOUNTAIN_TOP_COLLISION_OUTER_MARGIN = 0.06
-const FOUNTAIN_TOP_COLLISION_INNER_RATIO = 0.32
-const FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS = 0.08
-const FOUNTAIN_TOP_COLLISION_STRICT_INSET = 0.12
-const PLAN_HEIGHT_TEXTURE_RESOLUTION = 256
-const PLAN_NOISE_TEXTURE_RESOLUTION = 128
-const PALM_MASTER_NAME = 'palmier_master'
-const PALM_PLACEMENT_NAME_PATTERN = /^palmier_[^_]+_nul$/i
-const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
-const USER_DATA_BUILDING_INSTANCE = 'isBuildingInstanceMesh'
-const USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE = 'isBuildingCollisionProxyInstanceMesh'
-const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
-const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
-const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
-const USER_DATA_REPEATABLE_PLACEMENT = 'isRepeatablePlacementMesh'
-const SCALE_EPSILON = 1e-5
-const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = -0.58
-const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
-const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_nul_\d+$/i
-const COLLISION_PROXY_NAME_PATTERN = /^col_/i
-const REPEATABLE_INSTANCE_CONFIGS = [
-    {
-        key: 'build_tour',
-        masterName: 'build_tour_master',
-        collisionMasterName: 'col_build_tour-1',
-        placementPattern: /^build_tour_[^_]+_nul$/i
-    },
-    {
-        key: 'build_feuille',
-        masterName: 'build_feuille_master1',
-        collisionMasterName: 'col_build_feuille-1',
-        placementPattern: /^build_feuille_[^_]+_nul$/i
-    }
-]
+import * as MapModelConstants from './MapModel.constants.js'
 
 export default class MapModel
 {
@@ -59,7 +21,7 @@ export default class MapModel
         this.terrainTintMeshes = []
         this.repeatableInstanceGroups = []
         this.instancePlacementDebugState = {
-            offsetYBuildings: BUILDING_INSTANCE_Y_OFFSET_DEFAULT
+            offsetYBuildings: MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT
         }
         this.planVisible = false
         this.terrainWaterlineSettings = {
@@ -223,19 +185,19 @@ export default class MapModel
     isExteriorBushSocketMesh(mesh)
     {
         const name = String(mesh?.name || '').trim()
-        return BUSH_SOCKET_EXTERIOR_NAME_PATTERN.test(name)
+        return MapModelConstants.BUSH_SOCKET_EXTERIOR_NAME_PATTERN.test(name)
     }
 
     isInteriorBushSocketMesh(mesh)
     {
         const name = String(mesh?.name || '').trim()
-        return BUSH_SOCKET_INTERIOR_NAME_PATTERN.test(name)
+        return MapModelConstants.BUSH_SOCKET_INTERIOR_NAME_PATTERN.test(name)
     }
 
     isCollisionProxyMesh(mesh)
     {
         const name = String(mesh?.name || '').trim()
-        return COLLISION_PROXY_NAME_PATTERN.test(name)
+        return MapModelConstants.COLLISION_PROXY_NAME_PATTERN.test(name)
     }
 
     setupPalmTreeInstances()
@@ -274,7 +236,7 @@ export default class MapModel
         const worldSize = new THREE.Vector3()
         const masterWorldBounds = new THREE.Box3().setFromObject(palmMasterRoot)
         const masterWorldSize = masterWorldBounds.getSize(new THREE.Vector3())
-        const masterHeight = Math.max(SCALE_EPSILON, masterWorldSize.y)
+        const masterHeight = Math.max(MapModelConstants.SCALE_EPSILON, masterWorldSize.y)
 
         palmMasterRoot.traverse((child) =>
         {
@@ -283,8 +245,8 @@ export default class MapModel
                 return
             }
 
-            child.userData[USER_DATA_PALM_MASTER] = true
-            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            child.userData[MapModelConstants.USER_DATA_PALM_MASTER] = true
+            child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
 
             const instanced = new THREE.InstancedMesh(
                 child.geometry,
@@ -333,14 +295,14 @@ export default class MapModel
         palmMasterRoot.visible = false
         palmMasterRoot.traverse((child) =>
         {
-            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
         })
 
         for(const placement of palmPlacements)
         {
             placement.visible = false
-            placement.userData[USER_DATA_PALM_PLACEMENT] = true
-            placement.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            placement.userData[MapModelConstants.USER_DATA_PALM_PLACEMENT] = true
+            placement.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
         }
     }
 
@@ -353,7 +315,7 @@ export default class MapModel
 
         this.model.updateMatrixWorld(true)
 
-        for(const config of REPEATABLE_INSTANCE_CONFIGS)
+        for(const config of MapModelConstants.REPEATABLE_INSTANCE_CONFIGS)
         {
             this.setupRepeatableInstanceGroup(config)
 
@@ -406,8 +368,8 @@ export default class MapModel
                 return
             }
 
-            child.userData[USER_DATA_REPEATABLE_MASTER] = true
-            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            child.userData[MapModelConstants.USER_DATA_REPEATABLE_MASTER] = true
+            child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
 
             const instanced = new THREE.InstancedMesh(
                 child.geometry,
@@ -420,11 +382,11 @@ export default class MapModel
             instanced.frustumCulled = true
             if(String(key).startsWith('build_'))
             {
-                instanced.userData[USER_DATA_BUILDING_INSTANCE] = true
+                instanced.userData[MapModelConstants.USER_DATA_BUILDING_INSTANCE] = true
                 const shouldUseAsCollisionProxy = forceCollisionProxyInstances || this.isCollisionProxyMesh(child)
                 if(shouldUseAsCollisionProxy)
                 {
-                    instanced.userData[USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] = true
+                    instanced.userData[MapModelConstants.USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] = true
                     instanced.visible = false
                     instanced.castShadow = false
                     instanced.receiveShadow = false
@@ -467,14 +429,14 @@ export default class MapModel
         masterRoot.visible = false
         masterRoot.traverse((child) =>
         {
-            child.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
         })
 
         for(const placement of placements)
         {
             placement.visible = false
-            placement.userData[USER_DATA_REPEATABLE_PLACEMENT] = true
-            placement.userData[USER_DATA_EXCLUDE_COLLISION] = true
+            placement.userData[MapModelConstants.USER_DATA_REPEATABLE_PLACEMENT] = true
+            placement.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
         }
     }
 
@@ -532,7 +494,7 @@ export default class MapModel
         const normalizedKey = String(key || '').trim().toLowerCase()
         if(normalizedKey.startsWith('build_'))
         {
-            return this.instancePlacementDebugState?.offsetYBuildings ?? BUILDING_INSTANCE_Y_OFFSET_DEFAULT
+            return this.instancePlacementDebugState?.offsetYBuildings ?? MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT
         }
 
         return 0
@@ -683,7 +645,7 @@ export default class MapModel
             }
 
             const name = String(object?.name || '').trim().toLowerCase()
-            if(name === PALM_MASTER_NAME)
+            if(name === MapModelConstants.PALM_MASTER_NAME)
             {
                 palmMasterRoot = object
             }
@@ -702,7 +664,7 @@ export default class MapModel
             }
 
             const name = String(object.name || '').trim().toLowerCase()
-            if(PALM_PLACEMENT_NAME_PATTERN.test(name))
+            if(MapModelConstants.PALM_PLACEMENT_NAME_PATTERN.test(name))
             {
                 placements.push(object)
             }
@@ -731,13 +693,13 @@ export default class MapModel
         worldBounds.setFromObject(placement)
         worldBounds.getSize(worldSize)
         const placementHeight = worldSize.y
-        if(!Number.isFinite(placementHeight) || placementHeight <= SCALE_EPSILON)
+        if(!Number.isFinite(placementHeight) || placementHeight <= MapModelConstants.SCALE_EPSILON)
         {
             return 1
         }
 
         const scaleFactor = placementHeight / referenceHeight
-        if(!Number.isFinite(scaleFactor) || scaleFactor <= SCALE_EPSILON)
+        if(!Number.isFinite(scaleFactor) || scaleFactor <= MapModelConstants.SCALE_EPSILON)
         {
             return 1
         }
@@ -1115,7 +1077,7 @@ export default class MapModel
         return bounds
     }
 
-    buildPlanWaterMaskContext(resolution = PLAN_HEIGHT_TEXTURE_RESOLUTION)
+    buildPlanWaterMaskContext(resolution = MapModelConstants.PLAN_HEIGHT_TEXTURE_RESOLUTION)
     {
         const planBounds = this.buildPlanBounds()
         if(!planBounds)
@@ -1209,7 +1171,7 @@ export default class MapModel
         const maxAnisotropy = this.experience.renderer?.instance?.capabilities?.getMaxAnisotropy?.() ?? 1
         terrainDataTexture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy))
         terrainDataTexture.needsUpdate = true
-        const noiseTexture = this.buildPlanNoiseTexture(PLAN_NOISE_TEXTURE_RESOLUTION)
+        const noiseTexture = this.buildPlanNoiseTexture(MapModelConstants.PLAN_NOISE_TEXTURE_RESOLUTION)
 
         return {
             bounds: new THREE.Vector4(
@@ -1229,7 +1191,7 @@ export default class MapModel
         }
     }
 
-    buildPlanNoiseTexture(resolution = PLAN_NOISE_TEXTURE_RESOLUTION)
+    buildPlanNoiseTexture(resolution = MapModelConstants.PLAN_NOISE_TEXTURE_RESOLUTION)
     {
         const noiseGenerator = new ImprovedNoise()
         const pixels = new Uint8Array(resolution * resolution)
@@ -2015,14 +1977,14 @@ export default class MapModel
             return true
         }
 
-        if(mesh?.userData?.[USER_DATA_EXCLUDE_COLLISION])
+        if(mesh?.userData?.[MapModelConstants.USER_DATA_EXCLUDE_COLLISION])
         {
             return false
         }
 
-        if(mesh?.userData?.[USER_DATA_BUILDING_INSTANCE] === true)
+        if(mesh?.userData?.[MapModelConstants.USER_DATA_BUILDING_INSTANCE] === true)
         {
-            return mesh?.userData?.[USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] === true
+            return mesh?.userData?.[MapModelConstants.USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] === true
         }
 
         if(this.isPlanMesh(mesh))
@@ -2049,7 +2011,7 @@ export default class MapModel
 
     isFountainMesh(object)
     {
-        return this.hasNameInHierarchy(object, FOUNTAIN_NAME_TOKENS)
+        return this.hasNameInHierarchy(object, MapModelConstants.FOUNTAIN_NAME_TOKENS)
     }
 
     buildFountainTopCollisionBoxes()
@@ -2059,7 +2021,7 @@ export default class MapModel
             return []
         }
 
-        const fountainRoot = this.findFirstObjectByNameTokens(FOUNTAIN_NAME_TOKENS)
+        const fountainRoot = this.findFirstObjectByNameTokens(MapModelConstants.FOUNTAIN_NAME_TOKENS)
         if(!fountainRoot)
         {
             return []
@@ -2072,7 +2034,7 @@ export default class MapModel
         }
 
         const size = bounds.getSize(new THREE.Vector3())
-        const minY = bounds.max.y - FOUNTAIN_TOP_COLLISION_HEIGHT
+        const minY = bounds.max.y - MapModelConstants.FOUNTAIN_TOP_COLLISION_HEIGHT
 
         if(minY >= bounds.max.y)
         {
@@ -2080,11 +2042,11 @@ export default class MapModel
         }
 
         const rootName = String(fountainRoot?.name || '').toLowerCase()
-        const useStrictTopCollision = FOUNTAIN_STRICT_COLLISION_TOKENS.some((token) => rootName.includes(token))
+        const useStrictTopCollision = MapModelConstants.FOUNTAIN_STRICT_COLLISION_TOKENS.some((token) => rootName.includes(token))
         if(useStrictTopCollision)
         {
-            const insetX = Math.min(size.x * 0.45, FOUNTAIN_TOP_COLLISION_STRICT_INSET)
-            const insetZ = Math.min(size.z * 0.45, FOUNTAIN_TOP_COLLISION_STRICT_INSET)
+            const insetX = Math.min(size.x * 0.45, MapModelConstants.FOUNTAIN_TOP_COLLISION_STRICT_INSET)
+            const insetZ = Math.min(size.z * 0.45, MapModelConstants.FOUNTAIN_TOP_COLLISION_STRICT_INSET)
             const strictMinX = bounds.min.x + insetX
             const strictMaxX = bounds.max.x - insetX
             const strictMinZ = bounds.min.z + insetZ
@@ -2105,8 +2067,8 @@ export default class MapModel
 
         const maxOuterMarginX = size.x * 0.2
         const maxOuterMarginZ = size.z * 0.2
-        const outerMarginX = Math.min(maxOuterMarginX, FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
-        const outerMarginZ = Math.min(maxOuterMarginZ, FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
+        const outerMarginX = Math.min(maxOuterMarginX, MapModelConstants.FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
+        const outerMarginZ = Math.min(maxOuterMarginZ, MapModelConstants.FOUNTAIN_TOP_COLLISION_OUTER_MARGIN)
 
         const outerMinX = bounds.min.x + outerMarginX
         const outerMaxX = bounds.max.x - outerMarginX
@@ -2118,15 +2080,15 @@ export default class MapModel
             return []
         }
 
-        let innerMinX = bounds.min.x + (size.x * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
-        let innerMaxX = bounds.max.x - (size.x * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
-        let innerMinZ = bounds.min.z + (size.z * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
-        let innerMaxZ = bounds.max.z - (size.z * FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMinX = bounds.min.x + (size.x * MapModelConstants.FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMaxX = bounds.max.x - (size.x * MapModelConstants.FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMinZ = bounds.min.z + (size.z * MapModelConstants.FOUNTAIN_TOP_COLLISION_INNER_RATIO)
+        let innerMaxZ = bounds.max.z - (size.z * MapModelConstants.FOUNTAIN_TOP_COLLISION_INNER_RATIO)
 
-        innerMinX = Math.max(innerMinX, outerMinX + FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
-        innerMaxX = Math.min(innerMaxX, outerMaxX - FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
-        innerMinZ = Math.max(innerMinZ, outerMinZ + FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
-        innerMaxZ = Math.min(innerMaxZ, outerMaxZ - FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMinX = Math.max(innerMinX, outerMinX + MapModelConstants.FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMaxX = Math.min(innerMaxX, outerMaxX - MapModelConstants.FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMinZ = Math.max(innerMinZ, outerMinZ + MapModelConstants.FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
+        innerMaxZ = Math.min(innerMaxZ, outerMaxZ - MapModelConstants.FOUNTAIN_TOP_COLLISION_MIN_RING_THICKNESS)
 
         if(innerMinX >= innerMaxX || innerMinZ >= innerMaxZ)
         {
@@ -2219,7 +2181,7 @@ export default class MapModel
 
     shouldForceDoubleSide(object)
     {
-        return this.hasNameInHierarchy(object, FORCE_DOUBLE_SIDE_COLLISION_TOKENS)
+        return this.hasNameInHierarchy(object, MapModelConstants.FORCE_DOUBLE_SIDE_COLLISION_TOKENS)
     }
 
     isPalmTreePart(object)
@@ -2397,7 +2359,7 @@ export default class MapModel
 
             const isWater = this.hasNameInHierarchy(child, ['water', 'eau'])
             const isFountain = this.hasNameInHierarchy(child, ['fontaine', 'fountain'])
-            const contourRoot = this.findAncestorByTokens(child, BLOOM_CONTOUR_AVOID_TOKENS)
+            const contourRoot = this.findAncestorByTokens(child, MapModelConstants.BLOOM_CONTOUR_AVOID_TOKENS)
             const isContourObstacle = Boolean(contourRoot)
 
             if(!isWater && !isFountain && !isContourObstacle)

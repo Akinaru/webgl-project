@@ -4,8 +4,7 @@ import {
     cloudsFragmentShader,
     cloudsVertexShader
 } from './Shaders/Clouds/cloudsShader.js'
-
-const DEFAULT_SUN_FALLBACK_POSITION = new THREE.Vector3(0, 140, 0)
+import * as CloudLayerConstants from './CloudLayer.constants.js'
 
 export default class CloudLayer
 {
@@ -87,7 +86,7 @@ export default class CloudLayer
                 uCloudColor: { value: this.cloudColor.clone() },
                 uShadowColor: { value: this.shadowColor.clone() },
                 uSunColor: { value: new THREE.Color('#fff1d8') },
-                uSunPosition: { value: DEFAULT_SUN_FALLBACK_POSITION.clone() }
+                uSunPosition: { value: CloudLayerConstants.DEFAULT_SUN_FALLBACK_POSITION.clone() }
             }
         })
 
@@ -181,7 +180,7 @@ export default class CloudLayer
         }
         else
         {
-            this.sunPosition.copy(DEFAULT_SUN_FALLBACK_POSITION)
+            this.sunPosition.copy(CloudLayerConstants.DEFAULT_SUN_FALLBACK_POSITION)
         }
 
         this.material.uniforms.uSunPosition.value.copy(this.sunPosition)

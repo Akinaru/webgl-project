@@ -1,8 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import * as SceneDistributionResultConstants from './SceneDistributionResult.constants.js'
-const DEFAULT_MARGIN_Y = 1.4
-const DEFAULT_MIN_SIZE_Y = 2.5
+import * as SceneDistributionResultTriggerConstants from './SceneDistributionResultTrigger.constants.js'
 
 export default class SceneDistributionResultTrigger
 {
@@ -40,7 +39,7 @@ export default class SceneDistributionResultTrigger
         {
             roomEndBounds.getCenter(this.center)
             roomEndBounds.getSize(this.size)
-            this.size.y = Math.max(DEFAULT_MIN_SIZE_Y, this.size.y + DEFAULT_MARGIN_Y)
+            this.size.y = Math.max(SceneDistributionResultTriggerConstants.DEFAULT_MIN_SIZE_Y, this.size.y + SceneDistributionResultTriggerConstants.DEFAULT_MARGIN_Y)
         }
         else
         {

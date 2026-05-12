@@ -1,0 +1,1 @@
+export const DEFAULT_ROTATION_SPEED = 1.8

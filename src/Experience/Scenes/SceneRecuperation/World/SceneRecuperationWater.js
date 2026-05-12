@@ -2,25 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { recuperationWaterVisibleGradientShaderChunks } from './Shaders/Water/visibleGradientShaderChunks.js'
-
-const WATER_BASE_COLOR = '#1F9CD2'
-const WATER_DEEP_FOAM_COLOR = '#9AF6FE'
-const WATER_SURFACE_FOAM_COLOR = '#FDFDF7'
-const WATER_OPACITY = 1
-const WATER_PATTERN_SCALE = 4.48
-const WATER_NOISE_SPEED = 0.09
-const WATER_NOISE_FREQUENCY = 5.04
-const WATER_THRESHOLD = 0.72
-const WATER_INTENSITY = 1.17
-const WATER_FOAM_SOFTNESS = 0.511
-const WATER_FOAM_CUTOFF = 0.446
-const WATER_DEEP_FOAM_THRESHOLD = 0.21
-const WATER_DEEP_FOAM_INTENSITY = 1.79
-const WATER_DEEP_FOAM_SOFTNESS = 0.152
-const WATER_BAND_ANGLE = -2.3902
-const WATER_EDGE_CONTRAST = 0
-const WATER_PLAN_MESH_NAMES = ['water']
-const WATER_BASE_TINT_MESH_NAMES = ['shad_plat', 'shad_plat 1']
+import * as SceneRecuperationWaterConstants from './SceneRecuperationWater.constants.js'
 
 export default class SceneRecuperationWater
 {
@@ -34,22 +16,22 @@ export default class SceneRecuperationWater
         this.sharedWaterColors = sharedWaterColors
         this.waterDistributionTexture = this.resources.items.recuperationWaterDistributionTexture ?? null
         this.runtimeMaterials = []
-        this.baseColor = new THREE.Color(WATER_BASE_COLOR)
-        this.deepFoamColor = new THREE.Color(WATER_DEEP_FOAM_COLOR)
-        this.surfaceFoamColor = new THREE.Color(WATER_SURFACE_FOAM_COLOR)
-        this.opacity = WATER_OPACITY
-        this.patternScale = WATER_PATTERN_SCALE
-        this.noiseSpeed = WATER_NOISE_SPEED
-        this.noiseFrequency = WATER_NOISE_FREQUENCY
-        this.threshold = WATER_THRESHOLD
-        this.intensity = WATER_INTENSITY
-        this.foamSoftness = WATER_FOAM_SOFTNESS
-        this.foamCutoff = WATER_FOAM_CUTOFF
-        this.deepFoamThreshold = WATER_DEEP_FOAM_THRESHOLD
-        this.deepFoamIntensity = WATER_DEEP_FOAM_INTENSITY
-        this.deepFoamSoftness = WATER_DEEP_FOAM_SOFTNESS
-        this.bandAngle = WATER_BAND_ANGLE
-        this.edgeContrast = WATER_EDGE_CONTRAST
+        this.baseColor = new THREE.Color(SceneRecuperationWaterConstants.WATER_BASE_COLOR)
+        this.deepFoamColor = new THREE.Color(SceneRecuperationWaterConstants.WATER_DEEP_FOAM_COLOR)
+        this.surfaceFoamColor = new THREE.Color(SceneRecuperationWaterConstants.WATER_SURFACE_FOAM_COLOR)
+        this.opacity = SceneRecuperationWaterConstants.WATER_OPACITY
+        this.patternScale = SceneRecuperationWaterConstants.WATER_PATTERN_SCALE
+        this.noiseSpeed = SceneRecuperationWaterConstants.WATER_NOISE_SPEED
+        this.noiseFrequency = SceneRecuperationWaterConstants.WATER_NOISE_FREQUENCY
+        this.threshold = SceneRecuperationWaterConstants.WATER_THRESHOLD
+        this.intensity = SceneRecuperationWaterConstants.WATER_INTENSITY
+        this.foamSoftness = SceneRecuperationWaterConstants.WATER_FOAM_SOFTNESS
+        this.foamCutoff = SceneRecuperationWaterConstants.WATER_FOAM_CUTOFF
+        this.deepFoamThreshold = SceneRecuperationWaterConstants.WATER_DEEP_FOAM_THRESHOLD
+        this.deepFoamIntensity = SceneRecuperationWaterConstants.WATER_DEEP_FOAM_INTENSITY
+        this.deepFoamSoftness = SceneRecuperationWaterConstants.WATER_DEEP_FOAM_SOFTNESS
+        this.bandAngle = SceneRecuperationWaterConstants.WATER_BAND_ANGLE
+        this.edgeContrast = SceneRecuperationWaterConstants.WATER_EDGE_CONTRAST
         this.localTime = 0
         this.waterMeshes = this.collectWaterMeshes()
         this.flatTintMeshes = this.collectFlatTintMeshes()
@@ -63,9 +45,9 @@ export default class SceneRecuperationWater
     {
         if(this.sharedWaterColors)
         {
-            this.baseColor.set(this.sharedWaterColors.baseColor ?? WATER_BASE_COLOR)
-            this.deepFoamColor.set(this.sharedWaterColors.deepFoamColor ?? WATER_DEEP_FOAM_COLOR)
-            this.surfaceFoamColor.set(this.sharedWaterColors.surfaceFoamColor ?? WATER_SURFACE_FOAM_COLOR)
+            this.baseColor.set(this.sharedWaterColors.baseColor ?? SceneRecuperationWaterConstants.WATER_BASE_COLOR)
+            this.deepFoamColor.set(this.sharedWaterColors.deepFoamColor ?? SceneRecuperationWaterConstants.WATER_DEEP_FOAM_COLOR)
+            this.surfaceFoamColor.set(this.sharedWaterColors.surfaceFoamColor ?? SceneRecuperationWaterConstants.WATER_SURFACE_FOAM_COLOR)
         }
 
         this.syncMaterialUniforms()
@@ -87,7 +69,7 @@ export default class SceneRecuperationWater
                 return
             }
 
-            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, WATER_PLAN_MESH_NAMES))
+            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, SceneRecuperationWaterConstants.WATER_PLAN_MESH_NAMES))
             {
                 return
             }
@@ -114,7 +96,7 @@ export default class SceneRecuperationWater
                 return
             }
 
-            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, WATER_BASE_TINT_MESH_NAMES))
+            if(!this.recuperationModel?.hasExactNameInHierarchy?.(child, SceneRecuperationWaterConstants.WATER_BASE_TINT_MESH_NAMES))
             {
                 return
             }

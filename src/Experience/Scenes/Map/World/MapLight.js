@@ -1,18 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const SHADOW_MAP_SIZE_OPTIONS = {
-    '512': 512,
-    '1024': 1024,
-    '2048': 2048,
-    '4096': 4096
-}
-
-const SUN_VISUAL_CORE_SCALE = 0.06
-const SUN_VISUAL_HALO_SCALE = 0.24
-const SUN_VISUAL_MIN_CORE_SIZE = 1.8
-const SUN_VISUAL_MIN_HALO_SIZE = 8
-const SUN_VISUAL_HALO_OPACITY = 0.85
+import * as MapLightConstants from './MapLight.constants.js'
 
 export default class MapLight
 {
@@ -125,7 +113,7 @@ export default class MapLight
             map: this.sunHaloTexture,
             color: this.sunColor,
             transparent: true,
-            opacity: SUN_VISUAL_HALO_OPACITY,
+            opacity: MapLightConstants.SUN_VISUAL_HALO_OPACITY,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
             toneMapped: false
@@ -219,7 +207,7 @@ export default class MapLight
         if(this.sunHaloMaterial)
         {
             this.sunHaloMaterial.color.copy(this.sunColor)
-            this.sunHaloMaterial.opacity = SUN_VISUAL_HALO_OPACITY
+            this.sunHaloMaterial.opacity = MapLightConstants.SUN_VISUAL_HALO_OPACITY
         }
     }
 
@@ -239,7 +227,7 @@ export default class MapLight
         this.state.distance = Math.max(2, Number(this.state.distance) || 52)
 
         const shadowMapSize = Number(this.state.shadowMapSize)
-        this.state.shadowMapSize = Object.values(SHADOW_MAP_SIZE_OPTIONS).includes(shadowMapSize)
+        this.state.shadowMapSize = Object.values(MapLightConstants.SHADOW_MAP_SIZE_OPTIONS).includes(shadowMapSize)
             ? shadowMapSize
             : 2048
     }
@@ -361,8 +349,8 @@ export default class MapLight
             return
         }
 
-        const coreScale = Math.max(SUN_VISUAL_MIN_CORE_SIZE, this.state.distance * SUN_VISUAL_CORE_SCALE)
-        const haloScale = Math.max(SUN_VISUAL_MIN_HALO_SIZE, this.state.distance * SUN_VISUAL_HALO_SCALE)
+        const coreScale = Math.max(MapLightConstants.SUN_VISUAL_MIN_CORE_SIZE, this.state.distance * MapLightConstants.SUN_VISUAL_CORE_SCALE)
+        const haloScale = Math.max(MapLightConstants.SUN_VISUAL_MIN_HALO_SIZE, this.state.distance * MapLightConstants.SUN_VISUAL_HALO_SCALE)
 
         this.sunVisual.position.copy(this.sunLight.position)
         this.sunCore.scale.setScalar(coreScale)
@@ -499,7 +487,7 @@ export default class MapLight
         }))
         this.registerDebugBinding(this.debug.addBinding(this.shadowFolder, this.state, 'shadowMapSize', {
             label: 'Taille de la carte d ombre',
-            options: SHADOW_MAP_SIZE_OPTIONS
+            options: MapLightConstants.SHADOW_MAP_SIZE_OPTIONS
         }).on('change', () =>
         {
             this.updateShadow()

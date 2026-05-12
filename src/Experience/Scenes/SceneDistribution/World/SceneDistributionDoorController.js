@@ -1,9 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-
-const DEFAULT_OPEN_OFFSET_Y = 2
-const DEFAULT_ANIMATION_SPEED = 5.5
-const DOOR_TOKENS = ['door_exit', 'door_end']
+import * as SceneDistributionDoorControllerConstants from './SceneDistributionDoorController.constants.js'
 
 export default class SceneDistributionDoorController
 {
@@ -17,8 +14,8 @@ export default class SceneDistributionDoorController
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
         this.settings = {
-            openOffsetY: DEFAULT_OPEN_OFFSET_Y,
-            animationSpeed: DEFAULT_ANIMATION_SPEED
+            openOffsetY: SceneDistributionDoorControllerConstants.DEFAULT_OPEN_OFFSET_Y,
+            animationSpeed: SceneDistributionDoorControllerConstants.DEFAULT_ANIMATION_SPEED
         }
         this.isOpen = false
         this.doors = []
@@ -29,7 +26,7 @@ export default class SceneDistributionDoorController
 
     setDoors()
     {
-        this.doors = DOOR_TOKENS
+        this.doors = SceneDistributionDoorControllerConstants.DOOR_TOKENS
             .map((token) =>
             {
                 const object = this.distributionModel?.getFirstObjectForNameTokens?.([token], { exact: true }) ?? null

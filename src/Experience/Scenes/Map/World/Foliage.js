@@ -1,54 +1,24 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { foliageWindShaderChunks } from './Shaders/Foliage/windShaderChunks.js'
-
-const DEFAULT_PLANE_COUNT = 80
-const DEFAULT_PLANE_SIZE = 0.8
-const DEFAULT_NORMAL_BLEND = 0.85
-const DEFAULT_ALPHA_TEST = 0.4
-const DEFAULT_ROTATION_RANDOMNESS = 9999
-const DEFAULT_WIND_FREQUENCY = 0.2
-const DEFAULT_WIND_TIME_SCALE = 0.1
-const DEFAULT_WIND_STRENGTH = 0.75
-const BEGIN_VERTEX_INCLUDE = '#include <begin_vertex>'
-
-function prependShader(source, header)
-{
-    const trimmedHeader = String(header || '').trim()
-    if(trimmedHeader.length === 0)
-    {
-        return source
-    }
-
-    return `${trimmedHeader}\n${source}`
-}
-
-function replaceOrAppend(source, search, replacement)
-{
-    if(source.includes(search))
-    {
-        return source.replace(search, replacement)
-    }
-
-    return `${source}\n${replacement}`
-}
+import * as FoliageConstants from './Foliage.constants.js'
 
 export default class Foliage
 {
     constructor({
-        planeCount = DEFAULT_PLANE_COUNT,
-        planeSize = DEFAULT_PLANE_SIZE,
+        planeCount = FoliageConstants.DEFAULT_PLANE_COUNT,
+        planeSize = FoliageConstants.DEFAULT_PLANE_SIZE,
         color = '#88a94a',
         seed = 0x79f8a1d3,
         alphaTexture = null,
-        alphaTest = DEFAULT_ALPHA_TEST,
-        normalBlend = DEFAULT_NORMAL_BLEND,
-        rotationRandomness = DEFAULT_ROTATION_RANDOMNESS,
+        alphaTest = FoliageConstants.DEFAULT_ALPHA_TEST,
+        normalBlend = FoliageConstants.DEFAULT_NORMAL_BLEND,
+        rotationRandomness = FoliageConstants.DEFAULT_ROTATION_RANDOMNESS,
         createMesh = true,
         windPerlinTexture = null,
-        windFrequency = DEFAULT_WIND_FREQUENCY,
-        windTimeScale = DEFAULT_WIND_TIME_SCALE,
-        windStrength = DEFAULT_WIND_STRENGTH
+        windFrequency = FoliageConstants.DEFAULT_WIND_FREQUENCY,
+        windTimeScale = FoliageConstants.DEFAULT_WIND_TIME_SCALE,
+        windStrength = FoliageConstants.DEFAULT_WIND_STRENGTH
     } = {})
     {
         this.planeCount = Math.max(1, Math.floor(planeCount))
@@ -211,8 +181,8 @@ export default class Foliage
             )
             shader.vertexShader = replaceOrAppend(
                 shader.vertexShader,
-                BEGIN_VERTEX_INCLUDE,
-                `${BEGIN_VERTEX_INCLUDE}\n${String(foliageWindShaderChunks.vertexBegin || '').trim()}`
+                FoliageConstants.BEGIN_VERTEX_INCLUDE,
+                `${FoliageConstants.BEGIN_VERTEX_INCLUDE}\n${String(foliageWindShaderChunks.vertexBegin || '').trim()}`
             )
         }
 

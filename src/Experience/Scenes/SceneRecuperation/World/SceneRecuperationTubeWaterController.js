@@ -2,38 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 import { setupSceneRecuperationTubeWaterControllerDebug } from './SceneRecuperationTubeWaterController.debug.js'
-
-const QUARTER_TURN = Math.PI * 0.5
-const ROTATION_AXIS = 'z'
-const FLOW_AXIS = 'y'
-const TUBE_JOIN_NAME_TOKEN = 'tube-join'
-const MODULE_ROTATION_TARGET_PATTERN = /module-(?:angle|straight)(?:_instance)?[_\s-]?(\d+)(?:[_\s-]?([bt])(\d+))?(?:[._\s-]\d+)*$/i
-const BRANCH_BASE_ORDER = 13
-const SPECIAL_GATE_ORDER_MERGE = 14
-const SPECIAL_GATE_ORDER_AFTER_MERGE = 15
-const REQUIRED_B_BRANCH_INDEX_FOR_MERGE = 9
-const REQUIRED_T_BRANCH_INDEX_FOR_MERGE = 3
-const ROTATION_EPSILON = 0.02
-const DISCONNECTED_COLOR = '#4a5665'
-const CONNECTED_COLOR = '#00CEFF'
-const CONNECTED_EMISSIVE = '#9AF6FE'
-const FLOW_FILL_SPEED_PER_SECOND = 0.45
-const ROTATION_SPEED_PER_SECOND = Math.PI * 2
-const FLOW_PROGRESS_EPSILON = 1e-4
-const EMPTY_TUBE_OPACITY = 0.25
-const FILLED_TUBE_OPACITY = 1
-const EMPTY_WINDOW_OPACITY = 0.25
-const FILLED_WINDOW_OPACITY = 1
-const FLOW_COORD_ATTRIBUTE = 'aFlowCoord'
-const FLOW_COORD_EPSILON = 1e-5
-const ANGLE_FLOW_MIN_SPAN = Math.PI * 0.25
-const ANGLE_FLOW_MAX_SPAN = Math.PI * 0.75
-const BLUE_WINDOW_NAME_PATTERN = /fenetre[\s_-]?blue/i
-const WINDOW_COORD_ATTRIBUTE = 'aWindowCoord'
-const WINDOW_FLOW_AXIS = 'x'
-const PRIMARY_WINDOW_KEY = 'fenetre-blue'
-const BRANCH_WINDOW_KEY = 'fenetre-blue_1'
-const AFTER_20_WINDOW_KEY = 'fenetre-blue_2'
+import * as SceneRecuperationTubeWaterControllerConstants from './SceneRecuperationTubeWaterController.constants.js'
 
 export default class SceneRecuperationTubeWaterController
 {
@@ -48,10 +17,10 @@ export default class SceneRecuperationTubeWaterController
         this.tubeMeshes = this.recuperationModel?.getTubeWaterMeshes?.() ?? []
         this.rotationTargets = this.recuperationModel?.getTubeWaterRotationTargets?.() ?? []
         this.flow = {
-            fillSpeed: FLOW_FILL_SPEED_PER_SECOND
+            fillSpeed: SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND
         }
         this.rotation = {
-            speed: ROTATION_SPEED_PER_SECOND
+            speed: SceneRecuperationTubeWaterControllerConstants.ROTATION_SPEED_PER_SECOND
         }
         this.waterShader = {
             animateTubeOpacity: false,
@@ -133,11 +102,11 @@ export default class SceneRecuperationTubeWaterController
         this.endpointB = new THREE.Vector3()
         this.endpointDirA = new THREE.Vector3()
         this.endpointDirB = new THREE.Vector3()
-        this.disconnectedColor = new THREE.Color(DISCONNECTED_COLOR)
-        this.tubeConnectedColor = new THREE.Color(CONNECTED_COLOR)
-        this.tubeConnectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
-        this.windowConnectedColor = new THREE.Color(CONNECTED_COLOR)
-        this.windowConnectedEmissiveColor = new THREE.Color(CONNECTED_EMISSIVE)
+        this.disconnectedColor = new THREE.Color(SceneRecuperationTubeWaterControllerConstants.DISCONNECTED_COLOR)
+        this.tubeConnectedColor = new THREE.Color(SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR)
+        this.tubeConnectedEmissiveColor = new THREE.Color(SceneRecuperationTubeWaterControllerConstants.CONNECTED_EMISSIVE)
+        this.windowConnectedColor = new THREE.Color(SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR)
+        this.windowConnectedEmissiveColor = new THREE.Color(SceneRecuperationTubeWaterControllerConstants.CONNECTED_EMISSIVE)
         this.emissiveOffColor = new THREE.Color('#000000')
         this.colorMix = new THREE.Color()
         this.emissiveMix = new THREE.Color()
@@ -164,8 +133,8 @@ export default class SceneRecuperationTubeWaterController
 
     applySharedWaterColors()
     {
-        const baseColor = this.sharedWaterColors?.baseColor ?? CONNECTED_COLOR
-        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? CONNECTED_EMISSIVE
+        const baseColor = this.sharedWaterColors?.baseColor ?? SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR
+        const deepFoamColor = this.sharedWaterColors?.deepFoamColor ?? SceneRecuperationTubeWaterControllerConstants.CONNECTED_EMISSIVE
         const surfaceFoamColor = this.sharedWaterColors?.surfaceFoamColor ?? this.waterShader.foamColor
 
         this.waterShader.foamColor = surfaceFoamColor
@@ -192,7 +161,7 @@ export default class SceneRecuperationTubeWaterController
 
             this.initialRotationByTubeUuid.set(
                 target.uuid,
-                this.normalizeAngle(target.rotation[ROTATION_AXIS] || 0)
+                this.normalizeAngle(target.rotation[SceneRecuperationTubeWaterControllerConstants.ROTATION_AXIS] || 0)
             )
             this.quarterTurnsFromInitialByTubeUuid.set(target.uuid, 0)
         }
@@ -260,7 +229,7 @@ export default class SceneRecuperationTubeWaterController
             }
 
             const normalizedName = this.normalizeObjectName(child.name || '')
-            if(!BLUE_WINDOW_NAME_PATTERN.test(normalizedName))
+            if(!SceneRecuperationTubeWaterControllerConstants.BLUE_WINDOW_NAME_PATTERN.test(normalizedName))
             {
                 return
             }
@@ -318,8 +287,8 @@ export default class SceneRecuperationTubeWaterController
             return
         }
 
-        const minCoord = bounds.min[WINDOW_FLOW_AXIS]
-        const maxCoord = bounds.max[WINDOW_FLOW_AXIS]
+        const minCoord = bounds.min[SceneRecuperationTubeWaterControllerConstants.WINDOW_FLOW_AXIS]
+        const maxCoord = bounds.max[SceneRecuperationTubeWaterControllerConstants.WINDOW_FLOW_AXIS]
         const range = maxCoord - minCoord
         if(!(Number.isFinite(range) && range > 1e-5))
         {
@@ -333,8 +302,8 @@ export default class SceneRecuperationTubeWaterController
             coordValues[index] = THREE.MathUtils.clamp((axisValue - minCoord) / range, 0, 1)
         }
 
-        geometry.setAttribute(WINDOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(coordValues, 1))
-        geometry.attributes[WINDOW_COORD_ATTRIBUTE].needsUpdate = true
+        geometry.setAttribute(SceneRecuperationTubeWaterControllerConstants.WINDOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(coordValues, 1))
+        geometry.attributes[SceneRecuperationTubeWaterControllerConstants.WINDOW_COORD_ATTRIBUTE].needsUpdate = true
     }
 
     setupBlueWindowShaderMaterial(material, mesh)
@@ -345,7 +314,7 @@ export default class SceneRecuperationTubeWaterController
         }
 
         const geometry = mesh?.geometry
-        if(!geometry?.attributes?.[WINDOW_COORD_ATTRIBUTE] || !geometry.attributes?.position)
+        if(!geometry?.attributes?.[SceneRecuperationTubeWaterControllerConstants.WINDOW_COORD_ATTRIBUTE] || !geometry.attributes?.position)
         {
             return
         }
@@ -375,14 +344,14 @@ export default class SceneRecuperationTubeWaterController
                 shader.vertexShader = shader.vertexShader
                     .replace(
                         'void main() {',
-                        `attribute float ${WINDOW_COORD_ATTRIBUTE};
+                        `attribute float ${SceneRecuperationTubeWaterControllerConstants.WINDOW_COORD_ATTRIBUTE};
 varying float vWindowCoord;
 void main() {`
                     )
                     .replace(
                         '#include <begin_vertex>',
                         `#include <begin_vertex>
-vWindowCoord = ${WINDOW_COORD_ATTRIBUTE};`
+vWindowCoord = ${SceneRecuperationTubeWaterControllerConstants.WINDOW_COORD_ATTRIBUTE};`
                     )
             }
 
@@ -449,8 +418,8 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
             return
         }
 
-        const min = bounds.min[FLOW_AXIS]
-        const max = bounds.max[FLOW_AXIS]
+        const min = bounds.min[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS]
+        const max = bounds.max[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS]
         const range = max - min
         if(!(Number.isFinite(range) && range > 1e-5))
         {
@@ -554,7 +523,7 @@ totalEmissiveRadiance = mix(vec3(0.0), uWindowConnectedEmissiveColor * uWindowEm
                 shader.vertexShader = shader.vertexShader
                     .replace(
                         'void main() {',
-                        `attribute float ${FLOW_COORD_ATTRIBUTE};
+                        `attribute float ${SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_ATTRIBUTE};
 varying float vFlowCoord;
 varying vec3 vFlowLocalPosition;
 void main() {`
@@ -562,7 +531,7 @@ void main() {`
                     .replace(
                         '#include <begin_vertex>',
                         `#include <begin_vertex>
-vFlowCoord = clamp(${FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);
+vFlowCoord = clamp(${SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_ATTRIBUTE}, 0.0, 1.0);
 vFlowLocalPosition = position;`
                     )
             }
@@ -733,10 +702,10 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return
         }
 
-        const min = bounds.min[FLOW_AXIS]
-        const max = bounds.max[FLOW_AXIS]
+        const min = bounds.min[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS]
+        const max = bounds.max[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS]
         const range = max - min
-        const hasAxisRange = Number.isFinite(range) && range > FLOW_COORD_EPSILON
+        const hasAxisRange = Number.isFinite(range) && range > SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON
 
         const isAngleTube = this.isAngleTube(tubeUuid)
         if(!hasAxisRange && !isAngleTube)
@@ -764,7 +733,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             : {
                 type: 'axis',
                 min,
-                range: Math.max(range, FLOW_COORD_EPSILON)
+                range: Math.max(range, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
             }
         geometry.userData.flowProjection = flowProjection
 
@@ -784,13 +753,13 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             else
             {
                 const axisValue = positionAttribute.getY(index)
-                flowCoord = (axisValue - min) / Math.max(range, FLOW_COORD_EPSILON)
+                flowCoord = (axisValue - min) / Math.max(range, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
             }
 
             flowCoordArray[index] = THREE.MathUtils.clamp(flowCoord, 0, 1)
         }
 
-        geometry.setAttribute(FLOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(flowCoordArray, 1))
+        geometry.setAttribute(SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_ATTRIBUTE, new THREE.BufferAttribute(flowCoordArray, 1))
     }
 
     hashStringToUnit(value = '')
@@ -849,13 +818,13 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             }
 
             const angleRange = angleMax - angleMin
-            if(!(Number.isFinite(angleRange) && angleRange >= ANGLE_FLOW_MIN_SPAN && angleRange <= ANGLE_FLOW_MAX_SPAN))
+            if(!(Number.isFinite(angleRange) && angleRange >= SceneRecuperationTubeWaterControllerConstants.ANGLE_FLOW_MIN_SPAN && angleRange <= SceneRecuperationTubeWaterControllerConstants.ANGLE_FLOW_MAX_SPAN))
             {
                 continue
             }
 
             const radiusRange = radiusMax - radiusMin
-            if(!(Number.isFinite(radiusRange) && radiusRange > FLOW_COORD_EPSILON))
+            if(!(Number.isFinite(radiusRange) && radiusRange > SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON))
             {
                 continue
             }
@@ -936,7 +905,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
                 delta = -delta
             }
 
-            if(!(Number.isFinite(delta) && delta > FLOW_COORD_EPSILON))
+            if(!(Number.isFinite(delta) && delta > SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON))
             {
                 continue
             }
@@ -1009,7 +978,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 
     getAngleArcProgress(theta, angleMin, angleRange)
     {
-        const safeRange = Math.max(angleRange, FLOW_COORD_EPSILON)
+        const safeRange = Math.max(angleRange, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
         const arcStart = angleMin
         const arcEnd = angleMin + safeRange
         let bestClampedAngle = arcStart
@@ -1046,7 +1015,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return this.getAngleArcProgress(theta, flowProjection.angleMin, flowProjection.angleRange)
         }
 
-        return (localPosition[FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, FLOW_COORD_EPSILON)
+        return (localPosition[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
     }
 
     collectJoinTargets()
@@ -1118,7 +1087,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     getTargetMeta(target, fallbackIndex)
     {
         const name = this.getModuleNameForTarget(target)
-        const match = name.match(MODULE_ROTATION_TARGET_PATTERN)
+        const match = name.match(SceneRecuperationTubeWaterControllerConstants.MODULE_ROTATION_TARGET_PATTERN)
         if(!match)
         {
             return {
@@ -1146,7 +1115,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         while(current)
         {
             const name = String(current.name || '')
-            if(MODULE_ROTATION_TARGET_PATTERN.test(name))
+            if(SceneRecuperationTubeWaterControllerConstants.MODULE_ROTATION_TARGET_PATTERN.test(name))
             {
                 // Keep climbing: exported GLTF nodes can contain nested helper
                 // modules (e.g. module-angle_04) inside the real puzzle module.
@@ -1234,14 +1203,14 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     buildBranchDependencies(branchType)
     {
         const branchTargets = this.getTargetsByMeta((meta) =>
-            meta.branchType === branchType && meta.order === BRANCH_BASE_ORDER
+            meta.branchType === branchType && meta.order === SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER
         )
         if(branchTargets.length === 0)
         {
             return
         }
 
-        const entryDependency = this.getMainAtOrder(BRANCH_BASE_ORDER) ?? this.getLastMainBeforeOrder(BRANCH_BASE_ORDER)
+        const entryDependency = this.getMainAtOrder(SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER) ?? this.getLastMainBeforeOrder(SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER)
         let previousBranchUuid = null
         for(const target of branchTargets)
         {
@@ -1315,18 +1284,18 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     applySpecialGateDependencies()
     {
         const mergeTargets = this.getTargetsByMeta((meta) =>
-            meta.branchType === 'main' && meta.order === SPECIAL_GATE_ORDER_MERGE
+            meta.branchType === 'main' && meta.order === SceneRecuperationTubeWaterControllerConstants.SPECIAL_GATE_ORDER_MERGE
         )
         const afterMergeTargets = this.getTargetsByMeta((meta) =>
-            meta.branchType === 'main' && meta.order === SPECIAL_GATE_ORDER_AFTER_MERGE
+            meta.branchType === 'main' && meta.order === SceneRecuperationTubeWaterControllerConstants.SPECIAL_GATE_ORDER_AFTER_MERGE
         )
         if(mergeTargets.length === 0 && afterMergeTargets.length === 0)
         {
             return
         }
 
-        const b9Uuid = this.findBranchUuid('b', REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
-        const t3Uuid = this.findBranchUuid('t', REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
+        const b9Uuid = this.findBranchUuid('b', SceneRecuperationTubeWaterControllerConstants.REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
+        const t3Uuid = this.findBranchUuid('t', SceneRecuperationTubeWaterControllerConstants.REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
 
         if(mergeTargets.length > 0 && (b9Uuid || t3Uuid))
         {
@@ -1373,7 +1342,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             }
 
             const meta = this.targetMetaByUuid.get(target.uuid)
-            if(!meta || meta.order !== BRANCH_BASE_ORDER || meta.branchType !== 'b')
+            if(!meta || meta.order !== SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER || meta.branchType !== 'b')
             {
                 continue
             }
@@ -1404,9 +1373,9 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
                 groups.push([nextUuid])
             }
 
-            if(branchIndex === REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
+            if(branchIndex === SceneRecuperationTubeWaterControllerConstants.REQUIRED_B_BRANCH_INDEX_FOR_MERGE)
             {
-                this.windowSourceByTubeUuid.set(tubeUuid, BRANCH_WINDOW_KEY)
+                this.windowSourceByTubeUuid.set(tubeUuid, SceneRecuperationTubeWaterControllerConstants.BRANCH_WINDOW_KEY)
             }
 
             this.connectionDependencyGroupsByUuid.set(tubeUuid, groups)
@@ -1424,7 +1393,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             }
 
             const meta = this.targetMetaByUuid.get(target.uuid)
-            if(!meta || meta.order !== BRANCH_BASE_ORDER || meta.branchType !== 't')
+            if(!meta || meta.order !== SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER || meta.branchType !== 't')
             {
                 continue
             }
@@ -1455,9 +1424,9 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
                 groups.push([nextUuid])
             }
 
-            if(branchIndex === REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
+            if(branchIndex === SceneRecuperationTubeWaterControllerConstants.REQUIRED_T_BRANCH_INDEX_FOR_MERGE)
             {
-                this.windowSourceByTubeUuid.set(tubeUuid, BRANCH_WINDOW_KEY)
+                this.windowSourceByTubeUuid.set(tubeUuid, SceneRecuperationTubeWaterControllerConstants.BRANCH_WINDOW_KEY)
             }
 
             this.connectionDependencyGroupsByUuid.set(tubeUuid, groups)
@@ -1470,27 +1439,27 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 
         const t1Uuid = this.findBranchUuid('t', 1)
         const b1Uuid = this.findBranchUuid('b', 1)
-        const main14Uuid = this.getMainAtOrder(SPECIAL_GATE_ORDER_MERGE)
+        const main14Uuid = this.getMainAtOrder(SceneRecuperationTubeWaterControllerConstants.SPECIAL_GATE_ORDER_MERGE)
         const main21Uuid = this.getMainAtOrder(21)
 
         if(t1Uuid)
         {
-            this.requiredWindowByTubeUuid.set(t1Uuid, PRIMARY_WINDOW_KEY)
+            this.requiredWindowByTubeUuid.set(t1Uuid, SceneRecuperationTubeWaterControllerConstants.PRIMARY_WINDOW_KEY)
         }
 
         if(b1Uuid)
         {
-            this.requiredWindowByTubeUuid.set(b1Uuid, PRIMARY_WINDOW_KEY)
+            this.requiredWindowByTubeUuid.set(b1Uuid, SceneRecuperationTubeWaterControllerConstants.PRIMARY_WINDOW_KEY)
         }
 
         if(main14Uuid)
         {
-            this.requiredWindowByTubeUuid.set(main14Uuid, BRANCH_WINDOW_KEY)
+            this.requiredWindowByTubeUuid.set(main14Uuid, SceneRecuperationTubeWaterControllerConstants.BRANCH_WINDOW_KEY)
         }
 
         if(main21Uuid)
         {
-            this.requiredWindowByTubeUuid.set(main21Uuid, AFTER_20_WINDOW_KEY)
+            this.requiredWindowByTubeUuid.set(main21Uuid, SceneRecuperationTubeWaterControllerConstants.AFTER_20_WINDOW_KEY)
         }
     }
 
@@ -1509,7 +1478,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
                 continue
             }
 
-            if(meta.order === BRANCH_BASE_ORDER && meta.branchType === branchType && meta.branchIndex === branchIndex)
+            if(meta.order === SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER && meta.branchType === branchType && meta.branchIndex === branchIndex)
             {
                 return target.uuid
             }
@@ -1521,7 +1490,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     findJoinTargetsForTube(tubeTarget)
     {
         const name = String(tubeTarget?.name || '').toLowerCase()
-        const isModuleTarget = MODULE_ROTATION_TARGET_PATTERN.test(name)
+        const isModuleTarget = SceneRecuperationTubeWaterControllerConstants.MODULE_ROTATION_TARGET_PATTERN.test(name)
         const traversalRoot = isModuleTarget ? tubeTarget : tubeTarget.parent
         if(!traversalRoot)
         {
@@ -1538,7 +1507,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             }
 
             const name = String(child.name || '').toLowerCase()
-            if(!name.includes(TUBE_JOIN_NAME_TOKEN))
+            if(!name.includes(SceneRecuperationTubeWaterControllerConstants.TUBE_JOIN_NAME_TOKEN))
             {
                 return
             }
@@ -1576,7 +1545,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             const shouldStartAligned = this.startAlignedTubeUuids.has(target.uuid)
             if(!isSource && !shouldStartAligned && randomQuarterTurns > 0)
             {
-                this.rotateTubeAssembly(target, randomQuarterTurns * QUARTER_TURN)
+                this.rotateTubeAssembly(target, randomQuarterTurns * SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN)
             }
 
             const turnDirection = Math.random() >= 0.5 ? 1 : -1
@@ -1650,7 +1619,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 
         this.playerRotatedTubeUuids.add(rotationTarget.uuid)
         const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
-        this.queueTubeRotation(rotationTarget, QUARTER_TURN * direction)
+        this.queueTubeRotation(rotationTarget, SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN * direction)
     }
 
     getUniqueRotatedTubeCount()
@@ -1694,7 +1663,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         if(existing)
         {
             existing.remainingAngle += angle
-            existing.pendingQuarterTurns += Math.round(angle / QUARTER_TURN)
+            existing.pendingQuarterTurns += Math.round(angle / SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN)
             return
         }
 
@@ -1706,7 +1675,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             pivotWorld: this.rotationPivotScratch.clone(),
             axisWorld: this.rotationAxisScratch.clone(),
             remainingAngle: angle,
-            pendingQuarterTurns: Math.round(angle / QUARTER_TURN)
+            pendingQuarterTurns: Math.round(angle / SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN)
         })
     }
 
@@ -1717,7 +1686,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return
         }
 
-        const speed = Math.max(0.1, this.rotation.speed || ROTATION_SPEED_PER_SECOND)
+        const speed = Math.max(0.1, this.rotation.speed || SceneRecuperationTubeWaterControllerConstants.ROTATION_SPEED_PER_SECOND)
         const maxStep = Math.max(0, deltaSeconds) * speed
         let hasAppliedStep = false
 
@@ -1754,7 +1723,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             {
                 this.trackQuarterTurnOffset(
                     rotationState.tubeTarget,
-                    rotationState.pendingQuarterTurns * QUARTER_TURN
+                    rotationState.pendingQuarterTurns * SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN
                 )
             }
 
@@ -1815,7 +1784,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 
     updateBlueWindowFlowProgress(deltaSeconds)
     {
-        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND)
         const gateReadyByName = new Map([
             ['fenetre-blue', this.isModuleFlowComplete('module-angle_13')],
             ['fenetre-blue_1', this.isModuleFlowComplete('module-straight_13_t3') || this.isModuleFlowComplete('module-angle_13_b9')],
@@ -1951,8 +1920,8 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         }
 
         const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
-        const nextOpacity = THREE.MathUtils.lerp(EMPTY_WINDOW_OPACITY, FILLED_WINDOW_OPACITY, clampedProgress)
-        const shouldBeTransparent = nextOpacity < (FILLED_WINDOW_OPACITY - FLOW_PROGRESS_EPSILON)
+        const nextOpacity = THREE.MathUtils.lerp(SceneRecuperationTubeWaterControllerConstants.EMPTY_WINDOW_OPACITY, SceneRecuperationTubeWaterControllerConstants.FILLED_WINDOW_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (SceneRecuperationTubeWaterControllerConstants.FILLED_WINDOW_OPACITY - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
 
         material.transparent = shouldBeTransparent
         material.opacity = nextOpacity
@@ -1986,13 +1955,13 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
 
     isModuleFlowComplete(moduleName)
     {
-        return this.getModuleFlowProgress(moduleName) >= (1 - FLOW_PROGRESS_EPSILON)
+        return this.getModuleFlowProgress(moduleName) >= (1 - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
     }
 
     isBlueWindowFlowComplete(windowName)
     {
         const flowProgress = this.blueWindowFlowProgressByName.get(windowName) ?? 0
-        return flowProgress >= (1 - FLOW_PROGRESS_EPSILON)
+        return flowProgress >= (1 - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
     }
 
     isWindowSourceReady(tubeUuid)
@@ -2084,7 +2053,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     updateTubeFlowProgress(flowPathUuids, deltaSeconds)
     {
         const flowPathSet = new Set(flowPathUuids)
-        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? FLOW_FILL_SPEED_PER_SECOND)
+        const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND)
         this.activeFlowSourceByTubeUuid.clear()
         this.dualInflowByTubeUuid.clear()
 
@@ -2189,7 +2158,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             const isGroupReady = group.every((dependencyUuid) =>
             {
                 const dependencyProgress = this.flowProgressByTubeUuid.get(dependencyUuid) ?? 0
-                return dependencyProgress >= (1 - FLOW_PROGRESS_EPSILON)
+                return dependencyProgress >= (1 - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
             })
             if(!isGroupReady)
             {
@@ -2221,7 +2190,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     isBranchTube(tubeUuid)
     {
         const meta = this.targetMetaByUuid.get(tubeUuid)
-        return Boolean(meta && meta.order === BRANCH_BASE_ORDER && (meta.branchType === 'b' || meta.branchType === 't'))
+        return Boolean(meta && meta.order === SceneRecuperationTubeWaterControllerConstants.BRANCH_BASE_ORDER && (meta.branchType === 'b' || meta.branchType === 't'))
     }
 
     moveTowards(value, target, maxStep)
@@ -2293,11 +2262,11 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return true
         }
 
-        const currentRotation = this.normalizeAngle(target.rotation[ROTATION_AXIS] || 0)
+        const currentRotation = this.normalizeAngle(target.rotation[SceneRecuperationTubeWaterControllerConstants.ROTATION_AXIS] || 0)
         const delta = Math.abs(
             THREE.MathUtils.euclideanModulo((currentRotation - initialRotation) + Math.PI, Math.PI * 2) - Math.PI
         )
-        return delta <= ROTATION_EPSILON
+        return delta <= SceneRecuperationTubeWaterControllerConstants.ROTATION_EPSILON
     }
 
     isStraightTube(tubeUuid)
@@ -2610,8 +2579,8 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         }
 
         const clampedProgress = THREE.MathUtils.clamp(flowProgress ?? 0, 0, 1)
-        const nextOpacity = THREE.MathUtils.lerp(EMPTY_TUBE_OPACITY, FILLED_TUBE_OPACITY, clampedProgress)
-        const shouldBeTransparent = nextOpacity < (FILLED_TUBE_OPACITY - FLOW_PROGRESS_EPSILON)
+        const nextOpacity = THREE.MathUtils.lerp(SceneRecuperationTubeWaterControllerConstants.EMPTY_TUBE_OPACITY, SceneRecuperationTubeWaterControllerConstants.FILLED_TUBE_OPACITY, clampedProgress)
+        const shouldBeTransparent = nextOpacity < (SceneRecuperationTubeWaterControllerConstants.FILLED_TUBE_OPACITY - SceneRecuperationTubeWaterControllerConstants.FLOW_PROGRESS_EPSILON)
 
         material.transparent = shouldBeTransparent
         material.opacity = nextOpacity
@@ -2624,10 +2593,10 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     {
         if(colorValue === null || colorValue === undefined)
         {
-            this.tubeConnectedColor.set(CONNECTED_COLOR)
-            this.tubeConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
-            this.windowConnectedColor.set(CONNECTED_COLOR)
-            this.windowConnectedEmissiveColor.set(CONNECTED_EMISSIVE)
+            this.tubeConnectedColor.set(SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR)
+            this.tubeConnectedEmissiveColor.set(SceneRecuperationTubeWaterControllerConstants.CONNECTED_EMISSIVE)
+            this.windowConnectedColor.set(SceneRecuperationTubeWaterControllerConstants.CONNECTED_COLOR)
+            this.windowConnectedEmissiveColor.set(SceneRecuperationTubeWaterControllerConstants.CONNECTED_EMISSIVE)
         }
         else
         {
@@ -2675,7 +2644,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     getRotationAxisWorld(target, out)
     {
         this.localAxis.set(0, 0, 0)
-        this.localAxis[ROTATION_AXIS] = 1
+        this.localAxis[SceneRecuperationTubeWaterControllerConstants.ROTATION_AXIS] = 1
         target.getWorldQuaternion(this.targetQuaternionWorld)
         return out.copy(this.localAxis).applyQuaternion(this.targetQuaternionWorld).normalize()
     }
@@ -2683,7 +2652,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
     getFlowAxisWorld(target, out)
     {
         this.localAxis.set(0, 0, 0)
-        this.localAxis[FLOW_AXIS] = 1
+        this.localAxis[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS] = 1
         target.getWorldQuaternion(this.targetQuaternionWorld)
         return out.copy(this.localAxis).applyQuaternion(this.targetQuaternionWorld).normalize()
     }
@@ -2755,7 +2724,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
             return
         }
 
-        const deltaTurns = Math.round(angle / QUARTER_TURN)
+        const deltaTurns = Math.round(angle / SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN)
         if(deltaTurns === 0)
         {
             return
