@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneRecuperationCascadeTubesConstants from './SceneRecuperationCascadeTubes.constants.js'
+import * as SceneRecuperationCascadeTubesConstants from './CascadeTubes.constants.js'
 export default class SceneRecuperationCascadeTubes
 {
     constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null } = {})

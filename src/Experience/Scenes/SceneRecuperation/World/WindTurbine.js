@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import { setupSceneRecuperationWindTurbineDebug } from './SceneRecuperationWindTurbine.debug.js'
+import { setupSceneRecuperationWindTurbineDebug } from './WindTurbine.debug.js'
 import Experience from '../../../Experience.js'
-import * as SceneRecuperationWindTurbineConstants from './SceneRecuperationWindTurbine.constants.js'
+import * as SceneRecuperationWindTurbineConstants from './WindTurbine.constants.js'
 
 export default class SceneRecuperationWindTurbine
 {

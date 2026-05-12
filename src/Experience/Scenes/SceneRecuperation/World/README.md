@@ -4,22 +4,22 @@ World local de la scene de recuperation.
 
 ## Fichier pivot
 
-- `SceneRecuperationWorld.js`: compose tous les sous-systemes et gere la progression de la scene.
+- `World.js`: compose tous les sous-systemes et gere la progression de la scene.
 
 ## Sous-systemes
 
-- `SceneRecuperationModel.js`: acces au decor et aux groupes utiles.
-- `SceneRecuperationWater.js`: eau locale.
-- `SceneRecuperationCascadeTubes.js`: rendu/animation des cascades.
-- `SceneRecuperationTubeWaterController.js`: puzzle de rotation et de flux dans les tubes.
+- `Model.js`: acces au decor et aux groupes utiles.
+- `Water.js`: eau locale.
+- `CascadeTubes.js`: rendu/animation des cascades.
+- `TubeWaterController.js`: puzzle de rotation et de flux dans les tubes.
 - `Materiau.js`: selection de materiaux interactifs.
 - `Television.js`: interface 3D pour lancer/valider les tests.
 - `Door.js`: verrou de progression.
 - `ShowerParticles.js`: retour visuel du test.
-- `SceneRecuperationWindTurbine.js`: element interactif/visuel de scene.
-- `SceneRecuperationScoring.js`: lecture synthese de l'etat du puzzle de tubes.
-- `SceneRecuperationRoom2Trigger.js`: trigger de progression/dialogue local.
-- `SceneRecuperationCollisionDebug.js` et `*.debug.js`: lecture debug.
+- `WindTurbine.js`: element interactif/visuel de scene.
+- `Scoring.js`: lecture synthese de l'etat du puzzle de tubes.
+- `Room2Trigger.js`: trigger de progression/dialogue local.
+- `CollisionDebug.js` et `*.debug.js`: lecture debug.
 
 ## Logique de haut niveau
 

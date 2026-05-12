@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneRecuperationModelConstants from './SceneRecuperationModel.constants.js'
+import * as SceneRecuperationModelConstants from './Model.constants.js'
 export default class SceneRecuperationModel
 {
     constructor({ debugParentFolder = null } = {})

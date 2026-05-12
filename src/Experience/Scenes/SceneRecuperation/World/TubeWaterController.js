@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
-import { setupSceneRecuperationTubeWaterControllerDebug } from './SceneRecuperationTubeWaterController.debug.js'
-import * as SceneRecuperationTubeWaterControllerConstants from './SceneRecuperationTubeWaterController.constants.js'
+import { setupSceneRecuperationTubeWaterControllerDebug } from './TubeWaterController.debug.js'
+import * as SceneRecuperationTubeWaterControllerConstants from './TubeWaterController.constants.js'
 
 export default class SceneRecuperationTubeWaterController
 {

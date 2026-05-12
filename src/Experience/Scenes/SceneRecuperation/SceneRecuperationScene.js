@@ -1,6 +1,6 @@
 import BaseScene from '../BaseScene.js'
 import SceneEnum from '../../Enum/SceneEnum.js'
-import SceneRecuperationWorld from './World/SceneRecuperationWorld.js'
+import SceneRecuperationWorld from './World/World.js'
 
 export default class SceneRecuperationScene extends BaseScene
 {
