@@ -82,6 +82,15 @@ export default class Bloom
             lockToNode: false,
             arrivalDistance: 0.08
         }
+        this.animation = {
+            mixer: null,
+            action: null,
+            clips: [],
+            activeClipName: '',
+            play: true,
+            speed: 1,
+            loop: true
+        }
 
         this.rails = new BloomRailSystem({
             scene: this.scene,
@@ -106,6 +115,9 @@ export default class Bloom
         this.locomotionSpeed = 0
         this.walkCyclePhase = 0
         this.armNodes = []
+        this.armAnimationPairs = []
+        this.tmpArmDeltaQuaternion = new THREE.Quaternion()
+        this.tmpArmInverseBaseQuaternion = new THREE.Quaternion()
 
         if(this.resource?.scene)
         {
@@ -132,6 +144,7 @@ export default class Bloom
     {
         this.model = this.resource.scene.clone(true)
         this.model.name = '__bloomRoot'
+        this.setupAnimation()
 
         const bounds = new THREE.Box3().setFromObject(this.model)
         const size = bounds.getSize(new THREE.Vector3())
@@ -170,6 +183,95 @@ export default class Bloom
         })
 
         this.scene.add(this.model)
+    }
+
+    setupAnimation()
+    {
+        const sourceClips = Array.isArray(this.resource?.animations) ? this.resource.animations : []
+        if(!this.model || sourceClips.length === 0)
+        {
+            return
+        }
+
+        this.animation.mixer = new THREE.AnimationMixer(this.model)
+        this.animation.clips = sourceClips
+        this.animation.activeClipName = sourceClips[0].name || '0'
+        this.playAnimationClip(this.animation.activeClipName)
+    }
+
+    resolveAnimationClip(clipKey)
+    {
+        if(this.animation.clips.length === 0)
+        {
+            return null
+        }
+
+        const asIndex = Number.parseInt(String(clipKey), 10)
+        if(Number.isInteger(asIndex) && asIndex >= 0 && asIndex < this.animation.clips.length)
+        {
+            return this.animation.clips[asIndex]
+        }
+
+        return this.animation.clips.find((clip) => clip?.name === clipKey) || this.animation.clips[0]
+    }
+
+    playAnimationClip(clipKey)
+    {
+        if(!this.animation.mixer || this.animation.clips.length === 0)
+        {
+            return
+        }
+
+        const targetClip = this.resolveAnimationClip(clipKey)
+        if(!targetClip)
+        {
+            return
+        }
+
+        if(this.animation.action)
+        {
+            this.animation.action.stop()
+            this.animation.action = null
+        }
+
+        const action = this.animation.mixer.clipAction(targetClip)
+        action.enabled = true
+        action.clampWhenFinished = !this.animation.loop
+        action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
+        action.timeScale = this.animation.speed
+
+        if(this.animation.play)
+        {
+            action.play()
+            action.paused = false
+        }
+        else
+        {
+            action.play()
+            action.paused = true
+        }
+
+        this.animation.action = action
+        this.animation.activeClipName = targetClip.name || String(this.animation.clips.indexOf(targetClip))
+    }
+
+    refreshAnimationPlaybackState()
+    {
+        const action = this.animation.action
+        if(!action)
+        {
+            return
+        }
+
+        action.timeScale = this.animation.speed
+        action.clampWhenFinished = !this.animation.loop
+        action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
+        action.paused = !this.animation.play
+    }
+
+    isAnimationDrivingModel()
+    {
+        return Boolean(this.animation.action && this.animation.clips.length > 0)
     }
 
     spawnOnRailNodeIfAvailable()
@@ -568,6 +670,8 @@ export default class Bloom
 
     setArmRig()
     {
+        const symmetryCandidates = []
+
         this.model.traverse((child) =>
         {
             const nodeName = child.name?.toLowerCase() || ''
@@ -590,7 +694,55 @@ export default class Bloom
                 phaseOffset: isArmGroup ? 0 : (isRightSide ? 0 : Math.PI),
                 frequencyMultiplier: isArmGroup ? 1 : 1.1
             })
+
+            symmetryCandidates.push({
+                node: child,
+                type: isArmGroup ? 'arm' : 'hand',
+                side: isRightSide ? 'right' : 'left',
+                baseQuaternion: child.quaternion.clone()
+            })
         })
+
+        this.armAnimationPairs = this.buildArmAnimationPairs(symmetryCandidates)
+    }
+
+    buildArmAnimationPairs(candidates)
+    {
+        const pairs = []
+        const leftByType = new Map()
+        const rightByType = new Map()
+
+        for(const candidate of candidates)
+        {
+            if(candidate.side === 'left' && !leftByType.has(candidate.type))
+            {
+                leftByType.set(candidate.type, candidate)
+            }
+
+            if(candidate.side === 'right' && !rightByType.has(candidate.type))
+            {
+                rightByType.set(candidate.type, candidate)
+            }
+        }
+
+        for(const type of ['arm', 'hand'])
+        {
+            const left = leftByType.get(type)
+            const right = rightByType.get(type)
+            if(!left || !right)
+            {
+                continue
+            }
+
+            pairs.push({
+                leftNode: left.node,
+                rightNode: right.node,
+                leftBaseQuaternion: left.baseQuaternion,
+                rightBaseQuaternion: right.baseQuaternion
+            })
+        }
+
+        return pairs
     }
 
     setFallback()
@@ -850,6 +1002,64 @@ export default class Bloom
             this.refreshBloomMaterialTuning()
         })
 
+        if(this.animation.clips.length > 0)
+        {
+            this.animationFolder = this.debug.addFolder('Animation Bloom', {
+                parent: this.debugFolder,
+                expanded: false
+            })
+
+            const clipOptions = {}
+            for(let index = 0; index < this.animation.clips.length; index++)
+            {
+                const clip = this.animation.clips[index]
+                const clipName = clip?.name || `Clip ${index + 1}`
+                clipOptions[clipName] = String(index)
+            }
+
+            const hasActiveValue = Object.values(clipOptions).includes(this.animation.activeClipName)
+            if(!hasActiveValue)
+            {
+                this.animation.activeClipName = Object.values(clipOptions)[0]
+            }
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'activeClipName', {
+                label: 'Clip',
+                options: clipOptions
+            }).on('change', ({ value }) =>
+            {
+                this.animation.activeClipName = value
+                this.playAnimationClip(value)
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'play', {
+                label: 'Lecture'
+            }).on('change', ({ value }) =>
+            {
+                this.animation.play = value
+                this.refreshAnimationPlaybackState()
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'speed', {
+                label: 'Vitesse animation',
+                min: 0,
+                max: 3,
+                step: 0.01
+            }).on('change', ({ value }) =>
+            {
+                this.animation.speed = value
+                this.refreshAnimationPlaybackState()
+            })
+
+            this.debug.addBinding(this.animationFolder, this.animation, 'loop', {
+                label: 'Boucle'
+            }).on('change', ({ value }) =>
+            {
+                this.animation.loop = value
+                this.refreshAnimationPlaybackState()
+            })
+        }
+
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {
             label: 'Rayon de flottement',
             min: 0,
@@ -932,10 +1142,19 @@ export default class Bloom
     {
         const deltaSeconds = Math.min(this.time.delta, 50) * 0.001
 
+        if(this.animation.mixer && this.animation.play)
+        {
+            this.animation.mixer.update(deltaSeconds)
+            this.applyAnimationToSecondArm()
+        }
+
         if(this.model)
         {
             this.updateMotion(deltaSeconds)
-            this.updateArms()
+            if(!this.isAnimationDrivingModel())
+            {
+                this.updateArms()
+            }
             return
         }
 
@@ -1363,9 +1582,43 @@ export default class Bloom
         }
     }
 
+    applyAnimationToSecondArm()
+    {
+        if(this.armAnimationPairs.length === 0)
+        {
+            return
+        }
+
+        for(const pair of this.armAnimationPairs)
+        {
+            const leftNode = pair.leftNode
+            const rightNode = pair.rightNode
+            if(!leftNode || !rightNode)
+            {
+                continue
+            }
+
+            const leftDelta = 1 - Math.abs(leftNode.quaternion.dot(pair.leftBaseQuaternion))
+            const rightDelta = 1 - Math.abs(rightNode.quaternion.dot(pair.rightBaseQuaternion))
+            const sourceNode = leftDelta >= rightDelta ? leftNode : rightNode
+            const sourceBase = leftDelta >= rightDelta ? pair.leftBaseQuaternion : pair.rightBaseQuaternion
+            const targetNode = leftDelta >= rightDelta ? rightNode : leftNode
+            const targetBase = leftDelta >= rightDelta ? pair.rightBaseQuaternion : pair.leftBaseQuaternion
+
+            this.tmpArmInverseBaseQuaternion.copy(sourceBase).invert()
+            this.tmpArmDeltaQuaternion.copy(this.tmpArmInverseBaseQuaternion).multiply(sourceNode.quaternion)
+            targetNode.quaternion.copy(targetBase).multiply(this.tmpArmDeltaQuaternion)
+        }
+    }
+
     destroy()
     {
         this.debugFolder?.dispose?.()
+        this.animation.action?.stop?.()
+        this.animation.mixer?.stopAllAction?.()
+        this.animation.mixer = null
+        this.animation.action = null
+        this.animation.clips = []
 
         if(this.model)
         {
@@ -1388,5 +1641,6 @@ export default class Bloom
 
         this.rails?.destroy?.()
         this.armNodes = []
+        this.armAnimationPairs = []
     }
 }
