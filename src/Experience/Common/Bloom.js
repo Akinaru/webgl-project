@@ -34,7 +34,14 @@ export default class Bloom
             facingOffsetRadians: BLOOM_FACING_OFFSET_RADIANS,
             uvZoom: BLOOM_UV_ZOOM,
             lookTurnSpeed: rails.lookTurnSpeed ?? 11,
-            envMapIntensity: 1
+            envMapIntensity: 1,
+            roughness: 0.25,
+            metalness: 0.05,
+            transmission: 1,
+            thickness: 0.25,
+            ior: 1.18,
+            specularIntensity: 1,
+            opacity: 1
         }
 
         this.tmpQuaternion = new THREE.Quaternion()
@@ -283,8 +290,8 @@ export default class Bloom
                 : new THREE.MeshPhysicalMaterial({
                     name: sourceMaterial.name,
                     color: sourceMaterial.color?.clone?.() ?? new THREE.Color('#ffffff'),
-                    roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : 0.25,
-                    metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : 0.05
+                    roughness: typeof sourceMaterial.roughness === 'number' ? sourceMaterial.roughness : this.tuning.roughness,
+                    metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : this.tuning.metalness
                 })
 
             if(colorTexture)
@@ -301,14 +308,14 @@ export default class Bloom
 
             if(transmissionTexture && hasUv)
             {
-                material.transmission = 1
+                material.transmission = this.tuning.transmission
                 material.transmissionMap = transmissionTexture
-                material.thickness = 0.25
-                material.ior = 1.18
+                material.thickness = this.tuning.thickness
+                material.ior = this.tuning.ior
                 material.alphaMap = null
                 material.alphaTest = 0
                 material.transparent = true
-                material.opacity = 1
+                material.opacity = this.tuning.opacity
                 material.side = THREE.DoubleSide
             }
             else
@@ -325,13 +332,15 @@ export default class Bloom
             if(transmissionTexture && hasUv)
             {
                 material.specularIntensityMap = transmissionTexture
-                material.specularIntensity = 1
+                material.specularIntensity = this.tuning.specularIntensity
             }
             else
             {
                 material.specularIntensityMap = null
             }
 
+            material.roughness = this.tuning.roughness
+            material.metalness = this.tuning.metalness
             if(this.bloomReflectionEnvTexture)
             {
                 material.envMap = this.bloomReflectionEnvTexture
@@ -495,6 +504,49 @@ export default class Bloom
                 }
 
                 material.envMapIntensity = this.tuning.envMapIntensity
+                material.needsUpdate = true
+            }
+        })
+    }
+
+    refreshBloomMaterialTuning()
+    {
+        if(!this.model)
+        {
+            return
+        }
+
+        this.model.traverse((child) =>
+        {
+            if(!child?.isMesh || !this.isBloomTargetMesh(child))
+            {
+                return
+            }
+
+            const hasUv = Boolean(child.geometry?.getAttribute?.('uv'))
+            const hasTransmissionTexture = Boolean(this.getTransmissionTextureForMesh(child)) && hasUv
+            const materials = Array.isArray(child.material) ? child.material : [child.material]
+
+            for(const material of materials)
+            {
+                if(!(material instanceof THREE.MeshPhysicalMaterial))
+                {
+                    continue
+                }
+
+                material.roughness = this.tuning.roughness
+                material.metalness = this.tuning.metalness
+                material.envMapIntensity = this.tuning.envMapIntensity
+                material.specularIntensity = this.tuning.specularIntensity
+
+                if(hasTransmissionTexture)
+                {
+                    material.transmission = this.tuning.transmission
+                    material.thickness = this.tuning.thickness
+                    material.ior = this.tuning.ior
+                    material.opacity = this.tuning.opacity
+                }
+
                 material.needsUpdate = true
             }
         })
@@ -705,7 +757,12 @@ export default class Bloom
             this.refreshBloomTargetMaterials({ forceRegenerateUv: true })
         })
 
-        this.debug.addBinding(this.debugFolder, this.tuning, 'envMapIntensity', {
+        this.materialFolder = this.debug.addFolder('Materiau de Bloom', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'envMapIntensity', {
             label: 'Intensite de reflexion',
             min: 0,
             max: 5,
@@ -713,7 +770,84 @@ export default class Bloom
         }).on('change', ({ value }) =>
         {
             this.tuning.envMapIntensity = value
-            this.refreshBloomEnvMapIntensity()
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'roughness', {
+            label: 'Rugosite',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.roughness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'metalness', {
+            label: 'Metal',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.metalness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'transmission', {
+            label: 'Transmission',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.transmission = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'thickness', {
+            label: 'Epaisseur',
+            min: 0,
+            max: 2,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.thickness = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'ior', {
+            label: 'Indice de refraction',
+            min: 1,
+            max: 2.5,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.ior = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'specularIntensity', {
+            label: 'Intensite speculaire',
+            min: 0,
+            max: 2,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.specularIntensity = value
+            this.refreshBloomMaterialTuning()
+        })
+
+        this.debug.addBinding(this.materialFolder, this.tuning, 'opacity', {
+            label: 'Opacite',
+            min: 0,
+            max: 1,
+            step: 0.01
+        }).on('change', ({ value }) =>
+        {
+            this.tuning.opacity = value
+            this.refreshBloomMaterialTuning()
         })
 
         this.debug.addBinding(this.debugFolder, this.motion, 'radius', {

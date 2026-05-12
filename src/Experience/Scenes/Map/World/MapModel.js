@@ -20,6 +20,8 @@ const PLAN_NOISE_TEXTURE_RESOLUTION = 128
 const PALM_MASTER_NAME = 'palmier_master'
 const PALM_PLACEMENT_NAME_PATTERN = /^palmier_[^_]+_nul$/i
 const USER_DATA_EXCLUDE_COLLISION = 'excludeCollisionFromMapModel'
+const USER_DATA_BUILDING_INSTANCE = 'isBuildingInstanceMesh'
+const USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE = 'isBuildingCollisionProxyInstanceMesh'
 const USER_DATA_PALM_MASTER = 'isPalmMasterMesh'
 const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
@@ -28,15 +30,18 @@ const SCALE_EPSILON = 1e-5
 const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = -0.58
 const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
 const BUSH_SOCKET_INTERIOR_NAME_PATTERN = /^socle_int_bush_nul_\d+$/i
+const COLLISION_PROXY_NAME_PATTERN = /^col_/i
 const REPEATABLE_INSTANCE_CONFIGS = [
     {
         key: 'build_tour',
         masterName: 'build_tour_master',
+        collisionMasterName: 'col_build_tour-1',
         placementPattern: /^build_tour_[^_]+_nul$/i
     },
     {
         key: 'build_feuille',
         masterName: 'build_feuille_master1',
+        collisionMasterName: 'col_build_feuille-1',
         placementPattern: /^build_feuille_[^_]+_nul$/i
     }
 ]
@@ -149,6 +154,13 @@ export default class MapModel
                 }
             }
 
+            if(this.isCollisionProxyMesh(child))
+            {
+                child.visible = false
+                child.castShadow = false
+                child.receiveShadow = false
+            }
+
             if(this.isPlanMeshName(child.name))
             {
                 this.planMeshes.push(child)
@@ -218,6 +230,12 @@ export default class MapModel
     {
         const name = String(mesh?.name || '').trim()
         return BUSH_SOCKET_INTERIOR_NAME_PATTERN.test(name)
+    }
+
+    isCollisionProxyMesh(mesh)
+    {
+        const name = String(mesh?.name || '').trim()
+        return COLLISION_PROXY_NAME_PATTERN.test(name)
     }
 
     setupPalmTreeInstances()
@@ -338,13 +356,24 @@ export default class MapModel
         for(const config of REPEATABLE_INSTANCE_CONFIGS)
         {
             this.setupRepeatableInstanceGroup(config)
+
+            if(typeof config?.collisionMasterName === 'string' && config.collisionMasterName.trim() !== '')
+            {
+                this.setupRepeatableInstanceGroup({
+                    ...config,
+                    key: `${config.key}_collision`,
+                    masterName: config.collisionMasterName,
+                    forceCollisionProxyInstances: true
+                })
+            }
         }
     }
 
     setupRepeatableInstanceGroup({
         key,
         masterName,
-        placementPattern
+        placementPattern,
+        forceCollisionProxyInstances = false
     } = {})
     {
         const masterRoot = this.findFirstObjectByName(masterName)
@@ -389,6 +418,18 @@ export default class MapModel
             instanced.castShadow = child.castShadow
             instanced.receiveShadow = child.receiveShadow
             instanced.frustumCulled = true
+            if(String(key).startsWith('build_'))
+            {
+                instanced.userData[USER_DATA_BUILDING_INSTANCE] = true
+                const shouldUseAsCollisionProxy = forceCollisionProxyInstances || this.isCollisionProxyMesh(child)
+                if(shouldUseAsCollisionProxy)
+                {
+                    instanced.userData[USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] = true
+                    instanced.visible = false
+                    instanced.castShadow = false
+                    instanced.receiveShadow = false
+                }
+            }
             instancedEntries.push({
                 instanced,
                 sourceMesh: child
@@ -1917,6 +1958,8 @@ export default class MapModel
         this.collisionBoxes = []
         const localBounds = new THREE.Box3()
         const worldBounds = new THREE.Box3()
+        const instanceMatrix = new THREE.Matrix4()
+        const instanceWorldMatrix = new THREE.Matrix4()
 
         this.model.traverse((child) =>
         {
@@ -1941,6 +1984,19 @@ export default class MapModel
             }
 
             localBounds.copy(child.geometry.boundingBox)
+
+            if(child instanceof THREE.InstancedMesh)
+            {
+                for(let instanceIndex = 0; instanceIndex < child.count; instanceIndex++)
+                {
+                    child.getMatrixAt(instanceIndex, instanceMatrix)
+                    instanceWorldMatrix.copy(child.matrixWorld).multiply(instanceMatrix)
+                    worldBounds.copy(localBounds).applyMatrix4(instanceWorldMatrix)
+                    this.collisionBoxes.push(worldBounds.clone())
+                }
+                return
+            }
+
             worldBounds.copy(localBounds).applyMatrix4(child.matrixWorld)
             this.collisionBoxes.push(worldBounds.clone())
         })
@@ -1954,9 +2010,19 @@ export default class MapModel
 
     shouldUseForCollision(mesh)
     {
+        if(this.isCollisionProxyMesh(mesh))
+        {
+            return true
+        }
+
         if(mesh?.userData?.[USER_DATA_EXCLUDE_COLLISION])
         {
             return false
+        }
+
+        if(mesh?.userData?.[USER_DATA_BUILDING_INSTANCE] === true)
+        {
+            return mesh?.userData?.[USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] === true
         }
 
         if(this.isPlanMesh(mesh))
