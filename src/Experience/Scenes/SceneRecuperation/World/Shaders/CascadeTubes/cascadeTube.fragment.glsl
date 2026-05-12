@@ -44,6 +44,8 @@ float cascadeNoise(vec2 p)
 }
 
 // @diffuse
+// La projection d'un tube est differente d'une pente:
+// on derive un angle autour de l'axe pour obtenir une coordonnee X continue tout autour du cylindre.
 float cascadeAngle = atan(vCascadeLocalPosition.z, vCascadeLocalPosition.x) / 6.28318530718;
 vec2 baseUv = vec2(
     fract(cascadeAngle + 0.5 + uCascadeSeamOffset),
@@ -66,6 +68,7 @@ vec2 domainWarp = vec2(
     cascadeNoise(domainWarpUvB - vec2(0.0, foamTime * 0.06))
 ) - 0.5;
 
+// Meme famille de mousse que la pente, mais appliquee dans ce repere cylindrique.
 vec2 foamNoiseUv = (rotatedFoamUv * vec2(max(uCascadeFoamNoiseFrequency, 0.0001), max(uCascadeFoamNoiseFrequency * 1.15, 0.0001)))
     + (domainWarp * 0.65);
 float foamNoise = cascadeNoise(foamNoiseUv);

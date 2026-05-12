@@ -47,6 +47,9 @@ float cascadeNoise(vec2 p)
 // @diffuse
 vec2 flowDirection = vec2(cos(uCascadeFlowAngle), sin(uCascadeFlowAngle));
 vec2 crossDirection = vec2(-flowDirection.y, flowDirection.x);
+// On reconstruit un repere 2D propre a la pente:
+// - axe Y du motif = sens du flux
+// - axe X du motif = axe transversal pour dessiner les ruptures de mousse
 vec2 slopePlanePosition = vCascadeLocalPosition.xz * uCascadeFlowScale;
 vec2 baseUv = vec2(
     dot(slopePlanePosition, crossDirection) + uCascadePatternOffset.y + uCascadeSeamOffset,
@@ -69,6 +72,7 @@ vec2 domainWarp = vec2(
     cascadeNoise(domainWarpUvB - vec2(0.0, foamTime * 0.06))
 ) - 0.5;
 
+// Le masque final reste volontairement binaire pour une mousse franche et lisible.
 vec2 foamNoiseUv = (rotatedFoamUv * vec2(max(uCascadeFoamNoiseFrequency, 0.0001), max(uCascadeFoamNoiseFrequency * 1.15, 0.0001)))
     + (domainWarp * 0.65);
 float foamNoise = cascadeNoise(foamNoiseUv);

@@ -89,6 +89,7 @@ if(maskValue < 0.5)
 
 vec2 worldUv = vRecuperationWaterWorldPosition.xz * (uRecuperationWaterPatternScale * RECUPERATION_WORLD_UV_SCALE);
 vec2 baseUv = ((vRecuperationWaterUv - 0.5) * uRecuperationWaterPatternScale) + worldUv;
+// Petit domain warp pour casser les bandes trop paralleles et obtenir une lecture plus organique.
 vec2 organicOffset = vec2(
     sin((baseUv.y * 2.7) + (baseUv.x * 0.9)),
     sin((baseUv.x * 2.1) - (baseUv.y * 1.4))
@@ -103,6 +104,9 @@ vec2 domainWarp = vec2(
     recuperationWaterNoise(domainWarpUvB)
 ) - 0.5;
 
+// Toute la mousse part d'un meme champ de bruit, puis on derive:
+// - une couche "deep foam" plus large,
+// - une couche "surface foam" plus tranchee.
 vec2 foamNoiseUv = (rotatedBaseUv * vec2(max(uRecuperationWaterNoiseFrequency, 0.0001), max(uRecuperationWaterNoiseFrequency * 1.15, 0.0001)))
     + (domainWarp * 0.65);
 float foamNoise = recuperationWaterNoise(foamNoiseUv);
@@ -127,6 +131,7 @@ float deepFoamEnvelope = smoothstep(
 float deepFoamMaskBinary = step(0.5, deepFoamEnvelope);
 float foamMaskBinary = step(uRecuperationWaterFoamCutoff, foamMask);
 
+// Les bords peuvent se teinter legerement vers la mousse profonde si on remonte le contraste.
 float edgeMix = max(pow(abs((vRecuperationWaterUv.x - 0.5) * 2.0), 3.0), 0.0);
 vec3 baseColor = mix(uRecuperationWaterBaseColor, uRecuperationWaterDeepFoamColor, edgeMix * uRecuperationWaterEdgeContrast);
 vec3 deepFoamColor = mix(baseColor, uRecuperationWaterDeepFoamColor, deepFoamMaskBinary);

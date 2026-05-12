@@ -17,6 +17,8 @@ World local de la scene de recuperation.
 - `Door.js`: verrou de progression.
 - `ShowerParticles.js`: retour visuel du test.
 - `SceneRecuperationWindTurbine.js`: element interactif/visuel de scene.
+- `SceneRecuperationScoring.js`: lecture synthese de l'etat du puzzle de tubes.
+- `SceneRecuperationRoom2Trigger.js`: trigger de progression/dialogue local.
 - `SceneRecuperationCollisionDebug.js` et `*.debug.js`: lecture debug.
 
 ## Logique de haut niveau
@@ -28,6 +30,15 @@ World local de la scene de recuperation.
 5. Le resultat peut valider un choix.
 6. La porte et le retour a la map s'ouvrent selon l'etat du puzzle.
 
+## Comment les sous-systemes collaborent
+
+- `SceneRecuperationWorld` possede l'etat global de la scene.
+- `SceneRecuperationModel` expose les meshes utiles sans imposer de logique de gameplay.
+- `Materiau` gere la selection du materiau vise par le joueur.
+- `Television` sert d'interface 3D pour lancer ou valider les etapes.
+- `SceneRecuperationTubeWaterController` et `SceneRecuperationScoring` traduisent la rotation des tubes en etat lisible.
+- les modules d'eau partagent une palette commune et des sous-menus debug separes.
+
 ## Particularite technique
 
 Cette scene contient davantage d'UI "dans le monde 3D" que les autres:
@@ -35,3 +46,14 @@ Cette scene contient davantage d'UI "dans le monde 3D" que les autres:
 - boutons meshes cliquables,
 - ecran TV rendu via canvas texture,
 - tubes et fenetres d'eau pilotes par shader/runtime.
+
+## Debug a connaitre
+
+Le dossier `Scene recuperation` dans Tweakpane est important pour reprendre la main rapidement.
+On y trouve notamment:
+
+- un groupe `Eau`,
+- des sous-dossiers `Couleurs`, `Tuyaux`, `Pentes`, `Plan`,
+- les reglages du puzzle et des objets interactifs de scene.
+
+Si un rendu d'eau te parait incoherent, commence ici avant de toucher au GLSL.

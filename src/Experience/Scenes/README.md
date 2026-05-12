@@ -23,7 +23,26 @@ La scene reste fine:
 - `SceneRecuperation/`: puzzle de recuperation/materiaux.
 - `SceneDistribution/`: puzzle de valves et remplissage de tubes.
 
+## Grammaire commune a toutes les scenes
+
+Chaque scene concrete suit la meme repartition:
+
+- `SceneXxxScene.js`: couche tres fine pour s'aligner avec `SceneManager`,
+- `World/`: vraie logique locale,
+- `World/*.constants.js`: tokens et valeurs stables,
+- `World/*.debug.js`: organisation du panneau Tweakpane,
+- `World/Shaders/`: GLSL ou patches associes a la scene.
+
 ## Pourquoi cette separation
 
 Le `SceneManager` gere la navigation globale.
 Chaque `World` garde sa logique locale, ses collisions, ses interactions et ses helpers debug.
+
+## Ordre de lecture recommande
+
+Pour comprendre une scene sans te perdre:
+
+1. lire son `README.md`,
+2. ouvrir `World/README.md`,
+3. ouvrir `World/<Scene>World.js`,
+4. seulement ensuite lire les modules specialises et leurs shaders.
