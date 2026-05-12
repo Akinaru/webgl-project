@@ -1,8 +1,11 @@
 import * as THREE from 'three'
-import Experience from '../Experience.js'
+import Experience from '../../Experience.js'
 
 export default class CollisionDebug
 {
+    /**
+     * Initialise le système de rails et ses structures runtime.
+     */
     constructor({
         player,
         getCollisionBoxes = null,
@@ -49,12 +52,18 @@ export default class CollisionDebug
         this.setDebugUI()
     }
 
+    /**
+     * Description du rôle de setCollisionBoxes.
+     */
     setCollisionBoxes()
     {
         this.boxHelpers = []
         this.syncCollisionBoxes()
     }
 
+    /**
+     * Description du rôle de syncCollisionBoxes.
+     */
     syncCollisionBoxes()
     {
         const collisionBoxes = this.getCollisionBoxes?.() ?? []
@@ -83,6 +92,9 @@ export default class CollisionDebug
         }
     }
 
+    /**
+     * Description du rôle de setPlayerVisuals.
+     */
     setPlayerVisuals()
     {
         const radius = this.player.settings.radius
@@ -122,6 +134,9 @@ export default class CollisionDebug
         this.group.add(this.hitNormalHelper)
     }
 
+    /**
+     * Description du rôle de setRayVisuals.
+     */
     setRayVisuals()
     {
         this.rayLines = []
@@ -138,6 +153,9 @@ export default class CollisionDebug
         }
     }
 
+    /**
+     * Description du rôle de setOctreeVisuals.
+     */
     setOctreeVisuals()
     {
         this.queryBox = new THREE.Box3()
@@ -150,6 +168,9 @@ export default class CollisionDebug
         this.cellHelpers = []
     }
 
+    /**
+     * Description du rôle de syncOctreeCandidates.
+     */
     syncOctreeCandidates(candidateBoxes = [])
     {
         const maxHelpers = 300
@@ -179,6 +200,9 @@ export default class CollisionDebug
         }
     }
 
+    /**
+     * Description du rôle de syncOctreeCells.
+     */
     syncOctreeCells(cellBoxes = [])
     {
         const maxHelpers = 1200
@@ -208,6 +232,9 @@ export default class CollisionDebug
         }
     }
 
+    /**
+     * Description du rôle de setDebugUI.
+     */
     setDebugUI()
     {
         this.folder = this.debug.addFolder(this.folderLabel, {
@@ -223,6 +250,9 @@ export default class CollisionDebug
         this.debug.addBinding(this.folder, this.state, 'showOctreeCells', { label: 'Cellules octree' })
     }
 
+    /**
+     * Met à jour les gizmos de debug collisions à chaque frame.
+     */
     update()
     {
         if(!this.enabled)
@@ -337,6 +367,9 @@ export default class CollisionDebug
         }
     }
 
+    /**
+     * Nettoie les helpers et structures du système de rails.
+     */
     destroy()
     {
         if(!this.enabled)

@@ -1,4 +1,4 @@
-import CollisionDebug from '../../../../Common/Collision.debug.js'
+import CollisionDebug from '../../../../Common/Debug/Collision.debug.js'
 
 export default class SceneRecuperationCollisionDebug extends CollisionDebug
 {
