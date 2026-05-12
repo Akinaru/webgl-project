@@ -37,12 +37,3 @@ Chaque scene concrete suit la meme repartition:
 
 Le `SceneManager` gere la navigation globale.
 Chaque `World` garde sa logique locale, ses collisions, ses interactions et ses helpers debug.
-
-## Ordre de lecture recommande
-
-Pour comprendre une scene sans te perdre:
-
-1. lire son `README.md`,
-2. ouvrir `World/README.md`,
-3. ouvrir `World/<Scene>World.js`,
-4. seulement ensuite lire les modules specialises et leurs shaders.

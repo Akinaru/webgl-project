@@ -31,31 +31,6 @@ npm run build
 3. `src/Experience/Scenes/SceneManager.js`: choix et cycle de vie des scenes.
 4. `src/Experience/Scenes/*/World/*.js`: logique locale de chaque scene.
 
-## Ordre de lecture recommande
-
-Pour une lecture progressive du projet:
-
-1. lire `src/README.md` pour la carte generale,
-2. ouvrir `src/Experience/README.md` pour comprendre qui cree quoi,
-3. choisir une scene et lire son `README.md`,
-4. seulement ensuite descendre dans les classes `World/*`,
-5. consulter les README shaders pour les effets visuels les plus techniques.
-
-Les README de dossier couvrent principalement:
-
-- le role de chaque dossier,
-- le vocabulaire metier employe,
-- le flux de donnees principal,
-- les bons points d'entree pour debugger ou faire evoluer une feature.
-
-## Navigation conseillee
-
-- `src/README.md`: vue d'ensemble du code applicatif.
-- `src/Experience/README.md`: lecture du runtime central.
-- `src/Experience/Scenes/README.md`: organisation des scenes.
-- `public/README.md`: organisation des assets servis par Vite.
-- `tools/README.md`: outillage local du projet.
-
 ## Runtime en resume
 
 1. Le navigateur charge `index.html` puis `src/script.js`.
@@ -94,17 +69,3 @@ Exemple:
 - `tools/`: plugins et scripts de dev.
 - `folio-2025/`: reference locale d'architecture/inspiration, hors runtime principal.
 - `dist/`: sortie de build.
-
-## Documentation du depot
-
-Les dossiers importants du runtime disposent d'un `README.md` qui decrit:
-
-- pourquoi le dossier existe,
-- quelles classes il heberge,
-- comment elles collaborent,
-- ou brancher une nouvelle feature sans casser l'architecture.
-
-Les zones plus techniques sont documentees a deux niveaux:
-
-- un `README.md` de dossier pour la vue d'ensemble,
-- quelques commentaires directement dans le code ou dans les shaders pour guider la lecture ligne par ligne.
