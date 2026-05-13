@@ -1,6 +1,10 @@
 import * as THREE from 'three'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { SAOPass } from 'three/examples/jsm/postprocessing/SAOPass.js'
 import Experience from './Experience.js'
 import EventEnum from './Enum/EventEnum.js'
+import SceneEnum from './Enum/SceneEnum.js'
 
 const GRAPHICS_QUALITY_STORAGE_KEY = 'bloom.graphics.quality'
 const GRAPHICS_QUALITY = Object.freeze({
@@ -32,8 +36,21 @@ export default class Renderer
         this.sizes = this.experience.sizes
         this.camera = this.experience.camera
         this.debug = this.experience.debug
+        this.ambientOcclusion = {
+            enabled: true,
+            recuperationOnly: false,
+            intensity: 0.014,
+            bias: 0.35,
+            scale: 1,
+            kernelRadius: 18,
+            minResolution: 0,
+            blur: true,
+            blurRadius: 6,
+            blurStdDev: 3
+        }
 
         this.setInstance()
+        this.setPostProcessing()
         this.restoreGraphicsQuality()
         this.applyGraphicsQualityPreset(this.graphicsQuality)
         this.setScene(this.experience.scene)
@@ -78,6 +95,10 @@ export default class Renderer
     {
         this.debugRenderingFolder = this.debug.addFolder('📸 Rendu', { expanded: false })
         this.debugBloomFolder = this.debug.addFolder('Bloom', {
+            parent: this.debugRenderingFolder,
+            expanded: false
+        })
+        this.debugAmbientOcclusionFolder = this.debug.addFolder('Occlusion ambiante', {
             parent: this.debugRenderingFolder,
             expanded: false
         })
@@ -151,11 +172,149 @@ export default class Renderer
             step: 0.001
         })
 
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'enabled', {
+            label: 'Activer AO'
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'recuperationOnly', {
+            label: 'Recuperation seulement'
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'kernelRadius', {
+            label: 'Rayon',
+            min: 1,
+            max: 100,
+            step: 1
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'intensity', {
+            label: 'Intensite',
+            min: 0,
+            max: 0.2,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'bias', {
+            label: 'Bias',
+            min: 0,
+            max: 1,
+            step: 0.001
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'scale', {
+            label: 'Scale',
+            min: 0,
+            max: 4,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'blur', {
+            label: 'Blur'
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'blurRadius', {
+            label: 'Rayon blur',
+            min: 0,
+            max: 16,
+            step: 1
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'blurStdDev', {
+            label: 'Blur stddev',
+            min: 0.5,
+            max: 8,
+            step: 0.1
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
+        this.debug.addBinding(this.debugAmbientOcclusionFolder, this.ambientOcclusion, 'minResolution', {
+            label: 'Resolution min',
+            min: 0,
+            max: 1,
+            step: 0.0001
+        }).on('change', () =>
+        {
+            this.syncAmbientOcclusionPass()
+        })
         this.fpsGraph = this.debugRenderingFolder.addBlade({
             view: 'fpsgraph',
             label: 'Images par seconde',
             rows: 2
         })
+    }
+
+    setPostProcessing()
+    {
+        this.effectComposer = new EffectComposer(this.instance)
+        this.renderPass = new RenderPass(this.experience.scene, this.camera.instance)
+        this.saoPass = new SAOPass(
+            this.experience.scene,
+            this.camera.instance,
+            new THREE.Vector2(this.sizes.width, this.sizes.height)
+        )
+
+        this.effectComposer.addPass(this.renderPass)
+        this.effectComposer.addPass(this.saoPass)
+        this.syncPostProcessingSize()
+        this.syncAmbientOcclusionPass()
+    }
+
+    syncPostProcessingSize()
+    {
+        this.effectComposer?.setSize(this.sizes.width, this.sizes.height)
+        this.effectComposer?.setPixelRatio?.(this.getEffectivePixelRatio())
+        this.saoPass?.setSize?.(this.sizes.width, this.sizes.height)
+    }
+
+    shouldUseAmbientOcclusion()
+    {
+        if(this.ambientOcclusion.enabled !== true)
+        {
+            return false
+        }
+
+        if(this.ambientOcclusion.recuperationOnly !== true)
+        {
+            return true
+        }
+
+        return this.experience.sceneManager?.currentKey === SceneEnum.RECUPERATION
+    }
+
+    syncAmbientOcclusionPass()
+    {
+        if(!this.saoPass)
+        {
+            return
+        }
+
+        this.saoPass.enabled = this.shouldUseAmbientOcclusion()
+        this.saoPass.params.output = SAOPass.OUTPUT.Default
+        this.saoPass.params.saoBias = this.ambientOcclusion.bias
+        this.saoPass.params.saoIntensity = this.ambientOcclusion.intensity
+        this.saoPass.params.saoScale = this.ambientOcclusion.scale
+        this.saoPass.params.saoKernelRadius = this.ambientOcclusion.kernelRadius
+        this.saoPass.params.saoMinResolution = this.ambientOcclusion.minResolution
+        this.saoPass.params.saoBlur = this.ambientOcclusion.blur
+        this.saoPass.params.saoBlurRadius = this.ambientOcclusion.blurRadius
+        this.saoPass.params.saoBlurStdDev = this.ambientOcclusion.blurStdDev
     }
 
     setRendererStatsDebug()
@@ -216,6 +375,7 @@ export default class Renderer
     {
         this.instance.setSize(this.sizes.width, this.sizes.height)
         this.instance.setPixelRatio(this.getEffectivePixelRatio())
+        this.syncPostProcessingSize()
     }
 
     getEffectivePixelRatio()
@@ -267,6 +427,7 @@ export default class Renderer
             this.instance.shadowMap.enabled = Boolean(preset.shadowsEnabled)
             this.instance.setPixelRatio(this.getEffectivePixelRatio())
         }
+        this.syncPostProcessingSize()
     }
 
     setGraphicsQuality(quality, { persist = true } = {})
@@ -287,6 +448,15 @@ export default class Renderer
     setScene(scene)
     {
         this.scene = scene
+        if(this.renderPass)
+        {
+            this.renderPass.scene = scene
+        }
+        if(this.saoPass)
+        {
+            this.saoPass.scene = scene
+        }
+        this.syncAmbientOcclusionPass()
         this.syncInspectorContext()
     }
 
@@ -298,7 +468,15 @@ export default class Renderer
         }
 
         this.fpsGraph?.begin?.()
-        this.instance.render(this.scene, this.camera.instance)
+        this.syncAmbientOcclusionPass()
+        if(this.shouldUseAmbientOcclusion())
+        {
+            this.effectComposer?.render?.()
+        }
+        else
+        {
+            this.instance.render(this.scene, this.camera.instance)
+        }
         this.fpsGraph?.end?.()
         this.updateRendererStats()
     }
@@ -308,7 +486,10 @@ export default class Renderer
         this.sizes.off(`${EventEnum.RESIZE}.renderer`)
         this.debugBlurFolder?.dispose?.()
         this.debugBloomFolder?.dispose?.()
+        this.debugAmbientOcclusionFolder?.dispose?.()
         this.debugRenderingFolder?.dispose?.()
         this.debugStatsFolder?.dispose?.()
+        this.effectComposer?.dispose?.()
+        this.saoPass?.dispose?.()
     }
 }
