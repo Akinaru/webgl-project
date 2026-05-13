@@ -594,6 +594,11 @@ export default class MapWorld
             return
         }
 
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         for(const zone of this.teleportZones)
         {
             if(!zone?.isActive)
@@ -619,6 +624,11 @@ export default class MapWorld
     teleportToRecuperationAfterIntro()
     {
         if(this.hasTriggeredIntroTeleport)
+        {
+            return
+        }
+
+        if(this.experience?.isAutoFlowEnabled?.() === false)
         {
             return
         }

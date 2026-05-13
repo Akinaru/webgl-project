@@ -359,6 +359,11 @@ export default class SceneRecuperationWorld
             return
         }
 
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         this.hasStartedArrivalDialogue = true
         this.onArrivalDialogueEnd = ({ key } = {}) =>
         {
@@ -380,6 +385,11 @@ export default class SceneRecuperationWorld
             return
         }
 
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         this.hasStartedValidationDialogue = true
         this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY)
     }
@@ -388,6 +398,11 @@ export default class SceneRecuperationWorld
     {
         this.scoring?.markTubePuzzleStart?.()
         this.tubeWaterController?.startFlowAnimation?.()
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         if(!this.hasStartedRecuperationDialogue)
         {
             this.hasStartedRecuperationDialogue = true
@@ -398,6 +413,11 @@ export default class SceneRecuperationWorld
     checkPuzzleCompletionReturn()
     {
         if(this.isReturningToMap || !this.tubeWaterController)
+        {
+            return
+        }
+
+        if(this.experience?.isAutoFlowEnabled?.() === false)
         {
             return
         }
