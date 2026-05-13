@@ -14,6 +14,7 @@ import ActionId from './Actions/ActionId.js'
 import ActionTracker from './Actions/ActionTracker.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
 import ObjectiveManager from './Objectives/ObjectiveManager.js'
+import BadgeManager from './Badges/BadgeManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
@@ -61,6 +62,7 @@ export default class Experience
         this.actionTracker = new ActionTracker()
         this.dialogueManager = new DialogueManager()
         this.objectiveManager = new ObjectiveManager()
+        this.badgeManager = new BadgeManager()
         this.scene = new THREE.Scene()
         this.resources = new Resources(sources, {
             autoStart: false
@@ -183,6 +185,7 @@ export default class Experience
         this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
         this.dialogueManager.destroy?.()
         this.objectiveManager.destroy?.()
+        this.badgeManager.destroy?.()
         this.tutoriel?.destroy?.()
         this.bloom?.destroy?.()
         this.menu?.destroy?.()

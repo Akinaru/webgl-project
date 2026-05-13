@@ -26,6 +26,7 @@ export default class SceneRecyclageWorld
         {
             if(key === SceneRecyclageWorldConstants.RECYCLAGE_ARRIVAL_DIALOGUE_KEY)
             {
+                this.experience.badgeManager?.unlock?.('recyclage_1')
                 this.startInstructionDialogue()
                 return
             }
@@ -140,6 +141,7 @@ export default class SceneRecyclageWorld
             return
         }
 
+        this.experience.badgeManager?.unlock?.('recyclage_2')
         this.hasCompletedScene = true
         this.completeSceneTimeout = window.setTimeout(() =>
         {

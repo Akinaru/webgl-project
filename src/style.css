@@ -1540,8 +1540,283 @@ body.is-dialogue-cursor *
     }
 }
 
+.activity-badges
+{
+    position: fixed;
+    top: 16px;
+    right: 18px;
+    z-index: 23;
+    width: min(92vw, 560px);
+    pointer-events: none;
+}
+
+.activity-badges__track
+{
+    position: absolute;
+    top: 10px;
+    left: -22px;
+    right: 18px;
+    z-index: 0;
+}
+
+.activity-badges__rail
+{
+    position: relative;
+    height: 42px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--glass-panel-background);
+    box-shadow:
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.28),
+        inset 0 0 18px rgba(255, 255, 255, 0.08),
+        0 18px 34px rgba(0, 0, 0, 0.2),
+        0 8px 18px rgba(0, 0, 0, 0.14);
+    backdrop-filter: var(--glass-liquid-filter);
+    -webkit-backdrop-filter: var(--glass-liquid-filter);
+}
+
+.activity-badges__rail::before
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0) 58%);
+    pointer-events: none;
+}
+
+.activity-badges__rail::after
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+        inset 10px 10px 24px rgba(255, 255, 255, 0.06),
+        inset -12px -12px 24px rgba(0, 67, 82, 0.12);
+    pointer-events: none;
+}
+
+.activity-badges__fill
+{
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(90deg, rgba(62, 167, 222, 0.88) 0%, rgba(93, 204, 245, 0.92) 38%, rgba(160, 238, 255, 0.96) 68%, rgba(214, 250, 255, 0.98) 100%);
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+        inset 0 10px 14px rgba(255, 255, 255, 0.18),
+        0 0 24px rgba(96, 213, 255, 0.24);
+    transition: width 420ms ease;
+}
+
+.activity-badges__fill::after
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.12) 28%, rgba(255, 255, 255, 0) 70%);
+}
+
+.activity-badges__list
+{
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: start;
+}
+
+.activity-badges__item
+{
+    display: grid;
+    justify-items: center;
+}
+
+.activity-badges__frame
+{
+    position: relative;
+    width: 58px;
+    height: 66px;
+    display: grid;
+    place-items: center;
+}
+
+.activity-badges__frame::before
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(180deg, rgba(56, 96, 108, 0.46) 0%, rgba(28, 86, 101, 0.42) 24%, rgba(0, 116, 141, 0.28) 100%);
+    mask-image: var(--badge-frame-image);
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: var(--badge-frame-image);
+    -webkit-mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    backdrop-filter: var(--glass-blur-only);
+    -webkit-backdrop-filter: var(--glass-blur-only);
+    filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.18));
+}
+
+.activity-badges__frame::after
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: var(--badge-frame-image);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.55;
+}
+
+.activity-badges__icon
+{
+    position: relative;
+    z-index: 1;
+    width: 31px;
+    height: 31px;
+    object-fit: contain;
+    opacity: 0.45;
+    transform: scale(0.94);
+    border-radius: 999px;
+    padding: 0.18rem;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow:
+        0 0 20px 2.48px rgba(255, 255, 255, 0.8),
+        inset 0 0 44.44px 29.74px rgba(0, 116, 141, 0.2);
+    backdrop-filter: var(--glass-liquid-filter-soft);
+    -webkit-backdrop-filter: var(--glass-liquid-filter-soft);
+    filter:
+        drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))
+        drop-shadow(0 6px 10px rgba(0, 0, 0, 0.2));
+    transition: opacity 240ms ease, transform 240ms ease, filter 240ms ease, box-shadow 240ms ease, background 240ms ease;
+}
+
+.activity-badges__item.is-unlocked .activity-badges__frame::before
+{
+    background:
+        linear-gradient(180deg, rgba(56, 96, 108, 0.82) 0%, rgba(28, 86, 101, 0.74) 24%, rgba(0, 116, 141, 0.6) 100%);
+}
+
+.activity-badges__item.is-unlocked .activity-badges__frame::after
+{
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(104, 223, 255, 0.3));
+}
+
+.activity-badges__item.is-unlocked .activity-badges__icon
+{
+    opacity: 1;
+    transform: scale(1);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 0 20px 2.48px rgba(255, 255, 255, 0.8),
+        inset 0 0 44.44px 29.74px rgba(0, 116, 141, 0.2);
+    filter:
+        drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))
+        drop-shadow(0 8px 12px rgba(0, 0, 0, 0.26))
+        drop-shadow(0 0 10px rgba(173, 239, 255, 0.3));
+}
+
+.activity-badges__notification
+{
+    position: absolute;
+    top: 82px;
+    right: 0;
+    min-width: 220px;
+    max-width: min(84vw, 320px);
+    padding: 0.82rem 1rem;
+    border-radius: 20px;
+    background: var(--glass-panel-background);
+    box-shadow: var(--glass-panel-shadow);
+    backdrop-filter: var(--glass-blur-only);
+    -webkit-backdrop-filter: var(--glass-blur-only);
+    transform: translateY(-10px) scale(0.98);
+    opacity: 0;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.activity-badges__notification.is-visible
+{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.activity-badges__notification.is-hiding
+{
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+}
+
+.activity-badges__notification-title
+{
+    margin: 0 0 0.2rem;
+    color: rgba(172, 234, 255, 0.88);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.activity-badges__notification-text
+{
+    margin: 0;
+    color: rgba(248, 252, 255, 0.98);
+    font-size: 0.92rem;
+    line-height: 1.35;
+}
+
 @media (max-width: 720px)
 {
+    .activity-badges
+    {
+        top: 14px;
+        right: 14px;
+        width: min(94vw, 430px);
+    }
+
+    .activity-badges__track
+    {
+        top: 8px;
+        left: -10px;
+        right: 12px;
+    }
+
+    .activity-badges__list
+    {
+        gap: 0.25rem;
+    }
+
+    .activity-badges__frame
+    {
+        width: 48px;
+        height: 56px;
+    }
+
+    .activity-badges__icon
+    {
+        width: 25px;
+        height: 25px;
+    }
+
+    .activity-badges__notification
+    {
+        top: 70px;
+        min-width: 0;
+        width: min(74vw, 260px);
+    }
+
     .boot__home
     {
         width: min(94vw, 500px);

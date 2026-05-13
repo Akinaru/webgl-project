@@ -171,6 +171,7 @@ export default class SceneDistributionWorld
         }
 
         this.hasStartedResultSequence = true
+        this.experience.badgeManager?.unlock?.('distribution')
         this.experience.dialogueManager?.startByKey?.('resultat')
     }
 

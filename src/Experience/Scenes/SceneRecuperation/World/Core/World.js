@@ -367,6 +367,7 @@ export default class SceneRecuperationWorld
         }
 
         this.isMaterialChoiceValidated = true
+        this.experience.badgeManager?.unlock?.('materiau')
         this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
         this.startValidationDialogue()
@@ -458,6 +459,7 @@ export default class SceneRecuperationWorld
             return
         }
 
+        this.experience.badgeManager?.unlock?.('tuyaux')
         this.scoring?.finalize?.()
         this.isReturningToMap = true
         this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
