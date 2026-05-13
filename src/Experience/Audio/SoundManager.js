@@ -79,6 +79,11 @@ export default class SoundManager
         return this.play('menuClick', options)
     }
 
+    playMenuHover(options = {})
+    {
+        return this.play('menuHover', options)
+    }
+
     playPauseOpen(options = {})
     {
         return this.play('pauseOpen', options)

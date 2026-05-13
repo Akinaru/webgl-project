@@ -8,6 +8,15 @@
     "channel": "ui",
     "audioType": "sfx"
   },
+  "menuHover": {
+    "label": "Menu hover",
+    "resourceKey": "menuHoverSound",
+    "fallbackPath": "sounds/ui/menu-hover.mp3",
+    "volume": 0.22,
+    "playbackRate": 1,
+    "channel": "ui",
+    "audioType": "sfx"
+  },
   "pauseMusicPreview": {
     "label": "Pause music preview",
     "resourceKey": "menuClickSound",

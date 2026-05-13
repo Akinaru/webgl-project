@@ -46,6 +46,7 @@ export default class Menu
         this.bootLogoClock = new THREE.Clock()
         this.debugMenuFolder = null
         this.debugBootLogoFolder = null
+        this.hoverableButtons = []
         this.bootLogoSettings = {
             viewerWidth: 680,
             viewerHeight: 295,
@@ -121,6 +122,18 @@ export default class Menu
                 this.experience?.sound?.unlock?.()
             }
         }
+
+        this.handleButtonHover = (event) =>
+        {
+            const button = event?.currentTarget
+            if(!(button instanceof HTMLButtonElement) || button.disabled)
+            {
+                return
+            }
+
+            this.experience?.sound?.unlock?.()
+            this.experience?.sound?.playMenuHover?.()
+        }
     }
 
     start()
@@ -152,7 +165,32 @@ export default class Menu
     {
         this.btnStartExperience.addEventListener('click', this.handleStartExperience)
         this.bootAudioToggle.addEventListener('change', this.handleBootAudioToggleChange)
+        this.bindHoverSounds()
         window.addEventListener('resize', this.handleWindowResize)
+    }
+
+    bindHoverSounds()
+    {
+        this.hoverableButtons = [
+            this.btnStartExperience
+        ].filter((element) => element instanceof HTMLButtonElement)
+
+        for(const button of this.hoverableButtons)
+        {
+            button.addEventListener('mouseenter', this.handleButtonHover)
+            button.addEventListener('focus', this.handleButtonHover)
+        }
+    }
+
+    unbindHoverSounds()
+    {
+        for(const button of this.hoverableButtons)
+        {
+            button.removeEventListener('mouseenter', this.handleButtonHover)
+            button.removeEventListener('focus', this.handleButtonHover)
+        }
+
+        this.hoverableButtons = []
     }
 
     resolveStart(payload)
@@ -760,6 +798,7 @@ export default class Menu
 
         this.pauseMenu?.destroy?.()
 
+        this.unbindHoverSounds()
         this.btnStartExperience?.removeEventListener('click', this.handleStartExperience)
         this.bootAudioToggle?.removeEventListener('change', this.handleBootAudioToggleChange)
         window.removeEventListener('resize', this.handleWindowResize)
