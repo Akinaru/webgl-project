@@ -156,8 +156,9 @@ export default class MapWorld
             groundHeight: 0,
             boundaryRadius: 120,
             boundaryBox: mapBoundary,
-            collisionBoxes: [],
-            collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
+            collisionBoxes: this.mapModel.getCollisionBoxes?.() ?? [],
+            useMeshCollisionRaycast: false,
+            collisionMeshes: this.mapModel.getGroundMeshes?.() ?? [],
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
             spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION,
             spawnYaw: MapWorldConstants.MAP_SPAWN_YAW
