@@ -17,7 +17,7 @@ import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
 import Tutoriel from './Utils/Tutoriel.js'
-import Bloom from './Common/Bloom.js'
+import Bloom from './Common/Characters/Bloom.js'
 
 let instance = null
 const DEBUG_TUTORIAL_FOLDER_TITLE = '🎓 Tutoriel'

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
-import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
-import { recuperationWaterVisibleGradientShaderChunks } from './Shaders/Water/visibleGradientShaderChunks.js'
+import Experience from '../../../../Experience.js'
+import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
+import { recuperationWaterVisibleGradientShaderChunks } from '../Shaders/Water/visibleGradientShaderChunks.js'
 import * as SceneRecuperationWaterConstants from './Water.constants.js'
 
 export default class SceneRecuperationWater

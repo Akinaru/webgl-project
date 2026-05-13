@@ -1,6 +1,6 @@
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
-import Player from '../../../Common/Player.js'
+import Player from '../../../Common/Characters/Player.js'
 import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import MapLight from '../../Map/World/MapLight.js'
 import SceneDistributionModel from './Model.js'

@@ -1,9 +1,9 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
+import Experience from '../../../../Experience.js'
 import * as SceneRecuperationCascadeTubesConstants from './CascadeTubes.constants.js'
-import { applyStandardMaterialPatch } from '../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
-import { cascadeTubeShaderChunks } from './Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
-import { cascadeSlopeShaderChunks } from './Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
+import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
+import { cascadeTubeShaderChunks } from '../Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
+import { cascadeSlopeShaderChunks } from '../Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
 export default class SceneRecuperationCascadeTubes
 {
     constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null } = {})

@@ -1,0 +1,9 @@
+export const BLOOM_FACING_OFFSET_RADIANS = -2.76 + Math.PI
+export const BLOOM_UV_ZOOM = 1.14
+export const ARM_MESH_NAME_TOKEN = 'bras'
+export const BLOOM_MOVEMENT_FACING_MIN_STEP = 0.01
+export const BLOOM_FACE_PLAYER_MIN_DISTANCE = 0.35
+export const BLOOM_REFLECTION_MASK_UNIFORM_NAME = 'bloomReflectionMaskMap'
+export const BLOOM_REFLECTION_MASK_FACTOR_UNIFORM_NAME = 'bloomReflectionMaskFactor'
+export const BLOOM_REFLECTION_MASK_SHADER_KEY = 'bloom.reflection.mask.v1'
+export const BLOOM_REFLECTION_MASK_SHADER_ANCHOR = '#include <aomap_fragment>'

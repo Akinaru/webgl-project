@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import Experience from '../../../Experience.js'
-import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
+import Experience from '../../../../Experience.js'
+import CenterScreenRaycaster from '../../../../Utils/CenterScreenRaycaster.js'
 import * as MateriauConstants from './Materiau.constants.js'
 
 export default class Materiau

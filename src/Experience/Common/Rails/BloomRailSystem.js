@@ -3,6 +3,9 @@ import * as BloomRailSystemConstants from './BloomRailSystem.constants.js'
 
 export default class BloomRailSystem
 {
+    /**
+     * Initialise le système de rails et ses structures runtime.
+     */
     constructor({
         scene = null,
         rails = [],
@@ -48,6 +51,9 @@ export default class BloomRailSystem
         this.setHelpersVisible(this.settings.showHelpers)
     }
 
+    /**
+     * Charge un nouveau graphe de rails puis reconstruit les index runtime.
+     */
     setRails(rawRails = [])
     {
         this.graph = BloomRailSystemConstants.sanitizeGraph(rawRails)
@@ -58,11 +64,17 @@ export default class BloomRailSystem
         this.lastInsertedNodeId = firstNode ? firstNode.id : null
     }
 
+    /**
+     * Indique si des segments de rails exploitables sont disponibles.
+     */
     hasRails()
     {
         return this.edgeSegments.length > 0
     }
 
+    /**
+     * Reconstruit les maps d accès rapide (noeuds, adjacence, segments).
+     */
     rebuildRuntimeData()
     {
         this.nodesById = new Map()
@@ -104,6 +116,9 @@ export default class BloomRailSystem
         }
     }
 
+    /**
+     * Description du rôle de moveAnchorTowards.
+     */
     moveAnchorTowards(anchor, targetPosition, deltaSeconds)
     {
         if(!(anchor instanceof THREE.Vector3) || !(targetPosition instanceof THREE.Vector3) || !this.hasRails())
@@ -152,6 +167,9 @@ export default class BloomRailSystem
         return anchor.distanceToSquared(before) > BloomRailSystemConstants.EPSILON
     }
 
+    /**
+     * Description du rôle de buildBestRoute.
+     */
     buildBestRoute(anchor, targetPosition)
     {
         const anchorProjection = this.getClosestProjection(anchor)
@@ -208,6 +226,9 @@ export default class BloomRailSystem
         return route
     }
 
+    /**
+     * Description du rôle de buildTemporaryAdjacency.
+     */
     buildTemporaryAdjacency({
         startId,
         targetId,
@@ -267,6 +288,9 @@ export default class BloomRailSystem
         return temp
     }
 
+    /**
+     * Description du rôle de computeShortestPaths.
+     */
     computeShortestPaths(startId, adjacency = this.adjacency)
     {
         const distances = new Map()
@@ -326,6 +350,9 @@ export default class BloomRailSystem
         return { distances, previous }
     }
 
+    /**
+     * Description du rôle de reconstructPath.
+     */
     reconstructPath(previous, startId, targetId)
     {
         if(startId === targetId)
@@ -352,6 +379,9 @@ export default class BloomRailSystem
         return result
     }
 
+    /**
+     * Description du rôle de getClosestProjection.
+     */
     getClosestProjection(position)
     {
         if(!(position instanceof THREE.Vector3) || this.edgeSegments.length === 0)
@@ -391,6 +421,9 @@ export default class BloomRailSystem
         return best
     }
 
+    /**
+     * Description du rôle de projectPointOnSegmentXZ.
+     */
     projectPointOnSegmentXZ(position, start, end)
     {
         const abX = end.x - start.x
@@ -413,6 +446,9 @@ export default class BloomRailSystem
         }
     }
 
+    /**
+     * Description du rôle de addNode.
+     */
     addNode(point, { connectTo = null } = {})
     {
         const vector = toVector3(point)
@@ -434,6 +470,9 @@ export default class BloomRailSystem
         return nodeId
     }
 
+    /**
+     * Description du rôle de connectNodes.
+     */
     connectNodes(a, b)
     {
         if(!a || !b || a === b || !this.nodesById.has(a) || !this.nodesById.has(b))
@@ -455,6 +494,9 @@ export default class BloomRailSystem
         return true
     }
 
+    /**
+     * Description du rôle de appendPoint.
+     */
     appendPoint(point)
     {
         if(this.graph.nodes.length === 0)
@@ -473,6 +515,9 @@ export default class BloomRailSystem
         return true
     }
 
+    /**
+     * Description du rôle de startNewRail.
+     */
     startNewRail(point = null)
     {
         if(point)
@@ -484,11 +529,17 @@ export default class BloomRailSystem
         this.lastInsertedNodeId = null
     }
 
+    /**
+     * Efface tout le graphe de rails.
+     */
     clearRails()
     {
         this.setRails({ nodes: [], edges: [] })
     }
 
+    /**
+     * Description du rôle de getNodePosition.
+     */
     getNodePosition(nodeId)
     {
         if(typeof nodeId !== 'string' || nodeId.trim() === '')
@@ -500,6 +551,9 @@ export default class BloomRailSystem
         return position ? position.clone() : null
     }
 
+    /**
+     * Description du rôle de toSerializableRails.
+     */
     toSerializableRails({ decimals = 3 } = {})
     {
         const factor = Math.pow(10, Math.max(0, Math.floor(decimals)))
@@ -516,6 +570,9 @@ export default class BloomRailSystem
         }
     }
 
+    /**
+     * Affiche la structure rails au format exploitable dans la console.
+     */
     logRailsToConsole()
     {
         const content = JSON.stringify(this.toSerializableRails(), null, 4)
@@ -523,12 +580,18 @@ export default class BloomRailSystem
         return content
     }
 
+    /**
+     * Affiche ou masque les helpers visuels de debug des rails.
+     */
     setHelpersVisible(visible)
     {
         this.settings.showHelpers = Boolean(visible)
         this.helperGroup.visible = this.settings.showHelpers
     }
 
+    /**
+     * Description du rôle de setScene.
+     */
     setScene(newScene)
     {
         if(this.scene)
@@ -544,6 +607,9 @@ export default class BloomRailSystem
         }
     }
 
+    /**
+     * Reconstruit les meshes debug des rails (points et lignes).
+     */
     rebuildHelpers()
     {
         for(const line of this.helperLines)
@@ -583,6 +649,9 @@ export default class BloomRailSystem
         }
     }
 
+    /**
+     * Nettoie les helpers et structures du système de rails.
+     */
     destroy()
     {
         for(const line of this.helperLines)

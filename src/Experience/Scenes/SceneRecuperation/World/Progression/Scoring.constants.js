@@ -1,4 +1,4 @@
-import MetierEnum from '../../../Enum/MetierEnum.js'
+import MetierEnum from '../../../../Enum/MetierEnum.js'
 
 export const RECUPERATION_SIMULATION_INVENTEUR_THRESHOLD = 2
 

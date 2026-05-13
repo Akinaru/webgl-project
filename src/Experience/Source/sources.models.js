@@ -1,8 +1,10 @@
+const BLOOM_MODEL_CACHE_BUSTER = 'anim-fix-2026-05-12'
+
 export default [
     {
         name: 'bloomModel',
         type: 'gltfModel',
-        path: 'models/bloom/model/Bloom.gltf'
+        path: `models/bloom/model/Bloom.gltf?v=${BLOOM_MODEL_CACHE_BUSTER}`
     },
     {
         name: 'mapModel',

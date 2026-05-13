@@ -1,4 +1,4 @@
-import Experience from '../../../Experience.js'
+import Experience from '../../../../Experience.js'
 import * as SceneRecuperationScoringConstants from './Scoring.constants.js'
 function isValueInRange(value, range)
 {
