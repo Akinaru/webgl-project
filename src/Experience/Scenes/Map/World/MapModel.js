@@ -23,6 +23,9 @@ export default class MapModel
         this.instancePlacementDebugState = {
             offsetYBuildings: MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT
         }
+        this.instanceVisibilityDebugState = {}
+        this.instanceVisibilityDebugBindings = new Set()
+        this.instancePlacementMarkerGroups = {}
         this.planVisible = false
         this.terrainWaterlineSettings = {
             minY: 1.20,
@@ -318,24 +321,14 @@ export default class MapModel
         for(const config of MapModelConstants.REPEATABLE_INSTANCE_CONFIGS)
         {
             this.setupRepeatableInstanceGroup(config)
-
-            if(typeof config?.collisionMasterName === 'string' && config.collisionMasterName.trim() !== '')
-            {
-                this.setupRepeatableInstanceGroup({
-                    ...config,
-                    key: `${config.key}_collision`,
-                    masterName: config.collisionMasterName,
-                    forceCollisionProxyInstances: true
-                })
-            }
         }
     }
 
     setupRepeatableInstanceGroup({
         key,
         masterName,
-        placementPattern,
-        forceCollisionProxyInstances = false
+        debugMasterName = null,
+        placementPattern
     } = {})
     {
         const masterRoot = this.findFirstObjectByName(masterName)
@@ -383,14 +376,6 @@ export default class MapModel
             if(String(key).startsWith('build_'))
             {
                 instanced.userData[MapModelConstants.USER_DATA_BUILDING_INSTANCE] = true
-                const shouldUseAsCollisionProxy = forceCollisionProxyInstances || this.isCollisionProxyMesh(child)
-                if(shouldUseAsCollisionProxy)
-                {
-                    instanced.userData[MapModelConstants.USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] = true
-                    instanced.visible = false
-                    instanced.castShadow = false
-                    instanced.receiveShadow = false
-                }
             }
             instancedEntries.push({
                 instanced,
@@ -422,11 +407,26 @@ export default class MapModel
         this.repeatableInstanceGroups.push({
             key,
             masterRoot,
+            debugMasterRoot: this.findFirstObjectByName(debugMasterName),
             placements: placements.slice(),
             instancedEntries
         })
 
-        masterRoot.visible = false
+        const currentGroup = this.repeatableInstanceGroups[this.repeatableInstanceGroups.length - 1]
+        if(currentGroup?.debugMasterRoot)
+        {
+            currentGroup.debugMasterRoot.traverse((child) =>
+            {
+                if(child instanceof THREE.Object3D)
+                {
+                    child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
+                }
+            })
+        }
+
+        const shouldKeepMasterVisible = ['build_tour_master', 'build_feuille_master1']
+            .includes(String(masterName || '').trim().toLowerCase())
+        masterRoot.visible = shouldKeepMasterVisible
         masterRoot.traverse((child) =>
         {
             child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
@@ -437,6 +437,226 @@ export default class MapModel
             placement.visible = false
             placement.userData[MapModelConstants.USER_DATA_REPEATABLE_PLACEMENT] = true
             placement.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
+        }
+
+        this.applyRepeatableInstanceDebugVisibility()
+    }
+
+    getRepeatableInstanceDebugKey(key = '')
+    {
+        return String(key || '').replace(/_collision$/i, '')
+    }
+
+    ensureRepeatableInstanceDebugDefaults()
+    {
+        for(const group of this.repeatableInstanceGroups)
+        {
+            const debugKey = this.getRepeatableInstanceDebugKey(group?.key)
+            if(!debugKey)
+            {
+                continue
+            }
+
+            const instanceToggleKey = `showInstances_${debugKey}`
+            const masterToggleKey = `showMaster_${debugKey}`
+            const markerToggleKey = `showNulMarkers_${debugKey}`
+
+            if(typeof this.instanceVisibilityDebugState[instanceToggleKey] !== 'boolean')
+            {
+                this.instanceVisibilityDebugState[instanceToggleKey] = true
+            }
+
+            if(typeof this.instanceVisibilityDebugState[masterToggleKey] !== 'boolean')
+            {
+                this.instanceVisibilityDebugState[masterToggleKey] = false
+            }
+
+            if(typeof this.instanceVisibilityDebugState[markerToggleKey] !== 'boolean')
+            {
+                this.instanceVisibilityDebugState[markerToggleKey] = false
+            }
+        }
+    }
+
+    getPlacementMarkerColor(debugKey = '')
+    {
+        const normalized = String(debugKey || '').toLowerCase()
+        if(normalized.includes('feuille'))
+        {
+            return '#3ccf6f'
+        }
+
+        if(normalized.includes('tour'))
+        {
+            return '#3a86ff'
+        }
+
+        return '#ffffff'
+    }
+
+    ensurePlacementMarkerGroup(group, debugKey)
+    {
+        if(!group || !this.model || !debugKey)
+        {
+            return null
+        }
+
+        const existingGroup = this.instancePlacementMarkerGroups[debugKey]
+        if(existingGroup)
+        {
+            return existingGroup
+        }
+
+        const markerGroup = new THREE.Group()
+        markerGroup.name = `__debugNulMarkers_${debugKey}`
+        markerGroup.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
+
+        const markerGeometry = new THREE.BoxGeometry(0.3, 0.3, 0.3)
+        const markerMaterial = new THREE.MeshBasicMaterial({
+            color: this.getPlacementMarkerColor(debugKey),
+            transparent: true,
+            opacity: 0.85,
+            depthWrite: false
+        })
+
+        const worldPosition = new THREE.Vector3()
+        const placements = group?.placements ?? []
+        for(const placement of placements)
+        {
+            if(!(placement instanceof THREE.Object3D))
+            {
+                continue
+            }
+
+            placement.getWorldPosition(worldPosition)
+            const marker = new THREE.Mesh(markerGeometry, markerMaterial)
+            marker.position.copy(worldPosition)
+            marker.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
+            markerGroup.add(marker)
+        }
+
+        this.model.add(markerGroup)
+        this.instancePlacementMarkerGroups[debugKey] = markerGroup
+        return markerGroup
+    }
+
+    applyRepeatableInstanceDebugVisibility()
+    {
+        if(!Array.isArray(this.repeatableInstanceGroups) || this.repeatableInstanceGroups.length === 0)
+        {
+            return
+        }
+
+        this.ensureRepeatableInstanceDebugDefaults()
+
+        for(const group of this.repeatableInstanceGroups)
+        {
+            const debugKey = this.getRepeatableInstanceDebugKey(group?.key)
+            if(!debugKey)
+            {
+                continue
+            }
+
+            const showInstances = this.instanceVisibilityDebugState[`showInstances_${debugKey}`] !== false
+            const showMaster = this.instanceVisibilityDebugState[`showMaster_${debugKey}`] === true
+            const showMarkers = this.instanceVisibilityDebugState[`showNulMarkers_${debugKey}`] === true
+            const instancedEntries = group?.instancedEntries ?? []
+
+            for(const { instanced } of instancedEntries)
+            {
+                if(instanced instanceof THREE.InstancedMesh)
+                {
+                    instanced.visible = showInstances
+                }
+            }
+
+            const masterVisibilityRoot = group?.debugMasterRoot ?? group?.masterRoot
+            if(masterVisibilityRoot)
+            {
+                masterVisibilityRoot.visible = showMaster
+                masterVisibilityRoot.traverse((child) =>
+                {
+                    if(child instanceof THREE.Object3D)
+                    {
+                        child.visible = showMaster
+                    }
+                })
+            }
+
+            const markerGroup = this.ensurePlacementMarkerGroup(group, debugKey)
+            if(markerGroup)
+            {
+                markerGroup.visible = showMarkers
+            }
+        }
+
+        this.buildCollisionBoxes()
+    }
+
+    isObjectVisibleInHierarchy(object)
+    {
+        let current = object
+        while(current)
+        {
+            if(current.visible === false)
+            {
+                return false
+            }
+            current = current.parent
+        }
+        return true
+    }
+
+    registerRepeatableInstanceDebugBindings()
+    {
+        if(!this.debugFolder)
+        {
+            return
+        }
+
+        this.ensureRepeatableInstanceDebugDefaults()
+
+        for(const group of this.repeatableInstanceGroups)
+        {
+            const debugKey = this.getRepeatableInstanceDebugKey(group?.key)
+            if(!debugKey)
+            {
+                continue
+            }
+
+            const instanceToggleKey = `showInstances_${debugKey}`
+            const masterToggleKey = `showMaster_${debugKey}`
+            const markerToggleKey = `showNulMarkers_${debugKey}`
+            const groupLabel = debugKey.replace(/^build_/i, '').replace(/_/g, ' ')
+            const bindingId = `${instanceToggleKey}__${masterToggleKey}`
+
+            if(this.instanceVisibilityDebugBindings.has(bindingId))
+            {
+                continue
+            }
+
+            this.instanceVisibilityDebugBindings.add(bindingId)
+
+            this.debug.addBinding(this.debugFolder, this.instanceVisibilityDebugState, instanceToggleKey, {
+                label: `${groupLabel} instances`
+            }).on('change', () =>
+            {
+                this.applyRepeatableInstanceDebugVisibility()
+            })
+
+            this.debug.addBinding(this.debugFolder, this.instanceVisibilityDebugState, masterToggleKey, {
+                label: `${groupLabel} master`
+            }).on('change', () =>
+            {
+                this.applyRepeatableInstanceDebugVisibility()
+            })
+
+            this.debug.addBinding(this.debugFolder, this.instanceVisibilityDebugState, markerToggleKey, {
+                label: `${groupLabel} nul markers`
+            }).on('change', () =>
+            {
+                this.applyRepeatableInstanceDebugVisibility()
+            })
         }
     }
 
@@ -580,6 +800,9 @@ export default class MapModel
         {
             this.refreshRepeatableInstanceGroups()
         })
+
+        this.registerRepeatableInstanceDebugBindings()
+        this.applyRepeatableInstanceDebugVisibility()
     }
 
     computeObjectRootMinY(root)
@@ -1917,8 +2140,19 @@ export default class MapModel
 
     buildCollisionBoxes()
     {
-        this.collisionBoxes = []
+        if(!Array.isArray(this.collisionBoxes))
+        {
+            this.collisionBoxes = []
+        }
+        else
+        {
+            this.collisionBoxes.length = 0
+        }
         const localBounds = new THREE.Box3()
+        const localSliceBounds = new THREE.Box3()
+        const localSliceMin = new THREE.Vector3()
+        const localSliceMax = new THREE.Vector3()
+        const localSize = new THREE.Vector3()
         const worldBounds = new THREE.Box3()
         const instanceMatrix = new THREE.Matrix4()
         const instanceWorldMatrix = new THREE.Matrix4()
@@ -1926,6 +2160,11 @@ export default class MapModel
         this.model.traverse((child) =>
         {
             if(!(child instanceof THREE.Mesh) || !child.geometry)
+            {
+                return
+            }
+
+            if(!this.isObjectVisibleInHierarchy(child))
             {
                 return
             }
@@ -1961,6 +2200,68 @@ export default class MapModel
                 {
                     child.getMatrixAt(instanceIndex, instanceMatrix)
                     instanceWorldMatrix.copy(child.matrixWorld).multiply(instanceMatrix)
+                    if(child?.userData?.[MapModelConstants.USER_DATA_BUILDING_INSTANCE] === true)
+                    {
+                        localSize.copy(localBounds.max).sub(localBounds.min)
+                        const inset = Math.max(0, MapModelConstants.BUILDING_INSTANCE_COLLISION_INSET_XZ)
+                        const maxInsetX = Math.max(0, (localSize.x * 0.5) - 0.02)
+                        const maxInsetZ = Math.max(0, (localSize.z * 0.5) - 0.02)
+                        const insetX = Math.min(inset, maxInsetX)
+                        const insetZ = Math.min(inset, maxInsetZ)
+
+                        const minX = localBounds.min.x + insetX
+                        const maxX = localBounds.max.x - insetX
+                        const minZ = localBounds.min.z + insetZ
+                        const maxZ = localBounds.max.z - insetZ
+
+                        if(minX >= maxX || minZ >= maxZ)
+                        {
+                            worldBounds.copy(localBounds).applyMatrix4(instanceWorldMatrix)
+                            this.collisionBoxes.push(worldBounds.clone())
+                            continue
+                        }
+
+                        const sliceCount = Math.max(1, MapModelConstants.BUILDING_INSTANCE_COLLISION_SLICE_COUNT | 0)
+                        const splitAlongX = (maxX - minX) >= (maxZ - minZ)
+                        for(let sliceIndex = 0; sliceIndex < sliceCount; sliceIndex++)
+                        {
+                            const sliceStart = sliceIndex / sliceCount
+                            const sliceEnd = (sliceIndex + 1) / sliceCount
+
+                            if(splitAlongX)
+                            {
+                                localSliceMin.set(
+                                    minX + ((maxX - minX) * sliceStart),
+                                    localBounds.min.y,
+                                    minZ
+                                )
+                                localSliceMax.set(
+                                    minX + ((maxX - minX) * sliceEnd),
+                                    localBounds.max.y,
+                                    maxZ
+                                )
+                            }
+                            else
+                            {
+                                localSliceMin.set(
+                                    minX,
+                                    localBounds.min.y,
+                                    minZ + ((maxZ - minZ) * sliceStart)
+                                )
+                                localSliceMax.set(
+                                    maxX,
+                                    localBounds.max.y,
+                                    minZ + ((maxZ - minZ) * sliceEnd)
+                                )
+                            }
+
+                            localSliceBounds.set(localSliceMin, localSliceMax)
+                            worldBounds.copy(localSliceBounds).applyMatrix4(instanceWorldMatrix)
+                            this.collisionBoxes.push(worldBounds.clone())
+                        }
+                        continue
+                    }
+
                     worldBounds.copy(localBounds).applyMatrix4(instanceWorldMatrix)
                     this.collisionBoxes.push(worldBounds.clone())
                 }
@@ -1980,19 +2281,19 @@ export default class MapModel
 
     shouldUseForCollision(mesh)
     {
-        if(this.isCollisionProxyMesh(mesh))
-        {
-            return true
-        }
-
         if(mesh?.userData?.[MapModelConstants.USER_DATA_EXCLUDE_COLLISION])
         {
             return false
         }
 
+        if(this.isCollisionProxyMesh(mesh))
+        {
+            return true
+        }
+
         if(mesh?.userData?.[MapModelConstants.USER_DATA_BUILDING_INSTANCE] === true)
         {
-            return mesh?.userData?.[MapModelConstants.USER_DATA_BUILDING_COLLISION_PROXY_INSTANCE] === true
+            return true
         }
 
         if(this.isPlanMesh(mesh))
@@ -2651,6 +2952,29 @@ export default class MapModel
         this.runtimeMaterials = null
         this.repeatableInstanceGroups = null
         this.instancePlacementDebugState = null
+        this.instanceVisibilityDebugState = null
+        this.instanceVisibilityDebugBindings = null
+        if(this.instancePlacementMarkerGroups && typeof this.instancePlacementMarkerGroups === 'object')
+        {
+            for(const markerGroup of Object.values(this.instancePlacementMarkerGroups))
+            {
+                if(!(markerGroup instanceof THREE.Group))
+                {
+                    continue
+                }
+
+                this.model?.remove?.(markerGroup)
+                markerGroup.traverse((child) =>
+                {
+                    if(child instanceof THREE.Mesh)
+                    {
+                        child.geometry?.dispose?.()
+                        child.material?.dispose?.()
+                    }
+                })
+            }
+        }
+        this.instancePlacementMarkerGroups = null
         this.debug = null
     }
 }
