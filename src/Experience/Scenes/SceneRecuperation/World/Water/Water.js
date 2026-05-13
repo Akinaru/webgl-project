@@ -129,6 +129,8 @@ export default class SceneRecuperationWater
         this.waterDistributionTexture.rotation = 0
         this.waterDistributionTexture.needsUpdate = true
 
+        // On conserve le material standard du GLTF et on le clone mesh par mesh.
+        // Le rendu d'eau est injecte ensuite via onBeforeCompile.
         for(const mesh of this.waterMeshes)
         {
             if(!(mesh instanceof THREE.Mesh))
@@ -174,6 +176,8 @@ export default class SceneRecuperationWater
         material.side = THREE.DoubleSide
         material.userData = material.userData || {}
         material.userData.isRecuperationVisibleGradientMaterial = true
+        // Les uniforms sont stockes dans userData pour rester pilotables par le runtime
+        // et synchronises ensuite avec le shader compile.
         material.userData.recuperationVisibleGradientUniforms = {
             waterMask: { value: this.waterDistributionTexture },
             baseColor: { value: this.baseColor.clone() },
@@ -216,6 +220,7 @@ export default class SceneRecuperationWater
             shader.uniforms.uRecuperationWaterBandAngle = uniforms.bandAngle
             shader.uniforms.uRecuperationWaterEdgeContrast = uniforms.edgeContrast
 
+            // Injection des morceaux GLSL dans le pipeline standard Three.js.
             applyStandardMaterialPatch(shader, recuperationWaterVisibleGradientShaderChunks)
         }
         material.customProgramCacheKey = () =>
@@ -397,6 +402,8 @@ export default class SceneRecuperationWater
                 continue
             }
 
+            // Chaque material clone garde sa propre copie d'uniforms.
+            // Cette methode recopie l'etat courant du systeme dans toutes ces copies.
             uniforms.baseColor.value.copy(this.baseColor)
             uniforms.deepFoamColor.value.copy(this.deepFoamColor)
             uniforms.surfaceFoamColor.value.copy(this.surfaceFoamColor)

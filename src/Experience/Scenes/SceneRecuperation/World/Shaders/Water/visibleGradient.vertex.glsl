@@ -8,4 +8,5 @@ varying vec3 vRecuperationWaterWorldPosition;
 vec4 recuperationWaterWorldPosition = modelMatrix * vec4(transformed, 1.0);
 #include <project_vertex>
 vRecuperationWaterUv = uv;
+// La position monde sert a stabiliser le motif entre plusieurs plans d'eau distincts.
 vRecuperationWaterWorldPosition = recuperationWaterWorldPosition.xyz;

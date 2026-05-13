@@ -401,7 +401,7 @@ export default class SceneRecuperationWorld
 
         this.scoring?.finalize?.()
         this.isReturningToMap = true
-        this.experience.sceneManager?.switchTo?.(SceneEnum.DISTRIBUTION)
+        this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
     }
 
     setWallCrossTeleport()
