@@ -122,6 +122,27 @@
     "channel": "valveTurning",
     "audioType": "sfx"
   },
+  "changeMateriau": {
+    "label": "Change materiau",
+    "resourceKey": "",
+    "fallbackPath": "sounds/effects/recuperation/change_materiau.mp3",
+    "volume": 0.34,
+    "playbackRate": 1,
+    "channel": "sfx",
+    "audioType": "sfx"
+  },
+  "recuperationTestWaterFalling": {
+    "label": "Recuperation test water falling",
+    "resourceKey": "",
+    "fallbackPath": "sounds/effects/recuperation/eau_tombe_test.mp3",
+    "volume": 0.16,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1500,
+    "fadeOutMs": 1100,
+    "channel": "recuperationTestWater",
+    "audioType": "sfx"
+  },
   "recuperationAmbientWaves": {
     "label": "Recuperation ambient waves",
     "resourceKey": "recuperationAmbientWavesSound",

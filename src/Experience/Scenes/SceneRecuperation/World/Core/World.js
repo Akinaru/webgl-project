@@ -23,6 +23,8 @@ let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
 const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
 const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_2'
+const RECUPERATION_TEST_WATER_SOUND = 'recuperationTestWaterFalling'
+const RECUPERATION_TEST_WATER_CHANNEL = 'recuperationTestWater'
 
 export default class SceneRecuperationWorld
 {
@@ -96,7 +98,8 @@ export default class SceneRecuperationWorld
         })
         this.television.setButtonsUnlocked(false)
         this.showerParticles = new ShowerParticles({
-            recuperationModel: this.recuperationModel
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.waterDebugFolder
         })
 
         this.player = new Player({
@@ -260,6 +263,10 @@ export default class SceneRecuperationWorld
         this.door?.setOpen?.(false)
         this.television?.setTestingState?.(true)
         this.showerParticles?.start?.(this.testDurationSeconds)
+        this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, {
+            force: true,
+            volume: 1
+        })
     }
 
     stopMaterialTest()
@@ -267,6 +274,7 @@ export default class SceneRecuperationWorld
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
         this.showerParticles?.stop?.()
+        this.experience.sound?.stopChannel?.(RECUPERATION_TEST_WATER_CHANNEL)
         this.television?.setTestingState?.(false)
     }
 
@@ -286,6 +294,7 @@ export default class SceneRecuperationWorld
 
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
+        this.experience.sound?.stopChannel?.(RECUPERATION_TEST_WATER_CHANNEL)
         const result = this.buildMaterialTestResult(this.currentMaterialSelection)
         this.scoring?.markMaterialTest?.(this.currentMaterialSelection?.key ?? null)
         this.television?.setTestResult?.(result)

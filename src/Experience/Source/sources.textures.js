@@ -43,5 +43,10 @@ export default [
         name: 'recuperationValidationButtonTexture',
         type: 'texture',
         path: 'textures/recuperation/ButtonValidation.webp'
+    },
+    {
+        name: 'recuperationWaitingScreenTexture',
+        type: 'texture',
+        path: 'textures/recuperation/screen/waiting.png'
     }
 ]

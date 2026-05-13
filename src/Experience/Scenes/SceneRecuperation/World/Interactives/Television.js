@@ -30,6 +30,7 @@ export default class Television
         this.screenMode = 'idle'
         this.buttonStates = new Map()
         this.areButtonsUnlocked = false
+        this.usesStaticScreenTexture = false
         this.settings = {
             screenScaleX: 1.08,
             screenScaleY: 1.08
@@ -50,6 +51,21 @@ export default class Television
 
     setCanvas()
     {
+        const waitingTexture = this.resources?.items?.recuperationWaitingScreenTexture ?? null
+        if(waitingTexture instanceof THREE.Texture)
+        {
+            this.texture = waitingTexture
+            this.texture.colorSpace = THREE.SRGBColorSpace
+            this.texture.flipY = false
+            this.texture.minFilter = THREE.LinearFilter
+            this.texture.magFilter = THREE.LinearFilter
+            this.texture.wrapS = THREE.ClampToEdgeWrapping
+            this.texture.wrapT = THREE.ClampToEdgeWrapping
+            this.usesStaticScreenTexture = true
+            this.applyTextureTransform()
+            return
+        }
+
         this.canvas = document.createElement('canvas')
         this.canvas.width = TelevisionConstants.CANVAS_WIDTH
         this.canvas.height = TelevisionConstants.CANVAS_HEIGHT
@@ -73,11 +89,42 @@ export default class Television
         const scaleX = this.settings.screenScaleX
         const scaleY = this.settings.screenScaleY
 
-        this.texture.repeat.set(scaleX, -scaleY)
-        this.texture.offset.set(
-            (1 - scaleX) * 0.5,
-            (1 + scaleY) * 0.5
-        )
+        if(this.usesStaticScreenTexture)
+        {
+            const sourceWidth = this.texture?.image?.width || this.texture?.source?.data?.width || TelevisionConstants.CANVAS_WIDTH
+            const sourceHeight = this.texture?.image?.height || this.texture?.source?.data?.height || TelevisionConstants.CANVAS_HEIGHT
+            const sourceAspect = sourceWidth / Math.max(1, sourceHeight)
+            const targetAspect = TelevisionConstants.CANVAS_WIDTH / TelevisionConstants.CANVAS_HEIGHT
+
+            let repeatX = 1
+            let repeatY = 1
+
+            if(sourceAspect > targetAspect)
+            {
+                repeatX = targetAspect / sourceAspect
+            }
+            else
+            {
+                repeatY = sourceAspect / targetAspect
+            }
+
+            repeatX /= scaleX
+            repeatY /= scaleY
+            this.texture.repeat.set(repeatX, repeatY)
+            this.texture.offset.set(
+                (1 - repeatX) * 0.5,
+                (1 - repeatY) * 0.5
+            )
+        }
+        else
+        {
+            this.texture.repeat.set(scaleX, -scaleY)
+            this.texture.offset.set(
+                (1 - scaleX) * 0.5,
+                (1 + scaleY) * 0.5
+            )
+        }
+
         this.texture.needsUpdate = true
     }
 
@@ -468,6 +515,12 @@ export default class Television
 
     renderScreen()
     {
+        if(this.usesStaticScreenTexture)
+        {
+            this.texture.needsUpdate = true
+            return
+        }
+
         if(!this.context)
         {
             return
@@ -639,7 +692,10 @@ export default class Television
         this.debugFolder?.dispose?.()
         this.screenEntries = []
         this.buttonStates.clear()
-        this.texture?.dispose?.()
+        if(!this.usesStaticScreenTexture)
+        {
+            this.texture?.dispose?.()
+        }
         this.texture = null
         this.context = null
         this.canvas = null
