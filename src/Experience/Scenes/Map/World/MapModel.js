@@ -2568,6 +2568,15 @@ export default class MapModel
             return true
         }
 
+        const isExtraWalkableSurface = this.hasNameInHierarchy(
+            object,
+            MapModelConstants.EXTRA_WALKABLE_SURFACE_TOKENS
+        )
+        if(isExtraWalkableSurface)
+        {
+            return true
+        }
+
         const inRelief = this.hasNameInHierarchy(object, ['relief'])
         if(!inRelief)
         {
