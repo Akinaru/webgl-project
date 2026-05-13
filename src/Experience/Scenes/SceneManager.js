@@ -2,6 +2,7 @@ import Experience from '../Experience.js'
 import SceneEnum from '../Enum/SceneEnum.js'
 import MapScene from './Map/MapScene.js'
 import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
+import SceneRecyclageScene from './SceneRecyclage/SceneRecyclageScene.js'
 import SceneDistributionScene from './SceneDistribution/Scene.js'
 
 export default class SceneManager
@@ -20,6 +21,7 @@ export default class SceneManager
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
+        this.register(SceneEnum.RECYCLAGE, () => new SceneRecyclageScene())
         this.register(SceneEnum.DISTRIBUTION, () => new SceneDistributionScene())
 
         this.setTransitionOverlay()
@@ -224,6 +226,9 @@ export default class SceneManager
             case SceneEnum.RECUPERATION:
                 return 'Recuperation'
 
+            case SceneEnum.RECYCLAGE:
+                return 'Recyclage'
+
             case SceneEnum.DISTRIBUTION:
                 return 'Distribution'
 
@@ -264,6 +269,10 @@ export default class SceneManager
             {
                 this.switchTo(SceneEnum.RECUPERATION)
             },
+            goRecyclage: () =>
+            {
+                this.switchTo(SceneEnum.RECYCLAGE)
+            },
             goDistribution: () =>
             {
                 this.switchTo(SceneEnum.DISTRIBUTION)
@@ -272,7 +281,7 @@ export default class SceneManager
 
         this.debug.addButtons(this.debugFolder, {
             label: 'Liste des scenes',
-            columns: 3,
+            columns: 4,
             buttons: [
                 {
                     label: 'Map',
@@ -281,6 +290,10 @@ export default class SceneManager
                 {
                     label: 'Recuperation',
                     onClick: debugActions.goRecuperation
+                },
+                {
+                    label: 'Recyclage',
+                    onClick: debugActions.goRecyclage
                 },
                 {
                     label: 'Distribution',

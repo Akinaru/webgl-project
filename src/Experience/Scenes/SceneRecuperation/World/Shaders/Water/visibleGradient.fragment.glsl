@@ -82,11 +82,15 @@ mat2 recuperationWaterRotation(float angle)
 vec2 maskUv = vAlphaMapUv;
 float maskValue = texture2D(uWaterMask, maskUv).g;
 
+// La texture de distribution sert de pochoir:
+// les zones sombres sont retirees, seules les zones utiles du plan d'eau restent visibles.
 if(maskValue < 0.5)
 {
     discard;
 }
 
+// Le motif combine UV locales et position monde:
+// on garde ainsi une lecture propre sur le mesh tout en evitant un decalage brutal entre plusieurs plans.
 vec2 worldUv = vRecuperationWaterWorldPosition.xz * (uRecuperationWaterPatternScale * RECUPERATION_WORLD_UV_SCALE);
 vec2 baseUv = ((vRecuperationWaterUv - 0.5) * uRecuperationWaterPatternScale) + worldUv;
 // Petit domain warp pour casser les bandes trop paralleles et obtenir une lecture plus organique.
@@ -97,6 +101,8 @@ vec2 organicOffset = vec2(
 vec2 warpedBaseUv = baseUv + organicOffset;
 vec2 rotatedBaseUv = recuperationWaterRotation(uRecuperationWaterBandAngle) * warpedBaseUv;
 float noiseTime = uRecuperationWaterTime * uRecuperationWaterNoiseSpeed;
+// Premiere deformation du domaine de bruit:
+// elle evite un motif trop regulier avant meme de calculer la mousse.
 vec2 domainWarpUvA = (rotatedBaseUv * vec2(1.7, 1.15)) + vec2(0.0, noiseTime * 0.08);
 vec2 domainWarpUvB = (rotatedBaseUv * vec2(2.4, 1.85)) - vec2(0.0, noiseTime * 0.06);
 vec2 domainWarp = vec2(
@@ -116,6 +122,7 @@ vec2 foamDriftUv = vec2(
 );
 float foamDrift = recuperationWaterNoise(foamDriftUv);
 float foamPulse = (sin((rotatedBaseUv.y * 20.0) - (noiseTime * 8.0) + (foamDrift * 6.28318530718)) * 0.5) + 0.5;
+// Champ de mousse final = detail local + derive lente + pulsation.
 float foamField = (foamNoise * 0.45) + (foamDrift * 0.3) + (foamPulse * 0.25);
 float foamMask = smoothstep(
     max(0.0, uRecuperationWaterThreshold - uRecuperationWaterFoamSoftness),
@@ -123,6 +130,8 @@ float foamMask = smoothstep(
     foamField
 );
 foamMask *= uRecuperationWaterIntensity;
+// La deep foam reprend la meme forme de base que la surface foam,
+// avec un seuil et une intensite differents pour creer une couche intermediaire.
 float deepFoamEnvelope = smoothstep(
     max(0.0, uRecuperationWaterDeepFoamThreshold - uRecuperationWaterDeepFoamSoftness),
     min(1.5, uRecuperationWaterDeepFoamThreshold + uRecuperationWaterDeepFoamSoftness),
@@ -134,6 +143,7 @@ float foamMaskBinary = step(uRecuperationWaterFoamCutoff, foamMask);
 // Les bords peuvent se teinter legerement vers la mousse profonde si on remonte le contraste.
 float edgeMix = max(pow(abs((vRecuperationWaterUv.x - 0.5) * 2.0), 3.0), 0.0);
 vec3 baseColor = mix(uRecuperationWaterBaseColor, uRecuperationWaterDeepFoamColor, edgeMix * uRecuperationWaterEdgeContrast);
+// Composition finale par couches: eau de base -> deep foam -> surface foam.
 vec3 deepFoamColor = mix(baseColor, uRecuperationWaterDeepFoamColor, deepFoamMaskBinary);
 vec3 finalColor = mix(deepFoamColor, uRecuperationWaterSurfaceFoamColor, foamMaskBinary);
 vec4 diffuseColor = vec4(clamp(finalColor, 0.0, 1.0), clamp(uOpacity, 0.0, 1.0));

@@ -327,8 +327,11 @@ export default class MapWorld
         const recuperationBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
             preferredBridge: 'cloneur_4'
         })
-        const distributionBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
+        const recyclageBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
             preferredBridge: 'cloneur_5'
+        })
+        const distributionBridgeZone = this.mapModel?.getBridgeTeleportZone?.({
+            preferredBridge: 'cloneur_6'
         })
 
         const recuperationZone = recuperationBridgeZone ?? {
@@ -338,19 +341,35 @@ export default class MapWorld
             radius: 1.75
         }
         const distributionZone = distributionBridgeZone ?? {
-            x: recuperationZone.x + 4.2,
+            x: recuperationZone.x + 7.8,
             y: recuperationZone.y,
-            z: recuperationZone.z - 2.4,
+            z: recuperationZone.z - 4.2,
+            radius: recuperationZone.radius
+        }
+        const recyclageZone = recyclageBridgeZone ?? {
+            x: recuperationZone.x + 3.6,
+            y: recuperationZone.y,
+            z: recuperationZone.z - 1.8,
             radius: recuperationZone.radius
         }
 
-        const areZonesOverlapping =
-            Math.hypot(distributionZone.x - recuperationZone.x, distributionZone.z - recuperationZone.z)
-            < (recuperationZone.radius + distributionZone.radius + 0.4)
-        if(areZonesOverlapping)
+        const zonePairs = [
+            [recuperationZone, recyclageZone],
+            [recyclageZone, distributionZone],
+            [recuperationZone, distributionZone]
+        ]
+        for(const [leftZone, rightZone] of zonePairs)
         {
-            distributionZone.x += (recuperationZone.radius + distributionZone.radius + 0.9)
-            distributionZone.z += 0.75
+            const areZonesOverlapping =
+                Math.hypot(rightZone.x - leftZone.x, rightZone.z - leftZone.z)
+                < (leftZone.radius + rightZone.radius + 0.4)
+            if(!areZonesOverlapping)
+            {
+                continue
+            }
+
+            rightZone.x += (leftZone.radius + rightZone.radius + 0.9)
+            rightZone.z += 0.75
         }
 
         this.teleportZones = [
@@ -370,6 +389,23 @@ export default class MapWorld
                 pulseSpeed: 4.2,
                 spinSpeed: 0.01,
                 columnSpinSpeed: -0.003
+            },
+            {
+                ...recyclageZone,
+                id: 'recyclage',
+                targetScene: SceneEnum.RECYCLAGE,
+                isActive: false,
+                colors: {
+                    pad: '#7fd96b',
+                    padEmissive: '#1f4f1f',
+                    ring: '#9ced89',
+                    ringEmissive: '#326233',
+                    column: '#bcffaf',
+                    light: '#abff9a'
+                },
+                pulseSpeed: 3.8,
+                spinSpeed: 0.012,
+                columnSpinSpeed: -0.0026
             },
             {
                 ...distributionZone,
@@ -531,6 +567,7 @@ export default class MapWorld
     {
         const introCompleted = this.experience.dialogueManager?.hasFlag?.(INTRO_DIALOGUE_COMPLETED_FLAG) === true
         const canActivateRecuperation = Boolean(introCompleted)
+        const canActivateRecyclage = Boolean(introCompleted)
         const canActivateDistribution = Boolean(introCompleted)
 
         if(Array.isArray(this.teleportZones))
@@ -546,6 +583,12 @@ export default class MapWorld
                 if(zone.id === 'distribution')
                 {
                     zone.isActive = canActivateDistribution
+                    continue
+                }
+
+                if(zone.id === 'recyclage')
+                {
+                    zone.isActive = canActivateRecyclage
                 }
             }
         }
