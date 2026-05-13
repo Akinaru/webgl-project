@@ -19,6 +19,7 @@ import SceneRecuperationCascadeTubes from '../Water/CascadeTubes.js'
 import SceneRecuperationScoring from '../Progression/Scoring.js'
 import { setupSceneRecuperationWorldDebug } from './World.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
+import { pickCycledSceneMusic } from '../../../../Audio/SceneMusicPicker.js'
 let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
 const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
@@ -217,12 +218,23 @@ export default class SceneRecuperationWorld
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isChannelPlaying?.('recuperationAmbience'))
+        if(this.experience.sound?.isChannelPlaying?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL))
         {
             return
         }
 
-        this.experience.sound?.play?.('recuperationAmbientWaves')
+        const musicKey = pickCycledSceneMusic(
+            SceneRecuperationWorldConstants.RECUPERATION_MUSIC_STORAGE_KEY,
+            SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_SOUND_KEYS
+        )
+        if(!musicKey)
+        {
+            return
+        }
+
+        this.experience.sound?.play?.(musicKey, {
+            channel: SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL
+        })
     }
 
     handleMaterialSelection(selection)
@@ -642,7 +654,7 @@ export default class SceneRecuperationWorld
     {
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
-        this.experience.sound?.stopChannel?.('recuperationAmbience')
+        this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)
         this.onArrivalDialogueEnd = null
 
         if(this.player)

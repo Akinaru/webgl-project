@@ -154,5 +154,77 @@
     "fadeOutMs": 700,
     "channel": "recuperationAmbience",
     "audioType": "music"
+  },
+  "mapMusicIntro": {
+    "label": "Map music intro",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_intro.mp3",
+    "volume": 0.18,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "mapAmbience",
+    "audioType": "music"
+  },
+  "recuperationMusic1": {
+    "label": "Recuperation music 1",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_recuperation_1.mp3",
+    "volume": 0.16,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "recuperationAmbience",
+    "audioType": "music"
+  },
+  "recuperationMusic2": {
+    "label": "Recuperation music 2",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_recuperation_2.mp3",
+    "volume": 0.16,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "recuperationAmbience",
+    "audioType": "music"
+  },
+  "recyclageMusic1": {
+    "label": "Recyclage music 1",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_recyclage_1.mp3",
+    "volume": 0.16,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "recyclageAmbience",
+    "audioType": "music"
+  },
+  "recyclageMusic2": {
+    "label": "Recyclage music 2",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_recyclage_2.mp3",
+    "volume": 0.16,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "recyclageAmbience",
+    "audioType": "music"
+  },
+  "distributionMusicResult": {
+    "label": "Distribution music result",
+    "resourceKey": "",
+    "fallbackPath": "sounds/music/music_resultat.mp3",
+    "volume": 0.17,
+    "playbackRate": 1,
+    "loop": true,
+    "fadeInMs": 1200,
+    "fadeOutMs": 900,
+    "channel": "distributionAmbience",
+    "audioType": "music"
   }
 }

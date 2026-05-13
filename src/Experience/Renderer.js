@@ -15,15 +15,24 @@ const GRAPHICS_QUALITY = Object.freeze({
 const GRAPHICS_QUALITY_PRESETS = Object.freeze({
     [GRAPHICS_QUALITY.LOW]: Object.freeze({
         pixelRatioScale: 0.7,
-        shadowsEnabled: false
+        shadowsEnabled: false,
+        ambientOcclusionEnabled: false,
+        ambientOcclusionIntensityMultiplier: 0,
+        ambientOcclusionKernelRadiusMultiplier: 0
     }),
     [GRAPHICS_QUALITY.MEDIUM]: Object.freeze({
         pixelRatioScale: 0.88,
-        shadowsEnabled: true
+        shadowsEnabled: true,
+        ambientOcclusionEnabled: true,
+        ambientOcclusionIntensityMultiplier: 0.65,
+        ambientOcclusionKernelRadiusMultiplier: 0.72
     }),
     [GRAPHICS_QUALITY.HIGH]: Object.freeze({
         pixelRatioScale: 1,
-        shadowsEnabled: true
+        shadowsEnabled: true,
+        ambientOcclusionEnabled: true,
+        ambientOcclusionIntensityMultiplier: 1,
+        ambientOcclusionKernelRadiusMultiplier: 1
     })
 })
 
@@ -290,6 +299,12 @@ export default class Renderer
             return false
         }
 
+        const preset = GRAPHICS_QUALITY_PRESETS[this.graphicsQuality] || GRAPHICS_QUALITY_PRESETS[GRAPHICS_QUALITY.HIGH]
+        if(preset.ambientOcclusionEnabled !== true)
+        {
+            return false
+        }
+
         if(this.ambientOcclusion.recuperationOnly !== true)
         {
             return true
@@ -305,12 +320,20 @@ export default class Renderer
             return
         }
 
+        const preset = GRAPHICS_QUALITY_PRESETS[this.graphicsQuality] || GRAPHICS_QUALITY_PRESETS[GRAPHICS_QUALITY.HIGH]
+        const intensityMultiplier = Number.isFinite(preset.ambientOcclusionIntensityMultiplier)
+            ? Math.max(0, preset.ambientOcclusionIntensityMultiplier)
+            : 1
+        const kernelRadiusMultiplier = Number.isFinite(preset.ambientOcclusionKernelRadiusMultiplier)
+            ? Math.max(0, preset.ambientOcclusionKernelRadiusMultiplier)
+            : 1
+
         this.saoPass.enabled = this.shouldUseAmbientOcclusion()
         this.saoPass.params.output = SAOPass.OUTPUT.Default
         this.saoPass.params.saoBias = this.ambientOcclusion.bias
-        this.saoPass.params.saoIntensity = this.ambientOcclusion.intensity
+        this.saoPass.params.saoIntensity = this.ambientOcclusion.intensity * intensityMultiplier
         this.saoPass.params.saoScale = this.ambientOcclusion.scale
-        this.saoPass.params.saoKernelRadius = this.ambientOcclusion.kernelRadius
+        this.saoPass.params.saoKernelRadius = Math.max(0, Math.round(this.ambientOcclusion.kernelRadius * kernelRadiusMultiplier))
         this.saoPass.params.saoMinResolution = this.ambientOcclusion.minResolution
         this.saoPass.params.saoBlur = this.ambientOcclusion.blur
         this.saoPass.params.saoBlurRadius = this.ambientOcclusion.blurRadius
@@ -427,6 +450,7 @@ export default class Renderer
             this.instance.shadowMap.enabled = Boolean(preset.shadowsEnabled)
             this.instance.setPixelRatio(this.getEffectivePixelRatio())
         }
+        this.syncAmbientOcclusionPass()
         this.syncPostProcessingSize()
     }
 

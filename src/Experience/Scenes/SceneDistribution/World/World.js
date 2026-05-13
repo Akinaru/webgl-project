@@ -14,6 +14,8 @@ import SceneDistributionResultDisplay from './ResultDisplay.js'
 import { setupSceneDistributionWorldDebug } from './World.debug.js'
 
 let distributionWorldInstanceIndex = 0
+const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
+const DISTRIBUTION_AMBIENT_CHANNEL = 'distributionAmbience'
 
 export default class SceneDistributionWorld
 {
@@ -128,6 +130,7 @@ export default class SceneDistributionWorld
 
     update(delta = this.experience.time.delta)
     {
+        this.syncAmbientSound()
         this.exitDoors?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
@@ -136,6 +139,18 @@ export default class SceneDistributionWorld
         this.balanceMonitor?.update?.()
         this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
         this.resultTrigger?.update?.(delta)
+    }
+
+    syncAmbientSound()
+    {
+        if(this.experience.sound?.isChannelPlaying?.(DISTRIBUTION_AMBIENT_CHANNEL))
+        {
+            return
+        }
+
+        this.experience.sound?.play?.(DISTRIBUTION_AMBIENT_SOUND_KEY, {
+            channel: DISTRIBUTION_AMBIENT_CHANNEL
+        })
     }
 
     startResultSequence()
@@ -190,6 +205,8 @@ export default class SceneDistributionWorld
             this.light.destroy?.()
             this.light = null
         }
+
+        this.experience.sound?.stopChannel?.(DISTRIBUTION_AMBIENT_CHANNEL)
 
         this.debugFolder?.dispose?.()
         this.debugFolder = null
