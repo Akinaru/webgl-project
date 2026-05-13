@@ -251,11 +251,15 @@ export default class Menu
         }
         if(this.transitionFill)
         {
-            this.transitionFill.style.width = `${clamped}%`
+            this.transitionFill.style.setProperty('--scene-transition-progress', `${clamped / 100}`)
+        }
+        if(this.transitionOverlay)
+        {
+            this.transitionOverlay.style.setProperty('--scene-transition-progress', `${clamped / 100}`)
         }
         else if(this.bootLoadingFill)
         {
-            this.bootLoadingFill.style.width = `${clamped}%`
+            this.bootLoadingFill.style.setProperty('--scene-transition-progress', `${clamped / 100}`)
         }
     }
 

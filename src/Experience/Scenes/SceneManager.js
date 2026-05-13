@@ -143,9 +143,6 @@ export default class SceneManager
                     <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
                     <div class="scene-transition__meter">
                         <span class="scene-transition__value" data-scene-transition-value>0%</span>
-                        <div class="scene-transition__bar" aria-hidden="true">
-                            <span class="scene-transition__fill" data-scene-transition-fill></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -196,7 +193,11 @@ export default class SceneManager
         const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)))
         if(this.transitionFillElement)
         {
-            this.transitionFillElement.style.width = `${clampedProgress}%`
+            this.transitionFillElement.style.setProperty('--scene-transition-progress', `${clampedProgress / 100}`)
+        }
+        if(this.transitionElement)
+        {
+            this.transitionElement.style.setProperty('--scene-transition-progress', `${clampedProgress / 100}`)
         }
         if(this.transitionValueElement)
         {

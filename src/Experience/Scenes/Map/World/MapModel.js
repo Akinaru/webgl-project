@@ -1945,6 +1945,14 @@ export default class MapModel
                 return
             }
 
+            // Les surfaces marchables (relief/ponts) servent au raycast sol.
+            // Elles ne doivent pas entrer dans les boîtes de collision horizontale,
+            // sinon la capsule est expulsée en permanence.
+            if(this.isPlayerGroundSurface(child))
+            {
+                return
+            }
+
             localBounds.copy(child.geometry.boundingBox)
 
             if(child instanceof THREE.InstancedMesh)
@@ -2556,6 +2564,15 @@ export default class MapModel
     {
         const isBridge = this.hasNameInHierarchy(object, ['pont', 'bridge'])
         if(isBridge)
+        {
+            return true
+        }
+
+        const isExtraWalkableSurface = this.hasNameInHierarchy(
+            object,
+            MapModelConstants.EXTRA_WALKABLE_SURFACE_TOKENS
+        )
+        if(isExtraWalkableSurface)
         {
             return true
         }

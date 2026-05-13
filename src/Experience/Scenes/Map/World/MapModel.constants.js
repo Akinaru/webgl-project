@@ -2,6 +2,7 @@ export const FORCE_DOUBLE_SIDE_COLLISION_TOKENS = ['buildingx', 'plantes', 'font
 export const BLOOM_CONTOUR_AVOID_TOKENS = ['buildingx', 'plantes']
 export const FOUNTAIN_NAME_TOKENS = ['fontaine', 'fountain']
 export const FOUNTAIN_STRICT_COLLISION_TOKENS = ['fontaine_1']
+export const EXTRA_WALKABLE_SURFACE_TOKENS = ['remailleur', 'polygone1_instance']
 export const FOUNTAIN_TOP_COLLISION_HEIGHT = 0.28
 export const FOUNTAIN_TOP_COLLISION_OUTER_MARGIN = 0.06
 export const FOUNTAIN_TOP_COLLISION_INNER_RATIO = 0.32

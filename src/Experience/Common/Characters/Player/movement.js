@@ -474,33 +474,48 @@ export function resolveCollisions()
 
             if(distanceSq < 1e-8)
             {
-                const distanceToMinX = Math.abs(this.position.x - box.min.x)
-                const distanceToMaxX = Math.abs(box.max.x - this.position.x)
-                const distanceToMinZ = Math.abs(this.position.z - box.min.z)
-                const distanceToMaxZ = Math.abs(box.max.z - this.position.z)
+                // Le centre est dans la projection XZ de la box.
+                // On sort par la face la plus proche avec la translation minimale.
+                const pushLeft = (this.position.x - box.min.x) + radius + PlayerConstants.COLLISION_CONTACT_EPSILON
+                const pushRight = (box.max.x - this.position.x) + radius + PlayerConstants.COLLISION_CONTACT_EPSILON
+                const pushBack = (this.position.z - box.min.z) + radius + PlayerConstants.COLLISION_CONTACT_EPSILON
+                const pushFront = (box.max.z - this.position.z) + radius + PlayerConstants.COLLISION_CONTACT_EPSILON
 
-                const minDistance = Math.min(distanceToMinX, distanceToMaxX, distanceToMinZ, distanceToMaxZ)
-
-                if(minDistance === distanceToMinX)
+                const minPush = Math.min(pushLeft, pushRight, pushBack, pushFront)
+                if(minPush === pushLeft)
                 {
-                    dx = -1
-                    dz = 0
+                    this.position.x -= pushLeft
+                    if(this.velocity.x > 0)
+                    {
+                        this.velocity.x = 0
+                    }
                 }
-                else if(minDistance === distanceToMaxX)
+                else if(minPush === pushRight)
                 {
-                    dx = 1
-                    dz = 0
+                    this.position.x += pushRight
+                    if(this.velocity.x < 0)
+                    {
+                        this.velocity.x = 0
+                    }
                 }
-                else if(minDistance === distanceToMinZ)
+                else if(minPush === pushBack)
                 {
-                    dx = 0
-                    dz = -1
+                    this.position.z -= pushBack
+                    if(this.velocity.z > 0)
+                    {
+                        this.velocity.z = 0
+                    }
                 }
                 else
                 {
-                    dx = 0
-                    dz = 1
+                    this.position.z += pushFront
+                    if(this.velocity.z < 0)
+                    {
+                        this.velocity.z = 0
+                    }
                 }
+
+                continue
             }
 
             const distance = Math.max(Math.sqrt(distanceSq), PlayerConstants.COLLISION_MIN_DISTANCE)
@@ -740,5 +755,4 @@ export function interpolateAngle(current, target, interpolation)
     const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current))
     return current + (delta * interpolation)
 }
-
 
