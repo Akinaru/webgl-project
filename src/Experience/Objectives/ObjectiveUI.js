@@ -6,6 +6,9 @@ export default class ObjectiveUI
     {
         this.objectiveManager = objectiveManager
         this.visible = false
+        this.currentObjectiveKey = null
+        this.hideTimer = null
+        this.refreshTimer = null
 
         this.setElements()
         this.setEvents()
@@ -55,36 +58,107 @@ export default class ObjectiveUI
             return
         }
 
-        this.text.textContent = payload.objective.text || ''
+        const nextObjectiveKey = payload.objectiveKey || null
+        const nextObjectiveText = payload.objective.text || ''
+
+        if(this.visible && this.currentObjectiveKey && this.currentObjectiveKey !== nextObjectiveKey)
+        {
+            this.replaceContent({
+                objectiveKey: nextObjectiveKey,
+                text: nextObjectiveText
+            })
+            return
+        }
+
+        this.currentObjectiveKey = nextObjectiveKey
+        this.text.textContent = nextObjectiveText
         this.show()
     }
 
     show()
     {
+        this.stopHideTimer()
+        this.stopRefreshTimer()
+
         if(this.visible)
         {
+            this.root.classList.remove('is-hiding')
             return
         }
 
         this.visible = true
+        this.root.classList.remove('is-hiding')
+        this.root.classList.add('is-entering')
         this.root.classList.add('is-visible')
+        void this.root.offsetWidth
+        this.root.classList.remove('is-entering')
+    }
+
+    replaceContent({ objectiveKey = null, text = '' } = {})
+    {
+        this.stopHideTimer()
+        this.stopRefreshTimer()
+
+        this.currentObjectiveKey = objectiveKey
+        this.root.classList.remove('is-hiding')
+        this.root.classList.add('is-refreshing')
+        this.text.textContent = text
+
+        this.refreshTimer = window.setTimeout(() =>
+        {
+            this.root.classList.remove('is-refreshing')
+            this.refreshTimer = null
+        }, 260)
     }
 
     hide()
     {
+        this.stopRefreshTimer()
+        this.currentObjectiveKey = null
+
         if(!this.visible)
         {
+            this.root.classList.remove('is-visible')
+            this.root.classList.remove('is-hiding')
             this.text.textContent = ''
             return
         }
 
-        this.visible = false
-        this.root.classList.remove('is-visible')
-        this.text.textContent = ''
+        this.root.classList.add('is-hiding')
+        this.stopHideTimer()
+        this.hideTimer = window.setTimeout(() =>
+        {
+            this.visible = false
+            this.root.classList.remove('is-visible')
+            this.root.classList.remove('is-hiding')
+            this.text.textContent = ''
+            this.hideTimer = null
+        }, 220)
+    }
+
+    stopHideTimer()
+    {
+        if(this.hideTimer !== null)
+        {
+            window.clearTimeout(this.hideTimer)
+            this.hideTimer = null
+        }
+    }
+
+    stopRefreshTimer()
+    {
+        if(this.refreshTimer !== null)
+        {
+            window.clearTimeout(this.refreshTimer)
+            this.refreshTimer = null
+            this.root.classList.remove('is-refreshing')
+        }
     }
 
     destroy()
     {
+        this.stopHideTimer()
+        this.stopRefreshTimer()
         this.root.remove()
     }
 }

@@ -1401,14 +1401,30 @@ body.is-dialogue-cursor *
     z-index: 24;
     pointer-events: none;
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
-    transition: opacity 180ms ease, transform 180ms ease;
+    transform: translateY(-14px) scale(0.98);
+    transition: opacity 220ms ease, transform 220ms ease;
 }
 
 .objective.is-visible
 {
     opacity: 1;
     transform: translateY(0) scale(1);
+}
+
+.objective.is-entering
+{
+    transform: translateY(14px) scale(0.98);
+}
+
+.objective.is-hiding
+{
+    opacity: 0;
+    transform: translateY(-18px) scale(0.98);
+}
+
+.objective.is-refreshing .objective__panel
+{
+    animation: objective-panel-refresh 260ms ease;
 }
 
 .objective__panel
@@ -1486,6 +1502,27 @@ body.is-dialogue-cursor *
     font-size: 0.96rem;
     line-height: 1.5;
     text-shadow: 0 1px 12px rgba(7, 26, 41, 0.18);
+}
+
+@keyframes objective-panel-refresh
+{
+    0%
+    {
+        transform: translateY(0);
+        filter: brightness(1);
+    }
+
+    45%
+    {
+        transform: translateY(-3px);
+        filter: brightness(1.08);
+    }
+
+    100%
+    {
+        transform: translateY(0);
+        filter: brightness(1);
+    }
 }
 
 @media (max-width: 900px)
