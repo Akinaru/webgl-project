@@ -1,0 +1,14 @@
+export const MAX_BURSTS = 8
+export const PARTICLES_PER_BURST = 88
+export const POSITION_JITTER_RATIO = 0.28
+export const VELOCITY_MIN = 0.8
+export const VELOCITY_MAX = 2.8
+export const UPWARD_VELOCITY_MIN = 1.2
+export const UPWARD_VELOCITY_MAX = 3.4
+export const LIFETIME_MIN = 0.55
+export const LIFETIME_MAX = 1.05
+export const SIZE_MIN = 24
+export const SIZE_MAX = 46
+export const SPARKLE_SIZE_MULTIPLIER = 0.82
+export const DEFAULT_BURST_RADIUS = 0.9
+export const HEIGHT_PADDING = 0.18

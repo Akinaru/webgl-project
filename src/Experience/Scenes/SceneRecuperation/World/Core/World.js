@@ -96,7 +96,8 @@ export default class SceneRecuperationWorld
         })
         this.television.setButtonsUnlocked(false)
         this.showerParticles = new ShowerParticles({
-            recuperationModel: this.recuperationModel
+            recuperationModel: this.recuperationModel,
+            debugParentFolder: this.waterDebugFolder
         })
 
         this.player = new Player({
