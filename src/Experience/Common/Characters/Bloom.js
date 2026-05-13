@@ -33,13 +33,13 @@ constructor({
         facingOffsetRadians: BloomConstants.BLOOM_FACING_OFFSET_RADIANS,
         uvZoom: BloomConstants.BLOOM_UV_ZOOM,
         lookTurnSpeed: rails.lookTurnSpeed ?? 11,
-        envMapIntensity: 1,
-        roughness: 0.25,
-        metalness: 0.05,
+        envMapIntensity: 1.3,
+        roughness: 0.04,
+        metalness: 0.17,
         transmission: 1,
-        thickness: 0.25,
-        ior: 1.18,
-        specularIntensity: 1,
+        thickness: 0.39,
+        ior: 1.54,
+        specularIntensity: 0.11,
         opacity: 1
     }
 
@@ -88,7 +88,8 @@ constructor({
         activeClipName: '',
         play: true,
         speed: 1,
-        loop: true
+        loop: true,
+        mirrorArmsFromAnimation: true
     }
 
     this.rails = new BloomRailSystem({

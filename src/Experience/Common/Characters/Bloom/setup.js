@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js'
 import Experience from '../../../Experience.js'
 import BloomRailSystem from '../../Rails/BloomRailSystem.js'
 import * as BloomConstants from '../Bloom.constants.js'
@@ -8,7 +9,7 @@ import * as BloomConstants from '../Bloom.constants.js'
  */
 export function setModel()
 {
-    this.model = this.resource.scene.clone(true)
+    this.model = SkeletonUtils.clone(this.resource.scene)
     this.model.name = '__bloomRoot'
     this.setupAnimation()
 
@@ -113,6 +114,7 @@ export function playAnimationClip(clipKey)
     }
 
     const action = this.animation.mixer.clipAction(targetClip)
+    this.animation.mirrorArmsFromAnimation = this.shouldMirrorArmsFromAnimation(targetClip)
     action.enabled = true
     action.clampWhenFinished = !this.animation.loop
     action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
@@ -135,6 +137,30 @@ export function playAnimationClip(clipKey)
 
 
 /**
+ * Détermine si la recopie d animation inter-bras doit rester active.
+ * Si le clip pilote déjà plusieurs tracks de bras, on n écrase pas ces rotations.
+ */
+export function shouldMirrorArmsFromAnimation(clip)
+{
+    const tracks = Array.isArray(clip?.tracks) ? clip.tracks : []
+    let armRotationTrackCount = 0
+
+    for(const track of tracks)
+    {
+        const trackName = String(track?.name || '').toLowerCase()
+        const isArmRotationTrack = trackName.includes(BloomConstants.ARM_MESH_NAME_TOKEN)
+            && trackName.endsWith('.quaternion')
+        if(isArmRotationTrack)
+        {
+            armRotationTrackCount += 1
+        }
+    }
+
+    return armRotationTrackCount <= 1
+}
+
+
+/**
  * Synchronise lecture/pause/vitesse/loop de l animation active.
  */
 export function refreshAnimationPlaybackState()
@@ -145,10 +171,26 @@ export function refreshAnimationPlaybackState()
         return
     }
 
-    action.timeScale = this.animation.speed
+    const normalizedSpeed = Math.max(0, this.animation.speed)
+    action.timeScale = normalizedSpeed
     action.clampWhenFinished = !this.animation.loop
     action.setLoop(this.animation.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
-    action.paused = !this.animation.play
+
+    if(this.animation.play)
+    {
+        const clipDuration = action.getClip()?.duration
+        if(Number.isFinite(clipDuration) && clipDuration > 0 && action.time >= (clipDuration - 1e-4))
+        {
+            action.reset()
+        }
+
+        action.enabled = true
+        action.paused = false
+        action.play()
+        return
+    }
+
+    action.paused = true
 }
 
 
@@ -294,6 +336,11 @@ export function applyBloomColorTexture(mesh)
                 metalness: typeof sourceMaterial.metalness === 'number' ? sourceMaterial.metalness : this.tuning.metalness
             })
 
+        // Preserve skinning/morph flags from GLTF materials so bone animation keeps deforming the mesh.
+        material.skinning = Boolean(mesh?.isSkinnedMesh || sourceMaterial?.skinning)
+        material.morphTargets = Boolean(sourceMaterial?.morphTargets)
+        material.morphNormals = Boolean(sourceMaterial?.morphNormals)
+
         if(colorTexture)
         {
             material.map = colorTexture
@@ -346,12 +393,57 @@ export function applyBloomColorTexture(mesh)
             material.envMap = this.bloomReflectionEnvTexture
             material.envMapIntensity = this.tuning.envMapIntensity
         }
+        this.applyBloomReflectionMaskToMaterial(material, transmissionTexture, hasUv)
 
         material.needsUpdate = true
         nextMaterials.push(material)
     }
 
     mesh.material = Array.isArray(mesh.material) ? nextMaterials : nextMaterials[0]
+}
+
+
+/**
+ * Utilise la texture de transmission comme masque de visibilité des réflexions envMap.
+ */
+export function applyBloomReflectionMaskToMaterial(material, reflectionMaskTexture, hasUv)
+{
+    if(!(material instanceof THREE.MeshPhysicalMaterial))
+    {
+        return
+    }
+
+    const canApplyReflectionMask = Boolean(reflectionMaskTexture && hasUv)
+    if(!canApplyReflectionMask)
+    {
+        material.onBeforeCompile = () => {}
+        material.customProgramCacheKey = () => 'default'
+        return
+    }
+
+    material.onBeforeCompile = (shader) =>
+    {
+        shader.uniforms[BloomConstants.BLOOM_REFLECTION_MASK_UNIFORM_NAME] = { value: reflectionMaskTexture }
+        shader.uniforms[BloomConstants.BLOOM_REFLECTION_MASK_FACTOR_UNIFORM_NAME] = { value: 1.0 }
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `#include <common>
+uniform sampler2D ${BloomConstants.BLOOM_REFLECTION_MASK_UNIFORM_NAME};
+uniform float ${BloomConstants.BLOOM_REFLECTION_MASK_FACTOR_UNIFORM_NAME};`
+        )
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            BloomConstants.BLOOM_REFLECTION_MASK_SHADER_ANCHOR,
+            `${BloomConstants.BLOOM_REFLECTION_MASK_SHADER_ANCHOR}
+#ifdef USE_TRANSMISSIONMAP
+    float bloomReflectionMask = texture2D(${BloomConstants.BLOOM_REFLECTION_MASK_UNIFORM_NAME}, vTransmissionMapUv).r;
+    reflectedLight.indirectSpecular *= mix(1.0, bloomReflectionMask, ${BloomConstants.BLOOM_REFLECTION_MASK_FACTOR_UNIFORM_NAME});
+#endif`
+        )
+    }
+
+    material.customProgramCacheKey = () => BloomConstants.BLOOM_REFLECTION_MASK_SHADER_KEY
 }
 
 
@@ -1087,5 +1179,3 @@ export function setDebug()
         label: 'Exporter en JSON'
     })
 }
-
-

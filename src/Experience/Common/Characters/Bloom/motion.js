@@ -516,6 +516,11 @@ export function updateArms()
  */
 export function applyAnimationToSecondArm()
 {
+    if(!this.animation.mirrorArmsFromAnimation)
+    {
+        return
+    }
+
     if(this.armAnimationPairs.length === 0)
     {
         return
@@ -542,5 +547,4 @@ export function applyAnimationToSecondArm()
         targetNode.quaternion.copy(targetBase).multiply(this.tmpArmDeltaQuaternion)
     }
 }
-
 
