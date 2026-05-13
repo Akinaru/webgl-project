@@ -150,7 +150,7 @@ body.is-pointer-locked
         inset 0 0 24px rgba(223, 245, 255, 0.3),
         0 0 24px rgba(88, 182, 255, 0.22);
     z-index: 0;
-    clip-path: var(--scene-transition-wave-clip, polygon(
+    clip-path: polygon(
         0% 12.4%,
         2% 11.7%,
         4% 11.1%,
@@ -204,11 +204,13 @@ body.is-pointer-locked
         100% 13.6%,
         100% 100%,
         0% 100%
-    ));
+    );
     transform-origin: center bottom;
     transform: scaleY(var(--scene-transition-progress, 0));
     transition: transform 160ms ease;
-    animation: scene-transition-fill-flow 2.4s linear infinite;
+    animation:
+        scene-transition-fill-flow 2.4s linear infinite,
+        scene-transition-wave-clip 1.2s linear infinite;
 }
 
 .scene-transition__panel.menu-panel::after

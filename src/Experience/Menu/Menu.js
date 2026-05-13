@@ -15,8 +15,6 @@ export default class Menu
         this.hasResolved = false
         this.isDestroyed = false
         this.loadingRafId = 0
-        this.loadingWaveIntervalId = 0
-        this.loadingWavePhase = 0
         this.resourcesReadyEventName = `${EventEnum.READY}.menu`
         this.audioEnabled = true
         this.resolveStartPromise = null
@@ -284,7 +282,6 @@ export default class Menu
 
         this.transitionOverlay.classList.add('is-visible')
         this.transitionOverlay.setAttribute('aria-hidden', 'false')
-        this.startLoadingWaveLoop()
     }
 
     hideTransitionOverlay()
@@ -294,61 +291,8 @@ export default class Menu
             return
         }
 
-        this.stopLoadingWaveLoop()
         this.transitionOverlay.classList.remove('is-visible')
         this.transitionOverlay.setAttribute('aria-hidden', 'true')
-    }
-
-    buildLoadingWaveClipPath(phase = 0)
-    {
-        const points = ['100% 100%', '0% 100%']
-        for(let x = 0; x <= 100; x += 2)
-        {
-            const t = ((x / 100) * Math.PI * 2) + phase
-            const y = 11 + (Math.sin(t) * 2.2) + (Math.sin(t * 1.85) * 0.9)
-            points.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`)
-        }
-        return `polygon(${points.join(', ')})`
-    }
-
-    updateLoadingWave()
-    {
-        if(!this.transitionOverlay)
-        {
-            return
-        }
-
-        this.loadingWavePhase -= 0.32
-        this.transitionOverlay.style.setProperty(
-            '--scene-transition-wave-clip',
-            this.buildLoadingWaveClipPath(this.loadingWavePhase)
-        )
-    }
-
-    startLoadingWaveLoop()
-    {
-        if(!this.transitionOverlay || this.loadingWaveIntervalId)
-        {
-            return
-        }
-
-        this.loadingWavePhase = 0
-        this.updateLoadingWave()
-        this.loadingWaveIntervalId = window.setInterval(() =>
-        {
-            this.updateLoadingWave()
-        }, 100)
-    }
-
-    stopLoadingWaveLoop()
-    {
-        if(this.loadingWaveIntervalId)
-        {
-            window.clearInterval(this.loadingWaveIntervalId)
-            this.loadingWaveIntervalId = 0
-        }
-
-        this.transitionOverlay?.style?.removeProperty?.('--scene-transition-wave-clip')
     }
 
     updateLoadingProgressLoop()
@@ -811,7 +755,6 @@ export default class Menu
     {
         this.isDestroyed = true
         this.stopLoadingProgressLoop()
-        this.stopLoadingWaveLoop()
         this.stopBootLogoLoop()
         this.experience?.resources?.off?.(this.resourcesReadyEventName)
 

@@ -70,6 +70,8 @@ export default class MapWorld
         this.experience = new Experience()
         this.resources = this.experience.resources
         this.debug = this.experience.debug
+        this.isDestroyed = false
+        this.isSettingUp = false
         this.readyEventName = `${EventEnum.READY}.mapWorld${mapWorldInstanceIndex++}`
         this.wasPlayerBottomUnderWater = false
         this.isUnderwaterLoopPlaying = false
@@ -91,32 +93,64 @@ export default class MapWorld
 
         if(this.resources.isReady)
         {
-            this.setUp()
+            this.startSetUp()
             return
         }
 
         this.resources.on(this.readyEventName, () =>
         {
-            this.setUp()
+            this.startSetUp()
         })
     }
 
-    setUp()
+    waitForNextFrame()
     {
-        if(this.isSetUp)
+        return new Promise((resolve) =>
+        {
+            window.requestAnimationFrame(() => resolve())
+        })
+    }
+
+    async startSetUp()
+    {
+        if(this.isSetUp || this.isSettingUp || this.isDestroyed)
         {
             return
         }
-        this.isSetUp = true
+        this.isSettingUp = true
 
         this.mapModel = new MapModel()
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.visibilityDebug = new MapVisibilityDebug({
             mapModel: this.mapModel
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.environment = new MapEnvironment()
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.water = new Water({
             mapModel: this.mapModel
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
@@ -128,22 +162,45 @@ export default class MapWorld
             spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION,
             spawnYaw: MapWorldConstants.MAP_SPAWN_YAW
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.bushes = new Bushes(
             {
                 mapModel: this.mapModel,
                 spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION
             }
         )
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.setVegetationDebug()
 
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.clouds = new CloudLayer({
             light: this.light,
             getFocusPosition: () => this.player?.position ?? null
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
 
         this.syncBloomContext()
 
@@ -151,8 +208,15 @@ export default class MapWorld
             player: this.player,
             mapModel: this.mapModel
         })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
 
         this.setTeleportZone()
+        this.isSetUp = true
+        this.isSettingUp = false
     }
 
     update(delta = this.experience.time.delta)
@@ -635,6 +699,8 @@ export default class MapWorld
 
     destroy()
     {
+        this.isDestroyed = true
+        this.isSettingUp = false
         this.experience.dialogueManager?.off?.('end.mapWorldTeleport')
         this.resources.off(this.readyEventName)
         this.experience.sound?.stopChannel?.('mapAmbience')
