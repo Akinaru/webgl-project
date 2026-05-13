@@ -15,6 +15,7 @@ export default class ShowerParticles
         this.impactMeshes = this.recuperationModel?.getMeshesForNameTokens?.(ShowerParticlesConstants.IMPACT_TARGET_NAME_TOKENS, { exact: true }) ?? []
 
         this.isActive = false
+        this.isEmitting = false
         this.remainingDuration = 0
         this.origin = new THREE.Vector3()
         this.baseSpread = new THREE.Vector3(0.35, 0, 0.35)
@@ -148,6 +149,7 @@ export default class ShowerParticles
             ShowerParticlesConstants.DROP_COUNT
         )
         this.dropMesh.visible = false
+        this.dropMesh.frustumCulled = false
         this.dropMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
         this.scene.add(this.dropMesh)
 
@@ -163,12 +165,13 @@ export default class ShowerParticles
 
     setSplashMesh()
     {
-        this.splashGeometry = new THREE.SphereGeometry(0.012, 7, 7)
+        this.splashGeometry = new THREE.SphereGeometry(0.011, 7, 7)
         this.splashMaterial = new THREE.MeshBasicMaterial({
-            color: '#eefcff',
+            color: '#2e6f94',
             transparent: true,
-            opacity: 0.88,
-            depthWrite: false
+            opacity: 0.96,
+            depthWrite: false,
+            depthTest: false
         })
         this.splashMesh = new THREE.InstancedMesh(
             this.splashGeometry,
@@ -176,6 +179,8 @@ export default class ShowerParticles
             ShowerParticlesConstants.SPLASH_PARTICLE_COUNT
         )
         this.splashMesh.visible = false
+        this.splashMesh.frustumCulled = false
+        this.splashMesh.renderOrder = 12
         this.splashMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
         this.scene.add(this.splashMesh)
 
@@ -432,6 +437,7 @@ export default class ShowerParticles
     start(durationSeconds = 5.5)
     {
         this.isActive = true
+        this.isEmitting = true
         this.remainingDuration = durationSeconds
         this.dropMesh.visible = true
         this.splashMesh.visible = true
@@ -441,16 +447,13 @@ export default class ShowerParticles
 
     stop()
     {
-        this.isActive = false
+        if(!this.isActive)
+        {
+            return
+        }
+
+        this.isEmitting = false
         this.remainingDuration = 0
-        if(this.dropMesh)
-        {
-            this.dropMesh.visible = false
-        }
-        if(this.splashMesh)
-        {
-            this.splashMesh.visible = false
-        }
     }
 
     update(deltaMs = this.experience.time.delta)
@@ -461,17 +464,24 @@ export default class ShowerParticles
         }
 
         const deltaSeconds = Math.max(0.001, Math.min(0.05, (deltaMs || 16.67) * 0.001))
-        this.remainingDuration = Math.max(0, this.remainingDuration - deltaSeconds)
-        if(this.remainingDuration <= 0)
+        if(this.isEmitting)
         {
-            this.stop()
-            return
+            this.remainingDuration = Math.max(0, this.remainingDuration - deltaSeconds)
+            if(this.remainingDuration <= 0)
+            {
+                this.isEmitting = false
+            }
         }
 
         this.updateDrops(deltaSeconds)
         this.updateSplashes(deltaSeconds)
         this.syncDropMesh()
         this.syncSplashMesh()
+
+        if(!this.isEmitting && this.hasDrained())
+        {
+            this.finalizeStop()
+        }
     }
 
     updateDrops(deltaSeconds)
@@ -481,7 +491,7 @@ export default class ShowerParticles
             if(!drop.active)
             {
                 drop.respawnDelay = Math.max(0, drop.respawnDelay - deltaSeconds)
-                if(drop.respawnDelay <= 0)
+                if(this.isEmitting && drop.respawnDelay <= 0)
                 {
                     this.resetDrop(drop, true)
                 }
@@ -528,15 +538,41 @@ export default class ShowerParticles
     deactivateDrop(drop)
     {
         drop.active = false
-        drop.respawnDelay = THREE.MathUtils.lerp(
-            ShowerParticlesConstants.DROP_RESPAWN_DELAY_MIN,
-            ShowerParticlesConstants.DROP_RESPAWN_DELAY_MAX,
-            Math.random()
-        )
+        drop.respawnDelay = this.isEmitting
+            ? THREE.MathUtils.lerp(
+                ShowerParticlesConstants.DROP_RESPAWN_DELAY_MIN,
+                ShowerParticlesConstants.DROP_RESPAWN_DELAY_MAX,
+                Math.random()
+            )
+            : 0
         drop.position.set(0, -9999, 0)
         drop.previousPosition.copy(drop.position)
         drop.velocity.set(0, 0, 0)
         drop.scale.set(0, 0, 0)
+    }
+
+    hasDrained()
+    {
+        const hasActiveDrop = this.drops.some((drop) => drop.active)
+        if(hasActiveDrop)
+        {
+            return false
+        }
+
+        return !this.splashes.some((splash) => splash.active)
+    }
+
+    finalizeStop()
+    {
+        this.isActive = false
+        if(this.dropMesh)
+        {
+            this.dropMesh.visible = false
+        }
+        if(this.splashMesh)
+        {
+            this.splashMesh.visible = false
+        }
     }
 
     emitImpactSplash({ point })
@@ -559,12 +595,12 @@ export default class ShowerParticles
                 Math.random()
             )
             splash.position.copy(point)
-            splash.position.y += 0.008
+            splash.position.y += 0.045
 
             this.tmpDirection.set(0, 1, 0)
-            this.tmpDirection.x += (Math.random() - 0.5) * 1.25
+            this.tmpDirection.x += (Math.random() - 0.5) * 1.8
             this.tmpDirection.y += ShowerParticlesConstants.SPLASH_UPWARD_BOOST * Math.random()
-            this.tmpDirection.z += (Math.random() - 0.5) * 1.25
+            this.tmpDirection.z += (Math.random() - 0.5) * 1.8
             this.tmpDirection.normalize()
             this.tmpDirection.multiplyScalar(
                 THREE.MathUtils.lerp(
@@ -575,7 +611,7 @@ export default class ShowerParticles
             )
 
             splash.velocity.copy(this.tmpDirection)
-            const scale = THREE.MathUtils.lerp(0.7, 1.65, Math.random())
+            const scale = THREE.MathUtils.lerp(0.45, 1.1, Math.random())
             splash.scale.setScalar(scale)
         }
     }
