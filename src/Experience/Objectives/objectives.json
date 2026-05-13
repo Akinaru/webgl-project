@@ -1,0 +1,39 @@
+{
+  "runtime": {
+    "initialObjectiveKey": "tutorial_finish"
+  },
+  "objectives": {
+    "tutorial_finish": {
+      "key": "tutorial_finish",
+      "text": "Termine le tutoriel."
+    },
+    "intro_follow_bloom": {
+      "key": "intro_follow_bloom",
+      "text": "Va dans la salle de recuperation."
+    },
+    "recuperation_choose_material": {
+      "key": "recuperation_choose_material",
+      "text": "Choisis le materiau le plus adapte pour recuperer l'eau de pluie."
+    },
+    "recuperation_simulate_rain": {
+      "key": "recuperation_simulate_rain",
+      "text": "Lance la simulation de pluie pour observer l'efficacite du materiau."
+    },
+    "recuperation_route_water": {
+      "key": "recuperation_route_water",
+      "text": "Oriente les tuyaux pour acheminer l'eau avec le moins de pertes possible."
+    },
+    "recyclage_clean_nanobots": {
+      "key": "recyclage_clean_nanobots",
+      "text": "Nettoie les nanobots pour qu'ils puissent purifier l'eau correctement."
+    },
+    "recyclage_restart_nanobots": {
+      "key": "recyclage_restart_nanobots",
+      "text": "Relance les nanobots une fois le nettoyage termine."
+    },
+    "distribution_balance_network": {
+      "key": "distribution_balance_network",
+      "text": "Repartis l'eau entre les besoins sans depasser les quotas."
+    }
+  }
+}

@@ -13,6 +13,7 @@ import MetierEnum from './Enum/MetierEnum.js'
 import ActionId from './Actions/ActionId.js'
 import ActionTracker from './Actions/ActionTracker.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
+import ObjectiveManager from './Objectives/ObjectiveManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
@@ -23,6 +24,10 @@ let instance = null
 const DEBUG_TUTORIAL_FOLDER_TITLE = '🎓 Tutoriel'
 const DEBUG_TUTORIAL_COMPLETED_KEY = 'tutorialCompleted'
 const DEBUG_TUTORIAL_COMPLETED_LABEL = 'tutoriel termine'
+const INITIAL_OBJECTIVE_CONTEXT = Object.freeze({
+    source: 'tutorial'
+})
+const POST_TUTORIAL_OBJECTIVE_KEY = 'intro_follow_bloom'
 
 export default class Experience
 {
@@ -52,6 +57,7 @@ export default class Experience
         this.time = new Time()
         this.actionTracker = new ActionTracker()
         this.dialogueManager = new DialogueManager()
+        this.objectiveManager = new ObjectiveManager()
         this.scene = new THREE.Scene()
         this.resources = new Resources(sources, {
             autoStart: false
@@ -95,6 +101,7 @@ export default class Experience
 
         this.menu.start().then(() =>
         {
+            this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
             this.tutoriel.start()
 
             this.tutoriel.on('finished', () =>
@@ -111,6 +118,8 @@ export default class Experience
                     this.dialogueManager?.startByKey?.(configuredDialogueKey)
                 }
 
+                this.objectiveManager?.completeCurrentObjective?.()
+                this.objectiveManager?.showByKey?.(POST_TUTORIAL_OBJECTIVE_KEY, INITIAL_OBJECTIVE_CONTEXT)
                 this.setTutorialCompleted(true)
             })
         })
@@ -148,6 +157,7 @@ export default class Experience
         this.metierManager.destroy?.()
         this.actionTracker.destroy?.()
         this.dialogueManager.destroy?.()
+        this.objectiveManager.destroy?.()
         this.tutoriel?.destroy?.()
         this.bloom?.destroy?.()
         this.menu?.destroy?.()
@@ -200,6 +210,7 @@ export default class Experience
                 }
 
                 this.setTutorialCompleted(false)
+                this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
                 this.tutoriel?.restart?.()
             })
     }

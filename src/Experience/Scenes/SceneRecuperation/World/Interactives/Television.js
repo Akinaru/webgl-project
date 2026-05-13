@@ -433,15 +433,23 @@ export default class Television
 
     getButtonKeyAtCenter()
     {
-        const hit = this.centerRaycaster.intersectFirst(this.getInteractiveButtonObjects(), false)
+        const hit = this.centerRaycaster.intersectFirstHit(this.getInteractiveButtonObjects(), false)
         if(!hit)
+        {
+            return null
+        }
+
+        if(
+            Number.isFinite(hit.distance)
+            && hit.distance > TelevisionConstants.BUTTON_INTERACTION_MAX_DISTANCE
+        )
         {
             return null
         }
 
         for(const [key, state] of this.buttonStates.entries())
         {
-            if(state.object === hit || state.meshes?.includes?.(hit))
+            if(state.object === hit.object || state.meshes?.includes?.(hit.object))
             {
                 return key
             }
