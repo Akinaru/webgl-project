@@ -7,6 +7,7 @@ import MapLight from '../../Map/World/MapLight.js'
 import SceneRecyclageModel from './Model.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
+import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
 
 let recyclageWorldInstanceIndex = 0
 
@@ -153,7 +154,16 @@ export default class SceneRecyclageWorld
             return
         }
 
-        this.experience.sound?.play?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEY, {
+        const musicKey = pickCycledSceneMusic(
+            SceneRecyclageWorldConstants.RECYCLAGE_MUSIC_STORAGE_KEY,
+            SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEYS
+        )
+        if(!musicKey)
+        {
+            return
+        }
+
+        this.experience.sound?.play?.(musicKey, {
             channel: SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL
         })
     }
@@ -193,6 +203,8 @@ export default class SceneRecyclageWorld
             this.environment.destroy?.()
             this.environment = null
         }
+
+        this.experience.sound?.stopChannel?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL)
 
         if(this.light)
         {

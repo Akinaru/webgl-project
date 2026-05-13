@@ -13,3 +13,5 @@ export const FOOTSTEP_RATE_EPSILON = 0.02
 export const WALKING_GRASS_PLAYBACK_MULTIPLIER = 1.5
 export const WALKING_SAND_PLAYBACK_MULTIPLIER = 2.0
 export const WALKING_STONE_PLAYBACK_MULTIPLIER = 1.2
+export const MAP_AMBIENT_CHANNEL = 'mapAmbience'
+export const MAP_AMBIENT_SOUND_KEY = 'mapMusicIntro'

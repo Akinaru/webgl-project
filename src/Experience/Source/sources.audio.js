@@ -5,6 +5,11 @@ export default [
         path: 'sounds/ui/menu-click.mp3'
     },
     {
+        name: 'menuHoverSound',
+        type: 'audioBuffer',
+        path: 'sounds/ui/menu-hover.mp3'
+    },
+    {
         name: 'pauseOpenSound',
         type: 'audioBuffer',
         path: 'sounds/ui/pause-open.mp3'

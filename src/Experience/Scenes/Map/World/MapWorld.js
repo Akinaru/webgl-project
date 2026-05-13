@@ -239,13 +239,19 @@ export default class MapWorld
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isChannelPlaying?.('mapAmbience'))
+        const bootScreen = this.experience.menu?.bootScreen
+        if(bootScreen?.isConnected)
         {
             return
         }
 
-        this.experience.sound?.play?.('recuperationAmbientWaves', {
-            channel: 'mapAmbience'
+        if(this.experience.sound?.isChannelPlaying?.(MapWorldConstants.MAP_AMBIENT_CHANNEL))
+        {
+            return
+        }
+
+        this.experience.sound?.play?.(MapWorldConstants.MAP_AMBIENT_SOUND_KEY, {
+            channel: MapWorldConstants.MAP_AMBIENT_CHANNEL
         })
     }
 
@@ -714,7 +720,7 @@ export default class MapWorld
         this.isSettingUp = false
         this.experience.dialogueManager?.off?.('end.mapWorldTeleport')
         this.resources.off(this.readyEventName)
-        this.experience.sound?.stopChannel?.('mapAmbience')
+        this.experience.sound?.stopChannel?.(MapWorldConstants.MAP_AMBIENT_CHANNEL)
         this.experience.sound?.stopChannel?.('underwater')
         this.experience.sound?.stopChannel?.('footsteps')
         this.isUnderwaterLoopPlaying = false

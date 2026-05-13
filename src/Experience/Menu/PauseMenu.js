@@ -39,6 +39,7 @@ export default class PauseMenu extends EventEmitter
         this.pendingKeybindAction = null
         this.keybindErrorTimeoutId = 0
         this.keybindErrorAction = null
+        this.hoverableButtons = []
 
         this.root = document.querySelector(PauseMenuConstants.SELECTORS.root)
         this.resumeButton = document.querySelector(PauseMenuConstants.SELECTORS.resumeButton)
@@ -243,6 +244,18 @@ export default class PauseMenu extends EventEmitter
             this.experience?.sound?.playMenuClick?.()
         }
 
+        this.onButtonHover = (event) =>
+        {
+            const button = event?.currentTarget
+            if(!(button instanceof HTMLButtonElement) || button.disabled)
+            {
+                return
+            }
+
+            this.experience?.sound?.unlock?.()
+            this.experience?.sound?.playMenuHover?.()
+        }
+
         this.onRootClick = (event) =>
         {
             if(event.target !== this.root)
@@ -364,9 +377,39 @@ export default class PauseMenu extends EventEmitter
             button.addEventListener('click', this.onKeybindButtonClick)
         }
         this.root.addEventListener('click', this.onRootClick)
+        this.bindHoverSounds()
         this.syncSettingsVolumeUI()
         this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
+    }
+
+    bindHoverSounds()
+    {
+        this.hoverableButtons = [
+            this.resumeButton,
+            this.settingsButton,
+            this.settingsCloseButton,
+            this.resetAllButton,
+            ...this.graphicsQualityButtons,
+            ...this.keybindButtons
+        ].filter((element) => element instanceof HTMLButtonElement)
+
+        for(const button of this.hoverableButtons)
+        {
+            button.addEventListener('mouseenter', this.onButtonHover)
+            button.addEventListener('focus', this.onButtonHover)
+        }
+    }
+
+    unbindHoverSounds()
+    {
+        for(const button of this.hoverableButtons)
+        {
+            button.removeEventListener('mouseenter', this.onButtonHover)
+            button.removeEventListener('focus', this.onButtonHover)
+        }
+
+        this.hoverableButtons = []
     }
 
     open({
@@ -414,6 +457,8 @@ export default class PauseMenu extends EventEmitter
             this.inputs?.exitPointerLock?.()
         }
 
+        this.experience?.sound?.pauseForMenu?.()
+        this.experience?.dialogueManager?.pause?.()
         this.trigger('open')
         this.trigger('opened')
         this.experience?.sound?.playPauseOpen?.()
@@ -460,6 +505,8 @@ export default class PauseMenu extends EventEmitter
         this.root.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.root.classList.remove(PauseMenuConstants.DISPLAYED_CLASS)
+        this.experience?.sound?.resumeForMenu?.()
+        this.experience?.dialogueManager?.resume?.()
         this.trigger('close')
         this.trigger('closed')
 
@@ -858,6 +905,7 @@ export default class PauseMenu extends EventEmitter
             button.removeEventListener('click', this.onKeybindButtonClick)
         }
         this.root.removeEventListener('click', this.onRootClick)
+        this.unbindHoverSounds()
 
         this.root.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.root.classList.remove(PauseMenuConstants.DISPLAYED_CLASS)
