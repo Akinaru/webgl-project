@@ -17,6 +17,8 @@ export default class SceneManager
         this.currentScene = null
         this.isTransitioning = false
         this.pendingSwitchKey = null
+        this.loadingWaveIntervalId = 0
+        this.loadingWavePhase = 0
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
@@ -141,9 +143,6 @@ export default class SceneManager
                     <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
                     <div class="scene-transition__meter">
                         <span class="scene-transition__value" data-scene-transition-value>0%</span>
-                        <div class="scene-transition__bar" aria-hidden="true">
-                            <span class="scene-transition__fill" data-scene-transition-fill></span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -164,6 +163,7 @@ export default class SceneManager
 
         this.updateTransitionProgress(0, this.getTransitionLabel({ fromKey, toKey }))
         this.transitionElement.classList.add('is-visible')
+        this.startLoadingWaveLoop()
         await this.wait(120)
         this.updateTransitionProgress(18)
         await this.wait(90)
@@ -184,9 +184,62 @@ export default class SceneManager
         await this.wait(70)
         this.updateTransitionProgress(100)
         await this.wait(180)
+        this.stopLoadingWaveLoop()
         this.transitionElement.classList.remove('is-visible')
         await this.wait(120)
         this.updateTransitionProgress(0)
+    }
+
+    buildLoadingWaveClipPath(phase = 0)
+    {
+        const points = ['100% 100%', '0% 100%']
+        for(let x = 0; x <= 100; x += 2)
+        {
+            const t = ((x / 100) * Math.PI * 2) + phase
+            const y = 11 + (Math.sin(t) * 2.2) + (Math.sin(t * 1.85) * 0.9)
+            points.push(`${x.toFixed(2)}% ${y.toFixed(2)}%`)
+        }
+        return `polygon(${points.join(', ')})`
+    }
+
+    updateLoadingWave()
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        this.loadingWavePhase -= 0.32
+        this.transitionElement.style.setProperty(
+            '--scene-transition-wave-clip',
+            this.buildLoadingWaveClipPath(this.loadingWavePhase)
+        )
+    }
+
+    startLoadingWaveLoop()
+    {
+        if(!this.transitionElement || this.loadingWaveIntervalId)
+        {
+            return
+        }
+
+        this.loadingWavePhase = 0
+        this.updateLoadingWave()
+        this.loadingWaveIntervalId = window.setInterval(() =>
+        {
+            this.updateLoadingWave()
+        }, 100)
+    }
+
+    stopLoadingWaveLoop()
+    {
+        if(this.loadingWaveIntervalId)
+        {
+            window.clearInterval(this.loadingWaveIntervalId)
+            this.loadingWaveIntervalId = 0
+        }
+
+        this.transitionElement?.style?.removeProperty?.('--scene-transition-wave-clip')
     }
 
     updateTransitionProgress(progress = 0, label = null)
@@ -194,7 +247,11 @@ export default class SceneManager
         const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)))
         if(this.transitionFillElement)
         {
-            this.transitionFillElement.style.width = `${clampedProgress}%`
+            this.transitionFillElement.style.setProperty('--scene-transition-progress', `${clampedProgress / 100}`)
+        }
+        if(this.transitionElement)
+        {
+            this.transitionElement.style.setProperty('--scene-transition-progress', `${clampedProgress / 100}`)
         }
         if(this.transitionValueElement)
         {
@@ -384,6 +441,7 @@ export default class SceneManager
 
     destroy()
     {
+        this.stopLoadingWaveLoop()
         this.currentScene?.destroy?.()
         this.currentScene = null
         this.currentKey = null
