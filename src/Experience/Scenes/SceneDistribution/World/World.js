@@ -119,6 +119,11 @@ export default class SceneDistributionWorld
 
         // Lancement du dialogue après un court délai
         setTimeout(() => {
+            if(this.experience?.isAutoFlowEnabled?.() === false)
+            {
+                return
+            }
+
             this.experience.dialogueManager?.startByKey?.('distribution')
         }, 2500)
     }
@@ -156,6 +161,11 @@ export default class SceneDistributionWorld
     startResultSequence()
     {
         if(this.hasStartedResultSequence)
+        {
+            return
+        }
+
+        if(this.experience?.isAutoFlowEnabled?.() === false)
         {
             return
         }

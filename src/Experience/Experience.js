@@ -24,10 +24,8 @@ let instance = null
 const DEBUG_TUTORIAL_FOLDER_TITLE = '🎓 Tutoriel'
 const DEBUG_TUTORIAL_COMPLETED_KEY = 'tutorialCompleted'
 const DEBUG_TUTORIAL_COMPLETED_LABEL = 'tutoriel termine'
-const INITIAL_OBJECTIVE_CONTEXT = Object.freeze({
-    source: 'tutorial'
-})
-const POST_TUTORIAL_OBJECTIVE_KEY = 'intro_follow_bloom'
+const DEBUG_AUTOMATION_FOLDER_TITLE = '⏸ Automation'
+const DEBUG_AUTOMATION_ENABLED_KEY = 'autoFlowEnabled'
 
 export default class Experience
 {
@@ -95,8 +93,12 @@ export default class Experience
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
         this.debugTutorialFolder = null
+        this.debugAutomationFolder = null
         this.debugTutorialState = {
             [DEBUG_TUTORIAL_COMPLETED_KEY]: false
+        }
+        this.debugAutomationState = {
+            [DEBUG_AUTOMATION_ENABLED_KEY]: true
         }
 
         this.menu.start().then(() =>
@@ -107,6 +109,11 @@ export default class Experience
             this.tutoriel.on('finished', () =>
             {
                 if(this.hasStartedIntroDialogue)
+                {
+                    return
+                }
+
+                if(!this.isAutoFlowEnabled())
                 {
                     return
                 }
@@ -125,6 +132,7 @@ export default class Experience
         })
 
         this.setDebugTutorial()
+        this.setDebugAutomation()
 
         this.time.on(`${EventEnum.TICK}.experience`, () =>
         {
@@ -164,6 +172,8 @@ export default class Experience
         this.sound?.destroy?.()
         this.debugTutorialFolder?.dispose?.()
         this.debugTutorialFolder = null
+        this.debugAutomationFolder?.dispose?.()
+        this.debugAutomationFolder = null
         this.debug.destroy()
         this.inputs?.destroy?.()
         this.camera.destroy?.()
@@ -183,6 +193,16 @@ export default class Experience
     setTutorialCompleted(isCompleted)
     {
         this.debugTutorialState[DEBUG_TUTORIAL_COMPLETED_KEY] = isCompleted === true
+    }
+
+    isAutoFlowEnabled()
+    {
+        return this.debugAutomationState?.[DEBUG_AUTOMATION_ENABLED_KEY] !== false
+    }
+
+    setAutoFlowEnabled(enabled)
+    {
+        this.debugAutomationState[DEBUG_AUTOMATION_ENABLED_KEY] = enabled === true
     }
 
     setDebugTutorial()
@@ -213,5 +233,40 @@ export default class Experience
                 this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
                 this.tutoriel?.restart?.()
             })
+    }
+
+    setDebugAutomation()
+    {
+        if(!this.debug?.isDebugEnabled)
+        {
+            return
+        }
+
+        this.debugAutomationFolder = this.debug.addFolder(DEBUG_AUTOMATION_FOLDER_TITLE, { expanded: false })
+        this.debug.addManualBinding(this.debugAutomationFolder, this.debugAutomationState, DEBUG_AUTOMATION_ENABLED_KEY, {
+            label: 'auto scenes/dialogues',
+            readonly: true
+        }, 'auto')
+
+        this.debug.addButtons(this.debugAutomationFolder, {
+            label: 'Auto flow',
+            columns: 2,
+            buttons: [
+                {
+                    label: 'Stop auto',
+                    onClick: () =>
+                    {
+                        this.setAutoFlowEnabled(false)
+                    }
+                },
+                {
+                    label: 'Resume auto',
+                    onClick: () =>
+                    {
+                        this.setAutoFlowEnabled(true)
+                    }
+                }
+            ]
+        })
     }
 }

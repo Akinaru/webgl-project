@@ -102,6 +102,11 @@ export default class SceneRecyclageWorld
             return
         }
 
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         this.hasStartedArrivalDialogue = true
         this.experience.dialogueManager?.on?.('end.recyclageWorld', this.onDialogueEnd)
         this.experience.dialogueManager?.startByKey?.(SceneRecyclageWorldConstants.RECYCLAGE_ARRIVAL_DIALOGUE_KEY)
@@ -114,6 +119,11 @@ export default class SceneRecyclageWorld
             return
         }
 
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            return
+        }
+
         this.hasStartedInstructionDialogue = true
         this.experience.dialogueManager?.startByKey?.(SceneRecyclageWorldConstants.RECYCLAGE_INSTRUCTIONS_DIALOGUE_KEY)
     }
@@ -121,6 +131,11 @@ export default class SceneRecyclageWorld
     completeScene()
     {
         if(this.hasCompletedScene)
+        {
+            return
+        }
+
+        if(this.experience?.isAutoFlowEnabled?.() === false)
         {
             return
         }

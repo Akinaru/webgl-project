@@ -349,6 +349,7 @@ export default class MapModel
         )
         const instanceWorldMatrix = new THREE.Matrix4()
         const instanceLocalMatrix = new THREE.Matrix4()
+        const placementScaleMatrix = new THREE.Matrix4()
         const composedPosition = new THREE.Vector3()
         const composedQuaternion = new THREE.Quaternion()
         const composedScale = new THREE.Vector3()
@@ -392,7 +393,11 @@ export default class MapModel
             for(let index = 0; index < placements.length; index++)
             {
                 const placement = placements[index]
-                instanceWorldMatrix.copy(masterLocalMatrix).premultiply(placement.matrixWorld)
+                const placementScaleFactor = this.getRepeatablePlacementScaleFactor(placement)
+                placementScaleMatrix.makeScale(placementScaleFactor, placementScaleFactor, placementScaleFactor)
+                instanceWorldMatrix.copy(masterLocalMatrix)
+                instanceWorldMatrix.premultiply(placementScaleMatrix)
+                instanceWorldMatrix.premultiply(placement.matrixWorld)
                 instanceLocalMatrix.copy(instanceWorldMatrix).premultiply(modelWorldInverse)
                 instanceLocalMatrix.decompose(composedPosition, composedQuaternion, composedScale)
                 instanceLocalMatrix.compose(composedPosition, composedQuaternion, composedScale)
@@ -440,6 +445,15 @@ export default class MapModel
         }
 
         this.applyRepeatableInstanceDebugVisibility()
+    }
+
+    getRepeatablePlacementScaleFactor(placement)
+    {
+        const scaleX = Number.isFinite(placement?.scale?.x) ? Math.abs(placement.scale.x) : 1
+        const scaleY = Number.isFinite(placement?.scale?.y) ? Math.abs(placement.scale.y) : 1
+        const scaleZ = Number.isFinite(placement?.scale?.z) ? Math.abs(placement.scale.z) : 1
+        const averageScale = (scaleX + scaleY + scaleZ) / 3
+        return Math.max(0.001, averageScale)
     }
 
     getRepeatableInstanceDebugKey(key = '')
@@ -733,6 +747,7 @@ export default class MapModel
         const masterLocalMatrix = new THREE.Matrix4()
         const instanceWorldMatrix = new THREE.Matrix4()
         const instanceLocalMatrix = new THREE.Matrix4()
+        const placementScaleMatrix = new THREE.Matrix4()
         const composedPosition = new THREE.Vector3()
         const composedQuaternion = new THREE.Quaternion()
         const composedScale = new THREE.Vector3()
@@ -768,7 +783,11 @@ export default class MapModel
                 for(let index = 0; index < placements.length; index++)
                 {
                     const placement = placements[index]
-                    instanceWorldMatrix.copy(masterLocalMatrix).premultiply(placement.matrixWorld)
+                    const placementScaleFactor = this.getRepeatablePlacementScaleFactor(placement)
+                    placementScaleMatrix.makeScale(placementScaleFactor, placementScaleFactor, placementScaleFactor)
+                    instanceWorldMatrix.copy(masterLocalMatrix)
+                    instanceWorldMatrix.premultiply(placementScaleMatrix)
+                    instanceWorldMatrix.premultiply(placement.matrixWorld)
                     instanceLocalMatrix.copy(instanceWorldMatrix).premultiply(modelWorldInverse)
                     instanceLocalMatrix.decompose(composedPosition, composedQuaternion, composedScale)
                     instanceLocalMatrix.compose(composedPosition, composedQuaternion, composedScale)
