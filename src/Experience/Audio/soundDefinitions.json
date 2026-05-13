@@ -15,7 +15,8 @@
     "volume": 0.26,
     "playbackRate": 0.94,
     "channel": "uiMusicPreview",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "ui"
   },
   "pauseOpen": {
     "label": "Pause open",
@@ -153,7 +154,8 @@
     "fadeInMs": 900,
     "fadeOutMs": 700,
     "channel": "recuperationAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "scene"
   },
   "mapMusicIntro": {
     "label": "Map music intro",
@@ -165,7 +167,8 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "mapAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   },
   "recuperationMusic1": {
     "label": "Recuperation music 1",
@@ -177,7 +180,8 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "recuperationAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   },
   "recuperationMusic2": {
     "label": "Recuperation music 2",
@@ -189,7 +193,8 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "recuperationAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   },
   "recyclageMusic1": {
     "label": "Recyclage music 1",
@@ -201,7 +206,8 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "recyclageAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   },
   "recyclageMusic2": {
     "label": "Recyclage music 2",
@@ -213,7 +219,8 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "recyclageAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   },
   "distributionMusicResult": {
     "label": "Distribution music result",
@@ -225,6 +232,7 @@
     "fadeInMs": 1200,
     "fadeOutMs": 900,
     "channel": "distributionAmbience",
-    "audioType": "music"
+    "audioType": "music",
+    "pauseGroup": "music"
   }
 }

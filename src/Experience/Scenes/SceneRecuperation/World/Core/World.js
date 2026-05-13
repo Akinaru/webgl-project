@@ -218,6 +218,12 @@ export default class SceneRecuperationWorld
 
     syncAmbientSound()
     {
+        this.syncAmbientMusic()
+        this.syncAmbientWaterLoop()
+    }
+
+    syncAmbientMusic()
+    {
         if(this.experience.sound?.isChannelPlaying?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL))
         {
             return
@@ -234,6 +240,18 @@ export default class SceneRecuperationWorld
 
         this.experience.sound?.play?.(musicKey, {
             channel: SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL
+        })
+    }
+
+    syncAmbientWaterLoop()
+    {
+        if(this.experience.sound?.isChannelPlaying?.(SceneRecuperationWorldConstants.RECUPERATION_WATER_AMBIENT_CHANNEL))
+        {
+            return
+        }
+
+        this.experience.sound?.play?.(SceneRecuperationWorldConstants.RECUPERATION_WATER_AMBIENT_SOUND_KEY, {
+            channel: SceneRecuperationWorldConstants.RECUPERATION_WATER_AMBIENT_CHANNEL
         })
     }
 
@@ -655,6 +673,7 @@ export default class SceneRecuperationWorld
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)
+        this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_WATER_AMBIENT_CHANNEL)
         this.onArrivalDialogueEnd = null
 
         if(this.player)

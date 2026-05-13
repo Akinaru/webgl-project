@@ -26,3 +26,4 @@ Il ne porte pas la logique du jeu: il fournit une API stable aux autres systemes
 - Les nouveaux sons doivent etre declares dans `soundDefinitions.json` si on veut un acces nomme.
 - Les assets physiques restent dans `public/sounds/`.
 - Les volumes utilisateur sont persistes dans `localStorage`.
+- Les definitions peuvent porter un `pauseGroup` pour distinguer musique, dialogue, UI et effets de scene lors des pauses runtime.

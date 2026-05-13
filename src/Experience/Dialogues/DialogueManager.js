@@ -23,6 +23,7 @@ export default class DialogueManager extends EventEmitter
         this.state = this.createEmptyState()
         this.autoAdvancePollTimer = null
         this.autoAdvanceDelayTimer = null
+        this.isPaused = false
 
         this.setDebug()
     }
@@ -222,7 +223,7 @@ export default class DialogueManager extends EventEmitter
 
     continue()
     {
-        if(!this.isRunning() || this.state.waitingChoice)
+        if(!this.isRunning() || this.state.waitingChoice || this.isPaused)
         {
             return
         }
@@ -244,7 +245,7 @@ export default class DialogueManager extends EventEmitter
 
     skipCurrentNode()
     {
-        if(!this.isRunning() || this.state.waitingChoice)
+        if(!this.isRunning() || this.state.waitingChoice || this.isPaused)
         {
             return
         }
@@ -264,7 +265,7 @@ export default class DialogueManager extends EventEmitter
 
     choose(choiceId)
     {
-        if(!this.isRunning() || !this.state.waitingChoice)
+        if(!this.isRunning() || !this.state.waitingChoice || this.isPaused)
         {
             return
         }
@@ -295,7 +296,7 @@ export default class DialogueManager extends EventEmitter
 
     skip()
     {
-        if(!this.isRunning())
+        if(!this.isRunning() || this.isPaused)
         {
             return
         }
@@ -372,6 +373,11 @@ export default class DialogueManager extends EventEmitter
 
     refreshContinueGateState()
     {
+        if(this.isPaused)
+        {
+            return
+        }
+
         if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
         {
             this.unlockContinueGate()
@@ -416,14 +422,14 @@ export default class DialogueManager extends EventEmitter
     scheduleAutoAdvanceForLine()
     {
         this.clearAutoAdvanceTimers()
-        if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+        if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line' || this.isPaused)
         {
             return
         }
 
         this.autoAdvancePollTimer = window.setInterval(() =>
         {
-            if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+            if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line' || this.isPaused)
             {
                 this.clearAutoAdvanceTimers()
                 return
@@ -439,7 +445,7 @@ export default class DialogueManager extends EventEmitter
             this.autoAdvanceDelayTimer = window.setTimeout(() =>
             {
                 this.autoAdvanceDelayTimer = null
-                if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line')
+                if(!this.isRunning() || this.state.waitingChoice || this.state.node?.type !== 'line' || this.isPaused)
                 {
                     return
                 }
@@ -462,6 +468,33 @@ export default class DialogueManager extends EventEmitter
             window.clearTimeout(this.autoAdvanceDelayTimer)
             this.autoAdvanceDelayTimer = null
         }
+    }
+
+    pause()
+    {
+        if(this.isPaused)
+        {
+            return
+        }
+
+        this.isPaused = true
+        this.clearAutoAdvanceTimers()
+        this.emitState()
+    }
+
+    resume()
+    {
+        if(!this.isPaused)
+        {
+            return
+        }
+
+        this.isPaused = false
+        if(this.isRunning() && this.state.node?.type === 'line' && !this.state.waitingChoice)
+        {
+            this.scheduleAutoAdvanceForLine()
+        }
+        this.emitState()
     }
 
     createActionContext(extra = {})

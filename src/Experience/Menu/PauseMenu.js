@@ -414,6 +414,8 @@ export default class PauseMenu extends EventEmitter
             this.inputs?.exitPointerLock?.()
         }
 
+        this.experience?.sound?.pauseForMenu?.()
+        this.experience?.dialogueManager?.pause?.()
         this.trigger('open')
         this.trigger('opened')
         this.experience?.sound?.playPauseOpen?.()
@@ -460,6 +462,8 @@ export default class PauseMenu extends EventEmitter
         this.root.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.root.classList.remove(PauseMenuConstants.DISPLAYED_CLASS)
+        this.experience?.sound?.resumeForMenu?.()
+        this.experience?.dialogueManager?.resume?.()
         this.trigger('close')
         this.trigger('closed')
 

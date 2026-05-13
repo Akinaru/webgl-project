@@ -1,20 +1,14 @@
-import soundDefinitionsJson from './soundDefinitions.json'
 import { getBushSoundUrls } from './bushSoundBank.js'
-
-const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
-const AUDIO_MUSIC_VOLUME_KEY = 'bloom.audio.musicVolume'
-const AUDIO_SFX_VOLUME_KEY = 'bloom.audio.sfxVolume'
-const AUDIO_TYPE = Object.freeze({
-    MUSIC: 'music',
-    SFX: 'sfx'
-})
-const AUDIO_VOLUME_DEFAULTS = Object.freeze({
-    [AUDIO_TYPE.MUSIC]: 1,
-    [AUDIO_TYPE.SFX]: 1
-})
-
-const ACTIVE_SOUNDS_LABEL_LIMIT = 8
-const NOW_PLAYING_LINE_LIMIT = 6
+import {
+    ACTIVE_SOUNDS_LABEL_LIMIT,
+    AUDIO_PAUSE_GROUP,
+    AUDIO_TYPE,
+    AUDIO_VOLUME_DEFAULTS,
+    AUDIO_VOLUME_STORAGE_KEY,
+    NOW_PLAYING_LINE_LIMIT,
+    PAUSE_MENU_AUDIO_GROUPS,
+    SOUND_DEFINITIONS
+} from './SoundManager.constants.js'
 
 export default class SoundManager
 {
@@ -25,6 +19,7 @@ export default class SoundManager
         this.debug = this.experience?.debug ?? null
 
         this.enabled = true
+        this.pausedGroups = new Set()
         this.context = null
         this.masterGain = null
         this.activeVoices = new Map()
@@ -208,9 +203,12 @@ export default class SoundManager
 
         const resolvedDefinition = this.applySoundDefinitionOverrides(soundName, definition)
         const audioType = this.resolveAudioType(soundName, resolvedDefinition)
+        const pauseGroup = this.resolvePauseGroup(soundName, resolvedDefinition)
         const channelVolume = this.getAudioTypeVolumeMultiplier(audioType)
 
         const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
+            audioType,
+            pauseGroup,
             volume: volume * channelVolume,
             playbackRate
         })
@@ -222,6 +220,8 @@ export default class SoundManager
         }
 
         const hasPlayedFallbackSound = this.playFallbackSound(soundName, resolvedDefinition, {
+            audioType,
+            pauseGroup,
             volume: volume * channelVolume,
             playbackRate
         })
@@ -254,6 +254,8 @@ export default class SoundManager
     }
 
     playBufferSound(soundName, definition, {
+        audioType = AUDIO_TYPE.SFX,
+        pauseGroup = AUDIO_PAUSE_GROUP.SCENE,
         volume = 1,
         playbackRate = 1
     } = {})
@@ -270,12 +272,7 @@ export default class SoundManager
             return false
         }
 
-        const sourceNode = context.createBufferSource()
-        sourceNode.buffer = buffer
-        sourceNode.loop = Boolean(definition.loop)
         const effectivePlaybackRate = Math.max(0.05, playbackRate * definition.playbackRate)
-        sourceNode.playbackRate.value = effectivePlaybackRate
-
         const gainNode = context.createGain()
         const targetGain = Math.max(0, definition.volume * volume)
         const fadeInMs = Number.isFinite(definition.fadeInMs) ? Math.max(0, definition.fadeInMs) : 0
@@ -286,18 +283,85 @@ export default class SoundManager
         {
             gainNode.gain.linearRampToValueAtTime(targetGain, now + (fadeInMs / 1000))
         }
-
-        sourceNode.connect(gainNode)
         gainNode.connect(this.masterGain)
 
         let stopAlreadyScheduled = false
+        let sourceNode = null
+        let isPaused = false
+        let isStopping = false
+        let startedAtMs = performance.now()
+        let pausedOffsetSeconds = 0
+        let playbackOffsetAtStartSeconds = 0
+        let playbackStartedAtContextTime = 0
+
+        const getPlayedOffsetSeconds = () =>
+        {
+            if(isPaused)
+            {
+                return pausedOffsetSeconds
+            }
+
+            const elapsedSeconds = Math.max(0, context.currentTime - playbackStartedAtContextTime)
+            return playbackOffsetAtStartSeconds + (elapsedSeconds * effectivePlaybackRate)
+        }
+
+        const stopSourceNode = () =>
+        {
+            if(!sourceNode)
+            {
+                return
+            }
+
+            sourceNode.onended = null
+            try
+            {
+                sourceNode.stop(0)
+            }
+            catch(error)
+            {
+                // Source potentiellement deja terminee.
+            }
+            sourceNode.disconnect()
+            sourceNode = null
+        }
+
+        const startSourceNode = (offsetSeconds = 0) =>
+        {
+            const nextSourceNode = context.createBufferSource()
+            nextSourceNode.buffer = buffer
+            nextSourceNode.loop = Boolean(definition.loop)
+            nextSourceNode.playbackRate.value = effectivePlaybackRate
+            nextSourceNode.connect(gainNode)
+
+            const durationSeconds = Math.max(0, buffer.duration)
+            const safeOffset = definition.loop
+                ? (durationSeconds > 0 ? (offsetSeconds % durationSeconds) : 0)
+                : Math.max(0, Math.min(offsetSeconds, Math.max(0, durationSeconds - 0.001)))
+
+            playbackOffsetAtStartSeconds = safeOffset
+            playbackStartedAtContextTime = context.currentTime
+            sourceNode = nextSourceNode
+            sourceNode.onended = () =>
+            {
+                if(isPaused)
+                {
+                    return
+                }
+
+                this.removeVoice(voiceId)
+            }
+
+            nextSourceNode.start(0, safeOffset)
+        }
 
         const voiceId = this.registerVoice({
             soundName,
             channel: definition.channel || 'default',
+            audioType,
+            pauseGroup,
             sourceType: 'buffer',
-            startedAtMs: performance.now(),
-            expectedDurationMs: sourceNode.loop ? null : ((buffer.duration / effectivePlaybackRate) * 1000),
+            startedAtMs,
+            expectedDurationMs: definition.loop ? null : ((buffer.duration / effectivePlaybackRate) * 1000),
             getProgress: ({ startedAtMs, expectedDurationMs }) =>
             {
                 if(!Number.isFinite(startedAtMs) || !Number.isFinite(expectedDurationMs) || expectedDurationMs <= 0)
@@ -309,11 +373,46 @@ export default class SoundManager
                 return Math.max(0, Math.min(1, elapsed / expectedDurationMs))
             },
             defaultFadeOutMs: Number.isFinite(definition.fadeOutMs) ? Math.max(0, definition.fadeOutMs) : 0,
+            pause: () =>
+            {
+                if(isPaused || isStopping)
+                {
+                    return
+                }
+
+                pausedOffsetSeconds = getPlayedOffsetSeconds()
+                isPaused = true
+                stopSourceNode()
+            },
+            resume: () =>
+            {
+                if(!isPaused || isStopping)
+                {
+                    return
+                }
+
+                isPaused = false
+                startedAtMs = performance.now() - ((pausedOffsetSeconds / effectivePlaybackRate) * 1000)
+                const voice = this.activeVoices.get(voiceId)
+                if(voice)
+                {
+                    voice.startedAtMs = startedAtMs
+                }
+                startSourceNode(pausedOffsetSeconds)
+            },
             stop: ({ fadeOutMs = 0 } = {}) =>
             {
                 if(stopAlreadyScheduled)
                 {
                     return true
+                }
+
+                isStopping = true
+
+                if(isPaused)
+                {
+                    stopSourceNode()
+                    return false
                 }
 
                 const safeFadeOutMs = Number.isFinite(fadeOutMs) ? Math.max(0, fadeOutMs) : 0
@@ -327,7 +426,7 @@ export default class SoundManager
                     gainNode.gain.linearRampToValueAtTime(0, currentTime + (safeFadeOutMs / 1000))
                     try
                     {
-                        sourceNode.stop(currentTime + (safeFadeOutMs / 1000) + 0.02)
+                        sourceNode?.stop(currentTime + (safeFadeOutMs / 1000) + 0.02)
                     }
                     catch(error)
                     {
@@ -336,33 +435,20 @@ export default class SoundManager
                     return true
                 }
 
-                sourceNode.onended = null
-                try
-                {
-                    sourceNode.stop(0)
-                }
-                catch(error)
-                {
-                    // Source potentiellement deja terminee.
-                }
+                stopSourceNode()
                 return false
             },
             cleanup: () =>
             {
-                sourceNode.onended = null
-                sourceNode.disconnect()
+                stopSourceNode()
                 gainNode.disconnect()
             }
         })
 
-        sourceNode.onended = () =>
-        {
-            this.removeVoice(voiceId)
-        }
-
         try
         {
-            sourceNode.start(0)
+            startSourceNode(0)
+            this.syncVoiceWithPauseState(voiceId)
             return true
         }
         catch(error)
@@ -373,6 +459,8 @@ export default class SoundManager
     }
 
     playFallbackSound(soundName, definition, {
+        audioType = AUDIO_TYPE.SFX,
+        pauseGroup = AUDIO_PAUSE_GROUP.SCENE,
         volume = 1,
         playbackRate = 1
     } = {})
@@ -399,6 +487,8 @@ export default class SoundManager
         voiceId = this.registerVoice({
             soundName,
             channel: definition.channel || 'default',
+            audioType,
+            pauseGroup,
             sourceType: 'htmlAudio',
             startedAtMs: performance.now(),
             getProgress: () =>
@@ -410,6 +500,18 @@ export default class SoundManager
                 }
 
                 return Math.max(0, Math.min(1, audio.currentTime / duration))
+            },
+            pause: () =>
+            {
+                audio.pause()
+            },
+            resume: () =>
+            {
+                const playPromise = audio.play()
+                if(playPromise && typeof playPromise.catch === 'function')
+                {
+                    playPromise.catch(() => {})
+                }
             },
             stop: () =>
             {
@@ -439,17 +541,23 @@ export default class SoundManager
             })
         }
 
+        this.syncVoiceWithPauseState(voiceId)
+
         return true
     }
 
     registerVoice({
         soundName,
         channel = 'default',
+        audioType = AUDIO_TYPE.SFX,
+        pauseGroup = AUDIO_PAUSE_GROUP.SCENE,
         sourceType,
         startedAtMs = null,
         expectedDurationMs = null,
         getProgress = null,
         defaultFadeOutMs = 0,
+        pause = null,
+        resume = null,
         stop,
         cleanup
     } = {})
@@ -460,11 +568,16 @@ export default class SoundManager
             id: voiceId,
             soundName,
             channel,
+            audioType,
+            pauseGroup,
             sourceType,
+            isPaused: false,
             startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : null,
             expectedDurationMs: Number.isFinite(expectedDurationMs) ? expectedDurationMs : null,
             getProgress: typeof getProgress === 'function' ? getProgress : null,
             defaultFadeOutMs,
+            pause: typeof pause === 'function' ? pause : null,
+            resume: typeof resume === 'function' ? resume : null,
             stop,
             cleanup
         })
@@ -565,6 +678,127 @@ export default class SoundManager
         }
     }
 
+    normalizePauseGroups(groups = [])
+    {
+        const sourceGroups = Array.isArray(groups) ? groups : [groups]
+
+        return sourceGroups.filter((group, index, values) =>
+        {
+            return typeof group === 'string'
+                && group.trim() !== ''
+                && values.indexOf(group) === index
+        })
+    }
+
+    pauseGroups(groups = [])
+    {
+        const normalizedGroups = this.normalizePauseGroups(groups)
+        if(normalizedGroups.length === 0)
+        {
+            return 0
+        }
+
+        let pausedVoicesCount = 0
+
+        for(const voice of this.activeVoices.values())
+        {
+            if(!normalizedGroups.includes(voice.pauseGroup) || voice.isPaused)
+            {
+                continue
+            }
+
+            voice.pause?.()
+            voice.isPaused = true
+            pausedVoicesCount += 1
+        }
+
+        normalizedGroups.forEach((group) =>
+        {
+            this.pausedGroups.add(group)
+        })
+
+        this.syncDebugState()
+        return pausedVoicesCount
+    }
+
+    resumeGroups(groups = [])
+    {
+        const normalizedGroups = this.normalizePauseGroups(groups)
+        if(normalizedGroups.length === 0)
+        {
+            return 0
+        }
+
+        let resumedVoicesCount = 0
+
+        for(const voice of this.activeVoices.values())
+        {
+            if(!normalizedGroups.includes(voice.pauseGroup) || !voice.isPaused)
+            {
+                continue
+            }
+
+            voice.resume?.()
+            voice.isPaused = false
+            resumedVoicesCount += 1
+        }
+
+        normalizedGroups.forEach((group) =>
+        {
+            this.pausedGroups.delete(group)
+        })
+
+        this.syncDebugState()
+        return resumedVoicesCount
+    }
+
+    syncVoiceWithPauseState(voiceId)
+    {
+        const voice = this.activeVoices.get(voiceId)
+        if(!voice)
+        {
+            return
+        }
+
+        if(!this.pausedGroups.has(voice.pauseGroup))
+        {
+            return
+        }
+
+        voice.pause?.()
+        voice.isPaused = true
+    }
+
+    pauseForMenu()
+    {
+        return this.pauseGroups(PAUSE_MENU_AUDIO_GROUPS)
+    }
+
+    resumeForMenu()
+    {
+        return this.resumeGroups(PAUSE_MENU_AUDIO_GROUPS)
+    }
+
+    pauseAll()
+    {
+        return this.pauseGroups([
+            AUDIO_PAUSE_GROUP.DIALOGUE,
+            AUDIO_PAUSE_GROUP.MUSIC,
+            AUDIO_PAUSE_GROUP.SCENE,
+            AUDIO_PAUSE_GROUP.UI
+        ])
+    }
+
+    resumeAll()
+    {
+        return this.resumeGroups([
+            AUDIO_PAUSE_GROUP.DIALOGUE,
+            AUDIO_PAUSE_GROUP.MUSIC,
+            AUDIO_PAUSE_GROUP.SCENE,
+            AUDIO_PAUSE_GROUP.UI
+        ])
+    }
+
     normalizeDialogueDefinition(definition)
     {
         if(typeof definition === 'string')
@@ -613,7 +847,8 @@ export default class SoundManager
             fallbackPath,
             volume: typeof definition.volume === 'number' ? definition.volume : 1,
             playbackRate: typeof definition.playbackRate === 'number' ? definition.playbackRate : 1,
-            loop: Boolean(definition.loop)
+            loop: Boolean(definition.loop),
+            pauseGroup: AUDIO_PAUSE_GROUP.DIALOGUE
         }
     }
 
@@ -633,6 +868,35 @@ export default class SoundManager
         }
 
         return AUDIO_TYPE.SFX
+    }
+
+    resolvePauseGroup(soundName = '', definition = {})
+    {
+        const explicitGroup = String(definition?.pauseGroup || '').toLowerCase()
+        if(
+            explicitGroup === AUDIO_PAUSE_GROUP.DIALOGUE
+            || explicitGroup === AUDIO_PAUSE_GROUP.MUSIC
+            || explicitGroup === AUDIO_PAUSE_GROUP.SCENE
+            || explicitGroup === AUDIO_PAUSE_GROUP.UI
+        )
+        {
+            return explicitGroup
+        }
+
+        const normalizedChannel = String(definition?.channel || '').toLowerCase()
+        if(normalizedChannel === 'dialogue')
+        {
+            return AUDIO_PAUSE_GROUP.DIALOGUE
+        }
+
+        if(normalizedChannel.startsWith('ui'))
+        {
+            return AUDIO_PAUSE_GROUP.UI
+        }
+
+        return this.resolveAudioType(soundName, definition) === AUDIO_TYPE.MUSIC
+            ? AUDIO_PAUSE_GROUP.MUSIC
+            : AUDIO_PAUSE_GROUP.SCENE
     }
 
     getAudioTypeVolumeMultiplier(audioType = AUDIO_TYPE.SFX)
@@ -679,8 +943,8 @@ export default class SoundManager
     {
         try
         {
-            const storedMusicVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_MUSIC_VOLUME_KEY) || '')
-            const storedSfxVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_SFX_VOLUME_KEY) || '')
+            const storedMusicVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.music) || '')
+            const storedSfxVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.sfx) || '')
 
             if(Number.isFinite(storedMusicVolume))
             {
@@ -709,8 +973,8 @@ export default class SoundManager
     {
         try
         {
-            window.localStorage.setItem(AUDIO_MUSIC_VOLUME_KEY, String(this.musicVolume))
-            window.localStorage.setItem(AUDIO_SFX_VOLUME_KEY, String(this.sfxVolume))
+            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.music, String(this.musicVolume))
+            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.sfx, String(this.sfxVolume))
         }
         catch(error)
         {
