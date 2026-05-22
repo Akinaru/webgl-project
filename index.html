@@ -64,7 +64,11 @@
           <img class="pause-settings__icon" src="/icons/settings-audio.svg" alt="" aria-hidden="true" />
           <div class="pause-settings__subtitle">Audio</div>
         </div>
-        <div class="pause-settings__controls">
+        <div class="pause-settings__controls" id="pauseAudioControls">
+          <label class="pause-settings__row pause-settings__row--toggle" for="pauseAudioEnabled">
+            <span class="pause-settings__label">Son activé</span>
+            <input class="pause-settings__toggle" id="pauseAudioEnabled" type="checkbox" checked />
+          </label>
           <label class="pause-settings__row" for="pauseMusicVolume">
             <span class="pause-settings__label">Musique</span>
             <input class="pause-settings__slider" id="pauseMusicVolume" type="range" min="0" max="100" step="1" value="100" />
@@ -74,6 +78,11 @@
             <span class="pause-settings__label">Effets sonores</span>
             <input class="pause-settings__slider" id="pauseSfxVolume" type="range" min="0" max="100" step="1" value="100" />
             <span class="pause-settings__value" id="pauseSfxVolumeValue">100%</span>
+          </label>
+          <label class="pause-settings__row" for="pauseDialogueVolume">
+            <span class="pause-settings__label">Dialogues</span>
+            <input class="pause-settings__slider" id="pauseDialogueVolume" type="range" min="0" max="100" step="1" value="100" />
+            <span class="pause-settings__value" id="pauseDialogueVolumeValue">100%</span>
           </label>
         </div>
         <div class="pause-settings__section pause-settings__section--gfx">

@@ -4,7 +4,8 @@ export const SOUND_DEFINITIONS = Object.freeze(soundDefinitionsJson)
 
 export const AUDIO_VOLUME_STORAGE_KEY = Object.freeze({
     music: 'bloom.audio.musicVolume',
-    sfx: 'bloom.audio.sfxVolume'
+    sfx: 'bloom.audio.sfxVolume',
+    dialogue: 'bloom.audio.dialogueVolume'
 })
 
 export const AUDIO_TYPE = Object.freeze({
@@ -14,7 +15,8 @@ export const AUDIO_TYPE = Object.freeze({
 
 export const AUDIO_VOLUME_DEFAULTS = Object.freeze({
     [AUDIO_TYPE.MUSIC]: 1,
-    [AUDIO_TYPE.SFX]: 1
+    [AUDIO_TYPE.SFX]: 1,
+    dialogue: 1
 })
 
 export const AUDIO_PAUSE_GROUP = Object.freeze({

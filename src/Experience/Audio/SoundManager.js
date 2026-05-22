@@ -31,8 +31,9 @@ export default class SoundManager
         this.debugDefinitionsFolder = null
         this.debugState = null
         this.soundDefinitionTuning = {}
-        this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
-        this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
+        this.musicVolume    = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+        this.sfxVolume      = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
+        this.dialogueVolume = AUDIO_VOLUME_DEFAULTS.dialogue
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -41,7 +42,10 @@ export default class SoundManager
     init()
     {
         this.restoreVolumePreferences()
-        this.setEnabled(this.experience?.audioEnabled !== false)
+        // audioEnabled peut ne pas encore etre set par Menu au moment de init(),
+        // on se rabat sur la preference stockee en localStorage.
+        const storedEnabled = this.restoreEnabledPreference()
+        this.setEnabled(this.experience?.audioEnabled !== false ? storedEnabled : false)
         this.setDebug()
         this.syncDebugState()
     }
@@ -55,12 +59,36 @@ export default class SoundManager
     {
         this.enabled = Boolean(isEnabled)
 
+        if(!this.enabled)
+        {
+            // Arrete toute la musique/ambiance/sfx, mais garde le dialogue en vie (silencieux)
+            // pour que les timers bases sur la duree audio continuent de fonctionner.
+            this.stopAllExceptDialogue()
+        }
+
+        this.applyDialogueVolumeToChannel()
+
         if(this.debugState)
         {
             this.debugState.enabled = this.enabled
         }
 
         return this.enabled
+    }
+
+    stopAllExceptDialogue()
+    {
+        const voices = Array.from(this.activeVoices.values())
+        for(const voice of voices)
+        {
+            if(voice.channel === 'dialogue') continue
+            const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
+            const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
+            if(!handledAsync)
+            {
+                this.removeVoice(voice.id)
+            }
+        }
     }
 
     unlock()
@@ -168,16 +196,24 @@ export default class SoundManager
             return false
         }
 
-        return this.playSoundDefinition({
+        // force=true : le dialogue doit toujours jouer pour preserver le timing base sur la duree audio.
+        // Quand le son est desactive, applyDialogueVolumeToChannel() met le gain a 0 juste apres.
+        this.unlock()
+        const played = this.playSoundDefinition({
             soundName: normalizedDefinition.soundName,
             definition: {
                 ...normalizedDefinition,
                 channel: 'dialogue'
             },
-            force: options.force ?? false,
+            force: true,
             volume: options.volume ?? 1,
             playbackRate: options.playbackRate ?? 1
         })
+        if(played)
+        {
+            this.applyDialogueVolumeToChannel()
+        }
+        return played
     }
 
     stopDialogue()
@@ -447,6 +483,13 @@ export default class SoundManager
             {
                 stopSourceNode()
                 gainNode.disconnect()
+            },
+            setVolume: (scale) =>
+            {
+                if(isStopping) return
+                const newGain = Math.max(0, definition.volume * volume * scale)
+                gainNode.gain.cancelScheduledValues(context.currentTime)
+                gainNode.gain.setValueAtTime(newGain, context.currentTime)
             }
         })
 
@@ -534,6 +577,10 @@ export default class SoundManager
             {
                 audio.removeEventListener('ended', onEnded)
                 audio.removeEventListener('error', onError)
+            },
+            setVolume: (scale) =>
+            {
+                audio.volume = Math.max(0, Math.min(1, definition.volume * volume * scale))
             }
         })
 
@@ -564,7 +611,8 @@ export default class SoundManager
         pause = null,
         resume = null,
         stop,
-        cleanup
+        cleanup,
+        setVolume = null
     } = {})
     {
         const voiceId = this.nextVoiceId++
@@ -584,7 +632,8 @@ export default class SoundManager
             pause: typeof pause === 'function' ? pause : null,
             resume: typeof resume === 'function' ? resume : null,
             stop,
-            cleanup
+            cleanup,
+            setVolume: typeof setVolume === 'function' ? setVolume : null
         })
 
         this.syncDebugState()
@@ -934,6 +983,29 @@ export default class SoundManager
         return this.sfxVolume
     }
 
+    setDialogueVolume(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.dialogueVolume = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : this.dialogueVolume
+        this.persistVolumePreferences()
+        this.applyDialogueVolumeToChannel()
+        return this.dialogueVolume
+    }
+
+    applyDialogueVolumeToChannel()
+    {
+        const scale = this.enabled ? this.dialogueVolume : 0
+        for(const [, voice] of this.activeVoices)
+        {
+            if(voice?.channel === 'dialogue' && typeof voice.setVolume === 'function')
+            {
+                voice.setVolume(scale)
+            }
+        }
+    }
+
     getMusicVolume()
     {
         return this.musicVolume
@@ -944,29 +1016,22 @@ export default class SoundManager
         return this.sfxVolume
     }
 
+    getDialogueVolume()
+    {
+        return this.dialogueVolume
+    }
+
     restoreVolumePreferences()
     {
         try
         {
-            const storedMusicVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.music) || '')
-            const storedSfxVolume = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.sfx) || '')
+            const storedMusic    = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.music)    || '')
+            const storedSfx      = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.sfx)      || '')
+            const storedDialogue = Number.parseFloat(window.localStorage.getItem(AUDIO_VOLUME_STORAGE_KEY.dialogue) || '')
 
-            if(Number.isFinite(storedMusicVolume))
-            {
-                this.musicVolume = Math.max(0, Math.min(1, storedMusicVolume))
-            }
-            else
-            {
-                this.musicVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
-            }
-            if(Number.isFinite(storedSfxVolume))
-            {
-                this.sfxVolume = Math.max(0, Math.min(1, storedSfxVolume))
-            }
-            else
-            {
-                this.sfxVolume = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
-            }
+            this.musicVolume    = Number.isFinite(storedMusic)    ? Math.max(0, Math.min(1, storedMusic))    : AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
+            this.sfxVolume      = Number.isFinite(storedSfx)      ? Math.max(0, Math.min(1, storedSfx))      : AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
+            this.dialogueVolume = Number.isFinite(storedDialogue) ? Math.max(0, Math.min(1, storedDialogue)) : AUDIO_VOLUME_DEFAULTS.dialogue
         }
         catch(error)
         {
@@ -974,12 +1039,26 @@ export default class SoundManager
         }
     }
 
+    restoreEnabledPreference()
+    {
+        try
+        {
+            const raw = window.localStorage.getItem('bloom.audio.enabled')
+            return raw === null ? true : raw === '1'
+        }
+        catch(error)
+        {
+            return true
+        }
+    }
+
     persistVolumePreferences()
     {
         try
         {
-            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.music, String(this.musicVolume))
-            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.sfx, String(this.sfxVolume))
+            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.music,    String(this.musicVolume))
+            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.sfx,      String(this.sfxVolume))
+            window.localStorage.setItem(AUDIO_VOLUME_STORAGE_KEY.dialogue, String(this.dialogueVolume))
         }
         catch(error)
         {

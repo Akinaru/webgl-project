@@ -46,10 +46,14 @@ export default class PauseMenu extends EventEmitter
         this.settingsButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsButton)
         this.settingsModal = document.querySelector(PauseMenuConstants.SELECTORS.settingsModal)
         this.settingsCloseButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsCloseButton)
+        this.audioEnabledToggle = document.querySelector(PauseMenuConstants.SELECTORS.audioEnabledToggle)
+        this.audioControls = document.querySelector(PauseMenuConstants.SELECTORS.audioControls)
         this.musicVolumeSlider = document.querySelector(PauseMenuConstants.SELECTORS.musicVolumeSlider)
         this.musicVolumeValue = document.querySelector(PauseMenuConstants.SELECTORS.musicVolumeValue)
         this.sfxVolumeSlider = document.querySelector(PauseMenuConstants.SELECTORS.sfxVolumeSlider)
         this.sfxVolumeValue = document.querySelector(PauseMenuConstants.SELECTORS.sfxVolumeValue)
+        this.dialogueVolumeSlider = document.querySelector(PauseMenuConstants.SELECTORS.dialogueVolumeSlider)
+        this.dialogueVolumeValue = document.querySelector(PauseMenuConstants.SELECTORS.dialogueVolumeValue)
         this.graphicsQualityButtons = Array.from(document.querySelectorAll(PauseMenuConstants.SELECTORS.graphicsQualityButtons))
         this.keybindButtons = Array.from(document.querySelectorAll(PauseMenuConstants.SELECTORS.keybindButtons))
         this.resetAllButton = document.querySelector(PauseMenuConstants.SELECTORS.resetAllButton)
@@ -60,10 +64,13 @@ export default class PauseMenu extends EventEmitter
             && this.settingsButton
             && this.settingsModal
             && this.settingsCloseButton
+            && this.audioEnabledToggle
             && this.musicVolumeSlider
             && this.musicVolumeValue
             && this.sfxVolumeSlider
             && this.sfxVolumeValue
+            && this.dialogueVolumeSlider
+            && this.dialogueVolumeValue
             && this.graphicsQualityButtons.length > 0
             && this.keybindButtons.length > 0
             && this.resetAllButton
@@ -203,6 +210,22 @@ export default class PauseMenu extends EventEmitter
             this.updateSliderFill(this.sfxVolumeSlider, percent)
             this.experience?.sound?.setSfxVolume?.(percent / 100)
             this.playVolumePreview('sfx')
+        }
+
+        this.onDialogueVolumeInput = (event) =>
+        {
+            const percent = Number(event?.target?.value ?? 100)
+            this.updateVolumeValueLabel(this.dialogueVolumeValue, percent)
+            this.updateSliderFill(this.dialogueVolumeSlider, percent)
+            this.experience?.sound?.setDialogueVolume?.(percent / 100)
+            this.playVolumePreview('dialogue')
+        }
+
+        this.onAudioEnabledToggleChange = (event) =>
+        {
+            const enabled = Boolean(event?.target?.checked)
+            this.experience?.menu?.setAudioPreference?.(enabled)
+            this.syncAudioEnabledUI()
         }
 
         this.onGraphicsQualityClick = (event) =>
@@ -365,8 +388,10 @@ export default class PauseMenu extends EventEmitter
         this.resumeButton.addEventListener('click', this.onResumeClick)
         this.settingsButton.addEventListener('click', this.onSettingsClick)
         this.settingsCloseButton.addEventListener('click', this.onSettingsCloseClick)
+        this.audioEnabledToggle.addEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.addEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.addEventListener('input', this.onSfxVolumeInput)
+        this.dialogueVolumeSlider.addEventListener('input', this.onDialogueVolumeInput)
         for(const button of this.graphicsQualityButtons)
         {
             button.addEventListener('click', this.onGraphicsQualityClick)
@@ -579,14 +604,36 @@ export default class PauseMenu extends EventEmitter
 
     syncSettingsVolumeUI()
     {
-        const musicPercent = Math.round((this.experience?.sound?.getMusicVolume?.() ?? 1) * 100)
-        const sfxPercent = Math.round((this.experience?.sound?.getSfxVolume?.() ?? 1) * 100)
-        this.musicVolumeSlider.value = String(musicPercent)
-        this.sfxVolumeSlider.value = String(sfxPercent)
-        this.updateVolumeValueLabel(this.musicVolumeValue, musicPercent)
-        this.updateVolumeValueLabel(this.sfxVolumeValue, sfxPercent)
-        this.updateSliderFill(this.musicVolumeSlider, musicPercent)
-        this.updateSliderFill(this.sfxVolumeSlider, sfxPercent)
+        const musicPercent    = Math.round((this.experience?.sound?.getMusicVolume?.()    ?? 1) * 100)
+        const sfxPercent      = Math.round((this.experience?.sound?.getSfxVolume?.()      ?? 1) * 100)
+        const dialoguePercent = Math.round((this.experience?.sound?.getDialogueVolume?.() ?? 1) * 100)
+
+        this.musicVolumeSlider.value    = String(musicPercent)
+        this.sfxVolumeSlider.value      = String(sfxPercent)
+        this.dialogueVolumeSlider.value = String(dialoguePercent)
+
+        this.updateVolumeValueLabel(this.musicVolumeValue,    musicPercent)
+        this.updateVolumeValueLabel(this.sfxVolumeValue,      sfxPercent)
+        this.updateVolumeValueLabel(this.dialogueVolumeValue, dialoguePercent)
+
+        this.updateSliderFill(this.musicVolumeSlider,    musicPercent)
+        this.updateSliderFill(this.sfxVolumeSlider,      sfxPercent)
+        this.updateSliderFill(this.dialogueVolumeSlider, dialoguePercent)
+
+        this.syncAudioEnabledUI()
+    }
+
+    syncAudioEnabledUI()
+    {
+        const enabled = this.experience?.sound?.enabled !== false
+        if(this.audioEnabledToggle instanceof HTMLInputElement)
+        {
+            this.audioEnabledToggle.checked = enabled
+        }
+        if(this.audioControls instanceof HTMLElement)
+        {
+            this.audioControls.classList.toggle('is-audio-disabled', !enabled)
+        }
     }
 
     getGraphicsQuality()
@@ -799,6 +846,8 @@ export default class PauseMenu extends EventEmitter
     {
         this.experience?.sound?.setMusicVolume?.(1)
         this.experience?.sound?.setSfxVolume?.(1)
+        this.experience?.sound?.setDialogueVolume?.(1)
+        this.experience?.menu?.setAudioPreference?.(true)
         this.experience?.renderer?.setGraphicsQuality?.(PauseMenuConstants.GRAPHICS_QUALITY.HIGH)
         this.inputs?.resetActionBindings?.()
         this.cancelKeybindCapture()
@@ -893,8 +942,10 @@ export default class PauseMenu extends EventEmitter
         this.resumeButton.removeEventListener('click', this.onResumeClick)
         this.settingsButton.removeEventListener('click', this.onSettingsClick)
         this.settingsCloseButton.removeEventListener('click', this.onSettingsCloseClick)
+        this.audioEnabledToggle.removeEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.removeEventListener('input', this.onMusicVolumeInput)
         this.sfxVolumeSlider.removeEventListener('input', this.onSfxVolumeInput)
+        this.dialogueVolumeSlider.removeEventListener('input', this.onDialogueVolumeInput)
         for(const button of this.graphicsQualityButtons)
         {
             button.removeEventListener('click', this.onGraphicsQualityClick)
