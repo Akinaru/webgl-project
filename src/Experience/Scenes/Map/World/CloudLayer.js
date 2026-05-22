@@ -10,7 +10,8 @@ export default class CloudLayer
 {
     constructor({
         light = null,
-        getFocusPosition = null
+        getFocusPosition = null,
+        getFog = null
     } = {})
     {
         this.experience = new Experience()
@@ -20,6 +21,7 @@ export default class CloudLayer
         this.getFocusPosition = typeof getFocusPosition === 'function'
             ? getFocusPosition
             : null
+        this.getFog = typeof getFog === 'function' ? getFog : null
 
         this.state = {
             enabled: true,
@@ -86,7 +88,9 @@ export default class CloudLayer
                 uCloudColor: { value: this.cloudColor.clone() },
                 uShadowColor: { value: this.shadowColor.clone() },
                 uSunColor: { value: new THREE.Color('#fff1d8') },
-                uSunPosition: { value: CloudLayerConstants.DEFAULT_SUN_FALLBACK_POSITION.clone() }
+                uSunPosition: { value: CloudLayerConstants.DEFAULT_SUN_FALLBACK_POSITION.clone() },
+                uFogNear: { value: 5 },
+                uFogFar: { value: 35 }
             }
         })
 
@@ -191,6 +195,23 @@ export default class CloudLayer
         }
     }
 
+    updateFogState()
+    {
+        if(!this.material)
+        {
+            return
+        }
+
+        const fog = this.getFog?.()
+        if(!fog?.settings)
+        {
+            return
+        }
+
+        this.material.uniforms.uFogNear.value = fog.settings.near
+        this.material.uniforms.uFogFar.value = fog.settings.far
+    }
+
     update()
     {
         this.syncWindDirection()
@@ -198,6 +219,7 @@ export default class CloudLayer
         this.updateFocusPosition()
         this.updateAnchorPosition()
         this.updateSunState()
+        this.updateFogState()
 
         this.material.uniforms.uTime.value = this.experience.time.elapsed * 0.001
     }

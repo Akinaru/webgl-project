@@ -492,7 +492,11 @@ export default class Renderer
         }
 
         this.fpsGraph?.begin?.()
-        this.syncAmbientOcclusionPass()
+        this.aoSyncFrame = ((this.aoSyncFrame ?? 0) + 1) % 30
+        if(this.aoSyncFrame === 0)
+        {
+            this.syncAmbientOcclusionPass()
+        }
         if(this.shouldUseAmbientOcclusion())
         {
             this.effectComposer?.render?.()

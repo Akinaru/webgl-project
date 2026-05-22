@@ -18,6 +18,8 @@ uniform vec3 uCloudColor;
 uniform vec3 uShadowColor;
 uniform vec3 uSunColor;
 uniform vec3 uSunPosition;
+uniform float uFogNear;
+uniform float uFogFar;
 
 varying vec2 vUv;
 varying vec3 vWorldPosition;
@@ -97,6 +99,11 @@ void main()
     );
 
     float alpha = mask * density * edgeMask * uOpacity;
+
+    float xzDist = length(vWorldPosition.xz - cameraPosition.xz);
+    float fogFactor = smoothstep(uFogNear, uFogFar, xzDist);
+    alpha *= (1.0 - fogFactor);
+
     if(alpha <= 0.001)
     {
         discard;

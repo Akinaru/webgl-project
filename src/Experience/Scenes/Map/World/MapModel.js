@@ -167,6 +167,78 @@ export default class MapModel
         this.applyPlanWaterMask(this.planWaterMaskSettings)
         this.setPlanVisibility(this.planVisible)
         this.buildCollisionBoxes()
+        this.buildCullableObjectList()
+    }
+
+    buildCullableObjectList()
+    {
+        this.cullableSceneObjects = []
+        if(!this.model)
+        {
+            return
+        }
+
+        const tempBox = new THREE.Box3()
+
+        this.model.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh) || child instanceof THREE.InstancedMesh)
+            {
+                return
+            }
+
+            if(!child.visible)
+            {
+                return
+            }
+
+            if(child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION])
+            {
+                return
+            }
+
+            if(child.userData[MapModelConstants.USER_DATA_PALM_MASTER]
+                || child.userData[MapModelConstants.USER_DATA_REPEATABLE_MASTER]
+                || child.userData[MapModelConstants.USER_DATA_PALM_PLACEMENT]
+                || child.userData[MapModelConstants.USER_DATA_REPEATABLE_PLACEMENT])
+            {
+                return
+            }
+
+            if(this.isPlanMeshName(child.name))
+            {
+                return
+            }
+
+            tempBox.setFromObject(child)
+            if(tempBox.isEmpty())
+            {
+                return
+            }
+
+            this.cullableSceneObjects.push({
+                object: child,
+                box: tempBox.clone()
+            })
+        })
+    }
+
+    updateMeshCulling(playerPosition, maxDistance)
+    {
+        if(!playerPosition || !Array.isArray(this.cullableSceneObjects))
+        {
+            return
+        }
+
+        const clampedPoint = new THREE.Vector3()
+        const maxDistanceSq = maxDistance * maxDistance
+
+        for(const entry of this.cullableSceneObjects)
+        {
+            entry.box.clampPoint(playerPosition, clampedPoint)
+            const distSq = clampedPoint.distanceToSquared(playerPosition)
+            entry.object.visible = distSq <= maxDistanceSq
+        }
     }
 
     isPlanMeshName(name = '')
@@ -409,12 +481,32 @@ export default class MapModel
             this.model.add(instanced)
         }
 
+        const instanceWorldPositions = placements.map((p) =>
+        {
+            const pos = new THREE.Vector3()
+            p.getWorldPosition(pos)
+            return pos
+        })
+
+        const tempReadMatrix = new THREE.Matrix4()
+        for(const entry of instancedEntries)
+        {
+            entry.originalMatrices = []
+            for(let i = 0; i < placements.length; i++)
+            {
+                entry.instanced.getMatrixAt(i, tempReadMatrix)
+                entry.originalMatrices.push(tempReadMatrix.clone())
+            }
+        }
+
         this.repeatableInstanceGroups.push({
             key,
             masterRoot,
             debugMasterRoot: this.findFirstObjectByName(debugMasterName),
             placements: placements.slice(),
-            instancedEntries
+            instancedEntries,
+            instanceWorldPositions,
+            instanceVisibility: new Uint8Array(placements.length).fill(1)
         })
 
         const currentGroup = this.repeatableInstanceGroups[this.repeatableInstanceGroups.length - 1]
@@ -445,6 +537,61 @@ export default class MapModel
         }
 
         this.applyRepeatableInstanceDebugVisibility()
+    }
+
+    updateInstanceCulling(playerPosition, maxDistanceSq)
+    {
+        if(!playerPosition || !Array.isArray(this.repeatableInstanceGroups))
+        {
+            return
+        }
+
+        const culledMatrix = new THREE.Matrix4().makeTranslation(0, -99999, 0)
+
+        for(const group of this.repeatableInstanceGroups)
+        {
+            const positions = group.instanceWorldPositions
+            const visibility = group.instanceVisibility
+            if(!positions || !visibility)
+            {
+                continue
+            }
+
+            let anyChanged = false
+
+            for(let i = 0; i < positions.length; i++)
+            {
+                const pos = positions[i]
+                const dx = pos.x - playerPosition.x
+                const dz = pos.z - playerPosition.z
+                const distSq = (dx * dx) + (dz * dz)
+                const shouldShow = distSq <= maxDistanceSq ? 1 : 0
+
+                if(visibility[i] === shouldShow)
+                {
+                    continue
+                }
+
+                visibility[i] = shouldShow
+                anyChanged = true
+
+                for(const entry of group.instancedEntries)
+                {
+                    entry.instanced.setMatrixAt(
+                        i,
+                        shouldShow ? entry.originalMatrices[i] : culledMatrix
+                    )
+                }
+            }
+
+            if(anyChanged)
+            {
+                for(const entry of group.instancedEntries)
+                {
+                    entry.instanced.instanceMatrix.needsUpdate = true
+                }
+            }
+        }
     }
 
     getRepeatablePlacementScaleFactor(placement)

@@ -33,13 +33,13 @@ export default class MapLight
             sunIntensity: 1.435,
 
             castShadow: true,
-            shadowAmplitude: 56.3,
+            shadowAmplitude: 28,
             shadowNear: 9.9,
-            shadowDepth: 118.2,
+            shadowDepth: 80,
             shadowBias: -0.0005,
             shadowNormalBias: 0.03,
             shadowRadius: 1.96,
-            shadowMapSize: 2048,
+            shadowMapSize: 1024,
 
             showDirectionHelper: false,
             showShadowCameraHelper: false
