@@ -158,6 +158,15 @@ export function setDebug()
         step: 0.0005
     })
 
+    this.debug.addBinding(this.debugFolder, this, 'useBoxCollisionResolution', {
+        label: 'Collisions boites',
+        export: false
+    })
+    this.debug.addBinding(this.debugFolder, this, 'useMeshCollisionRaycast', {
+        label: 'Collisions mesh',
+        export: false
+    })
+
     this.debug.addBinding(this.debugFolder, this.settings, 'cameraSmoothEnabled', {
         label: 'Lissage camera actif'
     })
