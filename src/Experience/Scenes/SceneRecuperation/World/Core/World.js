@@ -298,10 +298,7 @@ export default class SceneRecuperationWorld
         this.door?.setOpen?.(false)
         this.television?.setTestingState?.(true)
         this.showerParticles?.start?.(this.testDurationSeconds)
-        this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, {
-            force: true,
-            volume: 1
-        })
+        this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, { volume: 1 })
     }
 
     stopMaterialTest()

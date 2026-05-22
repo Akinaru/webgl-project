@@ -205,7 +205,7 @@ export default class SoundManager
                 ...normalizedDefinition,
                 channel: 'dialogue'
             },
-            force: true,
+            silentPlay: true,
             volume: options.volume ?? 1,
             playbackRate: options.playbackRate ?? 1
         })
@@ -233,11 +233,14 @@ export default class SoundManager
         soundName,
         definition,
         force = false,
+        silentPlay = false,
         volume = 1,
         playbackRate = 1
     } = {})
     {
-        if(!force && !this.enabled)
+        // silentPlay permet au dialogue de jouer a volume 0 pour preserver son timing.
+        // Tous les autres sons sont bloques quand l'utilisateur a desactive le son.
+        if(!this.enabled && !silentPlay)
         {
             return false
         }
