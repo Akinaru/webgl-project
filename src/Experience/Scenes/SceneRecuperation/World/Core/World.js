@@ -17,6 +17,7 @@ import SceneRecuperationRoom2Trigger from '../Progression/Room2Trigger.js'
 import SceneRecuperationCollisionDebug from '../Debug/SceneRecuperationCollision.debug.js'
 import SceneRecuperationCascadeTubes from '../Water/CascadeTubes.js'
 import SceneRecuperationScoring from '../Progression/Scoring.js'
+import SceneRecuperationWalls from '../Walls/Walls.js'
 import { setupSceneRecuperationWorldDebug } from './World.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../../Audio/SceneMusicPicker.js'
@@ -74,6 +75,10 @@ export default class SceneRecuperationWorld
         }
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel({
+            debugParentFolder: this.debugFolder
+        })
+        this.walls = new SceneRecuperationWalls({
+            recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
         this.cascadeTubes = new SceneRecuperationCascadeTubes({
@@ -770,6 +775,12 @@ export default class SceneRecuperationWorld
         {
             this.cascadeTubes.destroy?.()
             this.cascadeTubes = null
+        }
+
+        if(this.walls)
+        {
+            this.walls.destroy?.()
+            this.walls = null
         }
 
         if(this.recuperationModel)

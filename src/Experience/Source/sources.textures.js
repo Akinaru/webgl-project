@@ -48,5 +48,10 @@ export default [
         name: 'recuperationWaitingScreenTexture',
         type: 'texture',
         path: 'textures/recuperation/screen/waiting.png'
+    },
+    {
+        name: 'recuperationWallSlabsTexture',
+        type: 'texture',
+        path: 'textures/wall/slabs.png'
     }
 ]
