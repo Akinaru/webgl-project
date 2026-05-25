@@ -253,6 +253,36 @@ body.is-pointer-locked
     transform: translateY(0) scale(1);
 }
 
+.scene-transition__footer
+{
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(90vw, 800px);
+    text-align: center;
+    z-index: 2;
+}
+
+.scene-transition__phrase
+{
+    margin: 0;
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.scene-transition.is-visible .scene-transition__phrase
+{
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .scene-transition__title
 {
     position: relative;

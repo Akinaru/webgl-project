@@ -4,6 +4,7 @@ import MapScene from './Map/MapScene.js'
 import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
 import SceneRecyclageScene from './SceneRecyclage/SceneRecyclageScene.js'
 import SceneDistributionScene from './SceneDistribution/Scene.js'
+import LoadingPhrases from './LoadingPhrases.js'
 
 export default class SceneManager
 {
@@ -13,6 +14,7 @@ export default class SceneManager
         this.debug = this.experience.debug
         this.renderer = this.experience.renderer
 
+        this.loadingPhrases = new LoadingPhrases()
         this.sceneFactories = new Map()
         this.currentKey = null
         this.currentScene = null
@@ -128,6 +130,7 @@ export default class SceneManager
         if(this.transitionElement)
         {
             this.transitionLabelElement = this.transitionElement.querySelector('[data-scene-transition-label]')
+            this.transitionPhraseElement = this.transitionElement.querySelector('[data-scene-transition-phrase]')
             this.transitionFillElement = this.transitionElement.querySelector('[data-scene-transition-fill]')
             this.transitionValueElement = this.transitionElement.querySelector('[data-scene-transition-value]')
             return
@@ -146,10 +149,14 @@ export default class SceneManager
                     </div>
                 </div>
             </div>
+            <div class="scene-transition__footer">
+                <p class="scene-transition__phrase" data-scene-transition-phrase></p>
+            </div>
         `
         document.body.appendChild(overlay)
         this.transitionElement = overlay
         this.transitionLabelElement = overlay.querySelector('[data-scene-transition-label]')
+        this.transitionPhraseElement = overlay.querySelector('[data-scene-transition-phrase]')
         this.transitionFillElement = overlay.querySelector('[data-scene-transition-fill]')
         this.transitionValueElement = overlay.querySelector('[data-scene-transition-value]')
     }
@@ -161,7 +168,10 @@ export default class SceneManager
             return
         }
 
-        this.updateTransitionProgress(0, this.getTransitionLabel({ fromKey, toKey }))
+        this.updateTransitionProgress(0, {
+            label: this.getTransitionLabel({ toKey }),
+            phrase: fromKey ? this.loadingPhrases.getPhrase(fromKey, toKey) : ''
+        })
         this.transitionElement.classList.add('is-visible')
         await this.wait(120)
         this.updateTransitionProgress(18)
@@ -179,7 +189,9 @@ export default class SceneManager
             return
         }
 
-        this.updateTransitionProgress(92, this.getTransitionLabel({ toKey }))
+        this.updateTransitionProgress(92, {
+            label: this.getTransitionLabel({ toKey })
+        })
         await this.wait(70)
         this.updateTransitionProgress(100)
         await this.wait(180)
@@ -188,7 +200,7 @@ export default class SceneManager
         this.updateTransitionProgress(0)
     }
 
-    updateTransitionProgress(progress = 0, label = null)
+    updateTransitionProgress(progress = 0, { label = null, phrase = null } = {})
     {
         const clampedProgress = Math.max(0, Math.min(100, Math.round(progress)))
         if(this.transitionFillElement)
@@ -207,16 +219,20 @@ export default class SceneManager
         {
             this.transitionLabelElement.textContent = label
         }
+        if(this.transitionPhraseElement && typeof phrase === 'string')
+        {
+            this.transitionPhraseElement.textContent = phrase
+        }
     }
 
     getTransitionLabel({ fromKey = null, toKey = null } = {})
     {
-        const nextSceneName = this.getSceneLabel(toKey)
         if(fromKey)
         {
-            return `Chargement ${nextSceneName}`
+            return this.loadingPhrases.getPhrase(fromKey, toKey)
         }
 
+        const nextSceneName = this.getSceneLabel(toKey)
         return `Ouverture ${nextSceneName}`
     }
 
