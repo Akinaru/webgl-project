@@ -406,6 +406,7 @@ export default class SceneRecuperationWorld
             }
 
             this.television?.setButtonsUnlocked?.(true)
+            this.television?.setPowered?.(true)
         }
         this.experience.dialogueManager?.on?.('end.recuperationButtonsUnlock', this.onArrivalDialogueEnd)
         this.experience.dialogueManager?.startByKey?.(RECUPERATION_ARRIVAL_DIALOGUE_KEY)
