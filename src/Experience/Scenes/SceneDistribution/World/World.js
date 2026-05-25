@@ -172,6 +172,19 @@ export default class SceneDistributionWorld
 
         this.hasStartedResultSequence = true
         this.experience.badgeManager?.unlock?.('distribution')
+
+        this.onResultDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== 'resultat')
+            {
+                return
+            }
+
+            this.experience.menu?.endMenu?.open?.()
+            this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
+        }
+
+        this.experience.dialogueManager?.on?.('end.distributionResult', this.onResultDialogueEnd)
         this.experience.dialogueManager?.startByKey?.('resultat')
     }
 

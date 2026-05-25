@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
+import EndMenu from './EndMenu.js'
 import * as MenuConstants from './Menu.constants.js'
 
 export default class Menu
@@ -86,6 +87,8 @@ export default class Menu
             experience: this.experience,
             isEnabled: () => this.hasResolved && !this.isDestroyed
         })
+
+        this.endMenu = new EndMenu(this.experience)
 
         this.handleWindowResize = () =>
         {
