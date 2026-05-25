@@ -25,5 +25,15 @@ export default [
         name: 'distributionModel',
         type: 'gltfModel',
         path: 'models/scenes/distribution/SceneDistribution.gltf'
+    },
+    {
+        name: 'buildingTourModel',
+        type: 'gltfModel',
+        path: 'models/scenes/map/building_tour.gltf'
+    },
+    {
+        name: 'buildingFeuilleModel',
+        type: 'gltfModel',
+        path: 'models/scenes/map/building_feuille.gltf'
     }
 ]

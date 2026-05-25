@@ -411,11 +411,21 @@ export default class MapModel
     setupRepeatableInstanceGroup({
         key,
         masterName,
+        resourceName = null,
         debugMasterName = null,
         placementPattern
     } = {})
     {
-        const masterRoot = this.findFirstObjectByName(masterName)
+        let masterRoot = null
+        if(resourceName && this.resources.items[resourceName])
+        {
+            masterRoot = this.resources.items[resourceName].scene
+        }
+        else
+        {
+            masterRoot = this.findFirstObjectByName(masterName)
+        }
+
         const placements = this.findObjectsByNamePattern(placementPattern)
         if(!masterRoot || placements.length === 0)
         {
@@ -541,11 +551,24 @@ export default class MapModel
 
         const shouldKeepMasterVisible = ['build_tour_master', 'build_feuille_master1']
             .includes(String(masterName || '').trim().toLowerCase())
-        masterRoot.visible = shouldKeepMasterVisible
-        masterRoot.traverse((child) =>
+        
+        // Si le master vient de la map elle-même, on le cache
+        const mapMaster = this.findFirstObjectByName(masterName)
+        if(mapMaster)
         {
-            child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
-        })
+            mapMaster.visible = shouldKeepMasterVisible
+            mapMaster.traverse((child) =>
+            {
+                child.userData[MapModelConstants.USER_DATA_EXCLUDE_COLLISION] = true
+            })
+        }
+
+        // Si on utilise un master externe, on s'assure qu'il n'est pas ajouté tel quel à la scène
+        // (il ne sera utilisé que comme source pour les InstancedMesh)
+        if(resourceName && this.resources.items[resourceName])
+        {
+            masterRoot.visible = false
+        }
 
         for(const placement of placements)
         {

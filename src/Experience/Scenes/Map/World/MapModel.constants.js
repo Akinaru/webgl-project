@@ -30,12 +30,14 @@ export const REPEATABLE_INSTANCE_CONFIGS = [
     {
         key: 'build_tour',
         masterName: 'build_tour_master',
+        resourceName: 'buildingTourModel',
         debugMasterName: 'col_build_tour-1',
         placementPattern: /^build_tour_[^_]+_nul$/i
     },
     {
         key: 'build_feuille',
         masterName: 'build_feuille_master1',
+        resourceName: 'buildingFeuilleModel',
         debugMasterName: 'col_build_feuille-1',
         placementPattern: /^build_feuille_[^_]+_nul$/i
     }
