@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Characters/Player.js'
@@ -11,6 +12,8 @@ import SceneDistributionBalanceMonitor from './BalanceMonitor.js'
 import SceneDistributionDoorController from './DoorController.js'
 import SceneDistributionResultTrigger from './ResultTrigger.js'
 import SceneDistributionResultDisplay from './ResultDisplay.js'
+import SceneDistributionScoring from './DistributionScoring.js'
+import ValidationButton from './ValidationButton.js'
 import { setupSceneDistributionWorldDebug } from './World.debug.js'
 
 let distributionWorldInstanceIndex = 0
@@ -91,9 +94,33 @@ export default class SceneDistributionWorld
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
         })
+        this.scoring = new SceneDistributionScoring()
+        this.validationButton = new ValidationButton({
+            position: new THREE.Vector3(4.2, 0, 10.5),
+            onValidate: () => this.startResultSequence(),
+            debugParentFolder: this.debugFolder
+        })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
-            this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
-        )
+        {
+            // Vérification de la limite individuelle du tuyau
+            const canRotateIndividual = this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
+            if(!canRotateIndividual)
+            {
+                return false
+            }
+
+            // Si on essaie d'augmenter le débit (direction > 0)
+            if(direction > 0)
+            {
+                const state = this.balanceMonitor?.getState()
+                if(state && state.totalUsageUnits >= state.capacityLimit - 0.001)
+                {
+                    return false
+                }
+            }
+
+            return true
+        })
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null,
@@ -114,7 +141,7 @@ export default class SceneDistributionWorld
             distributionModel: this.distributionModel,
             player: this.player,
             debugParentFolder: this.debugFolder,
-            onEnter: () => this.startResultSequence()
+            onEnter: () => {} // Désactivé, on utilise le bouton physique
         })
 
         // Lancement du dialogue après un court délai
@@ -173,6 +200,10 @@ export default class SceneDistributionWorld
         this.hasStartedResultSequence = true
         this.experience.badgeManager?.unlock?.('distribution')
 
+        // Appliquer les scores basés sur la répartition finale
+        const finalState = this.balanceMonitor?.getState()
+        this.scoring?.applyFinalScoring(finalState)
+
         this.onResultDialogueEnd = ({ key } = {}) =>
         {
             if(key !== 'resultat')
@@ -203,6 +234,8 @@ export default class SceneDistributionWorld
         this.resultDisplay = null
         this.resultTrigger?.destroy?.()
         this.resultTrigger = null
+        this.validationButton?.destroy?.()
+        this.validationButton = null
         this.exitDoors?.destroy?.()
         this.exitDoors = null
 

@@ -1,27 +1,61 @@
 import * as THREE from 'three'
+import MetierEnum from '../../../Enum/MetierEnum.js'
 
 export const DISTRIBUTION_CHANNEL_ORDER = ['line1', 'line2', 'line3']
 
-export const DISTRIBUTION_CHANNEL_LABELS = {
-    line1: 'Circuit 1',
-    line2: 'Circuit 2',
-    line3: 'Circuit 3'
-}
+// Les paliers de distribution
+// id: ordre, threshold: seuil de remplissage de la ligne (0 à 1)
+const COMMON_LEVELS = [
+    { id: 0, label: 'Arrêt', threshold: 0.0, scores: {} },
+    { id: 1, label: 'Critique', threshold: 0.2, scores: {} },
+    { id: 2, label: 'Minimum', threshold: 0.4, scores: {} },
+    { id: 3, label: 'Stable', threshold: 0.6, scores: {} },
+    { id: 4, label: 'Optimal', threshold: 0.8, scores: {} },
+    { id: 5, label: 'Maximum', threshold: 1.0, scores: {} }
+]
 
-export const DISTRIBUTION_TARGET_WINDOWS = {
+export const DISTRIBUTION_ZONES = {
     line1: {
-        min: 0.22,
-        max: 0.29
+        id: 'hospitals',
+        label: 'Hôpitaux',
+        levels: COMMON_LEVELS.map(l => ({
+            ...l,
+            scores: {
+                [MetierEnum.INVENTEUR]: l.id * 8,
+                [MetierEnum.MENEUR]: l.id * 5
+            }
+        }))
     },
     line2: {
-        min: 0.39,
-        max: 0.46
+        id: 'agriculture',
+        label: 'Agriculture',
+        levels: COMMON_LEVELS.map(l => ({
+            ...l,
+            scores: {
+                [MetierEnum.BOTANISTE]: l.id * 8,
+                [MetierEnum.TRAVAILLEUR]: l.id * 5
+            }
+        }))
     },
     line3: {
-        min: 0.58,
-        max: 0.65
+        id: 'habitations',
+        label: 'Habitations',
+        levels: COMMON_LEVELS.map(l => ({
+            ...l,
+            scores: {
+                [MetierEnum.MENEUR]: l.id * 8,
+                [MetierEnum.TRAVAILLEUR]: l.id * 5
+            }
+        }))
     }
 }
+
+/**
+ * La somme cumulée des fillState (0 à 1) des 3 lignes qui correspond à 100% de charge.
+ * Avec 1.4, une ligne à 100% prend 71% de la capacité totale (1/1.4).
+ * Cela force à équilibrer car 2 lignes à 100% feraient 200/140 = 142% (impossible).
+ */
+export const TOTAL_CAPACITY_UNITS = 1.4
 
 export function findDistributionChannelRootObject(object)
 {
