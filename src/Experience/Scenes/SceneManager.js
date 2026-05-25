@@ -150,7 +150,9 @@ export default class SceneManager
                 </div>
             </div>
             <div class="scene-transition__footer">
-                <p class="scene-transition__phrase" data-scene-transition-phrase></p>
+                <div class="scene-transition__phrase-panel">
+                    <p class="scene-transition__phrase" data-scene-transition-phrase></p>
+                </div>
             </div>
         `
         document.body.appendChild(overlay)
@@ -170,7 +172,7 @@ export default class SceneManager
 
         this.updateTransitionProgress(0, {
             label: this.getTransitionLabel({ toKey }),
-            phrase: fromKey ? this.loadingPhrases.getPhrase(fromKey, toKey) : ''
+            phrase: this.loadingPhrases.getPhrase(fromKey, toKey)
         })
         this.transitionElement.classList.add('is-visible')
         await this.wait(120)

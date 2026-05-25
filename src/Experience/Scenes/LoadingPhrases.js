@@ -5,6 +5,7 @@ export default class LoadingPhrases
     constructor()
     {
         this.phrases = {
+            [`null_to_${SceneEnum.MAP}`]: "Éveil de l'écosystème de Bloom...",
             [`${SceneEnum.MAP}_to_${SceneEnum.RECUPERATION}`]: "Préparation de la zone de récupération des ressources...",
             [`${SceneEnum.RECUPERATION}_to_${SceneEnum.RECYCLAGE}`]: "Initialisation des processus de recyclage...",
             [`${SceneEnum.RECYCLAGE}_to_${SceneEnum.DISTRIBUTION}`]: "Configuration du réseau de distribution...",
