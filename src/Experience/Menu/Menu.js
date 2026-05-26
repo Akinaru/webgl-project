@@ -305,7 +305,7 @@ export default class Menu
         }
     }
 
-    showTransitionOverlay(label = 'Chargement')
+    showTransitionOverlay(label = 'Chargement en cours')
     {
         this.transitionOverlay = this.transitionOverlay || document.querySelector('#sceneTransition')
         if(!this.transitionOverlay)
@@ -768,7 +768,7 @@ export default class Menu
         await this.wait(MenuConstants.START_DELAY_MS)
         this.bootScreen.classList.remove(MenuConstants.START_CLASS)
         this.bootScreen.classList.add(MenuConstants.LOADING_CLASS)
-        this.showTransitionOverlay('Chargement')
+        this.showTransitionOverlay('Chargement en cours')
 
         this.experience?.resources?.startLoading?.()
         this.setLoadingProgress(0)

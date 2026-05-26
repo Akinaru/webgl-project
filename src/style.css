@@ -1,6 +1,6 @@
 :root
 {
-    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-family: "Nunito", "Segoe UI", sans-serif;
     color: #f6f6f6;
     background: #07090d;
     --glass-panel-background:
@@ -55,6 +55,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: inherit;
 }
 
 html,
@@ -63,6 +64,7 @@ body
     width: 100%;
     height: 100%;
     overflow: hidden;
+    font-family: "Nunito", "Segoe UI", sans-serif;
 }
 
 body.is-pointer-locked
@@ -137,101 +139,32 @@ body.is-pointer-locked
 {
     position: relative;
     width: min(92vw, 420px);
-    min-height: min(82vw, 420px);
-    padding: 1.2rem 1.2rem 1.3rem;
-    border-radius: 22px;
-    background:
-        linear-gradient(180deg, rgba(242, 249, 255, 0.96) 0%, rgba(228, 240, 252, 0.98) 100%);
-    box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.52),
-        0 20px 40px rgba(0, 0, 0, 0.34),
-        0 0 48px rgba(87, 166, 255, 0.12);
-    backdrop-filter: var(--glass-blur-soft);
-    -webkit-backdrop-filter: var(--glass-blur-soft);
+    min-height: min(72vw, 360px);
+    padding: 2.8rem 1.55rem 2.4rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
     transform: translateY(10px) scale(0.985);
-    overflow: hidden;
     transition: transform 140ms ease, opacity 140ms ease;
-}
-
-.scene-transition__panel.menu-panel::before,
-.scene-transition__panel.menu-panel::after
-{
-    content: '';
-    position: absolute;
-    pointer-events: none;
+    color: #ffffff;
 }
 
 .scene-transition__panel.menu-panel::before
 {
+    content: '';
+    position: absolute;
     inset: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    z-index: 0;
     background:
-        radial-gradient(56px 20px at 28px 12px, rgba(222, 246, 255, 0.84) 0%, rgba(222, 246, 255, 0) 72%),
-        radial-gradient(56px 20px at 78px 14px, rgba(178, 230, 255, 0.74) 0%, rgba(178, 230, 255, 0) 72%),
-        linear-gradient(180deg, rgba(149, 223, 255, 0.96) 0%, rgba(86, 171, 252, 0.95) 58%, rgba(44, 130, 230, 0.96) 100%);
+        radial-gradient(56px 20px at 28px 12px, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 72%),
+        radial-gradient(56px 20px at 78px 14px, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 72%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 58%, rgba(255, 255, 255, 0.05) 100%);
     background-size: 112px 30px, 112px 30px, 100% 100%;
     background-position: 0 0, 56px 0, 0 0;
     background-repeat: repeat-x, repeat-x, no-repeat;
-    box-shadow:
-        inset 0 0 24px rgba(223, 245, 255, 0.3),
-        0 0 24px rgba(88, 182, 255, 0.22);
-    z-index: 0;
     clip-path: polygon(
-        0% 12.4%,
-        2% 11.7%,
-        4% 11.1%,
-        6% 10.6%,
-        8% 10.2%,
-        10% 10.0%,
-        12% 10.1%,
-        14% 10.4%,
-        16% 10.9%,
-        18% 11.5%,
-        20% 12.2%,
-        22% 12.9%,
-        24% 13.5%,
-        26% 14.0%,
-        28% 14.2%,
-        30% 14.1%,
-        32% 13.8%,
-        34% 13.3%,
-        36% 12.6%,
-        38% 11.9%,
-        40% 11.1%,
-        42% 10.4%,
-        44% 9.9%,
-        46% 9.6%,
-        48% 9.5%,
-        50% 9.7%,
-        52% 10.1%,
-        54% 10.7%,
-        56% 11.4%,
-        58% 12.2%,
-        60% 13.0%,
-        62% 13.6%,
-        64% 14.0%,
-        66% 14.2%,
-        68% 14.1%,
-        70% 13.8%,
-        72% 13.3%,
-        74% 12.6%,
-        76% 11.9%,
-        78% 11.1%,
-        80% 10.5%,
-        82% 10.0%,
-        84% 9.7%,
-        86% 9.6%,
-        88% 9.8%,
-        90% 10.2%,
-        92% 10.8%,
-        94% 11.5%,
-        96% 12.3%,
-        98% 13.0%,
-        100% 13.6%,
-        100% 100%,
-        0% 100%
+        0% 12.4%, 2% 11.7%, 4% 11.1%, 6% 10.6%, 8% 10.2%, 10% 10.0%, 12% 10.1%, 14% 10.4%, 16% 10.9%, 18% 11.5%, 20% 12.2%, 22% 12.9%, 24% 13.5%, 26% 14.0%, 28% 14.2%, 30% 14.1%, 32% 13.8%, 34% 13.3%, 36% 12.6%, 38% 11.9%, 40% 11.1%, 42% 10.4%, 44% 9.9%, 46% 9.6%, 48% 9.5%, 50% 9.7%, 52% 10.1%, 54% 10.7%, 56% 11.4%, 58% 12.2%, 60% 13.0%, 62% 13.6%, 64% 14.0%, 66% 14.2%, 68% 14.1%, 70% 13.8%, 72% 13.3%, 74% 12.6%, 76% 11.9%, 78% 11.1%, 80% 10.5%, 82% 10.0%, 84% 9.7%, 86% 9.6%, 88% 9.8%, 90% 10.2%, 92% 10.8%, 94% 11.5%, 96% 12.3%, 98% 13.0%, 100% 13.6%, 100% 100%, 0% 100%
     );
     transform-origin: center bottom;
     transform: scaleY(var(--scene-transition-progress, 0));
@@ -239,14 +172,7 @@ body.is-pointer-locked
     animation:
         scene-transition-fill-flow 2.4s linear infinite,
         scene-transition-wave-clip 1.2s linear infinite;
-}
-
-.scene-transition__panel.menu-panel::after
-{
-    inset: 0;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 46%);
-    z-index: 0;
+    pointer-events: none;
 }
 
 .scene-transition.is-visible .scene-transition__panel
@@ -334,12 +260,12 @@ body.is-pointer-locked
 {
     position: relative;
     z-index: 1;
-    margin-bottom: 0;
+    margin: 0 0 2.5rem 0;
     text-align: center;
-    font-size: 1rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: rgba(16, 41, 74, 0.88);
+    font-size: 35px !important;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #ffffff;
 }
 
 .scene-transition__meter
@@ -347,9 +273,9 @@ body.is-pointer-locked
     position: relative;
     z-index: 1;
     width: 100%;
-    min-height: min(62vw, 320px);
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .scene-transition__value
@@ -360,8 +286,8 @@ body.is-pointer-locked
     line-height: 1;
     font-weight: 700;
     letter-spacing: 0.02em;
-    color: rgba(8, 33, 66, 0.95);
-    text-shadow: 0 3px 12px rgba(255, 255, 255, 0.46);
+    color: #ffffff;
+    text-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
 }
 
 /* End Menu */
@@ -1082,7 +1008,7 @@ body.is-recuperation-material-cursor .dialogue__cursor
     display: none;
     width: min(92vw, 620px);
     padding: 64px;
-    font-family: "Helvetica Neue", "Segoe UI", sans-serif;
+    font-family: "Nunito", "Segoe UI", sans-serif;
     font-weight: 300;
 }
 

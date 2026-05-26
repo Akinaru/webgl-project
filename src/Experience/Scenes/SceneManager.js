@@ -146,7 +146,7 @@ export default class SceneManager
         overlay.innerHTML = `
             <div class="scene-transition__home">
                 <div class="scene-transition__panel menu-panel">
-                    <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
+                    <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement en cours</p>
                     <div class="scene-transition__meter">
                         <span class="scene-transition__value" data-scene-transition-value>0%</span>
                     </div>
