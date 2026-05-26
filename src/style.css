@@ -811,10 +811,34 @@ body.is-pointer-locked
     transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
 }
 
+.menu-checkbox-ui::after
+{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.98);
+    mask-image: url('/textures/ui/valid.svg');
+    mask-size: 70%;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    -webkit-mask-image: url('/textures/ui/valid.svg');
+    -webkit-mask-size: 70%;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 140ms ease, transform 140ms ease;
+}
+
 .menu-checkbox:checked + .menu-checkbox-ui
 {
-    background: rgba(255, 255, 255, 0.24);
-    box-shadow: inset 0 0 0 6px rgba(255, 255, 255, 0.98);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.menu-checkbox:checked + .menu-checkbox-ui::after
+{
+    opacity: 1;
+    transform: scale(1);
 }
 
 .menu-checkbox:focus-visible + .menu-checkbox-ui
