@@ -13,6 +13,7 @@ import SceneDistributionDoorController from './DoorController.js'
 import SceneDistributionResultTrigger from './ResultTrigger.js'
 import SceneDistributionResultDisplay from './ResultDisplay.js'
 import SceneDistributionScoring from './DistributionScoring.js'
+import SceneDistributionWalls from './Walls/Walls.js'
 import ValidationButton from './ValidationButton.js'
 import { setupSceneDistributionWorldDebug } from './World.debug.js'
 
@@ -52,6 +53,10 @@ export default class SceneDistributionWorld
         this.setDebug()
         this.environment = new MapEnvironment()
         this.distributionModel = new SceneDistributionModel()
+        this.walls = new SceneDistributionWalls({
+            distributionModel: this.distributionModel,
+            debugParentFolder: this.debugFolder
+        })
         this.exitDoors = new SceneDistributionDoorController({
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
@@ -238,6 +243,9 @@ export default class SceneDistributionWorld
         this.validationButton = null
         this.exitDoors?.destroy?.()
         this.exitDoors = null
+
+        this.walls?.destroy?.()
+        this.walls = null
 
         if(this.player)
         {
