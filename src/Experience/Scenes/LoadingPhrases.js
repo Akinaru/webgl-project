@@ -4,13 +4,37 @@ export default class LoadingPhrases
 {
     constructor()
     {
-        this.phrases = {
-            [`null_to_${SceneEnum.MAP}`]: "Éveil de l'écosystème de Bloom...",
-            [`${SceneEnum.MAP}_to_${SceneEnum.RECUPERATION}`]: "Préparation de la zone de récupération des ressources...",
-            [`${SceneEnum.RECUPERATION}_to_${SceneEnum.RECYCLAGE}`]: "Initialisation des processus de recyclage...",
-            [`${SceneEnum.RECYCLAGE}_to_${SceneEnum.DISTRIBUTION}`]: "Configuration du réseau de distribution...",
-            'default': "Chargement en cours..."
+        this.phrases = [
+            "Altera est une cité reconstruite sur les ruines du capitalisme depuis 2050.",
+            "Bloom te guidera. Écoute-la : elle connaît chaque goutte de cette cité.",
+            "À Altera, l’eau n’a pas de prix… mais elle a une valeur. Chaque geste compte.",
+            "Certains choix semblent petits. Ils sont en réalité décisifs.",
+            "Ici, on ne possède pas l’eau. On la garde, on la partage, on la respecte."
+        ]
+        this.lastIndex = -1
+    }
+
+    /**
+     * Récupère une phrase d'attente aléatoire.
+     * @returns {string} La phrase d'attente.
+     */
+    getRandomPhrase()
+    {
+        if(this.phrases.length === 0)
+        {
+            return "Chargement en cours..."
         }
+
+        let index = Math.floor(Math.random() * this.phrases.length)
+        
+        // Évite de répéter la même phrase deux fois de suite si possible
+        if(index === this.lastIndex && this.phrases.length > 1)
+        {
+            index = (index + 1) % this.phrases.length
+        }
+
+        this.lastIndex = index
+        return this.phrases[index]
     }
 
     /**
@@ -21,7 +45,6 @@ export default class LoadingPhrases
      */
     getPhrase(fromKey, toKey)
     {
-        const transitionKey = `${fromKey}_to_${toKey}`
-        return this.phrases[transitionKey] || this.phrases['default']
+        return this.getRandomPhrase()
     }
 }

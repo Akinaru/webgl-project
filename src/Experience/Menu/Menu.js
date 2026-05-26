@@ -316,10 +316,20 @@ export default class Menu
         this.transitionLabel = this.transitionLabel || this.transitionOverlay.querySelector('[data-scene-transition-label]')
         this.transitionValue = this.transitionValue || this.transitionOverlay.querySelector('[data-scene-transition-value]')
         this.transitionFill = this.transitionFill || this.transitionOverlay.querySelector('[data-scene-transition-fill]')
+        this.transitionPhrase = this.transitionPhrase || this.transitionOverlay.querySelector('[data-scene-transition-phrase]')
 
         if(this.transitionLabel)
         {
             this.transitionLabel.textContent = label
+        }
+
+        if(this.transitionPhrase)
+        {
+            const loadingPhrases = this.experience?.sceneManager?.loadingPhrases
+            if(loadingPhrases)
+            {
+                this.transitionPhrase.textContent = loadingPhrases.getRandomPhrase()
+            }
         }
 
         this.transitionOverlay.classList.add('is-visible')
