@@ -28,7 +28,10 @@ export default class SceneManager
 
         this.setTransitionOverlay()
         this.setDebug()
+    }
 
+    start()
+    {
         const initialScene = this.getInitialScene()
         this.switchTo(initialScene)
     }

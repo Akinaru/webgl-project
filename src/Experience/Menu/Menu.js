@@ -149,7 +149,7 @@ export default class Menu
         this.isInitialized = true
         this.applyAudioPreference(this.readStoredAudioPreference())
         this.pauseMenu?.start?.()
-        this.initBootLogoViewer()
+        this.applyBootLogoLayout()
         this.setDebug()
 
         if(!this.hasUI)

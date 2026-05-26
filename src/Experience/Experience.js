@@ -120,6 +120,7 @@ export default class Experience
 
         this.menu.start().then(() =>
         {
+            this.sceneManager.start()
             this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
             this.tutoriel.start()
 
