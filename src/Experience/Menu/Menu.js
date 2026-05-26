@@ -123,6 +123,7 @@ export default class Menu
             if(audioEnabled)
             {
                 this.experience?.sound?.unlock?.()
+                this.experience?.sound?.playMenuClick?.()
             }
         }
 
