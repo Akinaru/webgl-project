@@ -4,7 +4,7 @@ export default [
     {
         name: 'bloomModel',
         type: 'gltfModel',
-        path: `models/bloom/model/Bloom.gltf?v=${BLOOM_MODEL_CACHE_BUSTER}`
+        path: `models/bloom/model/Bloom_Draco.glb?v=${BLOOM_MODEL_CACHE_BUSTER}`
     },
     {
         name: 'mapModel',

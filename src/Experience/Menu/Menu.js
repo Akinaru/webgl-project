@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
 import EndMenu from './EndMenu.js'
@@ -424,8 +425,13 @@ export default class Menu
 
         this.resizeBootLogoViewer()
 
+        const dracoLoader = new DRACOLoader()
+        dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/')
+
         const loader = new GLTFLoader()
-        loader.load('/models/UI/Logo.gltf', (gltf) =>
+        loader.setDRACOLoader(dracoLoader)
+
+        loader.load('/models/UI/Logo_Draco.glb', (gltf) =>
         {
             if(this.isDestroyed || !this.bootLogoScene)
             {

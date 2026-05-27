@@ -253,6 +253,7 @@
       import * as THREE from 'three'
       import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
       import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+      import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 
       const canvas = document.getElementById('view')
       const statusNode = document.getElementById('status')
@@ -1056,7 +1057,12 @@
 
       function loadMap()
       {
+        const dracoLoader = new DRACOLoader()
+        dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/')
+
         const loader = new GLTFLoader()
+        loader.setDRACOLoader(dracoLoader)
+
         let didResolve = false
         const timeoutId = window.setTimeout(() => {
           if(didResolve)
@@ -1065,11 +1071,11 @@
           }
 
           didResolve = true
-          updateStatus('Timeout chargement map: verifie public/models/scenes/map/Map.gltf')
+          updateStatus('Timeout chargement map: verifie public/models/scenes/map/Map_Draco.glb')
         }, 12000)
 
         loader.load(
-          './models/scenes/map/Map.gltf',
+          './models/scenes/map/Map_Draco.glb',
           (gltf) => {
             if(didResolve)
             {
