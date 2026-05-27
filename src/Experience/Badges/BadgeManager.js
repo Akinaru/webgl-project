@@ -42,6 +42,7 @@ export default class BadgeManager extends EventEmitter
         }
 
         this.unlockedKeys.add(activityKey)
+        this.experience.sound.play('badgeUnlocked')
         this.trigger('unlock', [{
             key: activityKey,
             activity,
