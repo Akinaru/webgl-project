@@ -53,7 +53,7 @@ export default class MapFog
             return
         }
 
-        this.debugFolder = this.debug.addFolder('🌫 Brouillard', { expanded: true })
+        this.debugFolder = this.debug.addFolder('🌫 Brouillard', { expanded: false })
 
         this.debug.addBinding(this.debugFolder, this.settings, 'enabled', {
             label: 'Activer le brouillard',

@@ -53,6 +53,7 @@ export default class MapEnvironment
             expanded: false
         })
 
+
         this.debug.addColorBinding(this.fogFolder, this, 'fogColor', { label: 'Couleur du brouillard' })
 
         this.debug.addBinding(this.fogFolder, this.state, 'fogMode', {

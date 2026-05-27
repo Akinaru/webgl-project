@@ -77,6 +77,8 @@ export default class Experience
 
         this.resources.on(EventEnum.READY, () =>
         {
+            if (this.bloom) return;
+            
             this.bloom = new Bloom({
                 motion: {
                     center: { x: 2.5, y: 2.0, z: 2.5 },
@@ -189,6 +191,7 @@ export default class Experience
         this.badgeManager.destroy?.()
         this.tutoriel?.destroy?.()
         this.bloom?.destroy?.()
+        this.bloom = null
         this.menu?.destroy?.()
         this.sound?.destroy?.()
         this.debugTutorialFolder?.dispose?.()
