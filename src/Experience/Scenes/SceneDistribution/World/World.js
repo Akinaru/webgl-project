@@ -216,7 +216,11 @@ export default class SceneDistributionWorld
                 return
             }
 
-            this.experience.menu?.endMenu?.open?.()
+            // Chill time (3.5s) before opening the end menu to let the user see the badge notification
+            setTimeout(() => {
+                this.experience.menu?.endMenu?.open?.()
+            }, 3500)
+            
             this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
         }
 

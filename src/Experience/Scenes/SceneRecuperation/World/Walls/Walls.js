@@ -108,7 +108,7 @@ export default class SceneRecuperationWalls
     {
         if(!this.debug?.isDebugEnabled || !parentFolder) return
 
-        this.debugFolder = this.debug.addFolder('Murs', { parent: parentFolder, expanded: true })
+        this.debugFolder = this.debug.addFolder('Murs', { parent: parentFolder, expanded: false })
 
         // --- Teinte ---
         const colorBinding = this.debug.addColorBinding(this.debugFolder, this, 'wallColor', { label: 'Teinte' })

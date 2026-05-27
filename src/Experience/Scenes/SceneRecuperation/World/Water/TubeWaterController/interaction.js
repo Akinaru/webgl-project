@@ -45,6 +45,33 @@ export function update()
 
 
 /**
+ * Aligne instantanément tous les tuyaux dans la bonne direction pour résoudre le puzzle.
+ */
+export function solvePuzzle()
+{
+    for(const target of this.rotationTargets)
+    {
+        if(!target)
+        {
+            continue
+        }
+
+        const currentOffset = this.quarterTurnsFromInitialByTubeUuid.get(target.uuid) ?? 0
+        if(currentOffset === 0)
+        {
+            continue
+        }
+
+        // On applique la rotation inverse pour revenir à 0
+        const angle = -currentOffset * SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN
+        this.rotateTubeAssembly(target, angle)
+    }
+
+    this.recuperationModel?.refreshCollisionBoxes?.()
+}
+
+
+/**
  * Indique si le joueur vise actuellement un tuyau interactif.
  */
 export function isHoveringTube()

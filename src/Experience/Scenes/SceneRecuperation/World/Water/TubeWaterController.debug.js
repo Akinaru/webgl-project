@@ -22,6 +22,14 @@ export function setupSceneRecuperationTubeWaterControllerDebug()
         step: 0.05
     })
 
+    this.debug.addButton(this.debugFolder, {
+        title: 'Finir le jeu',
+        onClick: () =>
+        {
+            this.solvePuzzle()
+        }
+    })
+
     this.debugShaderFolder = this.debug.addFolder('Shader de l eau', {
         parent: this.debugFolder,
         expanded: false
