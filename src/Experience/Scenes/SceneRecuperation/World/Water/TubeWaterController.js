@@ -74,6 +74,10 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
     this.initialRotationByTubeUuid = new Map()
     this.quarterTurnsFromInitialByTubeUuid = new Map()
     this.joinTargetsByTubeUuid = new Map()
+    this.allJoinTargets = []
+    this.continuityNeighborTubeUuidsByTubeUuid = new Map()
+    this.continuityJoinPairs = []
+    this.continuityJoinPairsByTubeUuid = new Map()
     this.tubeMeshesByTargetUuid = new Map()
     this.flowProgressByTubeUuid = new Map()
     this.activeFlowSourceByTubeUuid = new Map()
@@ -133,7 +137,9 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
     this.buildConnectionDependencies()
     this.buildWindowTubeDependencies()
     this.setupTubeMaterials()
+    this.setupJoinMaterials()
     this.setupBlueWindowMeshes()
+    this.buildTubeContinuity()
     this.captureInitialRotations()
     this.computeStartAlignedTubes()
     this.randomizeInitialRotations()

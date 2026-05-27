@@ -19,6 +19,10 @@ export function destroy()
     this.connectionDependencyGroupsByUuid.clear()
     this.quarterTurnsFromInitialByTubeUuid.clear()
     this.joinTargetsByTubeUuid.clear()
+    this.allJoinTargets = []
+    this.continuityNeighborTubeUuidsByTubeUuid.clear()
+    this.continuityJoinPairs = []
+    this.continuityJoinPairsByTubeUuid.clear()
     this.tubeMeshesByTargetUuid.clear()
     this.flowProgressByTubeUuid.clear()
     this.flowShaderMaterialsByTubeUuid.clear()
@@ -38,4 +42,3 @@ export function destroy()
     this.smokeParticles?.destroy()
     this.smokeParticles = null
 }
-

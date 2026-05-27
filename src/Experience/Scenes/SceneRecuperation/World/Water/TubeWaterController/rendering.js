@@ -50,6 +50,101 @@ export function applyBlueWindowColors()
 
 
 /**
+ * Allume visuellement les jonctions des tuyaux quand deux voisins sont correctement connectés.
+ */
+export function applyTubeJoinConnectionColors()
+{
+    const activeJoinUuids = new Set()
+
+    for(const pair of this.continuityJoinPairs)
+    {
+        if(!this.isContinuityPairConnected(pair))
+        {
+            continue
+        }
+
+        if(pair.fromJoin?.uuid)
+        {
+            activeJoinUuids.add(pair.fromJoin.uuid)
+        }
+
+        if(pair.toJoin?.uuid)
+        {
+            activeJoinUuids.add(pair.toJoin.uuid)
+        }
+    }
+
+    for(const joinTarget of this.allJoinTargets)
+    {
+        if(!joinTarget?.uuid)
+        {
+            continue
+        }
+
+        this.applyJoinTargetState(joinTarget, activeJoinUuids.has(joinTarget.uuid))
+    }
+}
+
+
+/**
+ * Indique si une paire de continuité est actuellement validée.
+ */
+export function isContinuityPairConnected(pair)
+{
+    if(!pair?.fromTubeUuid || !pair?.toTubeUuid)
+    {
+        return false
+    }
+
+    return this.isTubeAtInitialRotation(pair.fromTubeUuid) && this.isTubeAtInitialRotation(pair.toTubeUuid)
+}
+
+
+/**
+ * Applique la teinte de connexion à tous les meshes d une jonction.
+ */
+export function applyJoinTargetState(joinTarget, isConnected)
+{
+    const colorLerp = isConnected ? 1 : 0
+
+    joinTarget.traverse((child) =>
+    {
+        if(!(child instanceof THREE.Mesh))
+        {
+            return
+        }
+
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if(material.color)
+            {
+                const baseColor = material.userData?.joinBaseColor ?? material.color
+                this.colorMix.lerpColors(baseColor, this.tubeConnectedColor, colorLerp)
+                material.color.copy(this.colorMix)
+            }
+
+            if(material.emissive)
+            {
+                const baseEmissive = material.userData?.joinBaseEmissive ?? this.emissiveOffColor
+                const baseIntensity = material.userData?.joinBaseEmissiveIntensity ?? 1
+                this.emissiveMix.lerpColors(baseEmissive, this.tubeConnectedEmissiveColor, colorLerp)
+                material.emissive.copy(this.emissiveMix)
+                material.emissiveIntensity = THREE.MathUtils.lerp(baseIntensity, Math.max(baseIntensity, 0.35), colorLerp)
+            }
+
+            material.needsUpdate = true
+        }
+    })
+}
+
+
+/**
  * Applique l état visuel (shader/couleur/emissive) d une fenêtre donnée.
  */
 export function applyBlueWindowMeshState(mesh, flowProgress)
@@ -234,6 +329,8 @@ export function applyTubeFlowColors()
             }
         }
     }
+
+    this.applyTubeJoinConnectionColors()
 }
 
 
@@ -330,5 +427,3 @@ export function setTubeFlowColor(colorValue, emissiveColorValue = null)
     this.applyTubeFlowColors()
     this.applyBlueWindowColors()
 }
-
-
