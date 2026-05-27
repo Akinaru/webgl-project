@@ -5,7 +5,7 @@ import Sizes from './Utils/Sizes.js'
 import Time from './Utils/Time.js'
 import Debug from './Utils/Debug.js'
 import Resources from './Utils/Resources.js'
-import sources from './Source/sources.js'
+import { bootSources } from './Source/sources.js'
 import EventEnum from './Enum/EventEnum.js'
 import SceneManager from './Scenes/SceneManager.js'
 import MetierManager from './Metiers/MetierManager.js'
@@ -64,7 +64,7 @@ export default class Experience
         this.objectiveManager = new ObjectiveManager()
         this.badgeManager = new BadgeManager()
         this.scene = new THREE.Scene()
-        this.resources = new Resources(sources, {
+        this.resources = new Resources(bootSources, {
             autoStart: false
         })
         this.sound = new SoundManager(this)

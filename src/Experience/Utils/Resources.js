@@ -10,16 +10,16 @@ export default class Resources extends EventEmitter
     {
         super()
 
-        this.sources = sources
+        this.sources = sources || []
         this.items = {}
-        this.toLoad = this.sources.length
+        this.toLoad = 0
         this.loaded = 0
         this.isReady = false
         this.hasStartedLoading = false
 
         this.setLoaders()
 
-        if(autoStart)
+        if(autoStart && this.toLoad > 0)
         {
             this.startLoading()
         }
@@ -35,124 +35,106 @@ export default class Resources extends EventEmitter
         this.loaders.audioLoader = new THREE.AudioLoader()
     }
 
-    startLoading()
+    startLoading(sources = null)
     {
-        if(this.hasStartedLoading || this.isReady)
+        const sourcesToLoad = sources || this.sources
+        if(!Array.isArray(sourcesToLoad) || sourcesToLoad.length === 0)
         {
-            return
+            console.log('[Resources] Aucune source à charger')
+            this.checkReady()
+            return Promise.resolve()
+        }
+
+        // Filtrer pour ne pas recharger ce qui l'est déjà
+        const newSources = sourcesToLoad.filter(s => !this.items[s.name])
+        console.log(`[Resources] Demande de chargement: ${sourcesToLoad.length} total, ${newSources.length} nouveaux`)
+
+        if(newSources.length === 0)
+        {
+            this.checkReady()
+            return Promise.resolve()
         }
 
         this.hasStartedLoading = true
+        this.toLoad += newSources.length
+        console.log(`[Resources] Nouvel état: toLoad=${this.toLoad}, loaded=${this.loaded}`)
 
-        if(this.toLoad === 0)
-        {
-            this.isReady = true
-            queueMicrotask(() =>
-            {
-                this.trigger(EventEnum.READY)
-            })
-            return
-        }
+        const promises = newSources.map(source => this.loadSource(source))
+        
+        return Promise.all(promises).then(() => {
+            console.log('[Resources] Fin du groupe de chargement')
+            this.checkReady()
+        })
+    }
 
-        for(const source of this.sources)
-        {
+    loadSource(source)
+    {
+        return new Promise((resolve) => {
+            const onLoad = (file) => {
+                console.log(`[Resources] Succès: ${source.name} (${source.path})`)
+                this.sourceLoaded(source, file)
+                resolve(file)
+            }
+            const onError = (error) => {
+                console.error(`[Resources] Echec de chargement: ${source.name} (${source.path})`, error)
+                this.sourceLoaded(source, null)
+                resolve(null)
+            }
+
+            console.log(`[Resources] Lancement: ${source.name}...`)
             if(source.type === 'gltfModel')
             {
-                this.loaders.gltfLoader.load(
-                    source.path,
-                    (file) =>
-                    {
-                        this.sourceLoaded(source, file)
-                    },
-                    undefined,
-                    (error) =>
-                    {
-                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
-                        this.sourceLoaded(source, null)
-                    }
-                )
+                this.loaders.gltfLoader.load(source.path, onLoad, undefined, onError)
             }
             else if(source.type === 'texture')
             {
-                this.loaders.textureLoader.load(
-                    source.path,
-                    (file) =>
-                    {
-                        this.sourceLoaded(source, file)
-                    },
-                    undefined,
-                    (error) =>
-                    {
-                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
-                        this.sourceLoaded(source, null)
-                    }
-                )
+                this.loaders.textureLoader.load(source.path, onLoad, undefined, onError)
             }
             else if(source.type === 'exrTexture')
             {
-                this.loaders.exrLoader.load(
-                    source.path,
-                    (file) =>
-                    {
-                        this.sourceLoaded(source, file)
-                    },
-                    undefined,
-                    (error) =>
-                    {
-                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
-                        this.sourceLoaded(source, null)
-                    }
-                )
+                this.loaders.exrLoader.load(source.path, onLoad, undefined, onError)
             }
             else if(source.type === 'cubeTexture')
             {
-                this.loaders.cubeTextureLoader.load(
-                    source.path,
-                    (file) =>
-                    {
-                        this.sourceLoaded(source, file)
-                    },
-                    undefined,
-                    (error) =>
-                    {
-                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
-                        this.sourceLoaded(source, null)
-                    }
-                )
+                this.loaders.cubeTextureLoader.load(source.path, onLoad, undefined, onError)
             }
             else if(source.type === 'audioBuffer')
             {
-                this.loaders.audioLoader.load(
-                    source.path,
-                    (file) =>
-                    {
-                        this.sourceLoaded(source, file)
-                    },
-                    undefined,
-                    (error) =>
-                    {
-                        console.error(`[Resources] Echec de chargement: ${source.path}`, error)
-                        this.sourceLoaded(source, null)
-                    }
-                )
+                this.loaders.audioLoader.load(source.path, onLoad, undefined, onError)
             }
             else
             {
                 console.warn(`Type de source inconnu: ${source.type}`)
                 this.sourceLoaded(source, null)
+                resolve(null)
             }
-        }
+        })
     }
 
     sourceLoaded(source, file)
     {
+        if(this.items[source.name]) return
         this.items[source.name] = file
         this.loaded++
+        this.trigger('itemLoaded', [source, file])
+    }
 
-        if(this.loaded === this.toLoad)
+    checkReady()
+    {
+        if(this.loaded >= this.toLoad && !this.isReady)
         {
             this.isReady = true
             this.trigger(EventEnum.READY)
         }
+    }
+
+    /**
+     * Charge un groupe de ressources et retourne une promesse résolue quand fini.
+     */
+    async loadGroup(sources = [])
+    {
+        if(!Array.isArray(sources) || sources.length === 0) return
+        this.isReady = false // On repasse en mode chargement
+        await this.startLoading(sources)
     }
 }

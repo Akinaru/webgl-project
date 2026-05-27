@@ -53,15 +53,5 @@ export default [
         name: 'recuperationWallSlabsTexture',
         type: 'texture',
         path: 'textures/wall/slabs.png'
-    },
-    {
-        name: 'buildingTourColorTexture',
-        type: 'texture',
-        path: 'textures/map/building_tour_color.jpg'
-    },
-    {
-        name: 'buildingFeuilleColorTexture',
-        type: 'texture',
-        path: 'textures/map/building_feuille_color.tif'
     }
 ]

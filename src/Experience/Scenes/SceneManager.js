@@ -5,6 +5,7 @@ import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.j
 import SceneRecyclageScene from './SceneRecyclage/SceneRecyclageScene.js'
 import SceneDistributionScene from './SceneDistribution/Scene.js'
 import LoadingPhrases from './LoadingPhrases.js'
+import { sceneSources } from '../Source/sources.js'
 
 export default class SceneManager
 {
@@ -91,10 +92,38 @@ export default class SceneManager
 
         this.isTransitioning = true
         const previousKey = this.currentKey
-        await this.showTransitionOverlay({
-            fromKey: previousKey,
-            toKey: key
-        })
+        const isInitialSwitch = previousKey === null
+
+        // Si ce n'est pas le switch initial, on affiche l'overlay.
+        // Si c'est l'initial, le Menu l'a déjà affiché pour nous.
+        if(!isInitialSwitch)
+        {
+            await this.showTransitionOverlay({
+                fromKey: previousKey,
+                toKey: key
+            })
+        }
+
+        // --- Chargement des ressources de la scène ---
+        const sources = sceneSources[key] || []
+        console.log(`[SceneManager] Vérification ressources pour ${key}. Sources: ${sources.length}`)
+        
+        if(sources.length > 0)
+        {
+            let loadedInGroup = 0
+            const totalInGroup = sources.length
+            
+            const onItemLoaded = (source) => {
+                loadedInGroup++
+                const progress = (loadedInGroup / totalInGroup) * 100
+                console.log(`[SceneManager] Progress ${key}: ${progress.toFixed(1)}% (${loadedInGroup}/${totalInGroup}) - ${source?.name}`)
+                this.updateTransitionProgress(10 + (progress * 0.8))
+            }
+
+            this.experience.resources.on('itemLoaded', onItemLoaded)
+            await this.experience.resources.loadGroup(sources)
+            this.experience.resources.off('itemLoaded', onItemLoaded)
+        }
 
         if(this.currentScene)
         {
@@ -111,6 +140,7 @@ export default class SceneManager
         this.currentScene.enter?.(previousKey)
         this.currentScene.resize?.()
 
+        // On complète la transition (ce qui cache l'overlay)
         await this.completeTransitionOverlay({
             toKey: key
         })
@@ -178,13 +208,7 @@ export default class SceneManager
             phrase: this.loadingPhrases.getPhrase(fromKey, toKey)
         })
         this.transitionElement.classList.add('is-visible')
-        await this.wait(120)
-        this.updateTransitionProgress(18)
-        await this.wait(90)
-        this.updateTransitionProgress(44)
-        await this.wait(110)
-        this.updateTransitionProgress(72)
-        await this.wait(90)
+        await this.wait(50)
     }
 
     async completeTransitionOverlay({ toKey = null } = {})

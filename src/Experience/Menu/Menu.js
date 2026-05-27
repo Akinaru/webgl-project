@@ -4,6 +4,7 @@ import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
 import EndMenu from './EndMenu.js'
 import * as MenuConstants from './Menu.constants.js'
+import { sceneSources } from '../Source/sources.js'
 
 export default class Menu
 {
@@ -359,11 +360,11 @@ export default class Menu
 
         const total = Math.max(1, Number(resources.toLoad || 0))
         const loaded = Math.max(0, Math.min(total, Number(resources.loaded || 0)))
-        const ratio = resources.isReady ? 1 : loaded / total
+        const ratio = loaded / total
 
         this.setLoadingProgress(ratio * 100)
 
-        if(!resources.isReady)
+        if(!resources.isReady || ratio < 1)
         {
             this.loadingRafId = window.requestAnimationFrame(() => this.updateLoadingProgressLoop())
         }
@@ -770,19 +771,34 @@ export default class Menu
         this.bootScreen.classList.add(MenuConstants.LOADING_CLASS)
         this.showTransitionOverlay('Chargement en cours')
 
+        // On identifie la scène initiale pour charger ses ressources tout de suite
+        const initialSceneKey = this.experience.sceneManager?.getInitialScene()
+        const initialSceneSources = sceneSources[initialSceneKey] || []
+        
+        console.log(`[Menu] Initialisation du chargement. Scène de départ: ${initialSceneKey} (+${initialSceneSources.length} sources)`)
+
+        if(initialSceneSources.length > 0)
+        {
+            this.experience.resources.startLoading(initialSceneSources)
+        }
         this.experience?.resources?.startLoading?.()
+
         this.setLoadingProgress(0)
         this.startLoadingProgressLoop()
         await this.waitForResourcesReady()
         this.stopLoadingProgressLoop()
         this.setLoadingProgress(100)
         await this.wait(160)
-        this.hideTransitionOverlay()
+        
+        // On ne cache pas l'overlay ici, on laisse le SceneManager le faire 
+        // une fois que la scène est réellement instanciée pour éviter un flash noir.
+        // this.hideTransitionOverlay()
 
         this.resolveStart({ audioEnabled: this.audioEnabled })
 
         if(window.location.hash.includes('debug'))
         {
+            this.hideTransitionOverlay()
             this.bootScreen.remove()
             this.focusGameCanvas()
             return
