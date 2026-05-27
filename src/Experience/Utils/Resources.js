@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import EventEmitter from './EventEmitter.js'
 import EventEnum from '../Enum/EventEnum.js'
+import Disposal from './Disposal.js'
 
 export default class Resources extends EventEmitter
 {
@@ -134,6 +135,34 @@ export default class Resources extends EventEmitter
         {
             this.isReady = true
             this.trigger(EventEnum.READY)
+        }
+    }
+
+    /**
+     * Remove specific items from cache and dispose their GPU resources.
+     */
+    purgeItems(names = [])
+    {
+        for(const name of names)
+        {
+            const item = this.items[name]
+            if(!item) continue
+
+            // Use Disposal for GLTF scenes
+            if(item.scene)
+            {
+                Disposal.disposeObject(item.scene)
+            }
+            
+            // Single Texture disposal
+            if(item.isTexture)
+            {
+                item.dispose()
+            }
+
+            delete this.items[name]
+            this.loaded = Math.max(0, this.loaded - 1)
+            this.toLoad = Math.max(0, this.toLoad - 1)
         }
     }
 

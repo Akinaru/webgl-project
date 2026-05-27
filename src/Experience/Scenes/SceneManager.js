@@ -5,7 +5,8 @@ import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.j
 import SceneRecyclageScene from './SceneRecyclage/SceneRecyclageScene.js'
 import SceneDistributionScene from './SceneDistribution/Scene.js'
 import LoadingPhrases from './LoadingPhrases.js'
-import { sceneSources } from '../Source/sources.js'
+import Disposal from '../Utils/Disposal.js'
+import { sceneSources, commonSources } from '../Source/sources.js'
 
 export default class SceneManager
 {
@@ -127,8 +128,35 @@ export default class SceneManager
 
         if(this.currentScene)
         {
+            const oldKey = this.currentKey
             this.currentScene.exit?.(key)
+
+            // Nettoyage agressif de la scène Three.js précédente pour libérer le GPU
+            // On le fait AVANT destroy() pour que les objets soient encore dans la scène
+            if(this.currentScene.instance)
+            {
+                Disposal.clearScene(this.currentScene.instance)
+            }
+
             this.currentScene.destroy?.()
+
+            // Purge des ressources spécifiques à l'ancienne scène pour libérer la RAM
+            const oldSources = sceneSources[oldKey] || []
+            if(oldSources.length > 0)
+            {
+                const nextSourcesNames = (sceneSources[key] || []).map(s => s.name)
+                const commonNames = commonSources.map(s => s.name)
+                
+                const toPurge = oldSources
+                    .map(s => s.name)
+                    .filter(name => !nextSourcesNames.includes(name) && !commonNames.includes(name))
+                
+                if(toPurge.length > 0)
+                {
+                    console.log(`[SceneManager] Purging ${toPurge.length} resources from ${oldKey}:`, toPurge)
+                    this.experience.resources.purgeItems(toPurge)
+                }
+            }
         }
 
         this.currentScene = factory()
