@@ -21,9 +21,7 @@ export const sceneSources = {
     ],
     [SceneEnum.RECUPERATION]: [
         ...modelSources.filter(s => s.name === 'recuperationModel'),
-        ...textureSources.filter(s => s.name.startsWith('recuperation')),
-        // On ajoute explicitement la texture de l'eau si elle n'est pas déjà incluse
-        ...textureSources.filter(s => s.name === 'recuperationWaterDistributionTexture')
+        ...textureSources.filter(s => s.name.startsWith('recuperation'))
     ],
     [SceneEnum.RECYCLAGE]: [
         ...modelSources.filter(s => s.name === 'recyclageModel')

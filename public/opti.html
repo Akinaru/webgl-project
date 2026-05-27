@@ -615,7 +615,7 @@
             <div class="section-content">
               <div class="control-grid">
                 <div class="field">
-                  <input id="modelUrl" class="input-text" type="text" value="./models/scenes/map/Map.gltf" placeholder="URL du modèle (GLTF/GLB)" />
+                  <input id="modelUrl" class="input-text" type="text" value="./models/scenes/map/Map_Draco.glb" placeholder="URL du modèle (GLTF/GLB)" />
                 </div>
                 <div class="btn-row">
                   <button id="loadUrl" class="btn primary">Charger URL</button>
@@ -730,6 +730,7 @@
       import * as THREE from 'three'
       import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
       import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+      import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 
       // Thresholds for bottleneck highlighting
       const THRESHOLD_HEAVY = 15000;
@@ -785,6 +786,7 @@
         controls: null,
         modelRoot: null,
         loader: new GLTFLoader(),
+        dracoLoader: new DRACOLoader(),
         entries: new Map(), // uuid -> entry object
         selectedEntry: null,
         totalModelTris: 0,
@@ -797,6 +799,9 @@
         const canvas = document.getElementById('view');
         const wrap = document.getElementById('viewerWrap');
         
+        state.dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/');
+        state.loader.setDRACOLoader(state.dracoLoader);
+
         state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
         state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         state.renderer.setSize(wrap.clientWidth, wrap.clientHeight);

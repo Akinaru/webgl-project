@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import EventEmitter from './EventEmitter.js'
 import EventEnum from '../Enum/EventEnum.js'
@@ -28,7 +29,13 @@ export default class Resources extends EventEmitter
     setLoaders()
     {
         this.loaders = {}
+
+        this.loaders.dracoLoader = new DRACOLoader()
+        this.loaders.dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/')
+
         this.loaders.gltfLoader = new GLTFLoader()
+        this.loaders.gltfLoader.setDRACOLoader(this.loaders.dracoLoader)
+
         this.loaders.textureLoader = new THREE.TextureLoader()
         this.loaders.exrLoader = new EXRLoader()
         this.loaders.cubeTextureLoader = new THREE.CubeTextureLoader()
@@ -40,29 +47,33 @@ export default class Resources extends EventEmitter
         const sourcesToLoad = sources || this.sources
         if(!Array.isArray(sourcesToLoad) || sourcesToLoad.length === 0)
         {
-            console.log('[Resources] Aucune source à charger')
             this.checkReady()
             return Promise.resolve()
         }
 
-        // Filtrer pour ne pas recharger ce qui l'est déjà
-        const newSources = sourcesToLoad.filter(s => !this.items[s.name])
-        console.log(`[Resources] Demande de chargement: ${sourcesToLoad.length} total, ${newSources.length} nouveaux`)
+        // Filtrer pour ne pas recharger ce qui l'est déjà ET supprimer les doublons dans la demande actuelle
+        const uniqueSources = []
+        const seenNames = new Set()
+        
+        for (const s of sourcesToLoad) {
+            if (!this.items[s.name] && !seenNames.has(s.name)) {
+                uniqueSources.push(s)
+                seenNames.add(s.name)
+            }
+        }
 
-        if(newSources.length === 0)
+        if(uniqueSources.length === 0)
         {
             this.checkReady()
             return Promise.resolve()
         }
 
         this.hasStartedLoading = true
-        this.toLoad += newSources.length
-        console.log(`[Resources] Nouvel état: toLoad=${this.toLoad}, loaded=${this.loaded}`)
+        this.toLoad += uniqueSources.length
 
-        const promises = newSources.map(source => this.loadSource(source))
+        const promises = uniqueSources.map(source => this.loadSource(source))
         
         return Promise.all(promises).then(() => {
-            console.log('[Resources] Fin du groupe de chargement')
             this.checkReady()
         })
     }
@@ -71,7 +82,6 @@ export default class Resources extends EventEmitter
     {
         return new Promise((resolve) => {
             const onLoad = (file) => {
-                console.log(`[Resources] Succès: ${source.name} (${source.path})`)
                 this.sourceLoaded(source, file)
                 resolve(file)
             }
@@ -81,7 +91,6 @@ export default class Resources extends EventEmitter
                 resolve(null)
             }
 
-            console.log(`[Resources] Lancement: ${source.name}...`)
             if(source.type === 'gltfModel')
             {
                 this.loaders.gltfLoader.load(source.path, onLoad, undefined, onError)
