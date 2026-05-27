@@ -34,5 +34,8 @@ export function destroy()
     this.blueWindowFlowProgressByName.clear()
     this.requiredWindowByTubeUuid.clear()
     this.windowSourceByTubeUuid.clear()
+
+    this.smokeParticles?.destroy()
+    this.smokeParticles = null
 }
 
