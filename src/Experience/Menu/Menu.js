@@ -87,10 +87,49 @@ export default class Menu
 
         this.pauseMenu = new PauseMenu({
             experience: this.experience,
-            isEnabled: () => this.hasResolved && !this.isDestroyed
+            isEnabled: () => this.hasResolved && !this.isDestroyed,
+            canAutoOpen: () => !this.endMenu?.isOpen?.()
         })
 
         this.endMenu = new EndMenu(this.experience)
+
+        this.pauseMenu.on('open', () =>
+        {
+            const uiRoots = [
+                this.endMenu?.root,
+                this.experience?.dialogueManager?.ui?.root,
+                this.experience?.badgeManager?.ui?.root,
+                this.experience?.objectiveManager?.ui?.root
+            ]
+
+            for(const root of uiRoots)
+            {
+                if(!root) continue
+
+                // On cache si l'élément est actuellement visible
+                // Pour les badges, on les cache s'ils sont dans le DOM (ils sont gérés par items)
+                const isVisible = root.classList.contains('is-visible') || root.classList.contains('activity-badges')
+                if(isVisible)
+                {
+                    root.classList.add('is-hidden-by-pause')
+                }
+            }
+        })
+
+        this.pauseMenu.on('close', () =>
+        {
+            const uiRoots = [
+                this.endMenu?.root,
+                this.experience?.dialogueManager?.ui?.root,
+                this.experience?.badgeManager?.ui?.root,
+                this.experience?.objectiveManager?.ui?.root
+            ]
+
+            for(const root of uiRoots)
+            {
+                root?.classList?.remove?.('is-hidden-by-pause')
+            }
+        })
 
         this.handleWindowResize = () =>
         {

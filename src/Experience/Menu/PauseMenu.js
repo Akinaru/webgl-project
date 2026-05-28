@@ -11,7 +11,8 @@ export default class PauseMenu extends EventEmitter
 
     constructor({
         experience,
-        isEnabled = () => true
+        isEnabled = () => true,
+        canAutoOpen = () => true
     } = {})
     {
         super()
@@ -21,6 +22,7 @@ export default class PauseMenu extends EventEmitter
         this.canvas = this.experience?.canvas || null
         this.debug = this.experience?.debug || null
         this.isEnabled = typeof isEnabled === 'function' ? isEnabled : () => true
+        this.canAutoOpen = typeof canAutoOpen === 'function' ? canAutoOpen : () => true
         this.traceEnabled = Boolean(this.debug?.isDebugEnabled)
 
         this.state = PauseMenu.CLOSED
@@ -355,6 +357,14 @@ export default class PauseMenu extends EventEmitter
                 this.trace('pointerlockchange_skip', {
                     reason: 'state_not_closed',
                     state: this.getStateLabel()
+                })
+                return
+            }
+
+            if(!this.canAutoOpen())
+            {
+                this.trace('pointerlockchange_skip', {
+                    reason: 'can_auto_open_false'
                 })
                 return
             }

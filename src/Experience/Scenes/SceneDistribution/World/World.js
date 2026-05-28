@@ -88,7 +88,8 @@ export default class SceneDistributionWorld
             tubeWaterController: this.tubeWaterController,
             onSolvedChange: (isSolved) =>
             {
-                this.exitDoors?.setOpen?.(isSolved)
+                // La porte ne s'ouvre plus toute seule
+                // this.exitDoors?.setOpen?.(isSolved)
             }
         })
         this.gaugeDisplay = new SceneDistributionGaugeDisplay({
@@ -101,8 +102,8 @@ export default class SceneDistributionWorld
         })
         this.scoring = new SceneDistributionScoring()
         this.validationButton = new ValidationButton({
-            position: new THREE.Vector3(4.2, 0, 10.5),
-            onValidate: () => this.startResultSequence(),
+            position: new THREE.Vector3(-1.2, -0.8, -0.8),
+            onValidate: () => this.handleValidation(),
             debugParentFolder: this.debugFolder
         })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
@@ -146,7 +147,7 @@ export default class SceneDistributionWorld
             distributionModel: this.distributionModel,
             player: this.player,
             debugParentFolder: this.debugFolder,
-            onEnter: () => {} // Désactivé, on utilise le bouton physique
+            onEnter: () => this.startResultSequence()
         })
 
         // Lancement du dialogue après un court délai
@@ -190,6 +191,23 @@ export default class SceneDistributionWorld
         })
     }
 
+    handleValidation()
+    {
+        const state = this.balanceMonitor?.getState()
+        if(!state)
+        {
+            return
+        }
+
+        // On ouvre la porte
+        this.exitDoors?.setOpen?.(true)
+
+        // On enregistre les scores à ce moment précis pour la répartition finale
+        this.scoring?.applyFinalScoring(state)
+
+        console.log('[SceneDistributionWorld] Distribution validée, porte ouverte.')
+    }
+
     startResultSequence()
     {
         if(this.hasStartedResultSequence)
@@ -204,10 +222,6 @@ export default class SceneDistributionWorld
 
         this.hasStartedResultSequence = true
         this.experience.badgeManager?.unlock?.('distribution')
-
-        // Appliquer les scores basés sur la répartition finale
-        const finalState = this.balanceMonitor?.getState()
-        this.scoring?.applyFinalScoring(finalState)
 
         this.onResultDialogueEnd = ({ key } = {}) =>
         {

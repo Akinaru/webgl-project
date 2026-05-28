@@ -50,8 +50,8 @@ export default class EndMenu extends EventEmitter
     {
         if(!this.hasUI) return
 
-        this.inputs?.exitPointerLock?.()
         this.root.classList.add('is-displayed')
+        this.inputs?.exitPointerLock?.()
         
         // Raf for opacity transition
         window.requestAnimationFrame(() => {
@@ -72,5 +72,10 @@ export default class EndMenu extends EventEmitter
         }, 300)
 
         this.experience.sound?.resumeForMenu?.()
+    }
+
+    isOpen()
+    {
+        return this.root?.classList?.contains?.('is-displayed') ?? false
     }
 }

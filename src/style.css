@@ -291,6 +291,12 @@ body.is-pointer-locked
 }
 
 /* End Menu */
+.is-hidden-by-pause
+{
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 .end-menu
 {
     position: fixed;
@@ -977,7 +983,7 @@ body.is-recuperation-material-cursor .dialogue__cursor
 {
     position: fixed;
     inset: 0;
-    z-index: 45;
+    z-index: 200;
     display: none;
     align-items: center;
     justify-content: center;
