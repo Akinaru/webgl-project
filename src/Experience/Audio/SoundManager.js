@@ -67,6 +67,8 @@ export default class SoundManager
         }
 
         this.applyDialogueVolumeToChannel()
+        this.applyMusicVolumeToChannel()
+        this.applySfxVolumeToChannel()
 
         if(this.debugState)
         {
@@ -253,7 +255,8 @@ export default class SoundManager
         const hasPlayedBufferSound = this.playBufferSound(soundName, resolvedDefinition, {
             audioType,
             pauseGroup,
-            volume: volume * channelVolume,
+            volume,
+            initialChannelVolume: channelVolume,
             playbackRate
         })
 
@@ -266,7 +269,8 @@ export default class SoundManager
         const hasPlayedFallbackSound = this.playFallbackSound(soundName, resolvedDefinition, {
             audioType,
             pauseGroup,
-            volume: volume * channelVolume,
+            volume,
+            initialChannelVolume: channelVolume,
             playbackRate
         })
         if(hasPlayedFallbackSound)
@@ -301,6 +305,7 @@ export default class SoundManager
         audioType = AUDIO_TYPE.SFX,
         pauseGroup = AUDIO_PAUSE_GROUP.SCENE,
         volume = 1,
+        initialChannelVolume = 1,
         playbackRate = 1
     } = {})
     {
@@ -318,7 +323,7 @@ export default class SoundManager
 
         const effectivePlaybackRate = Math.max(0.05, playbackRate * definition.playbackRate)
         const gainNode = context.createGain()
-        const targetGain = Math.max(0, definition.volume * volume)
+        const targetGain = Math.max(0, definition.volume * volume * initialChannelVolume)
         const fadeInMs = Number.isFinite(definition.fadeInMs) ? Math.max(0, definition.fadeInMs) : 0
         const now = context.currentTime
         gainNode.gain.cancelScheduledValues(now)
@@ -513,11 +518,12 @@ export default class SoundManager
         audioType = AUDIO_TYPE.SFX,
         pauseGroup = AUDIO_PAUSE_GROUP.SCENE,
         volume = 1,
+        initialChannelVolume = 1,
         playbackRate = 1
     } = {})
     {
         const audio = new Audio(definition.fallbackPath)
-        audio.volume = Math.max(0, Math.min(1, definition.volume * volume))
+        audio.volume = Math.max(0, Math.min(1, definition.volume * volume * initialChannelVolume))
         audio.playbackRate = Math.max(0.05, definition.playbackRate * playbackRate)
         audio.preload = 'auto'
         audio.loop = Boolean(definition.loop)
@@ -973,6 +979,7 @@ export default class SoundManager
             ? Math.max(0, Math.min(1, normalizedValue))
             : this.musicVolume
         this.persistVolumePreferences()
+        this.applyMusicVolumeToChannel()
         return this.musicVolume
     }
 
@@ -983,6 +990,7 @@ export default class SoundManager
             ? Math.max(0, Math.min(1, normalizedValue))
             : this.sfxVolume
         this.persistVolumePreferences()
+        this.applySfxVolumeToChannel()
         return this.sfxVolume
     }
 
@@ -995,6 +1003,31 @@ export default class SoundManager
         this.persistVolumePreferences()
         this.applyDialogueVolumeToChannel()
         return this.dialogueVolume
+    }
+
+    applyMusicVolumeToChannel()
+    {
+        const scale = this.enabled ? this.musicVolume : 0
+        for(const [, voice] of this.activeVoices)
+        {
+            if(voice?.audioType === AUDIO_TYPE.MUSIC && typeof voice.setVolume === 'function')
+            {
+                voice.setVolume(scale)
+            }
+        }
+    }
+
+    applySfxVolumeToChannel()
+    {
+        const scale = this.enabled ? this.sfxVolume : 0
+        for(const [, voice] of this.activeVoices)
+        {
+            // Les dialogues ont audioType === SFX mais sont identifies par leur channel spécifique
+            if(voice?.audioType === AUDIO_TYPE.SFX && voice?.channel !== 'dialogue' && typeof voice.setVolume === 'function')
+            {
+                voice.setVolume(scale)
+            }
+        }
     }
 
     applyDialogueVolumeToChannel()
