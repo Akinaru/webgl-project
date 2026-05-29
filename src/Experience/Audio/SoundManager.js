@@ -34,6 +34,7 @@ export default class SoundManager
         this.musicVolume    = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.MUSIC]
         this.sfxVolume      = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
         this.dialogueVolume = AUDIO_VOLUME_DEFAULTS.dialogue
+        this.musicRuntimeVolumeScale = 1
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -1006,10 +1007,20 @@ export default class SoundManager
     {
         if(audioType === AUDIO_TYPE.MUSIC)
         {
-            return this.musicVolume
+            return this.musicVolume * this.musicRuntimeVolumeScale
         }
 
         return this.sfxVolume
+    }
+
+    setMusicRuntimeVolumeScale(value = 1)
+    {
+        const normalizedValue = Number(value)
+        this.musicRuntimeVolumeScale = Number.isFinite(normalizedValue)
+            ? Math.max(0, Math.min(1, normalizedValue))
+            : 1
+        this.applyMusicVolumeToChannel()
+        return this.musicRuntimeVolumeScale
     }
 
     setMusicVolume(value = 1)
@@ -1047,7 +1058,7 @@ export default class SoundManager
 
     applyMusicVolumeToChannel()
     {
-        const scale = this.enabled ? this.musicVolume : 0
+        const scale = this.enabled ? (this.musicVolume * this.musicRuntimeVolumeScale) : 0
         for(const [, voice] of this.activeVoices)
         {
             if(voice?.audioType === AUDIO_TYPE.MUSIC && typeof voice.setVolume === 'function')

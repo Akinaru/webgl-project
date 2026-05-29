@@ -83,13 +83,24 @@ export default class MapWorld
         this.bushTriggerCooldownMs = 0
         this.hasBoundBloomContext = false
         this.hasTriggeredIntroTeleport = false
+        this.onDialogueStart = ({ key } = {}) =>
+        {
+            if(key !== MapWorldConstants.MAP_INTRO_DIALOGUE_KEY)
+            {
+                return
+            }
+
+            this.experience.sound?.setMusicRuntimeVolumeScale?.(MapWorldConstants.MAP_INTRO_MUSIC_DUCK_SCALE)
+        }
         this.onDialogueEnd = ({ key } = {}) =>
         {
-            if(key === 'intro')
+            if(key === MapWorldConstants.MAP_INTRO_DIALOGUE_KEY)
             {
+                this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
                 this.teleportToRecuperationAfterIntro()
             }
         }
+        this.experience.dialogueManager?.on?.('start.mapWorldMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.mapWorldTeleport', this.onDialogueEnd)
 
         if(this.resources.isReady)
@@ -834,6 +845,8 @@ export default class MapWorld
     {
         this.isDestroyed = true
         this.isSettingUp = false
+        this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
+        this.experience.dialogueManager?.off?.('start.mapWorldMusicDuck')
         this.experience.dialogueManager?.off?.('end.mapWorldTeleport')
         this.resources.off(this.readyEventName)
         this.experience.sound?.stopChannel?.(MapWorldConstants.MAP_AMBIENT_CHANNEL)

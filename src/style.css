@@ -2330,6 +2330,10 @@ body.is-device-blocked > :not(.device-warning)
     animation: tutorial-step-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.tutorial-overlay.is-step-exiting .tutorial-panel {
+    animation: tutorial-step-out 0.36s cubic-bezier(0.7, 0, 0.84, 0);
+}
+
 @keyframes tutorial-step-in {
     0% {
         transform: translateY(10px) scale(0.98);
@@ -2338,5 +2342,16 @@ body.is-device-blocked > :not(.device-warning)
     100% {
         transform: translateY(0) scale(1);
         opacity: 1;
+    }
+}
+
+@keyframes tutorial-step-out {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(16px) scale(0.985);
+        opacity: 0;
     }
 }

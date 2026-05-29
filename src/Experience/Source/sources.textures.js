@@ -50,6 +50,11 @@ export default [
         path: 'textures/recuperation/screen/waiting.png'
     },
     {
+        name: 'distributionBackgroundResultTexture',
+        type: 'exrTexture',
+        path: 'models/scenes/distribution/textures/background_resultat.exr'
+    },
+    {
         name: 'recuperationWallSlabsTexture',
         type: 'texture',
         path: 'textures/wall/slabs.png'

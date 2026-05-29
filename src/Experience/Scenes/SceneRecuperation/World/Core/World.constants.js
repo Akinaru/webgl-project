@@ -9,3 +9,4 @@ export const RECUPERATION_AMBIENT_SOUND_KEYS = Object.freeze([
     'recuperationMusic1',
     'recuperationMusic2'
 ])
+export const RECUPERATION_DIALOGUE_MUSIC_DUCK_SCALE = 0.72

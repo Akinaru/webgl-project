@@ -14,6 +14,8 @@ export default class Tutoriel extends EventEmitter
         
         this.status = TutorielConstants.TUTORIAL_STATUS.PENDING
         this.finishTimeoutId = null
+        this.stepTransitionTimeoutId = null
+        this.isStepTransitioning = false
         this.currentStepIndex = 0
         this.steps = [
             {
@@ -23,7 +25,7 @@ export default class Tutoriel extends EventEmitter
                 action: null,
                 validate: () => true, // Géré par mousemove
                 progress: 0,
-                targetProgress: 1200
+                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.LOOK
             },
             {
                 id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_FORWARD,
@@ -32,7 +34,7 @@ export default class Tutoriel extends EventEmitter
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_FORWARD,
                 validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_FORWARD),
                 progress: 0,
-                targetProgress: 600
+                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.MOVE_FORWARD
             },
             {
                 id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_BACKWARD,
@@ -41,7 +43,7 @@ export default class Tutoriel extends EventEmitter
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_BACKWARD,
                 validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_BACKWARD),
                 progress: 0,
-                targetProgress: 600
+                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.MOVE_BACKWARD
             },
             {
                 id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_LEFT,
@@ -50,7 +52,7 @@ export default class Tutoriel extends EventEmitter
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_LEFT,
                 validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_LEFT),
                 progress: 0,
-                targetProgress: 600
+                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.MOVE_LEFT
             },
             {
                 id: TutorielConstants.TUTORIAL_STEP_IDS.MOVE_RIGHT,
@@ -59,7 +61,7 @@ export default class Tutoriel extends EventEmitter
                 action: InputBindingsConstants.INPUT_ACTION.MOVE_RIGHT,
                 validate: () => this.inputs.isActionPressed(InputBindingsConstants.INPUT_ACTION.MOVE_RIGHT),
                 progress: 0,
-                targetProgress: 600
+                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.MOVE_RIGHT
             }
         ]
         
@@ -74,7 +76,7 @@ export default class Tutoriel extends EventEmitter
             if (step && step.id === TutorielConstants.TUTORIAL_STEP_IDS.LOOK)
             {
                 const moveAmount = Math.abs(event.movementX) + Math.abs(event.movementY)
-                step.progress += moveAmount * 0.5
+                step.progress += moveAmount * TutorielConstants.TUTORIAL_MOUSE_PROGRESS_MULTIPLIER
             }
         }
         this.inputs.on('mousemove', this.onMouseMove)
@@ -110,6 +112,7 @@ export default class Tutoriel extends EventEmitter
         if (this.status !== TutorielConstants.TUTORIAL_STATUS.PENDING) return
 
         this.clearFinishTimeout()
+        this.clearStepTransitionTimeout()
         this.status = TutorielConstants.TUTORIAL_STATUS.ACTIVE
         this.container.style.display = ''
         this.container.classList.remove('is-finished')
@@ -121,6 +124,7 @@ export default class Tutoriel extends EventEmitter
     restart()
     {
         this.clearFinishTimeout()
+        this.clearStepTransitionTimeout()
         this.resetProgress()
         this.container.style.display = ''
         this.container.classList.remove('is-active')
@@ -141,6 +145,7 @@ export default class Tutoriel extends EventEmitter
         }
 
         this.clearFinishTimeout()
+        this.clearStepTransitionTimeout()
         this.status = TutorielConstants.TUTORIAL_STATUS.FINISHED
         this.container.classList.remove('is-active')
         this.container.classList.add('is-finished')
@@ -198,6 +203,7 @@ export default class Tutoriel extends EventEmitter
     {
         if (this.status !== TutorielConstants.TUTORIAL_STATUS.ACTIVE) return
         if (this.isPauseMenuOpen()) return
+        if (this.isStepTransitioning) return
         
         const step = this.steps[this.currentStepIndex]
         if (!step) return
@@ -223,12 +229,25 @@ export default class Tutoriel extends EventEmitter
     
     nextStep()
     {
+        if(this.isStepTransitioning)
+        {
+            return
+        }
+
         this.experience.sound.play('tutorialStepComplete')
         
         const nextIndex = this.currentStepIndex + 1
         if (nextIndex < this.steps.length)
         {
-            this.showStep(nextIndex)
+            this.isStepTransitioning = true
+            this.container.classList.add('is-step-exiting')
+            this.stepTransitionTimeoutId = setTimeout(() =>
+            {
+                this.stepTransitionTimeoutId = null
+                this.container.classList.remove('is-step-exiting')
+                this.isStepTransitioning = false
+                this.showStep(nextIndex)
+            }, TutorielConstants.TUTORIAL_STEP_EXIT_ANIMATION_MS)
         }
         else
         {
@@ -247,6 +266,7 @@ export default class Tutoriel extends EventEmitter
     destroy()
     {
         this.clearFinishTimeout()
+        this.clearStepTransitionTimeout()
         this.inputs.off('mousemove', this.onMouseMove)
         this.container?.remove()
         this.off('start')
@@ -271,6 +291,18 @@ export default class Tutoriel extends EventEmitter
 
         clearTimeout(this.finishTimeoutId)
         this.finishTimeoutId = null
+    }
+
+    clearStepTransitionTimeout()
+    {
+        if(this.stepTransitionTimeoutId === null)
+        {
+            return
+        }
+
+        clearTimeout(this.stepTransitionTimeoutId)
+        this.stepTransitionTimeoutId = null
+        this.isStepTransitioning = false
     }
 
     async resolveKeyboardLayoutMap()
