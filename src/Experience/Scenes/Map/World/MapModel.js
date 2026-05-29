@@ -21,7 +21,8 @@ export default class MapModel
         this.terrainTintMeshes = []
         this.repeatableInstanceGroups = []
         this.instancePlacementDebugState = {
-            offsetYBuildings: MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT,
+            offsetYBuildTour: MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_BY_KEY.build_tour,
+            offsetYBuildFeuille: MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_BY_KEY.build_feuille,
             scaleBuildigns: MapModelConstants.BUILDING_INSTANCE_SCALE_DEFAULT
         }
         this.groupRotationYState = {}
@@ -1146,7 +1147,20 @@ export default class MapModel
         const normalizedKey = String(key || '').trim().toLowerCase()
         if(normalizedKey.startsWith('build_'))
         {
-            return this.instancePlacementDebugState?.offsetYBuildings ?? MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT
+            if(normalizedKey === 'build_tour')
+            {
+                return this.instancePlacementDebugState?.offsetYBuildTour
+                    ?? MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_BY_KEY.build_tour
+            }
+
+            if(normalizedKey === 'build_feuille')
+            {
+                return this.instancePlacementDebugState?.offsetYBuildFeuille
+                    ?? MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_BY_KEY.build_feuille
+            }
+
+            return MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_BY_KEY?.[normalizedKey]
+                ?? MapModelConstants.BUILDING_INSTANCE_Y_OFFSET_DEFAULT
         }
 
         return 0
@@ -1263,8 +1277,17 @@ export default class MapModel
         {
             this.refreshRepeatableInstanceGroups()
         })
-        this.debug.addBinding(this.debugFolder, this.instancePlacementDebugState, 'offsetYBuildings', {
-            label: 'Offset Y batiments',
+        this.debug.addBinding(this.debugFolder, this.instancePlacementDebugState, 'offsetYBuildTour', {
+            label: 'Offset Y batiment tour',
+            min: -5,
+            max: 5,
+            step: 0.01
+        }).on('change', () =>
+        {
+            this.refreshRepeatableInstanceGroups()
+        })
+        this.debug.addBinding(this.debugFolder, this.instancePlacementDebugState, 'offsetYBuildFeuille', {
+            label: 'Offset Y batiment feuilles',
             min: -5,
             max: 5,
             step: 0.01

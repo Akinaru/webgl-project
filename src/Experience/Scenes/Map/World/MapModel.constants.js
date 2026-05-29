@@ -19,7 +19,11 @@ export const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 export const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
 export const USER_DATA_REPEATABLE_PLACEMENT = 'isRepeatablePlacementMesh'
 export const SCALE_EPSILON = 1e-5
-export const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = 4.44
+export const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = 0
+export const BUILDING_INSTANCE_Y_OFFSET_BY_KEY = Object.freeze({
+    build_tour: 4.44,
+    build_feuille: 1.20
+})
 export const BUILDING_INSTANCE_SCALE_DEFAULT = 0.67
 export const BUILDING_INSTANCE_COLLISION_INSET_XZ = 0.16
 export const BUILDING_INSTANCE_COLLISION_SLICE_COUNT = 3

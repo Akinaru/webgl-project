@@ -64,9 +64,9 @@ export function updateBlueWindowFlowProgress(deltaSeconds)
 {
     const stepFill = Math.max(0, deltaSeconds) * Math.max(0, this.flow.fillSpeed ?? SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND)
     const gateReadyByName = new Map([
-        ['fenetre-blue', this.isModuleFlowComplete('module-angle_13')],
+        ['fenetre-blue', this.isModuleFlowComplete('module-angle_20')],
         ['fenetre-blue_1', this.isModuleFlowComplete('module-straight_13_t3') || this.isModuleFlowComplete('module-angle_13_b9')],
-        ['fenetre-blue_2', this.isModuleFlowComplete('module-angle_20')]
+        ['fenetre-blue_2', this.isModuleFlowComplete('module-angle_13')]
     ])
 
     for(const [windowName, isReady] of gateReadyByName)
@@ -591,9 +591,9 @@ export function getWindowSourceWorldPosition(windowName)
     if(!sourceMesh && this.blueWindowMeshes.length > 0)
     {
         const fallbackIndexByWindow = new Map([
-            ['fenetre-blue', 0],
+            ['fenetre-blue', 2],
             ['fenetre-blue_1', 1],
-            ['fenetre-blue_2', 2]
+            ['fenetre-blue_2', 0]
         ])
         const fallbackIndex = fallbackIndexByWindow.get(windowName)
         if(fallbackIndex !== undefined)
@@ -698,5 +698,4 @@ export function getSourceTubeTarget()
 
     return sourceTarget ?? this.rotationTargets[0] ?? null
 }
-
 

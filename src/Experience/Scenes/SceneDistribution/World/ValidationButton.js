@@ -2,6 +2,11 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 
+const VALIDATION_BUTTON_LIGHT_COLOR = '#ff5a5a'
+const VALIDATION_BUTTON_LIGHT_INTENSITY = 0.85
+const VALIDATION_BUTTON_LIGHT_DISTANCE = 2.1
+const VALIDATION_BUTTON_LIGHT_HEIGHT_OFFSET = 0.12
+
 export default class ValidationButton
 {
     constructor({
@@ -70,6 +75,15 @@ export default class ValidationButton
         this.buttonMesh.position.y = 0.08
         this.buttonMesh.name = 'validation_button_click'
         this.buttonRoot.add(this.buttonMesh)
+
+        this.buttonLight = new THREE.PointLight(
+            VALIDATION_BUTTON_LIGHT_COLOR,
+            VALIDATION_BUTTON_LIGHT_INTENSITY,
+            VALIDATION_BUTTON_LIGHT_DISTANCE
+        )
+        this.buttonLight.position.set(0, VALIDATION_BUTTON_LIGHT_HEIGHT_OFFSET, 0)
+        this.buttonLight.castShadow = false
+        this.buttonRoot.add(this.buttonLight)
     }
 
     setEvents()
@@ -129,6 +143,8 @@ export default class ValidationButton
         this.buttonBase.material.dispose()
         this.buttonMesh.geometry.dispose()
         this.buttonMesh.material.dispose()
+        this.buttonRoot?.remove?.(this.buttonLight)
+        this.buttonLight = null
         this.group = null
     }
 }

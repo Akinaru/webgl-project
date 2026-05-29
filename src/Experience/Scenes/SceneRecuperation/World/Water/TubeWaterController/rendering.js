@@ -36,9 +36,9 @@ export function applyBlueWindowColors()
     if(fallbackMeshBuckets.every((bucket) => bucket.length === 0) && this.blueWindowMeshes.length > 0)
     {
         const fallbackProgress = [
-            windowProgressByName.get('fenetre-blue') ?? 0,
+            windowProgressByName.get('fenetre-blue_2') ?? 0,
             windowProgressByName.get('fenetre-blue_1') ?? 0,
-            windowProgressByName.get('fenetre-blue_2') ?? 0
+            windowProgressByName.get('fenetre-blue') ?? 0
         ]
         for(let index = 0; index < this.blueWindowMeshes.length; index++)
         {

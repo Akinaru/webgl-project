@@ -16,6 +16,10 @@ export const INDICATOR_LINE_COLOR = '#87dbff'
 export const INDICATOR_RING_COLOR = '#4dc8ff'
 export const INDICATOR_LABEL_BACKGROUND = 'rgba(7, 27, 42, 0.92)'
 export const INDICATOR_LABEL_TEXT_COLOR = '#f2fbff'
+export const MATERIAL_BUTTON_LIGHT_INTENSITY = 0.62
+export const MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER = 1.28
+export const MATERIAL_BUTTON_LIGHT_DISTANCE = 1.5
+export const MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET = 0.14
 
 export const MATERIAL_DEFINITIONS = Object.freeze([
     {

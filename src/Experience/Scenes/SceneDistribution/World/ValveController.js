@@ -221,6 +221,7 @@ export default class SceneDistributionValveController
 
         this.valves = []
         this.valveByUuid = new Map()
+        this.valveLightsByMeshUuid = new Map()
         this.hoveredValve = null
         this.hoveredHitPointWorld = null
         this.activeValve = null
@@ -241,6 +242,7 @@ export default class SceneDistributionValveController
 
     setValves(valveMeshes = [])
     {
+        this.clearValveLights()
         this.valves = []
         this.valveByUuid.clear()
 
@@ -266,6 +268,7 @@ export default class SceneDistributionValveController
             })
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
+            this.applyValveGlow(mesh)
         }
 
         const slotMap = SceneDistributionFlowConstants.buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
@@ -278,6 +281,53 @@ export default class SceneDistributionValveController
     resolveValveToken(mesh, slotMap = null)
     {
         return SceneDistributionFlowConstants.resolveDistributionChannelTokenFromObject(mesh, slotMap)
+    }
+
+    applyValveGlow(mesh)
+    {
+        if(!(mesh instanceof THREE.Mesh))
+        {
+            return
+        }
+
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material]
+
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            if(material.emissive?.set)
+            {
+                material.emissive.set(SceneDistributionValveControllerConstants.VALVE_EMISSIVE_COLOR)
+                material.emissiveIntensity = SceneDistributionValveControllerConstants.VALVE_EMISSIVE_INTENSITY
+                material.needsUpdate = true
+            }
+        }
+
+        const light = new THREE.PointLight(
+            SceneDistributionValveControllerConstants.VALVE_LIGHT_COLOR,
+            SceneDistributionValveControllerConstants.VALVE_LIGHT_INTENSITY,
+            SceneDistributionValveControllerConstants.VALVE_LIGHT_DISTANCE
+        )
+        light.position.set(0, SceneDistributionValveControllerConstants.VALVE_LIGHT_HEIGHT_OFFSET, 0)
+        light.castShadow = false
+        mesh.add(light)
+        this.valveLightsByMeshUuid.set(mesh.uuid, light)
+    }
+
+    clearValveLights()
+    {
+        for(const [meshUuid, light] of this.valveLightsByMeshUuid.entries())
+        {
+            const mesh = this.valveByUuid.get(meshUuid)?.mesh ?? null
+            mesh?.remove?.(light)
+        }
+        this.valveLightsByMeshUuid.clear()
     }
 
     isValveMesh(mesh)
@@ -673,6 +723,7 @@ export default class SceneDistributionValveController
         this.stopValveTurningSound()
         this.setPlayerLookEnabled(true)
         this.valves = []
+        this.clearValveLights()
         this.valveByUuid.clear()
         this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()

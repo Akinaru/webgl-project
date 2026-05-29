@@ -41,6 +41,7 @@ export default class Materiau
         this.activePressedMeshUuid = null
         this.selectedMaterialKey = null
         this.materialStates = new Map()
+        this.materialButtonLights = new Map()
         this.definitionTextures = new Map()
         this.buildingEntries = []
         this.buildingEffect = null
@@ -183,6 +184,7 @@ export default class Materiau
 
     setMaterialStates()
     {
+        this.clearMaterialButtonLights()
         this.materialStates.clear()
 
         for(const mesh of this.clickableMeshes)
@@ -214,6 +216,7 @@ export default class Materiau
                 phase: 'idle',
                 timer: 0
             })
+            this.setMaterialButtonLight(mesh, definition, false)
         }
     }
 
@@ -522,6 +525,50 @@ export default class Materiau
         }
     }
 
+    setMaterialButtonLight(mesh, definition, isSelected = false)
+    {
+        if(!(mesh instanceof THREE.Mesh) || !definition)
+        {
+            return
+        }
+
+        const light = new THREE.PointLight(
+            definition.accentColor,
+            MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY,
+            MateriauConstants.MATERIAL_BUTTON_LIGHT_DISTANCE
+        )
+        light.position.set(0, MateriauConstants.MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET, 0)
+        light.castShadow = false
+        light.intensity = isSelected
+            ? MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY * MateriauConstants.MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER
+            : MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY
+        mesh.add(light)
+        this.materialButtonLights.set(mesh.uuid, light)
+    }
+
+    updateMaterialButtonLight(state, isSelected)
+    {
+        const light = this.materialButtonLights.get(state?.mesh?.uuid)
+        if(!light)
+        {
+            return
+        }
+
+        light.intensity = isSelected
+            ? MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY * MateriauConstants.MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER
+            : MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY
+    }
+
+    clearMaterialButtonLights()
+    {
+        for(const [meshUuid, light] of this.materialButtonLights.entries())
+        {
+            const state = this.materialStates.get(meshUuid)
+            state?.mesh?.remove?.(light)
+        }
+        this.materialButtonLights.clear()
+    }
+
     setEvents()
     {
         this.onMouseDown = () =>
@@ -720,6 +767,7 @@ export default class Materiau
         {
             const isSelected = state.key === this.selectedMaterialKey
             this.applySelectionVisualState(state.runtimeMaterials, isSelected)
+            this.updateMaterialButtonLight(state, isSelected)
         }
 
         this.applyBuildingSelection(this.getDefinitionByKey(this.selectedMaterialKey))
@@ -956,6 +1004,7 @@ export default class Materiau
             }
         }
 
+        this.clearMaterialButtonLights()
         this.materialStates.clear()
         for(const texture of this.definitionTextures.values())
         {
