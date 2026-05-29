@@ -243,5 +243,23 @@
     "channel": "distributionAmbience",
     "audioType": "music",
     "pauseGroup": "music"
+  },
+  "tutorialStepComplete": {
+    "label": "Tutorial step complete",
+    "resourceKey": "uiClickSound",
+    "fallbackPath": "sounds/ui/ui-click.wav",
+    "volume": 0.5,
+    "playbackRate": 1,
+    "channel": "ui",
+    "audioType": "sfx"
+  },
+  "badgeUnlocked": {
+    "label": "Badge unlocked",
+    "resourceKey": "levelUpSound",
+    "fallbackPath": "sounds/ui/level-up.mp3",
+    "volume": 0.45,
+    "playbackRate": 1,
+    "channel": "ui",
+    "audioType": "sfx"
   }
 }

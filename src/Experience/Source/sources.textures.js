@@ -53,5 +53,10 @@ export default [
         name: 'distributionBackgroundResultTexture',
         type: 'exrTexture',
         path: 'models/scenes/distribution/textures/background_resultat.exr'
+    },
+    {
+        name: 'recuperationWallSlabsTexture',
+        type: 'texture',
+        path: 'textures/wall/slabs.png'
     }
 ]

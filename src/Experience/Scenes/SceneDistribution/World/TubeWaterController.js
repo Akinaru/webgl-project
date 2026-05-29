@@ -338,7 +338,7 @@ export default class SceneDistributionTubeWaterController
 
         return {
             token: normalizedToken,
-            label: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_LABELS[normalizedToken] ?? normalizedToken,
+            label: SceneDistributionFlowConstants.DISTRIBUTION_ZONES[normalizedToken]?.label ?? normalizedToken,
             filledUnits,
             capacityUnits,
             normalizedFill: capacityUnits > 0 ? filledUnits / capacityUnits : 0

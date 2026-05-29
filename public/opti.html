@@ -3,110 +3,206 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Model Optimizer Viewer</title>
+    <title>Model Optimization Hub</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg: #eef3f6;
-        --panel: rgba(248, 251, 253, 0.96);
-        --panel-strong: #ffffff;
-        --line: #d4dde3;
-        --line-strong: #b8c8d1;
-        --text: #12232c;
-        --muted: #5e707a;
-        --accent: #0c84ff;
-        --accent-soft: rgba(12, 132, 255, 0.12);
-        --danger: #cb2f2f;
-        --success: #12835a;
-        --viewer-a: #dceaf5;
-        --viewer-b: #c8d6de;
-        --viewer-c: #a9bcc7;
+        --bg: #0b0e11;
+        --sidebar: #13171c;
+        --panel: #1a2026;
+        --panel-active: #242b33;
+        --border: #2a323b;
+        --border-strong: #3f4a56;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --accent: #3b82f6;
+        --accent-hover: #60a5fa;
+        --accent-soft: rgba(59, 130, 246, 0.15);
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --font-mono: 'JetBrains Mono', monospace;
       }
 
       * {
         box-sizing: border-box;
       }
 
-      html,
-      body {
+      html, body {
         height: 100%;
         margin: 0;
+        overflow: hidden;
       }
 
       body {
-        font-family: "Manrope", "Segoe UI", sans-serif;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         color: var(--text);
-        background:
-          radial-gradient(circle at top left, rgba(255, 255, 255, 0.75), transparent 42%),
-          linear-gradient(180deg, #f5f8fa, #e7eef2 42%, #dee7ed);
+        background: var(--bg);
+        line-height: 1.5;
       }
 
       .app {
         display: grid;
-        grid-template-rows: auto 1fr;
-        height: 100%;
+        grid-template-columns: 420px 1fr;
+        height: 100vh;
+      }
+
+      /* Sidebar & Panels */
+      .sidebar {
+        background: var(--sidebar);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        min-width: 0;
+        z-index: 10;
       }
 
       .topbar {
+        padding: 18px 20px;
+        background: #090c0f;
+        border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        background: #0d1419;
-        color: #eef6fb;
-        border-bottom: 1px solid #22313a;
+        justify-content: space-between;
+        flex-shrink: 0;
       }
 
-      .title {
-        font-size: 0.95rem;
+      .brand {
         font-weight: 800;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      .status {
-        margin-left: auto;
-        font-size: 0.8rem;
-        color: #bfd3e1;
-      }
-
-      .layout {
-        min-height: 0;
-        display: grid;
-        grid-template-columns: 390px 1fr;
-      }
-
-      .panel {
-        min-height: 0;
-        overflow: auto;
-        background: var(--panel);
-        border-right: 1px solid var(--line);
-        backdrop-filter: blur(10px);
-      }
-
-      .section {
-        padding: 14px;
-        border-bottom: 1px solid rgba(18, 35, 44, 0.08);
-      }
-
-      .section h2 {
-        margin: 0 0 10px;
-        font-size: 0.78rem;
+        font-size: 1rem;
         letter-spacing: 0.05em;
         text-transform: uppercase;
-        color: #26404d;
+        color: var(--accent-hover);
       }
 
-      .help {
-        margin: 0;
-        color: var(--muted);
-        font-size: 0.78rem;
-        line-height: 1.5;
+      .status-pill {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 99px;
+        color: var(--text-muted);
       }
 
-      .row {
+      /* Non-hierarchy sections container */
+      .sidebar-top-sections {
+        flex-shrink: 0;
+        max-height: 60vh;
+        overflow-y: auto;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      /* Collapsible Sections */
+      details.section {
+        border-bottom: 1px solid var(--border);
+        transition: all 0.2s ease;
+        background: var(--sidebar);
+      }
+
+      details.section:last-child {
+        border-bottom: none;
+      }
+
+      details.section summary {
+        list-style: none;
+        padding: 16px 20px;
+        cursor: pointer;
         display: flex;
+        align-items: center;
+        justify-content: space-between;
+        user-select: none;
+        background: #161b22;
+      }
+
+      details.section summary:hover {
+        background: #1c222d;
+      }
+
+      details.section summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.section summary::after {
+        content: '▸';
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        transition: transform 0.2s ease;
+      }
+
+      details.section[open] summary::after {
+        transform: rotate(90deg);
+      }
+
+      details.section .section-content {
+        padding: 20px;
+        background: var(--sidebar);
+      }
+
+      /* Hierarchy Section - Fills remaining space */
+      .hierarchy-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0; /* Important for flex-grow with overflow */
+        background: var(--sidebar);
+      }
+
+      .hierarchy-header {
+        padding: 16px 20px;
+        background: #161b22;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+      }
+
+      .tree-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 10px 10px 120px 10px;
+        min-height: 0;
+      }
+
+      .input-text {
+        width: 100%;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 1rem;
+      }
+
+      .btn {
+        flex: 1;
+        background: var(--panel);
+        border: 1px solid var(--border-strong);
+        color: var(--text);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         gap: 8px;
-        flex-wrap: wrap;
+        transition: all 0.15s ease;
+      }
+
+      .control-grid {
+        display: grid;
+        gap: 12px;
       }
 
       .field {
@@ -114,512 +210,511 @@
         gap: 6px;
       }
 
-      .field label {
-        font-size: 0.76rem;
-        font-weight: 700;
-        color: #2a4350;
-      }
-
-      .field-help {
-        font-size: 0.74rem;
-        color: var(--muted);
-        line-height: 1.45;
-      }
-
-      .text-input,
-      .file-input,
-      .btn {
-        font: inherit;
-      }
-
-      .text-input {
-        width: 100%;
-        border: 1px solid var(--line-strong);
-        border-radius: 11px;
-        padding: 10px 12px;
-        background: #ffffff;
+      .label {
+        font-size: 0.95rem;
+        font-weight: 600;
         color: var(--text);
-        font-size: 0.82rem;
       }
 
-      .file-input {
-        width: 100%;
-        border: 1px dashed var(--line-strong);
-        border-radius: 11px;
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.7);
-        color: var(--muted);
-        font-size: 0.8rem;
+      .input-text:focus {
+        outline: none;
+        border-color: var(--accent);
       }
 
-      .btn {
-        border: 1px solid #19303b;
-        background: #ffffff;
-        color: #18323f;
-        border-radius: 11px;
-        padding: 9px 12px;
-        font-size: 0.8rem;
-        font-weight: 700;
+      .input-file-container {
+        position: relative;
+        border: 1px dashed var(--border-strong);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .input-file-label {
+        font-size: 0.95rem;
+        color: var(--text-muted);
         cursor: pointer;
       }
 
-      .btn:hover {
-        filter: brightness(0.98);
+      .input-file {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: var(--panel-active);
+        border-color: var(--text-muted);
+      }
+
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
       }
 
       .btn.primary {
-        background: #18323f;
-        color: #ffffff;
+        background: var(--accent);
+        border-color: transparent;
+        color: white;
       }
 
-      .btn.warn {
-        border-color: #a64d4d;
-        color: #8f2020;
+      .btn.primary:hover {
+        background: var(--accent-hover);
       }
 
-      .btn.ok {
-        border-color: #1f845c;
-        color: #106c49;
+      .btn.danger {
+        color: var(--danger);
       }
 
-      .btn.full {
-        width: 100%;
+      .btn.danger:hover {
+        background: rgba(239, 68, 68, 0.1);
       }
 
-      .check {
+      .btn.small {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+      }
+
+      .toggle-row {
+        display: flex;
+        gap: 16px;
+      }
+
+      .toggle {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 0.8rem;
-        color: #27404d;
+        font-size: 0.75rem;
+        cursor: pointer;
+        user-select: none;
       }
 
-      .check input {
-        width: 16px;
-        height: 16px;
+      .toggle input {
+        width: 14px;
+        height: 14px;
+        margin: 0;
       }
 
+      /* KPI Cards */
       .kpi-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 8px;
       }
 
-      .kpi {
-        background: var(--panel-strong);
-        border: 1px solid rgba(18, 35, 44, 0.08);
-        border-radius: 12px;
+      .kpi-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
         padding: 10px;
+        display: flex;
+        flex-direction: column;
       }
 
       .kpi-label {
-        font-size: 0.72rem;
-        color: var(--muted);
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-muted);
         margin-bottom: 4px;
       }
 
       .kpi-value {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #12303d;
+        font-size: 0.95rem;
+        font-weight: 700;
+        font-family: var(--font-mono);
+        color: var(--text);
       }
 
-      .selected-card {
-        display: grid;
-        gap: 8px;
-        background: var(--panel-strong);
-        border: 1px solid rgba(18, 35, 44, 0.08);
-        border-radius: 14px;
-        padding: 12px;
+      .kpi-sub {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        margin-top: 2px;
       }
 
-      .selected-title {
-        font-size: 0.86rem;
-        font-weight: 800;
-        color: #163645;
-      }
-
-      .selected-meta {
-        font-size: 0.78rem;
-        color: var(--muted);
+      /* Hierarchy & Search */
+      .search-container {
+        position: sticky;
+        top: 0;
+        background: var(--sidebar);
+        padding-bottom: 10px;
+        z-index: 5;
       }
 
       .tree {
-        display: grid;
-        gap: 6px;
-      }
-
-      .tree-hint {
-        margin: 0 0 10px;
-        color: var(--muted);
-        font-size: 0.76rem;
-        line-height: 1.5;
-      }
-
-      .tree-hint strong {
-        color: #294756;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
 
       .tree-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        width: 100%;
-        min-height: 36px;
-        padding: 6px 8px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.48);
-        border: 1px solid rgba(18, 35, 44, 0.06);
-        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        position: relative;
+        min-height: 32px;
+        transition: background 0.1s ease;
+      }
+
+      .tree-row:hover {
+        background: var(--panel);
       }
 
       .tree-row.selected {
         background: var(--accent-soft);
-        border-color: rgba(12, 132, 255, 0.2);
-        box-shadow:
-          inset 0 0 0 1px rgba(12, 132, 255, 0.22),
-          0 8px 18px rgba(12, 132, 255, 0.08);
+        box-shadow: inset 3px 0 0 var(--accent);
       }
 
-      .tree-row:hover {
-        background: rgba(255, 255, 255, 0.78);
-        border-color: rgba(38, 64, 77, 0.12);
-      }
-
-      .tree-row.has-children {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(241, 247, 250, 0.92));
-      }
-
-      .tree-row input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        margin: 0;
+      .tree-row.hidden-node {
+        opacity: 0.35;
       }
 
       .tree-expander {
-        width: 24px;
-        height: 24px;
-        border: 1px solid rgba(25, 48, 59, 0.14);
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.86);
+        width: 18px;
+        height: 18px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        flex: 0 0 auto;
+        color: var(--text-muted);
+        transition: transform 0.2s ease;
+        font-size: 0.9rem;
       }
 
-      .tree-expander::before {
-        content: "";
-        width: 7px;
-        height: 7px;
-        border-right: 2px solid #284553;
-        border-bottom: 2px solid #284553;
-        transform: rotate(-45deg);
-        transition: transform 120ms ease;
-        margin-right: 2px;
-      }
-
-      details[open] > summary .tree-expander::before {
-        transform: rotate(45deg);
-        margin-right: 0;
-        margin-top: -2px;
-      }
-
-      .tree-expander:hover {
-        background: #ffffff;
-      }
-
-      .tree-expander.is-spacer {
-        visibility: hidden;
-        pointer-events: none;
+      .tree-expander.expanded {
+        transform: rotate(90deg);
       }
 
       .tree-icon {
-        width: 24px;
-        height: 24px;
-        border-radius: 8px;
-        display: inline-flex;
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
         align-items: center;
         justify-content: center;
-        flex: 0 0 auto;
-        border: 1px solid rgba(25, 48, 59, 0.12);
-        color: #284a59;
-        background: linear-gradient(180deg, #fefefe, #edf4f7);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
       }
 
-      .tree-icon::before {
-        content: "";
-        display: block;
-      }
+      .icon-mesh { background: #3b82f633; color: #60a5fa; }
+      .icon-light { background: #f59e0b33; color: #fbbf24; }
+      .icon-camera { background: #8b5cf633; color: #a78bfa; }
+      .icon-group { background: #64748b33; color: #94a3b8; }
 
-      .tree-icon.is-spacer {
-        visibility: hidden;
-        pointer-events: none;
-      }
-
-      .tree-icon.kind-mesh {
-        color: #10515d;
-        background: linear-gradient(180deg, #e8f8fb, #cdeff6);
-      }
-
-      .tree-icon.kind-mesh::before {
-        width: 10px;
-        height: 10px;
-        border: 2px solid currentColor;
-        border-radius: 3px;
-      }
-
-      .tree-icon.kind-light {
-        color: #8b5600;
-        background: linear-gradient(180deg, #fff1d9, #ffe0aa);
-      }
-
-      .tree-icon.kind-light::before {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-
-      .tree-icon.kind-camera {
-        color: #593c86;
-        background: linear-gradient(180deg, #f0e7ff, #dbceff);
-      }
-
-      .tree-icon.kind-camera::before {
-        width: 12px;
-        height: 8px;
-        border-radius: 2px;
-        border: 2px solid currentColor;
-        position: relative;
-      }
-
-      .tree-icon.kind-node {
-        color: #415c6c;
-        background: linear-gradient(180deg, #f5f8fb, #dde8ee);
-      }
-
-      .tree-icon.kind-node::before {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: currentColor;
-      }
-
-      .tree-label {
+      .tree-label-wrap {
         flex: 1;
         min-width: 0;
-        border: 0;
-        background: transparent;
-        color: #163746;
-        text-align: left;
-        padding: 0;
-        font: inherit;
-        cursor: pointer;
-        display: grid;
-        gap: 2px;
+        display: flex;
+        flex-direction: column;
       }
 
       .tree-name {
-        font-size: 0.8rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .tree-name.is-heavy {
+        color: var(--warning);
         font-weight: 700;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
-      .tree-meta {
-        font-size: 0.7rem;
-        color: var(--muted);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .tree-name.is-critical {
+        color: var(--danger);
+        font-weight: 800;
       }
 
-      details.tree-branch {
-        border-radius: 14px;
-        padding: 2px;
-        background: rgba(255, 255, 255, 0.32);
-        border: 1px solid rgba(18, 35, 44, 0.05);
+      /* Weight Gauge */
+      .weight-gauge {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: var(--accent);
+        opacity: 0.4;
+        pointer-events: none;
       }
 
-      details.tree-branch[open] {
-        background: rgba(255, 255, 255, 0.56);
-        border-color: rgba(38, 64, 77, 0.08);
-      }
-
-      details.tree-branch > summary {
-        list-style: none;
-        cursor: default;
-      }
-
-      details.tree-branch > summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .tree-children {
-        margin: 2px 0 6px 18px;
-        padding: 6px 0 0 14px;
-        border-left: 1px solid rgba(38, 64, 77, 0.14);
-        display: grid;
+      /* Actions in Tree Row */
+      .tree-actions {
+        display: flex;
         gap: 6px;
+        opacity: 0;
+        transition: opacity 0.15s ease;
       }
 
-      .viewer-wrap {
+      .tree-row:hover .tree-actions {
+        opacity: 1;
+      }
+
+      .tree-action-btn {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        background: var(--panel-active);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 0.85rem;
+      }
+
+      .tree-action-btn:hover {
+        color: var(--text);
+        border-color: var(--text-muted);
+      }
+
+      .tree-action-btn.is-active {
+        color: var(--accent-hover);
+      }
+
+      /* Viewer Area */
+      .viewer-container {
         position: relative;
-        min-height: 0;
-        background:
-          radial-gradient(circle at top left, var(--viewer-a), transparent 28%),
-          radial-gradient(circle at 85% 15%, rgba(255, 255, 255, 0.22), transparent 22%),
-          linear-gradient(180deg, var(--viewer-a), var(--viewer-b) 46%, var(--viewer-c));
+        background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
       }
 
       #view {
-        position: absolute;
-        inset: 0;
         width: 100%;
         height: 100%;
         display: block;
       }
 
+      /* HUD Overlays */
       .hud {
         position: absolute;
-        top: 12px;
-        left: 12px;
-        display: grid;
-        gap: 8px;
-        width: min(520px, calc(100% - 24px));
+        top: 16px;
+        right: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
         pointer-events: none;
       }
 
       .hud-card {
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(17, 38, 50, 0.14);
-        background: rgba(248, 252, 255, 0.82);
-        color: #143240;
-        font-size: 0.78rem;
-        line-height: 1.45;
+        background: rgba(15, 23, 42, 0.8);
         backdrop-filter: blur(8px);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px;
+        min-width: 180px;
+        pointer-events: auto;
       }
 
-      .hud-card strong {
-        color: #0f4667;
+      .hud-title {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--accent-hover);
+        margin-bottom: 8px;
       }
 
-      @media (max-width: 980px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
+      .hud-stat {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        font-family: var(--font-mono);
+        margin-bottom: 4px;
+      }
 
-        .panel {
-          max-height: 46vh;
-          border-right: 0;
-          border-bottom: 1px solid var(--line);
-        }
+      .hud-stat .val {
+        color: #fff;
+        font-weight: 700;
+      }
+
+      .hud-stat .lbl {
+        color: var(--text-muted);
+      }
+
+      .controls-hint {
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        background: rgba(15, 23, 42, 0.6);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        pointer-events: none;
+      }
+
+      /* Animations */
+      @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+      }
+
+      .loading-indicator {
+        display: inline-block;
+        animation: pulse 1s infinite ease-in-out;
+        color: var(--accent);
+      }
+
+      /* Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-strong);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--text-muted);
+      }
+
+      .tree-children {
+        margin-left: 12px;
+        padding-left: 6px;
+        border-left: 1px solid var(--border);
+        display: none;
+      }
+
+      .tree-children.visible {
+        display: block;
       }
     </style>
   </head>
   <body>
+    <div id="loadingOverlay" style="position: fixed; inset: 0; background: rgba(11, 14, 17, 0.9); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
+      <div class="loading-indicator" style="font-size: 3rem; margin-bottom: 20px;">●</div>
+      <div id="loadingProgress" style="font-family: var(--font-mono); font-size: 1.2rem; color: var(--accent-hover);">Chargement...</div>
+      <div id="loadingDetail" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 8px;">Préparation du modèle</div>
+    </div>
+
     <div class="app">
-      <header class="topbar">
-        <div class="title">Model Opti Viewer</div>
-        <div class="status" id="status">Pret a charger un modele.</div>
-      </header>
+      <aside class="sidebar">
+        <header class="topbar">
+          <div class="brand">Optimizer Hub</div>
+          <div id="status" class="status-pill">Prêt</div>
+        </header>
 
-      <div class="layout">
-        <aside class="panel">
-          <section class="section">
-            <h2>Chargement</h2>
-            <p class="help">
-              Charge un modele GLTF/GLB pour inspecter sa hierarchie, masquer ses branches et estimer les drawcalls.
-              Pour un `.gltf` avec fichiers externes, prefere un chemin dans `public/` comme `./models/scenes/map/Map.gltf`.
-            </p>
-            <div class="field" style="margin-top: 10px">
-              <label for="modelUrl">Chemin public</label>
-              <input id="modelUrl" class="text-input" type="text" value="./models/scenes/map/Map.gltf" />
-            </div>
-            <div class="row" style="margin-top: 10px">
-              <button id="loadUrl" class="btn primary">Charger URL</button>
-              <button id="fitModel" class="btn">Fit model</button>
-              <button id="clearModel" class="btn warn">Vider</button>
-            </div>
-            <div class="field" style="margin-top: 10px">
-              <label for="modelFile">Fichier local</label>
-              <input id="modelFile" class="file-input" type="file" accept=".glb,.gltf,.bin,image/*,model/gltf-binary,model/gltf+json" multiple />
-              <div id="modelFileInfo" class="field-help">Selectionne un `.glb` ou un `.gltf` avec ses fichiers `.bin` / textures, puis clique sur Importer.</div>
-              <div class="row">
-                <button id="loadFile" class="btn primary" disabled>Importer fichier</button>
+        <div class="sidebar-top-sections">
+          <details class="section">
+            <summary><span class="section-title">Importation</span></summary>
+            <div class="section-content">
+              <div class="control-grid">
+                <div class="field">
+                  <input id="modelUrl" class="input-text" type="text" value="./models/scenes/map/Map_Draco.glb" placeholder="URL du modèle (GLTF/GLB)" />
+                </div>
+                <div class="btn-row">
+                  <button id="loadUrl" class="btn primary">Charger URL</button>
+                  <button id="clearModel" class="btn danger">Vider</button>
+                </div>
+                <div class="input-file-container">
+                  <span class="input-file-label">Importer fichiers locaux</span>
+                  <input id="modelFile" class="input-file" type="file" multiple />
+                </div>
+                <div id="fileInfo" style="font-size: 0.85rem; color: var(--text-muted); text-align: center; margin-top: 8px;"></div>
+                <button id="importFiles" class="btn" disabled>Lancer l'importation</button>
               </div>
             </div>
-          </section>
+          </details>
 
-          <section class="section">
-            <h2>Viewer</h2>
-            <div class="row">
-              <button id="showAll" class="btn ok">Show all</button>
-              <button id="hideAll" class="btn warn">Hide all</button>
-              <button id="syncTree" class="btn">Sync tree</button>
-            </div>
-            <div class="field" style="margin-top: 12px">
-              <label class="check"><input id="toggleAxes" type="checkbox" />Afficher axes</label>
-              <label class="check"><input id="toggleTriangles" type="checkbox" />Afficher triangles</label>
-              <label class="check"><input id="toggleAutoRotate" type="checkbox" />Auto rotate</label>
-            </div>
-          </section>
-
-          <section class="section">
-            <h2>Modele</h2>
-            <div class="kpi-grid">
-              <div class="kpi"><div class="kpi-label">Nodes</div><div id="kpiNodes" class="kpi-value">0</div></div>
-              <div class="kpi"><div class="kpi-label">Meshes</div><div id="kpiMeshes" class="kpi-value">0</div></div>
-              <div class="kpi"><div class="kpi-label">Triangles</div><div id="kpiTriangles" class="kpi-value">0</div></div>
-              <div class="kpi"><div class="kpi-label">Drawcalls est.</div><div id="kpiDrawcalls" class="kpi-value">0</div></div>
-              <div class="kpi"><div class="kpi-label">Visible meshes</div><div id="kpiVisibleMeshes" class="kpi-value">0</div></div>
-              <div class="kpi"><div class="kpi-label">Visible dc est.</div><div id="kpiVisibleDrawcalls" class="kpi-value">0</div></div>
-            </div>
-          </section>
-
-          <section class="section">
-            <h2>Selection</h2>
-            <div class="selected-card">
-              <div id="selectedTitle" class="selected-title">Aucune selection</div>
-              <div id="selectedMeta" class="selected-meta">Clique une branche dans l arbre pour voir ses stats.</div>
-              <div class="row">
-                <button id="fitSelection" class="btn" disabled>Fit selection</button>
-                <button id="isolateSelection" class="btn" disabled>Isolate</button>
-                <button id="showSelection" class="btn" disabled>Show branch</button>
+          <details class="section">
+            <summary><span class="section-title">Performances Globales</span></summary>
+            <div class="section-content">
+              <div class="kpi-grid">
+                <div class="kpi-card">
+                  <span class="kpi-label">Triangles Totaux</span>
+                  <span id="totalTris" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Drawcalls Est.</span>
+                  <span id="totalDc" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Maillages</span>
+                  <span id="totalMeshes" class="kpi-value">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Noeuds</span>
+                  <span id="totalNodes" class="kpi-value">0</span>
+                </div>
               </div>
             </div>
-          </section>
+          </details>
 
-          <section class="section">
-            <h2>Hierarchie</h2>
-            <p class="tree-hint"><strong>Chevron</strong> pour derouler un groupe, <strong>nom</strong> pour le selectionner.</p>
-            <div id="tree" class="tree"></div>
-          </section>
-        </aside>
-
-        <main id="viewerWrap" class="viewer-wrap">
-          <canvas id="view"></canvas>
-          <div class="hud">
-            <div id="renderHud" class="hud-card">
-              <strong>Frame</strong><br />
-              Drawcalls: 0<br />
-              Triangles: 0<br />
-              Geometries: 0<br />
-              Textures: 0
+          <details class="section" open>
+            <summary><span class="section-title">Visualisation</span></summary>
+            <div class="section-content">
+              <div class="btn-row">
+                <button id="showAll" class="btn small">Tout afficher</button>
+                <button id="hideAll" class="btn small">Tout masquer</button>
+                <button id="fitModel" class="btn small">Recadrer</button>
+              </div>
+              <div class="toggle-row" style="margin-top: 16px;">
+                <label class="toggle"><input id="toggleWireframe" type="checkbox" /> Fil de fer</label>
+                <label class="toggle"><input id="toggleAxes" type="checkbox" /> Axes</label>
+                <label class="toggle"><input id="toggleAutoRotate" type="checkbox" /> Rotation</label>
+              </div>
             </div>
-            <div class="hud-card">
-              <strong>Controles</strong><br />
-              Souris gauche: orbite<br />
-              Souris droite: pan<br />
-              Molette: zoom
+          </details>
+        </div>
+
+        <section class="hierarchy-section">
+          <div class="hierarchy-header">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span class="section-title">Hiérarchie</span>
+              <input id="treeSearch" class="input-text" type="text" placeholder="Rechercher..." style="width: 180px; padding: 8px 12px; font-size: 0.9rem;" />
             </div>
           </div>
-        </main>
-      </div>
+          <div class="tree-container">
+            <div id="hierarchyTree" class="tree"></div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="viewer-container" id="viewerWrap">
+        <canvas id="view"></canvas>
+        
+        <div class="hud">
+          <div class="hud-card" id="renderHud">
+            <div class="hud-title">Rendu Temps Réel</div>
+            <div class="hud-stat"><span class="lbl">Drawcalls</span><span class="val" id="hudDc">0</span></div>
+            <div class="hud-stat"><span class="lbl">Triangles</span><span class="val" id="hudTris">0</span></div>
+            <div class="hud-stat"><span class="lbl">Géométries</span><span class="val" id="hudGeom">0</span></div>
+            <div class="hud-stat"><span class="lbl">Textures</span><span class="val" id="hudTex">0</span></div>
+          </div>
+
+          <div class="hud-card" id="selectionHud" style="display: none;">
+            <div class="hud-title">Sélection</div>
+            <div class="hud-stat"><span class="lbl">Nom</span><span class="val" id="selName" style="max-width: 100px; overflow: hidden; text-overflow: ellipsis;">-</span></div>
+            <div class="hud-stat"><span class="lbl">Type</span><span class="val" id="selType">-</span></div>
+            <div class="hud-stat"><span class="lbl">Triangles</span><span class="val" id="selTris">0</span></div>
+            <div class="hud-stat"><span class="lbl">DC Est.</span><span class="val" id="selDc">0</span></div>
+            <div class="btn-row" style="margin-top: 10px;">
+              <button id="fitSelection" class="btn small primary" style="flex: 1;">Focus</button>
+              <button id="isolateSelection" class="btn small" style="flex: 1;">Isoler</button>
+              <button id="toggleSelectionWireframe" class="btn small" style="flex: 1;">Triangles</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls-hint">
+          LMB: Orbite • RMB: Pan • Wheel: Zoom • Click Tree: Select
+        </div>
+      </main>
     </div>
 
     <script type="importmap">
@@ -635,1049 +730,513 @@
       import * as THREE from 'three'
       import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
       import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+      import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+
+      // Thresholds for bottleneck highlighting
+      const THRESHOLD_HEAVY = 15000;
+      const THRESHOLD_CRITICAL = 50000;
 
       const refs = {
         status: document.getElementById('status'),
         modelUrl: document.getElementById('modelUrl'),
-        modelFile: document.getElementById('modelFile'),
-        modelFileInfo: document.getElementById('modelFileInfo'),
-        loadFile: document.getElementById('loadFile'),
         loadUrl: document.getElementById('loadUrl'),
-        fitModel: document.getElementById('fitModel'),
         clearModel: document.getElementById('clearModel'),
+        modelFile: document.getElementById('modelFile'),
+        fileInfo: document.getElementById('fileInfo'),
+        importFiles: document.getElementById('importFiles'),
+        
+        totalTris: document.getElementById('totalTris'),
+        totalDc: document.getElementById('totalDc'),
+        totalMeshes: document.getElementById('totalMeshes'),
+        totalNodes: document.getElementById('totalNodes'),
+        
         showAll: document.getElementById('showAll'),
         hideAll: document.getElementById('hideAll'),
-        syncTree: document.getElementById('syncTree'),
+        fitModel: document.getElementById('fitModel'),
+        toggleWireframe: document.getElementById('toggleWireframe'),
         toggleAxes: document.getElementById('toggleAxes'),
-        toggleTriangles: document.getElementById('toggleTriangles'),
         toggleAutoRotate: document.getElementById('toggleAutoRotate'),
+        
+        tree: document.getElementById('hierarchyTree'),
+        treeSearch: document.getElementById('treeSearch'),
+        
+        hudDc: document.getElementById('hudDc'),
+        hudTris: document.getElementById('hudTris'),
+        hudGeom: document.getElementById('hudGeom'),
+        hudTex: document.getElementById('hudTex'),
+        
+        selectionHud: document.getElementById('selectionHud'),
+        selName: document.getElementById('selName'),
+        selType: document.getElementById('selType'),
+        selTris: document.getElementById('selTris'),
+        selDc: document.getElementById('selDc'),
         fitSelection: document.getElementById('fitSelection'),
         isolateSelection: document.getElementById('isolateSelection'),
-        showSelection: document.getElementById('showSelection'),
-        selectedTitle: document.getElementById('selectedTitle'),
-        selectedMeta: document.getElementById('selectedMeta'),
-        tree: document.getElementById('tree'),
-        renderHud: document.getElementById('renderHud'),
-        kpiNodes: document.getElementById('kpiNodes'),
-        kpiMeshes: document.getElementById('kpiMeshes'),
-        kpiTriangles: document.getElementById('kpiTriangles'),
-        kpiDrawcalls: document.getElementById('kpiDrawcalls'),
-        kpiVisibleMeshes: document.getElementById('kpiVisibleMeshes'),
-        kpiVisibleDrawcalls: document.getElementById('kpiVisibleDrawcalls')
+        toggleSelectionWireframe: document.getElementById('toggleSelectionWireframe'),
+        
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        loadingProgress: document.getElementById('loadingProgress'),
+        loadingDetail: document.getElementById('loadingDetail')
       }
 
       const state = {
-        loader: new GLTFLoader(),
+        scene: new THREE.Scene(),
+        camera: null,
+        renderer: null,
+        controls: null,
         modelRoot: null,
-        treeRoots: [],
-        entriesByUuid: new Map(),
+        loader: new GLTFLoader(),
+        dracoLoader: new DRACOLoader(),
+        entries: new Map(), // uuid -> entry object
         selectedEntry: null,
-        currentObjectUrl: null,
-        currentFileObjectUrls: [],
+        totalModelTris: 0,
         pendingFiles: [],
-        disposedMaterials: new Set()
+        currentFileObjectUrls: [],
+        selectionWireframe: false
       }
 
-      const canvas = document.getElementById('view')
-      const viewerWrap = document.getElementById('viewerWrap')
-      const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: true
-      })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-      renderer.setSize(window.innerWidth, window.innerHeight)
+      function init() {
+        const canvas = document.getElementById('view');
+        const wrap = document.getElementById('viewerWrap');
+        
+        state.dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/');
+        state.loader.setDRACOLoader(state.dracoLoader);
 
-      const scene = new THREE.Scene()
-      const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 4000)
-      camera.position.set(28, 22, 28)
-      scene.add(camera)
+        state.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        state.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        state.renderer.setSize(wrap.clientWidth, wrap.clientHeight);
 
-      const controls = new OrbitControls(camera, canvas)
-      controls.enableDamping = true
-      controls.dampingFactor = 0.06
-      controls.target.set(0, 5, 0)
-      controls.update()
+        state.camera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 5000);
+        state.camera.position.set(20, 20, 20);
 
-      const ambientLight = new THREE.AmbientLight('#ffffff', 1.5)
-      scene.add(ambientLight)
+        state.controls = new OrbitControls(state.camera, canvas);
+        state.controls.enableDamping = true;
+        state.controls.dampingFactor = 0.05;
 
-      const keyLight = new THREE.DirectionalLight('#fff4d8', 1.8)
-      keyLight.position.set(30, 42, 26)
-      scene.add(keyLight)
+        // Lights
+        state.scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        const dl = new THREE.DirectionalLight(0xffffff, 1.5);
+        dl.position.set(5, 10, 7.5);
+        state.scene.add(dl);
 
-      const fillLight = new THREE.DirectionalLight('#c9e3ff', 0.65)
-      fillLight.position.set(-24, 16, -18)
-      scene.add(fillLight)
+        // Helpers
+        state.axesHelper = new THREE.AxesHelper(5);
+        state.axesHelper.visible = false;
+        state.scene.add(state.axesHelper);
 
-      const axes = new THREE.AxesHelper(8)
-      axes.visible = false
-      scene.add(axes)
+        state.selectionHelper = new THREE.Box3Helper(new THREE.Box3(), 0x3b82f6);
+        state.selectionHelper.visible = false;
+        state.scene.add(state.selectionHelper);
 
-      const selectionHelper = new THREE.Box3Helper(new THREE.Box3(), 0x0c84ff)
-      selectionHelper.visible = false
-      scene.add(selectionHelper)
-
-      const tempBox = new THREE.Box3()
-      const tempCenter = new THREE.Vector3()
-      const tempSize = new THREE.Vector3()
-
-      function setStatus(message)
-      {
-        refs.status.textContent = message
+        setupEventListeners();
+        animate();
+        
+        // Initial load
+        if(refs.modelUrl.value) loadModel(refs.modelUrl.value);
       }
 
-      function formatCount(value)
-      {
-        const safeValue = Number.isFinite(value) ? value : 0
-
-        if(safeValue >= 1000000)
-        {
-          return `${(safeValue / 1000000).toFixed(2)}M`
-        }
-
-        if(safeValue >= 1000)
-        {
-          return `${(safeValue / 1000).toFixed(1)}k`
-        }
-
-        return `${Math.round(safeValue)}`
+      function formatNum(n) {
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return n.toString();
       }
 
-      function getObjectName(object)
-      {
-        const rawName = String(object?.name || '').trim()
-        return rawName || object?.type || 'Object3D'
-      }
-
-      function getMeshDrawcallEstimate(mesh)
-      {
-        if(!mesh?.isMesh)
-        {
-          return 0
-        }
-
-        return Array.isArray(mesh.material)
-          ? mesh.material.filter(Boolean).length
-          : (mesh.material ? 1 : 0)
-      }
-
-      function getMeshTriangleCount(mesh)
-      {
-        const geometry = mesh?.geometry
-        if(!geometry)
-        {
-          return 0
-        }
-
-        if(geometry.index)
-        {
-          return Math.max(0, Math.floor(geometry.index.count / 3))
-        }
-
-        const position = geometry.attributes?.position
-        if(!position)
-        {
-          return 0
-        }
-
-        return Math.max(0, Math.floor(position.count / 3))
-      }
-
-      function clearSelection()
-      {
-        if(state.selectedEntry?.domRow)
-        {
-          state.selectedEntry.domRow.classList.remove('selected')
-        }
-
-        state.selectedEntry = null
-        refs.selectedTitle.textContent = 'Aucune selection'
-        refs.selectedMeta.textContent = 'Clique une branche dans l arbre pour voir ses stats.'
-        refs.fitSelection.disabled = true
-        refs.isolateSelection.disabled = true
-        refs.showSelection.disabled = true
-        selectionHelper.visible = false
-      }
-
-      function setSelectedEntry(entry)
-      {
-        if(state.selectedEntry?.domRow)
-        {
-          state.selectedEntry.domRow.classList.remove('selected')
-        }
-
-        state.selectedEntry = entry
-
-        if(!entry)
-        {
-          clearSelection()
-          return
-        }
-
-        entry.domRow?.classList.add('selected')
-        refs.fitSelection.disabled = false
-        refs.isolateSelection.disabled = false
-        refs.showSelection.disabled = false
-
-        updateSelectedPanel()
-        updateSelectionHelper()
-      }
-
-      function updateSelectionHelper()
-      {
-        const entry = state.selectedEntry
-        if(!entry?.object)
-        {
-          selectionHelper.visible = false
-          return
-        }
-
-        entry.object.updateWorldMatrix(true, true)
-        tempBox.setFromObject(entry.object)
-
-        if(tempBox.isEmpty())
-        {
-          selectionHelper.visible = false
-          return
-        }
-
-        selectionHelper.box.copy(tempBox)
-        selectionHelper.visible = true
-      }
-
-      function computeStaticStats(object)
-      {
-        const stats = {
-          nodes: 1,
-          meshes: object?.isMesh ? 1 : 0,
-          triangles: object?.isMesh ? getMeshTriangleCount(object) : 0,
-          drawcalls: object?.isMesh ? getMeshDrawcallEstimate(object) : 0
-        }
-
-        for(const child of object.children || [])
-        {
-          const childStats = computeStaticStats(child)
-          stats.nodes += childStats.nodes
-          stats.meshes += childStats.meshes
-          stats.triangles += childStats.triangles
-          stats.drawcalls += childStats.drawcalls
-        }
-
-        return stats
-      }
-
-      function computeVisibleStats(object)
-      {
-        const stats = {
-          meshes: 0,
-          triangles: 0,
-          drawcalls: 0
-        }
-
-        object.traverseVisible((child) => {
-          if(!child.isMesh)
-          {
-            return
-          }
-
-          stats.meshes += 1
-          stats.triangles += getMeshTriangleCount(child)
-          stats.drawcalls += getMeshDrawcallEstimate(child)
-        })
-
-        return stats
-      }
-
-      function createEntry(object, parentEntry = null)
-      {
-        const entry = {
-          object,
-          parentEntry,
-          children: [],
-          domRow: null,
-          domCheckbox: null,
-          domContainer: null,
-          childrenBuilt: false,
-          staticStats: computeStaticStats(object)
-        }
-
-        state.entriesByUuid.set(object.uuid, entry)
-
-        for(const child of object.children || [])
-        {
-          entry.children.push(createEntry(child, entry))
-        }
-
-        return entry
-      }
-
-      function buildEntriesFromModel()
-      {
-        state.entriesByUuid.clear()
-
-        if(!state.modelRoot)
-        {
-          state.treeRoots = []
-          return
-        }
-
-        const roots = state.modelRoot.children.length > 0
-          ? state.modelRoot.children
-          : [state.modelRoot]
-
-        state.treeRoots = roots.map((object) => createEntry(object, null))
-      }
-
-      function createMetaLabel(entry)
-      {
-        return `${entry.object.type} | nodes ${formatCount(entry.staticStats.nodes)} | meshes ${formatCount(entry.staticStats.meshes)} | tris ${formatCount(entry.staticStats.triangles)} | dc est ${formatCount(entry.staticStats.drawcalls)}`
-      }
-
-      function getEntryIconInfo(entry)
-      {
-        if(entry.children.length > 0)
-        {
-          return {
-            kind: 'node',
-            hidden: true
-          }
-        }
-
-        if(entry.object.isMesh)
-        {
-          return {
-            kind: 'mesh',
-          }
-        }
-
-        if(entry.object.isLight)
-        {
-          return {
-            kind: 'light',
-          }
-        }
-
-        if(entry.object.isCamera)
-        {
-          return {
-            kind: 'camera',
-          }
-        }
-
-        return {
-          kind: 'node',
+      function setStatus(msg, loading = false) {
+        refs.status.innerHTML = loading ? `<span class="loading-indicator">●</span> ${msg}` : msg;
+        
+        if (loading) {
+          refs.loadingOverlay.style.display = 'flex';
+          refs.loadingDetail.textContent = msg;
+        } else {
+          refs.loadingOverlay.style.display = 'none';
         }
       }
 
-      function applyBranchVisibility(entry, visible)
-      {
-        entry.object.traverse((child) => {
-          child.visible = visible
-        })
-
-        refreshTreeStates()
-        refreshSummary()
-        updateSelectedPanel()
-        updateSelectionHelper()
-      }
-
-      function setAllVisibility(visible)
-      {
-        for(const entry of state.treeRoots)
-        {
-          entry.object.traverse((child) => {
-            child.visible = visible
-          })
-        }
-
-        refreshTreeStates()
-        refreshSummary()
-        updateSelectedPanel()
-        updateSelectionHelper()
-      }
-
-      function computeCheckboxState(entry)
-      {
-        let visibleCount = 0
-        let totalCount = 1
-
-        if(entry.object.visible)
-        {
-          visibleCount += 1
-        }
-
-        for(const childEntry of entry.children)
-        {
-          const childState = computeCheckboxState(childEntry)
-          visibleCount += childState.visibleCount
-          totalCount += childState.totalCount
-        }
-
-        return {
-          visibleCount,
-          totalCount
-        }
-      }
-
-      function refreshEntryState(entry)
-      {
-        const checkboxState = computeCheckboxState(entry)
-
-        if(entry.domCheckbox)
-        {
-          entry.domCheckbox.checked = checkboxState.visibleCount === checkboxState.totalCount
-          entry.domCheckbox.indeterminate =
-            checkboxState.visibleCount > 0 &&
-            checkboxState.visibleCount < checkboxState.totalCount
-        }
-
-        for(const childEntry of entry.children)
-        {
-          refreshEntryState(childEntry)
-        }
-      }
-
-      function refreshTreeStates()
-      {
-        for(const rootEntry of state.treeRoots)
-        {
-          refreshEntryState(rootEntry)
-        }
-      }
-
-      function buildTreeRow(entry)
-      {
-        const hasChildren = entry.children.length > 0
-        const row = document.createElement('div')
-        row.className = `tree-row${hasChildren ? ' has-children' : ''}`
-
-        const expander = document.createElement('button')
-        expander.type = 'button'
-        expander.className = `tree-expander${hasChildren ? '' : ' is-spacer'}`
-        expander.setAttribute('aria-label', hasChildren ? 'Derouler le groupe' : '')
-
-        const iconInfo = getEntryIconInfo(entry)
-        const icon = document.createElement('span')
-        icon.className = `tree-icon kind-${iconInfo.kind}${iconInfo.hidden ? ' is-spacer' : ''}`
-        icon.title = entry.object.type
-
-        const checkbox = document.createElement('input')
-        checkbox.type = 'checkbox'
-        checkbox.checked = Boolean(entry.object.visible)
-        checkbox.addEventListener('click', (event) => {
-          event.stopPropagation()
-        })
-        checkbox.addEventListener('change', (event) => {
-          applyBranchVisibility(entry, Boolean(event.target.checked))
-        })
-
-        const label = document.createElement('button')
-        label.className = 'tree-label'
-        label.type = 'button'
-        label.innerHTML = `
-          <span class="tree-name">${getObjectName(entry.object)}</span>
-          <span class="tree-meta">${createMetaLabel(entry)}</span>
-        `
-        label.addEventListener('click', (event) => {
-          event.stopPropagation()
-          setSelectedEntry(entry)
-        })
-
-        row.append(expander, icon, checkbox, label)
-
-        entry.domRow = row
-        entry.domCheckbox = checkbox
-        return row
-      }
-
-      function buildTreeBranch(entry)
-      {
-        if(entry.children.length === 0)
-        {
-          return buildTreeRow(entry)
-        }
-
-        const details = document.createElement('details')
-        details.className = 'tree-branch'
-
-        const summary = document.createElement('summary')
-        const row = buildTreeRow(entry)
-        const expander = row.querySelector('.tree-expander')
-        if(expander)
-        {
-          expander.addEventListener('click', (event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            details.open = !details.open
-          })
-        }
-
-        summary.append(row)
-        details.append(summary)
-
-        const childrenContainer = document.createElement('div')
-        childrenContainer.className = 'tree-children'
-        details.append(childrenContainer)
-
-        details.addEventListener('toggle', () => {
-          if(!details.open || entry.childrenBuilt)
-          {
-            return
-          }
-
-          for(const childEntry of entry.children)
-          {
-            childrenContainer.append(buildTreeBranch(childEntry))
-          }
-
-          entry.childrenBuilt = true
-          refreshTreeStates()
-        })
-
-        entry.domContainer = childrenContainer
-        return details
-      }
-
-      function renderTree()
-      {
-        refs.tree.innerHTML = ''
-
-        if(state.treeRoots.length === 0)
-        {
-          refs.tree.innerHTML = '<p class="help">Aucun modele charge.</p>'
-          return
-        }
-
-        for(const rootEntry of state.treeRoots)
-        {
-          refs.tree.append(buildTreeBranch(rootEntry))
-        }
-
-        refreshTreeStates()
-      }
-
-      function refreshSummary()
-      {
-        if(!state.modelRoot)
-        {
-          refs.kpiNodes.textContent = '0'
-          refs.kpiMeshes.textContent = '0'
-          refs.kpiTriangles.textContent = '0'
-          refs.kpiDrawcalls.textContent = '0'
-          refs.kpiVisibleMeshes.textContent = '0'
-          refs.kpiVisibleDrawcalls.textContent = '0'
-          return
-        }
-
-        let totals = {
-          nodes: 0,
-          meshes: 0,
-          triangles: 0,
-          drawcalls: 0,
-          visibleMeshes: 0,
-          visibleTriangles: 0,
-          visibleDrawcalls: 0
-        }
-
-        for(const rootEntry of state.treeRoots)
-        {
-          totals.nodes += rootEntry.staticStats.nodes
-          totals.meshes += rootEntry.staticStats.meshes
-          totals.triangles += rootEntry.staticStats.triangles
-          totals.drawcalls += rootEntry.staticStats.drawcalls
-
-          const visibleStats = computeVisibleStats(rootEntry.object)
-          totals.visibleMeshes += visibleStats.meshes
-          totals.visibleTriangles += visibleStats.triangles
-          totals.visibleDrawcalls += visibleStats.drawcalls
-        }
-
-        refs.kpiNodes.textContent = formatCount(totals.nodes)
-        refs.kpiMeshes.textContent = formatCount(totals.meshes)
-        refs.kpiTriangles.textContent = formatCount(totals.triangles)
-        refs.kpiDrawcalls.textContent = formatCount(totals.drawcalls)
-        refs.kpiVisibleMeshes.textContent = formatCount(totals.visibleMeshes)
-        refs.kpiVisibleDrawcalls.textContent = formatCount(totals.visibleDrawcalls)
-      }
-
-      function updateSelectedPanel()
-      {
-        const entry = state.selectedEntry
-        if(!entry)
-        {
-          refs.selectedTitle.textContent = 'Aucune selection'
-          refs.selectedMeta.textContent = 'Clique une branche dans l arbre pour voir ses stats.'
-          return
-        }
-
-        const visibleStats = computeVisibleStats(entry.object)
-        refs.selectedTitle.textContent = getObjectName(entry.object)
-        refs.selectedMeta.textContent = `${entry.object.type} | nodes ${formatCount(entry.staticStats.nodes)} | meshes ${formatCount(entry.staticStats.meshes)} | tris ${formatCount(entry.staticStats.triangles)} | dc est ${formatCount(entry.staticStats.drawcalls)} | visible meshes ${formatCount(visibleStats.meshes)} | visible tris ${formatCount(visibleStats.triangles)} | visible dc est ${formatCount(visibleStats.drawcalls)}`
-      }
-
-      function fitCameraToObject(object)
-      {
-        if(!object)
-        {
-          return
-        }
-
-        object.updateWorldMatrix(true, true)
-        tempBox.setFromObject(object)
-        if(tempBox.isEmpty())
-        {
-          return
-        }
-
-        tempBox.getCenter(tempCenter)
-        tempBox.getSize(tempSize)
-
-        const maxSize = Math.max(tempSize.x, tempSize.y, tempSize.z)
-        const fitDistance = Math.max(6, maxSize / (2 * Math.tan((Math.PI * camera.fov) / 360)))
-        const direction = new THREE.Vector3(1, 0.65, 1).normalize()
-        const nextPosition = tempCenter.clone().add(direction.multiplyScalar(fitDistance * 1.55))
-
-        camera.near = Math.max(0.1, fitDistance / 200)
-        camera.far = Math.max(4000, fitDistance * 10)
-        camera.updateProjectionMatrix()
-
-        camera.position.copy(nextPosition)
-        controls.target.copy(tempCenter)
-        controls.update()
-      }
-
-      function isolateSelection()
-      {
-        const selected = state.selectedEntry
-        if(!selected)
-        {
-          return
-        }
-
-        setAllVisibility(false)
-        applyBranchVisibility(selected, true)
-        setSelectedEntry(selected)
-      }
-
-      function showSelectionBranch()
-      {
-        const selected = state.selectedEntry
-        if(!selected)
-        {
-          return
-        }
-
-        applyBranchVisibility(selected, true)
-        setSelectedEntry(selected)
-      }
-
-      function setWireframeEnabled(enabled)
-      {
-        if(!state.modelRoot)
-        {
-          return
-        }
-
-        state.modelRoot.traverse((object) => {
-          if(!object.isMesh || !object.material)
-          {
-            return
-          }
-
-          const materials = Array.isArray(object.material)
-            ? object.material
-            : [object.material]
-
-          for(const material of materials)
-          {
-            if(material && 'wireframe' in material)
-            {
-              material.wireframe = enabled
+      function getStats(obj) {
+        const stats = { tris: 0, dc: 0, nodes: 1, meshes: 0 };
+        obj.traverse(child => {
+          if (child.isMesh) {
+            stats.meshes++;
+            stats.dc += Array.isArray(child.material) ? child.material.length : 1;
+            const geo = child.geometry;
+            if (geo) {
+              stats.tris += geo.index ? geo.index.count / 3 : geo.attributes.position.count / 3;
             }
           }
-        })
+          if (child !== obj) stats.nodes++;
+        });
+        return stats;
       }
 
-      function disposeMaterial(material)
-      {
-        if(!material || state.disposedMaterials.has(material))
-        {
-          return
-        }
-
-        state.disposedMaterials.add(material)
-
-        const textureKeys = [
-          'map',
-          'alphaMap',
-          'aoMap',
-          'bumpMap',
-          'displacementMap',
-          'emissiveMap',
-          'envMap',
-          'lightMap',
-          'metalnessMap',
-          'normalMap',
-          'roughnessMap'
-        ]
-
-        for(const key of textureKeys)
-        {
-          material[key]?.dispose?.()
-        }
-
-        material.dispose?.()
+      function loadModel(url) {
+        setStatus('Chargement du modèle distant...', true);
+        refs.loadingProgress.textContent = '0%';
+        
+        state.loader.load(url, (gltf) => {
+          setupLoadedModel(gltf.scene);
+          setStatus('Prêt');
+        }, (xhr) => {
+          if (xhr.total > 0) {
+            const percent = Math.round(xhr.loaded / xhr.total * 100);
+            refs.loadingProgress.textContent = `${percent}%`;
+            setStatus(`Téléchargement ${percent}%`, true);
+          }
+        }, (err) => {
+          console.error(err);
+          setStatus('Erreur chargement', false);
+        });
       }
 
-      function disposeModel(object)
-      {
-        if(!object)
-        {
-          return
-        }
-
-        state.disposedMaterials.clear()
-
-        object.traverse((child) => {
-          child.geometry?.dispose?.()
-
-          if(Array.isArray(child.material))
-          {
-            for(const material of child.material)
-            {
-              disposeMaterial(material)
+      function setupLoadedModel(root) {
+        if (state.modelRoot) {
+          state.scene.remove(state.modelRoot);
+          state.modelRoot.traverse(c => {
+            if (c.geometry) c.geometry.dispose();
+            if (c.material) {
+              const mats = Array.isArray(c.material) ? c.material : [c.material];
+              mats.forEach(m => m.dispose());
             }
-            return
-          }
+          });
+        }
 
-          disposeMaterial(child.material)
-        })
+        state.modelRoot = root;
+        state.scene.add(root);
+        
+        const globalStats = getStats(root);
+        state.totalModelTris = globalStats.tris;
+        
+        refs.totalTris.textContent = formatNum(globalStats.tris);
+        refs.totalDc.textContent = formatNum(globalStats.dc);
+        refs.totalMeshes.textContent = formatNum(globalStats.meshes);
+        refs.totalNodes.textContent = formatNum(globalStats.nodes);
+
+        buildHierarchy();
+        fitCamera(root);
+        
+        state.selectionWireframe = false;
+        refs.toggleSelectionWireframe.classList.remove('primary');
       }
 
-      function clearCurrentModel()
-      {
-        clearSelection()
+      function buildHierarchy() {
+        refs.tree.innerHTML = '';
+        state.entries.clear();
+        
+        const createEntry = (obj, parentEl, depth = 0) => {
+          const stats = getStats(obj);
+          const entry = {
+            obj,
+            stats,
+            expanded: depth < 1,
+            visible: true,
+            weight: state.totalModelTris > 0 ? (stats.tris / state.totalModelTris) : 0
+          };
+          state.entries.set(obj.uuid, entry);
 
-        if(state.modelRoot)
-        {
-          scene.remove(state.modelRoot)
-          disposeModel(state.modelRoot)
-          state.modelRoot = null
-        }
+          const row = document.createElement('div');
+          row.className = 'tree-row';
+          if (!obj.visible) row.classList.add('hidden-node');
+          row.style.paddingLeft = `${depth * 12 + 8}px`;
 
-        if(state.currentObjectUrl)
-        {
-          URL.revokeObjectURL(state.currentObjectUrl)
-          state.currentObjectUrl = null
-        }
-
-        for(const objectUrl of state.currentFileObjectUrls)
-        {
-          URL.revokeObjectURL(objectUrl)
-        }
-        state.currentFileObjectUrls = []
-
-        state.treeRoots = []
-        state.entriesByUuid.clear()
-        renderTree()
-        refreshSummary()
-      }
-
-      function onModelLoaded(root, sourceLabel)
-      {
-        clearCurrentModel()
-
-        state.modelRoot = root
-        state.modelRoot.name = state.modelRoot.name || '__optiRoot'
-
-        state.modelRoot.traverse((object) => {
-          if(!object.isMesh)
-          {
-            return
+          // Weight Gauge
+          if (entry.weight > 0.001) {
+            const gauge = document.createElement('div');
+            gauge.className = 'weight-gauge';
+            gauge.style.width = `${entry.weight * 100}%`;
+            row.appendChild(gauge);
           }
 
-          object.castShadow = false
-          object.receiveShadow = false
-          if(object.material)
-          {
-            const materials = Array.isArray(object.material)
-              ? object.material
-              : [object.material]
+          // Expander
+          const hasChildren = obj.children.length > 0;
+          const expander = document.createElement('span');
+          expander.className = `tree-expander ${hasChildren ? '' : 'is-spacer'}`;
+          expander.innerHTML = hasChildren ? '▸' : '';
+          if (hasChildren) {
+            expander.onclick = (e) => {
+              e.stopPropagation();
+              toggleNode(obj.uuid);
+            };
+          }
+          row.appendChild(expander);
 
-            for(const material of materials)
-            {
-              if(material && 'wireframe' in material)
-              {
-                material.wireframe = refs.toggleTriangles.checked
+          // Icon
+          const icon = document.createElement('span');
+          let iconType = 'icon-group';
+          let iconChar = 'G';
+          if (obj.isMesh) { iconType = 'icon-mesh'; iconChar = 'M'; }
+          else if (obj.isLight) { iconType = 'icon-light'; iconChar = 'L'; }
+          else if (obj.isCamera) { iconType = 'icon-camera'; iconChar = 'C'; }
+          icon.className = `tree-icon ${iconType}`;
+          icon.textContent = iconChar;
+          row.appendChild(icon);
+
+          // Name
+          const nameWrap = document.createElement('div');
+          nameWrap.className = 'tree-label-wrap';
+          const name = document.createElement('span');
+          name.className = 'tree-name';
+          if (stats.tris > THRESHOLD_CRITICAL) name.classList.add('is-critical');
+          else if (stats.tris > THRESHOLD_HEAVY) name.classList.add('is-heavy');
+          name.textContent = (obj.name || obj.type).substring(0, 32);
+          nameWrap.appendChild(name);
+          row.appendChild(nameWrap);
+
+          // Actions
+          const actions = document.createElement('div');
+          actions.className = 'tree-actions';
+          
+          const eye = document.createElement('button');
+          eye.className = 'tree-action-btn';
+          eye.innerHTML = '👁';
+          eye.onclick = (e) => { e.stopPropagation(); toggleVisibility(obj.uuid); };
+          
+          const target = document.createElement('button');
+          target.className = 'tree-action-btn';
+          target.innerHTML = '🎯';
+          target.onclick = (e) => { e.stopPropagation(); isolateNode(obj.uuid); };
+          
+          actions.appendChild(eye);
+          actions.appendChild(target);
+          row.appendChild(actions);
+
+          row.onclick = () => selectNode(obj.uuid);
+
+          parentEl.appendChild(row);
+
+          const childrenContainer = document.createElement('div');
+          childrenContainer.className = 'tree-children';
+          if (entry.expanded) childrenContainer.classList.add('visible');
+          if (hasChildren) expander.classList.add('expanded');
+          
+          parentEl.appendChild(childrenContainer);
+          
+          entry.dom = { row, childrenContainer, expander };
+
+          obj.children.forEach(child => createEntry(child, childrenContainer, depth + 1));
+        };
+
+        createEntry(state.modelRoot, refs.tree);
+      }
+
+      function toggleNode(uuid) {
+        const entry = state.entries.get(uuid);
+        if (!entry) return;
+        entry.expanded = !entry.expanded;
+        entry.dom.childrenContainer.classList.toggle('visible', entry.expanded);
+        entry.dom.expander.classList.toggle('expanded', entry.expanded);
+      }
+
+      function selectNode(uuid) {
+        if (state.selectedEntry) {
+          state.selectedEntry.dom.row.classList.remove('selected');
+        }
+        
+        const entry = state.entries.get(uuid);
+        if (!entry) return;
+        
+        state.selectedEntry = entry;
+        entry.dom.row.classList.add('selected');
+        
+        // Update selection HUD
+        refs.selectionHud.style.display = 'block';
+        refs.selName.textContent = entry.obj.name || entry.obj.type;
+        refs.selType.textContent = entry.obj.type;
+        refs.selTris.textContent = formatNum(entry.stats.tris);
+        refs.selDc.textContent = formatNum(entry.stats.dc);
+        
+        // Update selection helper
+        const box = new THREE.Box3().setFromObject(entry.obj);
+        state.selectionHelper.box.copy(box);
+        state.selectionHelper.visible = !box.isEmpty();
+      }
+
+      function toggleVisibility(uuid, forceVisible) {
+        const entry = state.entries.get(uuid);
+        if (!entry) return;
+        
+        const nextVisible = (forceVisible !== undefined) ? forceVisible : !entry.obj.visible;
+        
+        entry.obj.traverse(child => {
+          child.visible = nextVisible;
+          const childEntry = state.entries.get(child.uuid);
+          if (childEntry) {
+            childEntry.dom.row.classList.toggle('hidden-node', !nextVisible);
+          }
+        });
+      }
+
+      function isolateNode(uuid) {
+        // Hide all nodes first
+        state.entries.forEach(entry => {
+          entry.obj.visible = false;
+          entry.dom.row.classList.add('hidden-node');
+        });
+
+        const targetEntry = state.entries.get(uuid);
+        if (!targetEntry) return;
+
+        // Make the target and all its children visible
+        targetEntry.obj.traverse(child => {
+          child.visible = true;
+          const childEntry = state.entries.get(child.uuid);
+          if (childEntry) {
+            childEntry.dom.row.classList.remove('hidden-node');
+          }
+        });
+
+        // Ensure all parents are visible to make the target render
+        let curr = targetEntry.obj.parent;
+        while (curr && state.entries.has(curr.uuid)) {
+          curr.visible = true;
+          const parentEntry = state.entries.get(curr.uuid);
+          if (parentEntry) {
+            parentEntry.dom.row.classList.remove('hidden-node');
+          }
+          curr = curr.parent;
+        }
+
+        selectNode(uuid);
+        fitCamera(targetEntry.obj);
+      }
+
+      function fitCamera(obj) {
+        const box = new THREE.Box3().setFromObject(obj);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = state.camera.fov * (Math.PI / 180);
+        let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+        cameraZ *= 1.5; // Offset
+
+        state.camera.position.set(center.x + cameraZ, center.y + cameraZ, center.z + cameraZ);
+        state.controls.target.copy(center);
+        state.controls.update();
+      }
+
+      function setupEventListeners() {
+        window.addEventListener('resize', () => {
+          const wrap = document.getElementById('viewerWrap');
+          state.camera.aspect = wrap.clientWidth / wrap.clientHeight;
+          state.camera.updateProjectionMatrix();
+          state.renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+        });
+
+        refs.loadUrl.onclick = () => loadModel(refs.modelUrl.value);
+        refs.clearModel.onclick = () => {
+          if (state.modelRoot) {
+            state.scene.remove(state.modelRoot);
+            state.modelRoot = null;
+            refs.tree.innerHTML = '';
+            refs.selectionHud.style.display = 'none';
+          }
+        };
+
+        refs.modelFile.onchange = (e) => {
+          state.pendingFiles = Array.from(e.target.files);
+          refs.fileInfo.textContent = `${state.pendingFiles.length} fichier(s) prêt(s)`;
+          refs.importFiles.disabled = state.pendingFiles.length === 0;
+        };
+
+        refs.importFiles.onclick = () => {
+          const mainFile = state.pendingFiles.find(f => f.name.match(/\.(gltf|glb)$/i));
+          if (!mainFile) return setStatus('Aucun .gltf ou .glb trouvé');
+          
+          setStatus(`Importation locale: ${mainFile.name}`, true);
+          refs.loadingProgress.textContent = 'En cours';
+
+          const objectUrls = [];
+          const fileMap = new Map();
+          state.pendingFiles.forEach(f => {
+            const url = URL.createObjectURL(f);
+            objectUrls.push(url);
+            fileMap.set(f.name, url);
+          });
+          
+          const manager = new THREE.LoadingManager();
+          manager.setURLModifier(url => {
+            const fileName = url.split('/').pop();
+            return fileMap.get(fileName) || url;
+          });
+          
+          const loader = new GLTFLoader(manager);
+          loader.load(fileMap.get(mainFile.name), gltf => {
+            setupLoadedModel(gltf.scene);
+            setStatus('Importé');
+          }, undefined, (err) => {
+            console.error(err);
+            setStatus('Erreur import', false);
+          });
+        };
+
+        refs.showAll.onclick = () => state.entries.forEach(e => { e.obj.visible = true; e.dom.row.classList.remove('hidden-node'); });
+        refs.hideAll.onclick = () => state.entries.forEach(e => { e.obj.visible = false; e.dom.row.classList.add('hidden-node'); });
+        refs.fitModel.onclick = () => state.modelRoot && fitCamera(state.modelRoot);
+
+        refs.toggleWireframe.onchange = (e) => {
+          if (!state.modelRoot) return;
+          state.modelRoot.traverse(c => {
+            if (c.material) {
+              const mats = Array.isArray(c.material) ? c.material : [c.material];
+              mats.forEach(m => m.wireframe = e.target.checked);
+            }
+          });
+        };
+
+        refs.toggleAxes.onchange = (e) => state.axesHelper.visible = e.target.checked;
+        refs.toggleAutoRotate.onchange = (e) => state.controls.autoRotate = e.target.checked;
+
+        refs.treeSearch.oninput = (e) => {
+          const val = e.target.value.toLowerCase();
+          state.entries.forEach(entry => {
+            const matches = (entry.obj.name || entry.obj.type).toLowerCase().includes(val);
+            entry.dom.row.style.display = matches ? 'flex' : 'none';
+            if (matches && val.length > 0) {
+              // Expand parents
+              let curr = entry.obj.parent;
+              while(curr && state.entries.has(curr.uuid)) {
+                const parentEntry = state.entries.get(curr.uuid);
+                if (!parentEntry.expanded) {
+                  parentEntry.expanded = true;
+                  parentEntry.dom.childrenContainer.classList.add('visible');
+                  parentEntry.dom.expander.classList.add('expanded');
+                }
+                parentEntry.dom.row.style.display = 'flex';
+                curr = curr.parent;
               }
             }
-          }
-        })
+          });
+        };
 
-        scene.add(state.modelRoot)
-        buildEntriesFromModel()
-        renderTree()
-        refreshSummary()
-        fitCameraToObject(state.modelRoot)
-        setStatus(`Modele charge: ${sourceLabel}`)
-      }
-
-      function loadFromUrl(url)
-      {
-        const trimmedUrl = String(url || '').trim()
-        if(trimmedUrl.length === 0)
-        {
-          setStatus('Entre un chemin de modele valide.')
-          return
-        }
-
-        setStatus(`Chargement: ${trimmedUrl}`)
-
-        state.loader.load(
-          trimmedUrl,
-          (gltf) => {
-            onModelLoaded(gltf.scene, trimmedUrl)
-          },
-          (event) => {
-            const loaded = Number(event?.loaded ?? 0)
-            const total = Number(event?.total ?? 0)
-
-            if(Number.isFinite(loaded) && Number.isFinite(total) && total > 0)
-            {
-              const progress = Math.round((loaded / total) * 100)
-              setStatus(`Chargement: ${trimmedUrl} (${progress}%)`)
-              return
+        refs.fitSelection.onclick = () => state.selectedEntry && fitCamera(state.selectedEntry.obj);
+        refs.isolateSelection.onclick = () => state.selectedEntry && isolateNode(state.selectedEntry.obj.uuid);
+        
+        refs.toggleSelectionWireframe.onclick = () => {
+          if (!state.selectedEntry) return;
+          state.selectionWireframe = !state.selectionWireframe;
+          refs.toggleSelectionWireframe.classList.toggle('primary', state.selectionWireframe);
+          
+          state.selectedEntry.obj.traverse(child => {
+            if (child.material) {
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              mats.forEach(m => m.wireframe = state.selectionWireframe);
             }
-
-            setStatus(`Chargement: ${trimmedUrl}`)
-          },
-          (error) => {
-            console.error(error)
-            setStatus(`Echec chargement: ${trimmedUrl}`)
-          }
-        )
+          });
+        };
       }
 
-      function releasePendingFileUrls()
-      {
-        for(const objectUrl of state.currentFileObjectUrls)
-        {
-          URL.revokeObjectURL(objectUrl)
-        }
-
-        state.currentFileObjectUrls = []
+      function animate() {
+        requestAnimationFrame(animate);
+        state.controls.update();
+        state.renderer.render(state.scene, state.camera);
+        
+        // Update HUD
+        const info = state.renderer.info;
+        refs.hudDc.textContent = info.render.calls;
+        refs.hudTris.textContent = formatNum(info.render.triangles);
+        refs.hudGeom.textContent = info.memory.geometries;
+        refs.hudTex.textContent = info.memory.textures;
       }
 
-      function updatePendingFiles(files = [])
-      {
-        state.pendingFiles = Array.from(files)
-
-        const modelFiles = state.pendingFiles.filter((file) => /\.(glb|gltf)$/i.test(file.name))
-        const hasModelFile = modelFiles.length > 0
-
-        refs.loadFile.disabled = !hasModelFile
-
-        if(state.pendingFiles.length === 0)
-        {
-          refs.modelFileInfo.textContent = 'Selectionne un `.glb` ou un `.gltf` avec ses fichiers `.bin` / textures, puis clique sur Importer.'
-          return
-        }
-
-        if(!hasModelFile)
-        {
-          refs.modelFileInfo.textContent = 'Aucun fichier `.glb` ou `.gltf` detecte dans la selection.'
-          return
-        }
-
-        const names = state.pendingFiles.map((file) => file.name).join(', ')
-        refs.modelFileInfo.textContent = `${state.pendingFiles.length} fichier(s) selectionne(s): ${names}`
-      }
-
-      function resolveFileAlias(url = '')
-      {
-        const normalized = String(url).replace(/\\/g, '/')
-        const segments = normalized.split('/')
-        return decodeURIComponent(segments[segments.length - 1] || normalized)
-      }
-
-      function loadFromFiles(files)
-      {
-        const selectedFiles = Array.from(files || []).filter(Boolean)
-        if(selectedFiles.length === 0)
-        {
-          setStatus('Aucun fichier selectionne.')
-          return
-        }
-
-        const mainFile = selectedFiles.find((file) => /\.(glb|gltf)$/i.test(file.name))
-        if(!mainFile)
-        {
-          setStatus('Selectionne au moins un fichier .glb ou .gltf.')
-          return
-        }
-
-        releasePendingFileUrls()
-
-        const fileUrlByName = new Map()
-        for(const file of selectedFiles)
-        {
-          const objectUrl = URL.createObjectURL(file)
-          state.currentFileObjectUrls.push(objectUrl)
-          fileUrlByName.set(file.name, objectUrl)
-        }
-
-        const loadingManager = new THREE.LoadingManager()
-        loadingManager.setURLModifier((url) =>
-        {
-          const alias = resolveFileAlias(url)
-          return fileUrlByName.get(alias) || url
-        })
-
-        const loader = new GLTFLoader(loadingManager)
-        const mainUrl = fileUrlByName.get(mainFile.name)
-
-        setStatus(`Chargement fichier: ${mainFile.name}`)
-
-        loader.load(
-          mainUrl,
-          (gltf) => {
-            onModelLoaded(gltf.scene, mainFile.name)
-          },
-          undefined,
-          (error) => {
-            console.error(error)
-            setStatus(`Echec chargement fichier: ${mainFile.name}`)
-          }
-        )
-      }
-
-      function syncTreeFromScene()
-      {
-        refreshTreeStates()
-        refreshSummary()
-        updateSelectedPanel()
-        updateSelectionHelper()
-      }
-
-      function updateRenderHud()
-      {
-        const info = renderer.info
-        refs.renderHud.innerHTML = `
-          <strong>Frame</strong><br />
-          Drawcalls: ${formatCount(info.render.calls)}<br />
-          Triangles: ${formatCount(info.render.triangles)}<br />
-          Geometries: ${formatCount(info.memory.geometries)}<br />
-          Textures: ${formatCount(info.memory.textures)}
-        `
-      }
-
-      function resize()
-      {
-        const width = Math.max(1, viewerWrap.clientWidth)
-        const height = Math.max(1, viewerWrap.clientHeight)
-
-        renderer.setSize(width, height)
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-        camera.aspect = width / height
-        camera.updateProjectionMatrix()
-      }
-
-      function setupEvents()
-      {
-        window.addEventListener('resize', resize)
-
-        refs.loadUrl.addEventListener('click', () => {
-          loadFromUrl(refs.modelUrl.value)
-        })
-
-        refs.modelUrl.addEventListener('keydown', (event) => {
-          if(event.key === 'Enter')
-          {
-            event.preventDefault()
-            loadFromUrl(refs.modelUrl.value)
-          }
-        })
-
-        refs.modelFile.addEventListener('change', (event) => {
-          updatePendingFiles(event.target.files ?? [])
-        })
-
-        refs.loadFile.addEventListener('click', () => {
-          loadFromFiles(state.pendingFiles)
-        })
-
-        refs.fitModel.addEventListener('click', () => {
-          if(state.modelRoot)
-          {
-            fitCameraToObject(state.modelRoot)
-          }
-        })
-
-        refs.clearModel.addEventListener('click', () => {
-          clearCurrentModel()
-          setStatus('Modele vide.')
-        })
-
-        refs.showAll.addEventListener('click', () => {
-          setAllVisibility(true)
-        })
-
-        refs.hideAll.addEventListener('click', () => {
-          setAllVisibility(false)
-        })
-
-        refs.syncTree.addEventListener('click', () => {
-          syncTreeFromScene()
-        })
-
-        refs.toggleAxes.addEventListener('change', (event) => {
-          axes.visible = Boolean(event.target.checked)
-        })
-
-        refs.toggleTriangles.addEventListener('change', (event) => {
-          setWireframeEnabled(Boolean(event.target.checked))
-        })
-
-        refs.toggleAutoRotate.addEventListener('change', (event) => {
-          controls.autoRotate = Boolean(event.target.checked)
-          controls.autoRotateSpeed = 0.9
-        })
-
-        refs.fitSelection.addEventListener('click', () => {
-          if(state.selectedEntry)
-          {
-            fitCameraToObject(state.selectedEntry.object)
-          }
-        })
-
-        refs.isolateSelection.addEventListener('click', () => {
-          isolateSelection()
-        })
-
-        refs.showSelection.addEventListener('click', () => {
-          showSelectionBranch()
-        })
-      }
-
-      function animate()
-      {
-        controls.update()
-        selectionHelper.visible = Boolean(state.selectedEntry) && !selectionHelper.box.isEmpty()
-
-        renderer.render(scene, camera)
-        updateRenderHud()
-
-        requestAnimationFrame(animate)
-      }
-
-      setupEvents()
-      renderTree()
-      refreshSummary()
-      updatePendingFiles([])
-      resize()
-      animate()
-      loadFromUrl(refs.modelUrl.value)
+      init();
     </script>
   </body>
 </html>

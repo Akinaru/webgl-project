@@ -10,6 +10,7 @@ import * as flowMethods from './TubeWaterController/flow.js'
 import * as renderingMethods from './TubeWaterController/rendering.js'
 import * as mathMethods from './TubeWaterController/math.js'
 import * as lifecycleMethods from './TubeWaterController/lifecycle.js'
+import TubeSmokeParticles from './TubeSmokeParticles.js'
 
 export default class SceneRecuperationTubeWaterController
 {
@@ -26,6 +27,7 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
     this.recuperationModel = recuperationModel
     this.tubeMeshes = this.recuperationModel?.getTubeWaterMeshes?.() ?? []
     this.rotationTargets = this.recuperationModel?.getTubeWaterRotationTargets?.() ?? []
+    this.smokeParticles = new TubeSmokeParticles()
     this.flow = {
         fillSpeed: SceneRecuperationTubeWaterControllerConstants.FLOW_FILL_SPEED_PER_SECOND
     }
@@ -72,6 +74,10 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
     this.initialRotationByTubeUuid = new Map()
     this.quarterTurnsFromInitialByTubeUuid = new Map()
     this.joinTargetsByTubeUuid = new Map()
+    this.allJoinTargets = []
+    this.continuityNeighborTubeUuidsByTubeUuid = new Map()
+    this.continuityJoinPairs = []
+    this.continuityJoinPairsByTubeUuid = new Map()
     this.tubeMeshesByTargetUuid = new Map()
     this.flowProgressByTubeUuid = new Map()
     this.activeFlowSourceByTubeUuid = new Map()
@@ -124,13 +130,16 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
     this.foamColor = new THREE.Color(this.waterShader.foamColor)
     this.patternOffset = new THREE.Vector2()
     this.patternWorldCenter = new THREE.Vector3()
+    this.tmpPosition = new THREE.Vector3()
 
     this.collectJoinTargets()
     this.buildTubeOrder()
     this.buildConnectionDependencies()
     this.buildWindowTubeDependencies()
     this.setupTubeMaterials()
+    this.setupJoinMaterials()
     this.setupBlueWindowMeshes()
+    this.buildTubeContinuity()
     this.captureInitialRotations()
     this.computeStartAlignedTubes()
     this.randomizeInitialRotations()

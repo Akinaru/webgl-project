@@ -28,7 +28,11 @@ export default class Television
         this.selectedMaterial = null
         this.testResult = null
         this.screenMode = 'idle'
+        this.isPoweredOn = false
+        this.powerTransition = 0
         this.buttonStates = new Map()
+        this.textureCache = new Map()
+        this.textureLoader = new THREE.TextureLoader()
         this.areButtonsUnlocked = false
         this.usesStaticScreenTexture = false
         this.settings = {
@@ -150,7 +154,8 @@ export default class Television
                     return runtimeMaterial
                 }
 
-                runtimeMaterial.color?.set?.('#ffffff')
+                runtimeMaterial.color?.set?.('#000000')
+                runtimeMaterial.transparent = false
                 if('map' in runtimeMaterial)
                 {
                     runtimeMaterial.map = this.texture
@@ -162,7 +167,7 @@ export default class Television
                 if(runtimeMaterial.emissive)
                 {
                     runtimeMaterial.emissive.set('#ffffff')
-                    runtimeMaterial.emissiveIntensity = 0.85
+                    runtimeMaterial.emissiveIntensity = 0
                 }
                 runtimeMaterial.needsUpdate = true
                 return runtimeMaterial
@@ -174,6 +179,8 @@ export default class Television
                 materials: runtimeMaterials
             })
         }
+
+        this.applyPowerEffects()
     }
 
     setButtons()
@@ -433,15 +440,23 @@ export default class Television
 
     getButtonKeyAtCenter()
     {
-        const hit = this.centerRaycaster.intersectFirst(this.getInteractiveButtonObjects(), false)
+        const hit = this.centerRaycaster.intersectFirstHit(this.getInteractiveButtonObjects(), false)
         if(!hit)
+        {
+            return null
+        }
+
+        if(
+            Number.isFinite(hit.distance)
+            && hit.distance > TelevisionConstants.BUTTON_INTERACTION_MAX_DISTANCE
+        )
         {
             return null
         }
 
         for(const [key, state] of this.buttonStates.entries())
         {
-            if(state.object === hit || state.meshes?.includes?.(hit))
+            if(state.object === hit.object || state.meshes?.includes?.(hit.object))
             {
                 return key
             }
@@ -513,74 +528,103 @@ export default class Television
         }
     }
 
-    renderScreen()
+    async renderScreen()
     {
-        if(this.usesStaticScreenTexture)
-        {
-            this.texture.needsUpdate = true
-            return
-        }
-
-        if(!this.context)
+        const texturePath = this.getScreenTexturePath()
+        if(!texturePath)
         {
             return
         }
 
-        const ctx = this.context
-        ctx.clearRect(0, 0, TelevisionConstants.CANVAS_WIDTH, TelevisionConstants.CANVAS_HEIGHT)
-
-        ctx.fillStyle = TelevisionConstants.BACKGROUND_COLOR
-        ctx.fillRect(0, 0, TelevisionConstants.CANVAS_WIDTH, TelevisionConstants.CANVAS_HEIGHT)
-
-        ctx.strokeStyle = TelevisionConstants.BORDER_COLOR
-        ctx.lineWidth = 10
-        
-
-        ctx.fillStyle = TelevisionConstants.TITLE_COLOR
-        ctx.font = '600 42px sans-serif'
-        ctx.textAlign = 'left'
-        ctx.fillText('Station de test', 72, 110)
-
-        if(this.screenMode === 'testing' && this.selectedMaterial)
+        let nextTexture = this.textureCache.get(texturePath)
+        if(!nextTexture)
         {
-            this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = TelevisionConstants.BODY_COLOR
-            ctx.font = '400 36px sans-serif'
-            this.drawWrappedText('Test en cours sous la douche. Analyse de la reaction a l eau...', 72, 320, 880, 46)
-        }
-        else if(this.screenMode === 'result' && this.selectedMaterial && this.testResult)
-        {
-            this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = TelevisionConstants.BODY_COLOR
-            ctx.font = '400 34px sans-serif'
-            this.drawWrappedText(this.testResult.summary, 72, 320, 880, 42)
-        }
-        else if(this.screenMode === 'validated' && this.selectedMaterial)
-        {
-            this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = TelevisionConstants.BODY_COLOR
-            ctx.font = '400 36px sans-serif'
-            this.drawWrappedText('Choix valide. La porte est ouverte.', 72, 320, 880, 46)
-        }
-        else if(this.selectedMaterial)
-        {
-            this.drawMaterialHeader(this.selectedMaterial.label)
-            ctx.fillStyle = TelevisionConstants.BODY_COLOR
-            ctx.font = '400 36px sans-serif'
-            this.drawWrappedText('Lancez un test avec le bouton gauche, puis validez votre choix avec le bouton droit.', 72, 320, 880, 46)
-        }
-        else
-        {
-            ctx.fillStyle = TelevisionConstants.TEXT_COLOR
-            ctx.font = '700 62px sans-serif'
-            this.drawWrappedText('Aucun materiau', 72, 236, 880, 72)
-
-            ctx.fillStyle = TelevisionConstants.BODY_COLOR
-            ctx.font = '400 34px sans-serif'
-            this.drawWrappedText('Choisissez un materiau pour afficher ses informations.', 72, 332, 880, 42)
+            try
+            {
+                nextTexture = await this.loadTexture(texturePath)
+                this.textureCache.set(texturePath, nextTexture)
+            }
+            catch(error)
+            {
+                console.error(`[Television] Failed to load texture: ${texturePath}`, error)
+                return
+            }
         }
 
-        this.texture.needsUpdate = true
+        if(this.texture === nextTexture)
+        {
+            return
+        }
+
+        this.texture = nextTexture
+        this.applyTextureTransform()
+
+        for(const entry of this.screenEntries)
+        {
+            const materials = Array.isArray(entry.mesh.material) ? entry.mesh.material : [entry.mesh.material]
+            for(const material of materials)
+            {
+                if(!material) continue
+                if('map' in material) material.map = this.texture
+                if('emissiveMap' in material) material.emissiveMap = this.texture
+                material.needsUpdate = true
+            }
+        }
+    }
+
+    getScreenTexturePath()
+    {
+        const materialKey = this.selectedMaterial?.key // materiau0, materiau1, materiau2
+        const materialSuffixMap = {
+            'materiau0': 'carapace',
+            'materiau1': 'verre',
+            'materiau2': 'vegetation'
+        }
+        const suffix = materialSuffixMap[materialKey]
+
+        if(this.screenMode === 'testing')
+        {
+            return 'textures/recuperation/screen/simulation.png'
+        }
+
+        if(this.screenMode === 'result' && suffix)
+        {
+            return `textures/recuperation/screen/res_${suffix}.png`
+        }
+
+        if(this.screenMode === 'validated' && suffix)
+        {
+            return `textures/recuperation/screen/val_${suffix}.png`
+        }
+
+        if(this.screenMode === 'selected' && suffix)
+        {
+            return `textures/recuperation/screen/sel_${suffix}.png`
+        }
+
+        return 'textures/recuperation/screen/waiting.png'
+    }
+
+    loadTexture(path)
+    {
+        return new Promise((resolve, reject) =>
+        {
+            this.textureLoader.load(
+                path,
+                (texture) =>
+                {
+                    texture.colorSpace = THREE.SRGBColorSpace
+                    texture.flipY = false
+                    texture.minFilter = THREE.LinearFilter
+                    texture.magFilter = THREE.LinearFilter
+                    texture.wrapS = THREE.ClampToEdgeWrapping
+                    texture.wrapT = THREE.ClampToEdgeWrapping
+                    resolve(texture)
+                },
+                undefined,
+                reject
+            )
+        })
     }
 
     drawMaterialHeader(label)
@@ -623,9 +667,64 @@ export default class Television
         }
     }
 
+    setPowered(isPoweredOn)
+    {
+        this.isPoweredOn = Boolean(isPoweredOn)
+        this.renderScreen()
+    }
+
+    applyPowerEffects()
+    {
+        // On utilise smoothstep pour une transition de luminosité très douce
+        const easedPower = THREE.MathUtils.smoothstep(this.powerTransition, 0, 1)
+        
+        // Un zoom extrêmement léger pour donner vie à l'écran
+        const scale = 1.0 - (0.02 * (1.0 - easedPower))
+        
+        if(this.texture)
+        {
+            this.texture.repeat.set(1 / (this.settings.screenScaleX * scale), 1 / (this.settings.screenScaleY * scale))
+            this.texture.offset.set(
+                (1 - (1 / (this.settings.screenScaleX * scale))) * 0.5,
+                (1 - (1 / (this.settings.screenScaleY * scale))) * 0.5
+            )
+        }
+
+        for(const entry of this.screenEntries)
+        {
+            for(const material of entry.materials)
+            {
+                if(!material) continue
+                
+                // On ne touche plus à .opacity (reste à 1)
+                // On fait varier la couleur de noir (0,0,0) à blanc (1,1,1)
+                // Cela "teinte" la texture de l'image
+                material.color.setRGB(easedPower, easedPower, easedPower)
+                
+                // L'émissivité suit la même courbe pour l'éclat
+                material.emissiveIntensity = easedPower * 0.85
+                
+                // Petit effet de "buzz" électrique aléatoire à l'allumage complet
+                if(this.isPoweredOn && easedPower > 0.98)
+                {
+                    material.emissiveIntensity += (Math.random() - 0.5) * 0.02
+                }
+            }
+        }
+    }
+
     update(deltaMs = this.experience.time.delta)
     {
         const deltaSeconds = Math.max(0.001, Math.min(0.05, (deltaMs || 16.67) * 0.001))
+        
+        // Power transition animation
+        const targetPower = this.isPoweredOn ? 1 : 0
+        if(Math.abs(this.powerTransition - targetPower) > 0.001)
+        {
+            this.powerTransition = THREE.MathUtils.damp(this.powerTransition, targetPower, 8, deltaSeconds)
+            this.applyPowerEffects()
+        }
+
         this.hoveredButtonKey = this.getButtonKeyAtCenter()
 
         for(const state of this.buttonStates.values())
@@ -692,6 +791,14 @@ export default class Television
         this.debugFolder?.dispose?.()
         this.screenEntries = []
         this.buttonStates.clear()
+        
+        // Dispose of all cached textures
+        for(const texture of this.textureCache.values())
+        {
+            texture.dispose()
+        }
+        this.textureCache.clear()
+
         if(!this.usesStaticScreenTexture)
         {
             this.texture?.dispose?.()

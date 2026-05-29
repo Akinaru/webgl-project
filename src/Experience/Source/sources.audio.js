@@ -73,5 +73,15 @@ export default [
         name: 'recuperationAmbientWavesSound',
         type: 'audioBuffer',
         path: 'sounds/ambience/recuperation-waves.mp3'
+    },
+    {
+        name: 'uiClickSound',
+        type: 'audioBuffer',
+        path: 'sounds/ui/ui-click.wav'
+    },
+    {
+        name: 'levelUpSound',
+        type: 'audioBuffer',
+        path: 'sounds/ui/level-up.mp3'
     }
 ]

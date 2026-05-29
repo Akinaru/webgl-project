@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
+import * as SceneRecuperationTubeWaterControllerContinuityConstants from '../TubeWaterController.continuity.constants.js'
 
 /**
  * Associe chaque module de rotation aux objets de jonction qui doivent tourner avec lui.
@@ -621,4 +622,211 @@ export function computeStartAlignedTubes()
     }
 }
 
+
+/**
+ * Construit les voisinages explicites entre tuyaux à partir de la liste fournie.
+ */
+export function buildTubeContinuity()
+{
+    this.continuityNeighborTubeUuidsByTubeUuid.clear()
+    this.continuityJoinPairs = []
+    this.continuityJoinPairsByTubeUuid.clear()
+
+    const fixedNodeNeighbors = this.buildFixedNodeNeighbors()
+    const directedPairs = this.buildDirectedContinuityPairs(fixedNodeNeighbors)
+    const uniquePairKeys = new Set()
+
+    for(const [fromModuleName, toModuleName] of directedPairs)
+    {
+        const fromTubeUuid = this.rotationTargetUuidByName.get(this.normalizeObjectName(fromModuleName))
+        const toTubeUuid = this.rotationTargetUuidByName.get(this.normalizeObjectName(toModuleName))
+        if(!fromTubeUuid || !toTubeUuid || fromTubeUuid === toTubeUuid)
+        {
+            continue
+        }
+
+        const pairKey = [fromTubeUuid, toTubeUuid].sort().join('|')
+        if(uniquePairKeys.has(pairKey))
+        {
+            continue
+        }
+        uniquePairKeys.add(pairKey)
+
+        this.pushContinuityNeighbor(fromTubeUuid, toTubeUuid)
+        this.pushContinuityNeighbor(toTubeUuid, fromTubeUuid)
+
+        const closestJoinPair = this.findClosestJoinPairBetweenTubes(fromTubeUuid, toTubeUuid)
+        if(!closestJoinPair)
+        {
+            continue
+        }
+
+        this.continuityJoinPairs.push({
+            key: pairKey,
+            fromTubeUuid,
+            toTubeUuid,
+            fromJoin: closestJoinPair.fromJoin,
+            toJoin: closestJoinPair.toJoin
+        })
+
+        this.pushContinuityJoinPair(fromTubeUuid, this.continuityJoinPairs[this.continuityJoinPairs.length - 1])
+        this.pushContinuityJoinPair(toTubeUuid, this.continuityJoinPairs[this.continuityJoinPairs.length - 1])
+    }
+}
+
+
+/**
+ * Construit les voisins d entrée/sortie des nœuds fixes (bloc, bloc_1, bloc_2).
+ */
+export function buildFixedNodeNeighbors()
+{
+    const fixedKeys = new Set(SceneRecuperationTubeWaterControllerContinuityConstants.FIXED_CONNECTION_NODE_KEYS)
+    const incoming = new Map()
+    const outgoing = new Map()
+
+    for(const [fromKey, toKey] of SceneRecuperationTubeWaterControllerContinuityConstants.RAW_TUBE_CONNECTION_EDGES)
+    {
+        if(fixedKeys.has(toKey))
+        {
+            if(!incoming.has(toKey))
+            {
+                incoming.set(toKey, [])
+            }
+            incoming.get(toKey).push(fromKey)
+        }
+
+        if(fixedKeys.has(fromKey))
+        {
+            if(!outgoing.has(fromKey))
+            {
+                outgoing.set(fromKey, [])
+            }
+            outgoing.get(fromKey).push(toKey)
+        }
+    }
+
+    return {
+        incoming,
+        outgoing
+    }
+}
+
+
+/**
+ * Transforme les liens bruts en voisinages directs de tuyaux.
+ */
+export function buildDirectedContinuityPairs(fixedNodeNeighbors)
+{
+    const directedPairs = []
+    const fixedKeys = new Set(SceneRecuperationTubeWaterControllerContinuityConstants.FIXED_CONNECTION_NODE_KEYS)
+
+    for(const [fromKey, toKey] of SceneRecuperationTubeWaterControllerContinuityConstants.RAW_TUBE_CONNECTION_EDGES)
+    {
+        if(!fixedKeys.has(fromKey) && !fixedKeys.has(toKey))
+        {
+            directedPairs.push([fromKey, toKey])
+            continue
+        }
+
+        if(!fixedKeys.has(fromKey) && fixedKeys.has(toKey))
+        {
+            const nextModules = fixedNodeNeighbors.outgoing.get(toKey) ?? []
+            for(const nextModule of nextModules)
+            {
+                directedPairs.push([fromKey, nextModule])
+            }
+        }
+
+        if(fixedKeys.has(fromKey) && !fixedKeys.has(toKey))
+        {
+            const previousModules = fixedNodeNeighbors.incoming.get(fromKey) ?? []
+            for(const previousModule of previousModules)
+            {
+                directedPairs.push([previousModule, toKey])
+            }
+        }
+    }
+
+    return directedPairs
+}
+
+
+/**
+ * Ajoute un voisin de continuité pour un tube donné.
+ */
+export function pushContinuityNeighbor(tubeUuid, neighborTubeUuid)
+{
+    if(!this.continuityNeighborTubeUuidsByTubeUuid.has(tubeUuid))
+    {
+        this.continuityNeighborTubeUuidsByTubeUuid.set(tubeUuid, new Set())
+    }
+
+    this.continuityNeighborTubeUuidsByTubeUuid.get(tubeUuid).add(neighborTubeUuid)
+}
+
+
+/**
+ * Mémorise une paire de jonctions pilotée par la continuité.
+ */
+export function pushContinuityJoinPair(tubeUuid, pair)
+{
+    if(!this.continuityJoinPairsByTubeUuid.has(tubeUuid))
+    {
+        this.continuityJoinPairsByTubeUuid.set(tubeUuid, [])
+    }
+
+    this.continuityJoinPairsByTubeUuid.get(tubeUuid).push(pair)
+}
+
+
+/**
+ * Trouve la paire de jonctions la plus proche entre deux tuyaux/modules.
+ */
+export function findClosestJoinPairBetweenTubes(fromTubeUuid, toTubeUuid)
+{
+    const fromJoinTargets = this.joinTargetsByTubeUuid.get(fromTubeUuid) ?? []
+    const toJoinTargets = this.joinTargetsByTubeUuid.get(toTubeUuid) ?? []
+    if(fromJoinTargets.length === 0 || toJoinTargets.length === 0)
+    {
+        return null
+    }
+
+    const fromCenter = new THREE.Vector3()
+    const toCenter = new THREE.Vector3()
+    let bestPair = null
+    let bestDistance = Number.POSITIVE_INFINITY
+
+    for(const fromJoin of fromJoinTargets)
+    {
+        if(!fromJoin)
+        {
+            continue
+        }
+
+        this.getWorldCenter(fromJoin, fromCenter)
+
+        for(const toJoin of toJoinTargets)
+        {
+            if(!toJoin)
+            {
+                continue
+            }
+
+            this.getWorldCenter(toJoin, toCenter)
+            const distance = fromCenter.distanceTo(toCenter)
+            if(distance >= bestDistance)
+            {
+                continue
+            }
+
+            bestDistance = distance
+            bestPair = {
+                fromJoin,
+                toJoin
+            }
+        }
+    }
+
+    return bestPair
+}
 

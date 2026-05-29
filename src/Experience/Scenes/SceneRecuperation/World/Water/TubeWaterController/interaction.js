@@ -41,6 +41,39 @@ export function update()
     {
         this.updateFlowState(this.getDeltaSeconds())
     }
+
+    this.smokeParticles?.update(this.experience.time.delta)
+}
+
+
+/**
+ * Aligne instantanément tous les tuyaux dans la bonne direction pour résoudre le puzzle.
+ */
+export function solvePuzzle()
+{
+    for(const target of this.rotationTargets)
+    {
+        if(!target)
+        {
+            continue
+        }
+
+        const currentOffset = this.quarterTurnsFromInitialByTubeUuid.get(target.uuid) ?? 0
+        if(currentOffset === 0)
+        {
+            continue
+        }
+
+        // On applique la rotation inverse pour revenir à 0
+        const angle = -currentOffset * SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN
+        this.rotateTubeAssembly(target, angle)
+
+        // Smoke particles burst
+        this.getWorldCenter(target, this.tmpPosition)
+        this.smokeParticles.triggerBurst(this.tmpPosition)
+    }
+
+    this.recuperationModel?.refreshCollisionBoxes?.()
 }
 
 
@@ -73,6 +106,10 @@ export function rotateTubeByQuarterTurn(mesh)
     this.playerRotatedTubeUuids.add(rotationTarget.uuid)
     const direction = this.turnDirectionByMeshUuid.get(rotationTarget.uuid) ?? 1
     this.queueTubeRotation(rotationTarget, SceneRecuperationTubeWaterControllerConstants.QUARTER_TURN * direction)
+
+    // Smoke particles burst
+    this.getWorldCenter(rotationTarget, this.tmpPosition)
+    this.smokeParticles.triggerBurst(this.tmpPosition)
 }
 
 

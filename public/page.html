@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloom Rails Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
     <style>
       :root {
         --bg: #f2f4f5;
@@ -19,7 +22,7 @@
       * { box-sizing: border-box; }
       html, body { height: 100%; margin: 0; }
       body {
-        font-family: "Manrope", "Segoe UI", sans-serif;
+        font-family: "Nunito", "Segoe UI", sans-serif;
         background: linear-gradient(180deg, #f8fafb, #edf1f3);
         color: var(--text);
       }
@@ -250,6 +253,7 @@
       import * as THREE from 'three'
       import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
       import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+      import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 
       const canvas = document.getElementById('view')
       const statusNode = document.getElementById('status')
@@ -1053,7 +1057,12 @@
 
       function loadMap()
       {
+        const dracoLoader = new DRACOLoader()
+        dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/')
+
         const loader = new GLTFLoader()
+        loader.setDRACOLoader(dracoLoader)
+
         let didResolve = false
         const timeoutId = window.setTimeout(() => {
           if(didResolve)
@@ -1062,11 +1071,11 @@
           }
 
           didResolve = true
-          updateStatus('Timeout chargement map: verifie public/models/scenes/map/Map.gltf')
+          updateStatus('Timeout chargement map: verifie public/models/scenes/map/Map_Draco.glb')
         }, 12000)
 
         loader.load(
-          './models/scenes/map/Map.gltf',
+          './models/scenes/map/Map_Draco.glb',
           (gltf) => {
             if(didResolve)
             {

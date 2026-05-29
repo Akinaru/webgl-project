@@ -12,6 +12,7 @@ export const BUTTON_LOCKED_OFFSET_Y = -0.05
 export const BUTTON_ENABLED_LIFT = 0.02
 export const BUTTON_PRESS_DEPTH = 0.02
 export const BUTTON_RELEASE_DURATION = 0.12
+export const BUTTON_INTERACTION_MAX_DISTANCE = 2.4
 
 export const SCREEN_VISIBLE_EXACT_NAME_TOKENS = Object.freeze(['screen_visible-gris-foncé'])
 export const SCREEN_VISIBLE_FALLBACK_NAME_TOKENS = Object.freeze(['screen_visible-gris'])

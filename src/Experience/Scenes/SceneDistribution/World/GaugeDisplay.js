@@ -187,17 +187,15 @@ export default class SceneDistributionGaugeDisplay
 
     setState(nextState = {})
     {
-        const safeState = nextState && typeof nextState === 'object' ? nextState : {}
-        const channelByToken = new Map((safeState.channels ?? []).map((channel) => [channel.token, channel]))
         this.state = {
-            isSolved: Boolean(safeState.isSolved),
-            channels: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
-                token,
-                label: channelByToken.get(token)?.label ?? token,
-                normalizedFill: channelByToken.get(token)?.normalizedFill ?? 0,
-                targetWindow: channelByToken.get(token)?.targetWindow ?? { min: 0, max: 0 },
-                isInGreenZone: Boolean(channelByToken.get(token)?.isInGreenZone),
-                status: channelByToken.get(token)?.status ?? 'probleme'
+            isSolved: Boolean(nextState.isSolved),
+            totalUsageRatio: Number(nextState.totalUsageRatio) || 0,
+            isOverLimit: Boolean(nextState.isOverLimit),
+            channels: (nextState.channels || []).map((channel) => ({
+                token: channel.token,
+                label: channel.config?.label ?? channel.token,
+                normalizedFill: channel.normalizedFill ?? 0,
+                currentLevel: channel.currentLevel
             }))
         }
         this.render()
@@ -217,80 +215,99 @@ export default class SceneDistributionGaugeDisplay
 
         context.fillStyle = SceneDistributionGaugeDisplayConstants.TITLE_COLOR
         context.font = '700 44px sans-serif'
-        context.fillText('Stabilisation du reseau', 84, 102)
+        context.fillText('Réseau de distribution', 84, 85)
 
         context.fillStyle = SceneDistributionGaugeDisplayConstants.SUBTITLE_COLOR
-        context.font = '500 22px sans-serif'
-        context.fillText('Ajuste les vannes jusqu a avoir 3 voyants verts.', 84, 140)
+        context.font = '500 20px sans-serif'
+        context.fillText('Gérez les ressources stratégiques sans saturer le réseau.', 84, 120)
 
         this.renderGauges()
-        this.renderFooter()
+        this.renderResourceLimit()
 
         this.texture.needsUpdate = true
     }
 
     renderGauges()
     {
-        const gaugeX = 230
-        const gaugeWidth = 610
-        const gaugeHeight = 30
-        const topY = 190
-        const rowGap = 88
+        const gaugeX = 260
+        const gaugeWidth = 580
+        const gaugeHeight = 26
+        const topY = 170
+        const rowGap = 80
 
         for(let index = 0; index < this.state.channels.length; index++)
         {
             const channel = this.state.channels[index]
             const y = topY + index * rowGap
             const fillWidth = gaugeWidth * THREE.MathUtils.clamp(channel.normalizedFill, 0, 1)
-            const targetZoneStart = gaugeX + gaugeWidth * THREE.MathUtils.clamp(channel.targetWindow?.min ?? 0, 0, 1)
-            const targetZoneWidth = gaugeWidth * Math.max(0, (channel.targetWindow?.max ?? 0) - (channel.targetWindow?.min ?? 0))
-            const fillColor = this.state.isSolved
-                ? SceneDistributionGaugeDisplayConstants.FILL_SOLVED_COLOR
-                : (channel.isInGreenZone ? SceneDistributionGaugeDisplayConstants.FILL_COLOR : SceneDistributionGaugeDisplayConstants.FILL_WARNING_COLOR)
+            
+            const isFilled = channel.currentLevel.id > 0
+            const fillColor = this.state.isOverLimit 
+                ? '#ff8c00' // Orange si limite atteinte
+                : (isFilled ? SceneDistributionGaugeDisplayConstants.FILL_COLOR : '#334455')
 
             this.context.fillStyle = SceneDistributionGaugeDisplayConstants.LABEL_COLOR
-            this.context.font = '700 27px sans-serif'
+            this.context.font = '700 24px sans-serif'
             this.context.textAlign = 'start'
-            this.context.fillText(channel.label, 90, y + 24)
+            this.context.fillText(channel.label, 84, y + 21)
 
+            // Track
             this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
             this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TRACK_BORDER_COLOR
-            this.context.lineWidth = 3
-            this.roundRect(this.context, gaugeX, y, gaugeWidth, gaugeHeight, 16)
-            this.context.fill()
-            this.context.stroke()
-
-            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TARGET_ZONE_COLOR
-            this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TARGET_ZONE_BORDER_COLOR
             this.context.lineWidth = 2
-            this.roundRect(
-                this.context,
-                targetZoneStart,
-                y + 4,
-                targetZoneWidth,
-                gaugeHeight - 8,
-                10
-            )
+            this.roundRect(this.context, gaugeX, y, gaugeWidth, gaugeHeight, 13)
             this.context.fill()
             this.context.stroke()
 
+            // Markers
+            this.renderLevelMarkers(gaugeX, y, gaugeWidth, gaugeHeight)
+
+            // Fill
             this.context.fillStyle = fillColor
             this.roundRect(
                 this.context,
-                gaugeX + 4,
-                y + 4,
-                Math.max(18, fillWidth - 8),
-                gaugeHeight - 8,
+                gaugeX + 3,
+                y + 3,
+                Math.max(12, fillWidth - 6),
+                gaugeHeight - 6,
                 10
             )
             this.context.fill()
 
+            // Status Badge
             this.renderStatusChip({
-                x: 865,
-                y: y - 6,
-                text: channel.status,
-                isActive: channel.isInGreenZone
+                x: 860,
+                y: y - 8,
+                text: channel.currentLevel.label,
+                levelId: channel.currentLevel.id
             })
+        }
+    }
+
+    renderLevelMarkers(x, y, width, height)
+    {
+        // On affiche les paliers MIN(2), STABLE(3), OPT(4)
+        const markers = [
+            { pos: 0.45, label: 'MIN' },
+            { pos: 0.65, label: 'STABLE' },
+            { pos: 0.85, label: 'OPT' }
+        ]
+
+        this.context.lineWidth = 1
+        this.context.font = 'bold 9px sans-serif'
+        this.context.textAlign = 'center'
+
+        for(const marker of markers)
+        {
+            const markerX = x + width * marker.pos
+            this.context.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+            this.context.beginPath()
+            this.context.moveTo(markerX, y)
+            this.context.lineTo(markerX, y + height)
+            this.context.stroke()
+
+            this.context.fillStyle = 'rgba(255, 255, 255, 0.3)'
+            this.context.fillText(marker.label, markerX, y - 6)
         }
     }
 
@@ -298,33 +315,77 @@ export default class SceneDistributionGaugeDisplay
         x = 0,
         y = 0,
         text = '',
-        isActive = false
+        levelId = 0
     } = {})
     {
-        const width = 110
+        const width = 125
         const height = 42
+        
+        let bgColor = SceneDistributionGaugeDisplayConstants.CHIP_BG_COLOR
+        let textColor = SceneDistributionGaugeDisplayConstants.CHIP_TEXT_COLOR
 
-        this.context.fillStyle = isActive ? SceneDistributionGaugeDisplayConstants.TARGET_ZONE_BORDER_COLOR : SceneDistributionGaugeDisplayConstants.CHIP_BG_COLOR
+        if(levelId === 1) bgColor = '#442222' // Critique
+        if(levelId === 2) bgColor = '#1d3b53' // Minimum
+        if(levelId === 3) bgColor = '#1d5d46' // Stable
+        if(levelId >= 4)  bgColor = '#5d4b1d' // Optimal/Max
+
+        this.context.fillStyle = bgColor
         this.roundRect(this.context, x, y, width, height, 14)
         this.context.fill()
 
-        this.context.fillStyle = isActive ? '#052012' : SceneDistributionGaugeDisplayConstants.CHIP_TEXT_COLOR
-        this.context.font = '700 22px sans-serif'
+        this.context.fillStyle = textColor
+        this.context.font = '700 18px sans-serif'
         this.context.textAlign = 'center'
         this.context.fillText(text.toUpperCase(), x + width * 0.5, y + 28)
         this.context.textAlign = 'start'
     }
 
-    renderFooter()
+    renderResourceLimit()
     {
-        const message = this.state.isSolved
-            ? 'Reseau stabilise. Les portes de sortie sont ouvertes.'
-            : 'Place les 3 niveaux dans la zone verte pour stabiliser la pression.'
-        const messageColor = this.state.isSolved ? SceneDistributionGaugeDisplayConstants.SOLVED_COLOR : SceneDistributionGaugeDisplayConstants.WARNING_COLOR
+        const x = 84
+        const y = 420
+        const width = 860
+        const height = 12
+        
+        // Strict clamp à 100%
+        const displayPercent = Math.min(100, Math.round(this.state.totalUsageRatio * 100))
+        const barWidth = width * (displayPercent / 100)
+        
+        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.BACKGROUND_COLOR
+        this.context.fillRect(x - 10, y - 40, width + 20, 110)
+
+        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.SUBTITLE_COLOR
+        this.context.font = '700 18px sans-serif'
+        this.context.fillText(`CAPACITÉ RÉSEAU : ${displayPercent}%`, x, y - 12)
+
+        // Track bar
+        this.context.fillStyle = '#0a1a2a'
+        this.roundRect(this.context, x, y, width, height, 6)
+        this.context.fill()
+
+        // Progress bar
+        const barColor = this.state.isOverLimit ? '#ff3b3b' : (this.state.isSolved ? '#4fd58a' : '#51b4ff')
+        this.context.fillStyle = barColor
+        this.roundRect(this.context, x, y, barWidth, height, 6)
+        this.context.fill()
+
+        let message = 'Alimentez chaque zone pour stabiliser.'
+        let messageColor = '#7ba7c4'
+
+        if(this.state.isOverLimit)
+        {
+            message = 'RÉSEAU SATURÉ : LIBÉREZ DE LA CAPACITÉ'
+            messageColor = '#ff5c5c'
+        }
+        else if(this.state.isSolved)
+        {
+            message = 'RÉSEAU STABILISÉ. UTILISEZ LE BOUTON ROUGE.'
+            messageColor = '#4fd58a'
+        }
 
         this.context.fillStyle = messageColor
-        this.context.font = '600 24px sans-serif'
-        this.context.fillText(message, 84, 432)
+        this.context.font = 'bold 20px sans-serif'
+        this.context.fillText(message, x, y + 40)
     }
 
     roundRect(context, x, y, width, height, radius)

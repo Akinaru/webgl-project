@@ -909,6 +909,15 @@ export function setDebug()
 
     this.debugFolder = this.debug.addFolder('💧 Bloom', { expanded: false })
 
+    this.visibilityState = { visible: true }
+    this.debug.addBinding(this.debugFolder, this.visibilityState, 'visible', {
+        label: 'Afficher Bloom'
+    }).on('change', ({ value }) =>
+    {
+        if(this.model) this.model.visible = value
+        if(this.fallback) this.fallback.visible = value
+    })
+
     this.debug.addBinding(this.debugFolder, this.scaleState, 'visualScale', {
         label: 'size',
         min: 0.15,

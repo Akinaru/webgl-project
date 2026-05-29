@@ -11,6 +11,7 @@ import Water from './Water.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
 import MapVisibilityDebug from './MapVisibility.debug.js'
+import MapFog from './MapFog.js'
 import bloomRails from './bloomRails.json'
 import * as MapWorldConstants from './MapWorld.constants.js'
 function isRailsGraph(value)
@@ -118,6 +119,7 @@ export default class MapWorld
             return
         }
         this.isSettingUp = true
+        this.instanceCullingFrame = 0
 
         this.mapModel = new MapModel()
         await this.waitForNextFrame()
@@ -136,6 +138,13 @@ export default class MapWorld
         }
 
         this.environment = new MapEnvironment()
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
+        this.fog = new MapFog({ environment: this.environment })
         await this.waitForNextFrame()
         if(this.isDestroyed)
         {
@@ -195,7 +204,8 @@ export default class MapWorld
 
         this.clouds = new CloudLayer({
             light: this.light,
-            getFocusPosition: () => this.player?.position ?? null
+            getFocusPosition: () => this.player?.position ?? null,
+            getFog: () => this.fog ?? null
         })
         await this.waitForNextFrame()
         if(this.isDestroyed)
@@ -216,14 +226,60 @@ export default class MapWorld
         }
 
         this.setTeleportZone()
+        this.buildSceneInstanceCullList()
         this.isSetUp = true
         this.isSettingUp = false
+    }
+
+    buildSceneInstanceCullList()
+    {
+        this.sceneInstanceCullEntries = []
+
+        const SKIP_NAME_TOKENS = ['__mapSun', '__bloomRoot']
+        const tempLocalMatrix = new THREE.Matrix4()
+        const tempWorldMatrix = new THREE.Matrix4()
+        const tempPos = new THREE.Vector3()
+
+        this.experience.scene.updateMatrixWorld(true)
+
+        this.experience.scene.traverse((child) =>
+        {
+            if(!(child instanceof THREE.InstancedMesh) || !child.visible || child.count === 0)
+            {
+                return
+            }
+
+            const name = child.name ?? ''
+            if(SKIP_NAME_TOKENS.some((token) => name.includes(token)))
+            {
+                return
+            }
+
+            const positions = []
+            const originalMatrices = []
+
+            for(let i = 0; i < child.count; i++)
+            {
+                child.getMatrixAt(i, tempLocalMatrix)
+                tempWorldMatrix.multiplyMatrices(child.matrixWorld, tempLocalMatrix)
+                positions.push(tempPos.setFromMatrixPosition(tempWorldMatrix).clone())
+                originalMatrices.push(tempLocalMatrix.clone())
+            }
+
+            this.sceneInstanceCullEntries.push({
+                instanced: child,
+                positions,
+                originalMatrices,
+                visibility: new Uint8Array(child.count).fill(1)
+            })
+        })
     }
 
     update(delta = this.experience.time.delta)
     {
         this.syncAmbientSound()
         this.syncBloomContext()
+        this.fog?.update?.()
         this.refreshTeleportAvailability()
         this.light?.update?.(delta)
         this.clouds?.update?.(delta)
@@ -235,6 +291,65 @@ export default class MapWorld
         this.updateBushSound(delta)
         this.updateTeleportZoneVisual()
         this.checkTeleportTrigger()
+        this.updateInstanceCulling()
+    }
+
+    updateInstanceCulling()
+    {
+        if(!this.player)
+        {
+            return
+        }
+
+        this.instanceCullingFrame = (this.instanceCullingFrame ?? 0) + 1
+        if(this.instanceCullingFrame % 15 !== 0)
+        {
+            return
+        }
+
+        const far = this.fog?.settings?.far ?? 80
+        const cullDist = far * 1.2
+        const cullDistSq = cullDist * cullDist
+        this.updateSceneInstanceCulling(this.player.position, cullDistSq)
+        this.mapModel?.updateMeshCulling?.(this.player.position, cullDist)
+    }
+
+    updateSceneInstanceCulling(playerPosition, maxDistanceSq)
+    {
+        if(!playerPosition || !Array.isArray(this.sceneInstanceCullEntries))
+        {
+            return
+        }
+
+        const culledMatrix = new THREE.Matrix4().makeTranslation(0, -99999, 0)
+
+        for(const entry of this.sceneInstanceCullEntries)
+        {
+            let anyChanged = false
+
+            for(let i = 0; i < entry.positions.length; i++)
+            {
+                const pos = entry.positions[i]
+                const dx = pos.x - playerPosition.x
+                const dz = pos.z - playerPosition.z
+                const distSq = (dx * dx) + (dz * dz)
+                const shouldShow = distSq <= maxDistanceSq ? 1 : 0
+
+                if(entry.visibility[i] === shouldShow)
+                {
+                    continue
+                }
+
+                entry.visibility[i] = shouldShow
+                entry.instanced.setMatrixAt(i, shouldShow ? entry.originalMatrices[i] : culledMatrix)
+                anyChanged = true
+            }
+
+            if(anyChanged)
+            {
+                entry.instanced.instanceMatrix.needsUpdate = true
+            }
+        }
     }
 
     syncAmbientSound()
@@ -739,6 +854,12 @@ export default class MapWorld
         this.grassDebugFolder = null
         this.bushDebugFolder = null
         this.grassDebugState = null
+
+        if(this.fog)
+        {
+            this.fog.destroy?.()
+            this.fog = null
+        }
 
         if(this.water)
         {

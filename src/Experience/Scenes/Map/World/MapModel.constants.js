@@ -19,7 +19,8 @@ export const USER_DATA_PALM_PLACEMENT = 'isPalmPlacementMesh'
 export const USER_DATA_REPEATABLE_MASTER = 'isRepeatableMasterMesh'
 export const USER_DATA_REPEATABLE_PLACEMENT = 'isRepeatablePlacementMesh'
 export const SCALE_EPSILON = 1e-5
-export const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = -0.58
+export const BUILDING_INSTANCE_Y_OFFSET_DEFAULT = 4.44
+export const BUILDING_INSTANCE_SCALE_DEFAULT = 0.67
 export const BUILDING_INSTANCE_COLLISION_INSET_XZ = 0.16
 export const BUILDING_INSTANCE_COLLISION_SLICE_COUNT = 3
 export const BUSH_SOCKET_EXTERIOR_NAME_PATTERN = /^socle_ext_bush_nul_\d+$/i
@@ -29,12 +30,14 @@ export const REPEATABLE_INSTANCE_CONFIGS = [
     {
         key: 'build_tour',
         masterName: 'build_tour_master',
+        resourceName: 'buildingTourModel',
         debugMasterName: 'col_build_tour-1',
         placementPattern: /^build_tour_[^_]+_nul$/i
     },
     {
         key: 'build_feuille',
         masterName: 'build_feuille_master1',
+        resourceName: 'buildingFeuilleModel',
         debugMasterName: 'col_build_feuille-1',
         placementPattern: /^build_feuille_[^_]+_nul$/i
     }

@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import EventEnum from '../../../Enum/EventEnum.js'
 import Player from '../../../Common/Characters/Player.js'
@@ -11,6 +12,9 @@ import SceneDistributionBalanceMonitor from './BalanceMonitor.js'
 import SceneDistributionDoorController from './DoorController.js'
 import SceneDistributionResultTrigger from './ResultTrigger.js'
 import SceneDistributionResultDisplay from './ResultDisplay.js'
+import SceneDistributionScoring from './DistributionScoring.js'
+import SceneDistributionWalls from './Walls/Walls.js'
+import ValidationButton from './ValidationButton.js'
 import { setupSceneDistributionWorldDebug } from './World.debug.js'
 
 let distributionWorldInstanceIndex = 0
@@ -51,6 +55,10 @@ export default class SceneDistributionWorld
         this.distributionModel = new SceneDistributionModel({
             debugParentFolder: this.debugFolder
         })
+        this.walls = new SceneDistributionWalls({
+            distributionModel: this.distributionModel,
+            debugParentFolder: this.debugFolder
+        })
         this.exitDoors = new SceneDistributionDoorController({
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
@@ -82,7 +90,8 @@ export default class SceneDistributionWorld
             tubeWaterController: this.tubeWaterController,
             onSolvedChange: (isSolved) =>
             {
-                this.exitDoors?.setOpen?.(isSolved)
+                // La porte ne s'ouvre plus toute seule
+                // this.exitDoors?.setOpen?.(isSolved)
             }
         })
         this.gaugeDisplay = new SceneDistributionGaugeDisplay({
@@ -93,9 +102,33 @@ export default class SceneDistributionWorld
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
         })
+        this.scoring = new SceneDistributionScoring()
+        this.validationButton = new ValidationButton({
+            position: new THREE.Vector3(-1.2, -0.8, -0.8),
+            onValidate: () => this.handleValidation(),
+            debugParentFolder: this.debugFolder
+        })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
-            this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
-        )
+        {
+            // Vérification de la limite individuelle du tuyau
+            const canRotateIndividual = this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
+            if(!canRotateIndividual)
+            {
+                return false
+            }
+
+            // Si on essaie d'augmenter le débit (direction > 0)
+            if(direction > 0)
+            {
+                const state = this.balanceMonitor?.getState()
+                if(state && state.totalUsageUnits >= state.capacityLimit - 0.001)
+                {
+                    return false
+                }
+            }
+
+            return true
+        })
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null,
@@ -160,6 +193,23 @@ export default class SceneDistributionWorld
         })
     }
 
+    handleValidation()
+    {
+        const state = this.balanceMonitor?.getState()
+        if(!state)
+        {
+            return
+        }
+
+        // On ouvre la porte
+        this.exitDoors?.setOpen?.(true)
+
+        // On enregistre les scores à ce moment précis pour la répartition finale
+        this.scoring?.applyFinalScoring(state)
+
+        console.log('[SceneDistributionWorld] Distribution validée, porte ouverte.')
+    }
+
     startResultSequence()
     {
         if(this.hasStartedResultSequence)
@@ -173,6 +223,24 @@ export default class SceneDistributionWorld
         }
 
         this.hasStartedResultSequence = true
+        this.experience.badgeManager?.unlock?.('distribution')
+
+        this.onResultDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== 'resultat')
+            {
+                return
+            }
+
+            // Chill time (3.5s) before opening the end menu to let the user see the badge notification
+            setTimeout(() => {
+                this.experience.menu?.endMenu?.open?.()
+            }, 3500)
+            
+            this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
+        }
+
+        this.experience.dialogueManager?.on?.('end.distributionResult', this.onResultDialogueEnd)
         this.experience.dialogueManager?.startByKey?.('resultat')
     }
 
@@ -191,8 +259,13 @@ export default class SceneDistributionWorld
         this.resultDisplay = null
         this.resultTrigger?.destroy?.()
         this.resultTrigger = null
+        this.validationButton?.destroy?.()
+        this.validationButton = null
         this.exitDoors?.destroy?.()
         this.exitDoors = null
+
+        this.walls?.destroy?.()
+        this.walls = null
 
         if(this.player)
         {

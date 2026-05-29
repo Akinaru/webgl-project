@@ -223,6 +223,8 @@ export default class Tutoriel extends EventEmitter
     
     nextStep()
     {
+        this.experience.sound.play('tutorialStepComplete')
+        
         const nextIndex = this.currentStepIndex + 1
         if (nextIndex < this.steps.length)
         {

@@ -5,7 +5,7 @@ import Sizes from './Utils/Sizes.js'
 import Time from './Utils/Time.js'
 import Debug from './Utils/Debug.js'
 import Resources from './Utils/Resources.js'
-import sources from './Source/sources.js'
+import { bootSources } from './Source/sources.js'
 import EventEnum from './Enum/EventEnum.js'
 import SceneManager from './Scenes/SceneManager.js'
 import MetierManager from './Metiers/MetierManager.js'
@@ -13,6 +13,8 @@ import MetierEnum from './Enum/MetierEnum.js'
 import ActionId from './Actions/ActionId.js'
 import ActionTracker from './Actions/ActionTracker.js'
 import DialogueManager from './Dialogues/DialogueManager.js'
+import ObjectiveManager from './Objectives/ObjectiveManager.js'
+import BadgeManager from './Badges/BadgeManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
@@ -25,6 +27,12 @@ const DEBUG_TUTORIAL_COMPLETED_KEY = 'tutorialCompleted'
 const DEBUG_TUTORIAL_COMPLETED_LABEL = 'tutoriel termine'
 const DEBUG_AUTOMATION_FOLDER_TITLE = '⏸ Automation'
 const DEBUG_AUTOMATION_ENABLED_KEY = 'autoFlowEnabled'
+const INITIAL_OBJECTIVE_CONTEXT = Object.freeze({
+    source: 'tutorial'
+})
+const POST_TUTORIAL_OBJECTIVE_KEY = 'intro_follow_bloom'
+const INTRO_DIALOGUE_END_EVENT = 'end.experienceIntroObjective'
+const TUTORIAL_START_DELAY_MS = 5000
 
 export default class Experience
 {
@@ -54,8 +62,10 @@ export default class Experience
         this.time = new Time()
         this.actionTracker = new ActionTracker()
         this.dialogueManager = new DialogueManager()
+        this.objectiveManager = new ObjectiveManager()
+        this.badgeManager = new BadgeManager()
         this.scene = new THREE.Scene()
-        this.resources = new Resources(sources, {
+        this.resources = new Resources(bootSources, {
             autoStart: false
         })
         this.sound = new SoundManager(this)
@@ -68,6 +78,8 @@ export default class Experience
 
         this.resources.on(EventEnum.READY, () =>
         {
+            if (this.bloom) return;
+            
             this.bloom = new Bloom({
                 motion: {
                     center: { x: 2.5, y: 2.0, z: 2.5 },
@@ -90,6 +102,17 @@ export default class Experience
 
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
+        this.tutorialStartTimeoutId = null
+        this.onIntroDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== this.dialogueManager?.repository?.getTutorialCompletedDialogueKey?.())
+            {
+                return
+            }
+
+            this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
+            this.objectiveManager?.showByKey?.(POST_TUTORIAL_OBJECTIVE_KEY, INITIAL_OBJECTIVE_CONTEXT)
+        }
         this.debugTutorialFolder = null
         this.debugAutomationFolder = null
         this.debugTutorialState = {
@@ -101,29 +124,17 @@ export default class Experience
 
         this.menu.start().then(() =>
         {
-            this.tutoriel.start()
+            this.sceneManager.start()
+            this.tutoriel.on('finished', this.handleTutorialFinished)
 
-            this.tutoriel.on('finished', () =>
+            if(this.shouldBypassTutorialForDebug())
             {
-                if(this.hasStartedIntroDialogue)
-                {
-                    return
-                }
+                this.handleTutorialFinished({ forceStartDialogue: true })
+                return
+            }
 
-                if(!this.isAutoFlowEnabled())
-                {
-                    return
-                }
-
-                this.hasStartedIntroDialogue = true
-                const configuredDialogueKey = this.dialogueManager?.repository?.getTutorialCompletedDialogueKey?.()
-                if(configuredDialogueKey)
-                {
-                    this.dialogueManager?.startByKey?.(configuredDialogueKey)
-                }
-
-                this.setTutorialCompleted(true)
-            })
+            this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
+            this.scheduleTutorialStart()
         })
 
         this.setDebugTutorial()
@@ -154,14 +165,20 @@ export default class Experience
 
     destroy()
     {
+        this.clearTutorialStartTimeout()
         this.time.off(`${EventEnum.TICK}.experience`)
 
         this.sceneManager.destroy?.()
         this.metierManager.destroy?.()
         this.actionTracker.destroy?.()
+        this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
+        this.tutoriel?.off?.('finished')
         this.dialogueManager.destroy?.()
+        this.objectiveManager.destroy?.()
+        this.badgeManager.destroy?.()
         this.tutoriel?.destroy?.()
         this.bloom?.destroy?.()
+        this.bloom = null
         this.menu?.destroy?.()
         this.sound?.destroy?.()
         this.debugTutorialFolder?.dispose?.()
@@ -194,6 +211,60 @@ export default class Experience
         return this.debugAutomationState?.[DEBUG_AUTOMATION_ENABLED_KEY] !== false
     }
 
+    shouldBypassTutorialForDebug()
+    {
+        return this.debug?.isDebugEnabled === true
+    }
+
+    scheduleTutorialStart()
+    {
+        this.clearTutorialStartTimeout()
+        this.tutorialStartTimeoutId = window.setTimeout(() =>
+        {
+            this.tutorialStartTimeoutId = null
+            this.tutoriel?.start?.()
+        }, TUTORIAL_START_DELAY_MS)
+    }
+
+    clearTutorialStartTimeout()
+    {
+        if(this.tutorialStartTimeoutId === null)
+        {
+            return
+        }
+
+        window.clearTimeout(this.tutorialStartTimeoutId)
+        this.tutorialStartTimeoutId = null
+    }
+
+    handleTutorialFinished = ({ forceStartDialogue = false } = {}) =>
+    {
+        if(this.hasStartedIntroDialogue)
+        {
+            return
+        }
+
+        if(!forceStartDialogue && !this.isAutoFlowEnabled())
+        {
+            return
+        }
+
+        this.clearTutorialStartTimeout()
+        this.hasStartedIntroDialogue = true
+        this.setTutorialCompleted(true)
+        this.objectiveManager?.completeCurrentObjective?.()
+
+        const configuredDialogueKey = this.dialogueManager?.repository?.getTutorialCompletedDialogueKey?.()
+        if(!configuredDialogueKey)
+        {
+            return
+        }
+
+        this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
+        this.dialogueManager?.on?.(INTRO_DIALOGUE_END_EVENT, this.onIntroDialogueEnd)
+        this.dialogueManager?.startByKey?.(configuredDialogueKey)
+    }
+
     setAutoFlowEnabled(enabled)
     {
         this.debugAutomationState[DEBUG_AUTOMATION_ENABLED_KEY] = enabled === true
@@ -224,6 +295,7 @@ export default class Experience
                 }
 
                 this.setTutorialCompleted(false)
+                this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
                 this.tutoriel?.restart?.()
             })
     }

@@ -1,0 +1,29 @@
+{
+  "activities": [
+    {
+      "key": "materiau",
+      "label": "Materiau",
+      "iconPath": "/textures/ui/materiau.svg"
+    },
+    {
+      "key": "tuyaux",
+      "label": "Tuyaux",
+      "iconPath": "/textures/ui/tuyaux.svg"
+    },
+    {
+      "key": "recyclage_1",
+      "label": "Champignon",
+      "iconPath": "/textures/ui/champignon.svg"
+    },
+    {
+      "key": "recyclage_2",
+      "label": "Nanobots",
+      "iconPath": "/textures/ui/nanobots.svg"
+    },
+    {
+      "key": "distribution",
+      "label": "Distribution",
+      "iconPath": "/textures/ui/valve.svg"
+    }
+  ]
+}

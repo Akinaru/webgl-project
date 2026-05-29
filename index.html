@@ -3,19 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>bloom</title>
+    <title>Bloom | Une expérience immersive</title>
+    <meta name="description" content="Découvrez Bloom, une aventure 3D immersive pour explorer le futur de la nature et de la technologie. Apprenez le français à travers une quête interactive unique." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://bloom.gallotta.com/" />
+    <meta property="og:title" content="Bloom | Une expérience immersive" />
+    <meta property="og:description" content="Explorez le futur avec Bloom. Une aventure narrative et éducative en 3D." />
+    <meta property="og:image" content="/images/og-image.jpg" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://bloom.gallotta.com/" />
+    <meta property="twitter:title" content="Bloom | Une expérience immersive" />
+    <meta property="twitter:description" content="Explorez le futur avec Bloom. Une aventure narrative et éducative en 3D." />
+    <meta property="twitter:image" content="/images/og-image.jpg" />
+
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon/favicon-16x16.png" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <canvas class="webgl"></canvas>
     <div class="boot" id="bootScreen">
       <div class="boot__home" id="bootHome">
-        <div class="boot__logo-viewer" id="bootLogoViewer" aria-hidden="true"></div>
+        <div class="boot__logo-viewer" id="bootLogoViewer" aria-hidden="true">
+          <img class="boot__logo-image" src="/textures/ui/logo.png" alt="Logo Bloom" />
+        </div>
         <div class="boot__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="bootMenuTitle">
           <h1 class="boot__title menu-title" id="bootMenuTitle">Pour une expérience optimale,<br />nous vous recommandons d’activer le son</h1>
           <label class="boot__sound-toggle menu-toggle" for="bootAudioToggle">
@@ -37,10 +58,15 @@
     <div class="scene-transition" id="sceneTransition" aria-hidden="true">
       <div class="scene-transition__home">
         <div class="scene-transition__panel menu-panel">
-          <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement</p>
+          <p class="scene-transition__title menu-title" data-scene-transition-label>Chargement en cours</p>
           <div class="scene-transition__meter">
             <span class="scene-transition__value" data-scene-transition-value>0%</span>
           </div>
+        </div>
+      </div>
+      <div class="scene-transition__footer">
+        <div class="scene-transition__phrase-panel">
+          <p class="scene-transition__phrase" data-scene-transition-phrase></p>
         </div>
       </div>
     </div>
@@ -64,7 +90,11 @@
           <img class="pause-settings__icon" src="/icons/settings-audio.svg" alt="" aria-hidden="true" />
           <div class="pause-settings__subtitle">Audio</div>
         </div>
-        <div class="pause-settings__controls">
+        <div class="pause-settings__controls" id="pauseAudioControls">
+          <label class="pause-settings__row pause-settings__row--toggle" for="pauseAudioEnabled">
+            <span class="pause-settings__label">Son activé</span>
+            <input class="pause-settings__toggle" id="pauseAudioEnabled" type="checkbox" checked />
+          </label>
           <label class="pause-settings__row" for="pauseMusicVolume">
             <span class="pause-settings__label">Musique</span>
             <input class="pause-settings__slider" id="pauseMusicVolume" type="range" min="0" max="100" step="1" value="100" />
@@ -74,6 +104,11 @@
             <span class="pause-settings__label">Effets sonores</span>
             <input class="pause-settings__slider" id="pauseSfxVolume" type="range" min="0" max="100" step="1" value="100" />
             <span class="pause-settings__value" id="pauseSfxVolumeValue">100%</span>
+          </label>
+          <label class="pause-settings__row" for="pauseDialogueVolume">
+            <span class="pause-settings__label">Dialogues</span>
+            <input class="pause-settings__slider" id="pauseDialogueVolume" type="range" min="0" max="100" step="1" value="100" />
+            <span class="pause-settings__value" id="pauseDialogueVolumeValue">100%</span>
           </label>
         </div>
         <div class="pause-settings__section pause-settings__section--gfx">
@@ -120,6 +155,27 @@
         </div>
       </div>
     </div>
+    <div class="end-menu" id="endMenu" aria-hidden="true">
+      <div class="end-menu__content menu-panel">
+        <h1 class="end-menu__title menu-title">La visite s'achève ici...</h1>
+        <div class="end-menu__description">
+          <p>Chaque choix t'a mené jusqu'ici.</p>
+          <p>Découvre le chemin que tu as tracé.</p>
+        </div>
+        
+        <div class="end-menu__actions">
+          <button class="end-menu__button menu-button" id="endMenuTrace">Retracer mon parcours</button>
+          <button class="end-menu__button menu-button menu-button--secondary" id="endMenuRestart">Recommencer la visite</button>
+        </div>
+
+        <div class="end-menu__credits">
+          <p><strong>Conception graphique:</strong> Ylona Angour, Nicolas Vautrin</p>
+          <p><strong>Développement web:</strong> Maxime Gallotta, Thibaud Evrard</p>
+          <p><strong>Voix off:</strong> Léna Hauswald</p>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/script.js"></script>
   </body>
 </html>

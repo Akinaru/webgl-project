@@ -3,3 +3,12 @@ dist
 .DS_Store
 tmp/
 .idea/
+
+# Models
+public/models/**/*.gltf
+public/models/**/building_tour.glb
+public/models/**/building_feuille.glb
+public/models/**/Map.glb
+public/models/**/SceneRecuperation.glb
+public/models/**/SceneRecyclage.glb
+public/models/**/SceneDistribution.glb

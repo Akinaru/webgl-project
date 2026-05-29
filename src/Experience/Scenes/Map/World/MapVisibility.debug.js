@@ -129,6 +129,36 @@ export default class MapVisibilityDebug
                 }
             ]
         })
+
+        this.debug.addButtons(this.debugFolder, {
+            label: 'Bâtiments',
+            columns: 2,
+            buttons: [
+                {
+                    label: 'Afficher',
+                    onClick: () =>
+                    {
+                        this.mapModel?.setAllBuildingInstancesVisible?.(true)
+                    }
+                },
+                {
+                    label: 'Masquer',
+                    onClick: () =>
+                    {
+                        this.mapModel?.setAllBuildingInstancesVisible?.(false)
+                    }
+                }
+            ]
+        })
+
+        this.buildingMarkersState = { showMarkers: false }
+        this.debug.addBinding(this.debugFolder, this.buildingMarkersState, 'showMarkers', {
+            label: 'Axes des placements (nuls)',
+            export: false
+        }).on('change', ({ value }) =>
+        {
+            this.mapModel?.setAllPlacementMarkersVisible?.(value)
+        })
     }
 
     createObjectEntry({

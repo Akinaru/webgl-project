@@ -95,6 +95,62 @@ export function setupTubeMaterials()
 
 
 /**
+ * Clone les matériaux des jonctions pour pouvoir les teinter indépendamment.
+ */
+export function setupJoinMaterials()
+{
+    const uniqueJoinTargets = new Map()
+    this.allJoinTargets = []
+
+    for(const joinTargets of this.joinTargetsByTubeUuid.values())
+    {
+        for(const joinTarget of joinTargets)
+        {
+            if(!joinTarget || uniqueJoinTargets.has(joinTarget.uuid))
+            {
+                continue
+            }
+
+            uniqueJoinTargets.set(joinTarget.uuid, joinTarget)
+            this.allJoinTargets.push(joinTarget)
+
+            joinTarget.traverse((child) =>
+            {
+                if(!(child instanceof THREE.Mesh))
+                {
+                    return
+                }
+
+                const materials = Array.isArray(child.material) ? child.material : [child.material]
+                const clonedMaterials = materials.map((material) => material?.clone?.() ?? material)
+                child.material = Array.isArray(child.material) ? clonedMaterials : clonedMaterials[0]
+
+                for(const material of clonedMaterials)
+                {
+                    if(!material)
+                    {
+                        continue
+                    }
+
+                    material.userData = material.userData || {}
+                    if(material.color && !material.userData.joinBaseColor)
+                    {
+                        material.userData.joinBaseColor = material.color.clone()
+                    }
+
+                    if(material.emissive && !material.userData.joinBaseEmissive)
+                    {
+                        material.userData.joinBaseEmissive = material.emissive.clone()
+                        material.userData.joinBaseEmissiveIntensity = material.emissiveIntensity ?? 1
+                    }
+                }
+            })
+        }
+    }
+}
+
+
+/**
  * Détecte les fenêtres bleues, clone leurs matériaux et prépare leur pilotage visuel.
  */
 export function setupBlueWindowMeshes()
@@ -947,4 +1003,3 @@ export function computeLocalFlowCoord(mesh, localPosition)
 
     return (localPosition[SceneRecuperationTubeWaterControllerConstants.FLOW_AXIS] - flowProjection.min) / Math.max(flowProjection.range, SceneRecuperationTubeWaterControllerConstants.FLOW_COORD_EPSILON)
 }
-

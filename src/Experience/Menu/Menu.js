@@ -1,8 +1,11 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import EventEnum from '../Enum/EventEnum.js'
 import PauseMenu from './PauseMenu.js'
+import EndMenu from './EndMenu.js'
 import * as MenuConstants from './Menu.constants.js'
+import { sceneSources } from '../Source/sources.js'
 
 export default class Menu
 {
@@ -84,7 +87,48 @@ export default class Menu
 
         this.pauseMenu = new PauseMenu({
             experience: this.experience,
-            isEnabled: () => this.hasResolved && !this.isDestroyed
+            isEnabled: () => this.hasResolved && !this.isDestroyed,
+            canAutoOpen: () => !this.endMenu?.isOpen?.()
+        })
+
+        this.endMenu = new EndMenu(this.experience)
+
+        this.pauseMenu.on('open', () =>
+        {
+            const uiRoots = [
+                this.endMenu?.root,
+                this.experience?.dialogueManager?.ui?.root,
+                this.experience?.badgeManager?.ui?.root,
+                this.experience?.objectiveManager?.ui?.root
+            ]
+
+            for(const root of uiRoots)
+            {
+                if(!root) continue
+
+                // On cache si l'élément est actuellement visible
+                // Pour les badges, on les cache s'ils sont dans le DOM (ils sont gérés par items)
+                const isVisible = root.classList.contains('is-visible') || root.classList.contains('activity-badges')
+                if(isVisible)
+                {
+                    root.classList.add('is-hidden-by-pause')
+                }
+            }
+        })
+
+        this.pauseMenu.on('close', () =>
+        {
+            const uiRoots = [
+                this.endMenu?.root,
+                this.experience?.dialogueManager?.ui?.root,
+                this.experience?.badgeManager?.ui?.root,
+                this.experience?.objectiveManager?.ui?.root
+            ]
+
+            for(const root of uiRoots)
+            {
+                root?.classList?.remove?.('is-hidden-by-pause')
+            }
         })
 
         this.handleWindowResize = () =>
@@ -120,6 +164,7 @@ export default class Menu
             if(audioEnabled)
             {
                 this.experience?.sound?.unlock?.()
+                this.experience?.sound?.playMenuClick?.()
             }
         }
 
@@ -146,7 +191,7 @@ export default class Menu
         this.isInitialized = true
         this.applyAudioPreference(this.readStoredAudioPreference())
         this.pauseMenu?.start?.()
-        this.initBootLogoViewer()
+        this.applyBootLogoLayout()
         this.setDebug()
 
         if(!this.hasUI)
@@ -301,7 +346,7 @@ export default class Menu
         }
     }
 
-    showTransitionOverlay(label = 'Chargement')
+    showTransitionOverlay(label = 'Chargement en cours')
     {
         this.transitionOverlay = this.transitionOverlay || document.querySelector('#sceneTransition')
         if(!this.transitionOverlay)
@@ -312,10 +357,20 @@ export default class Menu
         this.transitionLabel = this.transitionLabel || this.transitionOverlay.querySelector('[data-scene-transition-label]')
         this.transitionValue = this.transitionValue || this.transitionOverlay.querySelector('[data-scene-transition-value]')
         this.transitionFill = this.transitionFill || this.transitionOverlay.querySelector('[data-scene-transition-fill]')
+        this.transitionPhrase = this.transitionPhrase || this.transitionOverlay.querySelector('[data-scene-transition-phrase]')
 
         if(this.transitionLabel)
         {
             this.transitionLabel.textContent = label
+        }
+
+        if(this.transitionPhrase)
+        {
+            const loadingPhrases = this.experience?.sceneManager?.loadingPhrases
+            if(loadingPhrases)
+            {
+                this.transitionPhrase.textContent = loadingPhrases.getRandomPhrase()
+            }
         }
 
         this.transitionOverlay.classList.add('is-visible')
@@ -345,11 +400,11 @@ export default class Menu
 
         const total = Math.max(1, Number(resources.toLoad || 0))
         const loaded = Math.max(0, Math.min(total, Number(resources.loaded || 0)))
-        const ratio = resources.isReady ? 1 : loaded / total
+        const ratio = loaded / total
 
         this.setLoadingProgress(ratio * 100)
 
-        if(!resources.isReady)
+        if(!resources.isReady || ratio < 1)
         {
             this.loadingRafId = window.requestAnimationFrame(() => this.updateLoadingProgressLoop())
         }
@@ -409,8 +464,13 @@ export default class Menu
 
         this.resizeBootLogoViewer()
 
+        const dracoLoader = new DRACOLoader()
+        dracoLoader.setDecoderPath('/vendor/three/examples/jsm/libs/draco/gltf/')
+
         const loader = new GLTFLoader()
-        loader.load('/models/UI/Logo.gltf', (gltf) =>
+        loader.setDRACOLoader(dracoLoader)
+
+        loader.load('/models/UI/Logo_Draco.glb', (gltf) =>
         {
             if(this.isDestroyed || !this.bootLogoScene)
             {
@@ -754,21 +814,36 @@ export default class Menu
         await this.wait(MenuConstants.START_DELAY_MS)
         this.bootScreen.classList.remove(MenuConstants.START_CLASS)
         this.bootScreen.classList.add(MenuConstants.LOADING_CLASS)
-        this.showTransitionOverlay('Chargement')
+        this.showTransitionOverlay('Chargement en cours')
 
+        // On identifie la scène initiale pour charger ses ressources tout de suite
+        const initialSceneKey = this.experience.sceneManager?.getInitialScene()
+        const initialSceneSources = sceneSources[initialSceneKey] || []
+        
+        console.log(`[Menu] Initialisation du chargement. Scène de départ: ${initialSceneKey} (+${initialSceneSources.length} sources)`)
+
+        if(initialSceneSources.length > 0)
+        {
+            this.experience.resources.startLoading(initialSceneSources)
+        }
         this.experience?.resources?.startLoading?.()
+
         this.setLoadingProgress(0)
         this.startLoadingProgressLoop()
         await this.waitForResourcesReady()
         this.stopLoadingProgressLoop()
         this.setLoadingProgress(100)
         await this.wait(160)
-        this.hideTransitionOverlay()
+        
+        // On ne cache pas l'overlay ici, on laisse le SceneManager le faire 
+        // une fois que la scène est réellement instanciée pour éviter un flash noir.
+        // this.hideTransitionOverlay()
 
         this.resolveStart({ audioEnabled: this.audioEnabled })
 
         if(window.location.hash.includes('debug'))
         {
+            this.hideTransitionOverlay()
             this.bootScreen.remove()
             this.focusGameCanvas()
             return

@@ -738,10 +738,7 @@ export default class Materiau
         const definition = this.getDefinitionByKey(this.selectedMaterialKey)
         const burstColor = definition?.accentColor ?? MateriauConstants.DEFAULT_BUILDING_BURST_COLOR
 
-        this.experience.sound?.play?.('changeMateriau', {
-            force: true,
-            volume: 1
-        })
+        this.experience.sound?.play?.('changeMateriau', { volume: 1 })
         this.buildingEffect?.trigger?.({
             color: burstColor
         })

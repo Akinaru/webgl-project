@@ -17,6 +17,7 @@ import SceneRecuperationRoom2Trigger from '../Progression/Room2Trigger.js'
 import SceneRecuperationCollisionDebug from '../Debug/SceneRecuperationCollision.debug.js'
 import SceneRecuperationCascadeTubes from '../Water/CascadeTubes.js'
 import SceneRecuperationScoring from '../Progression/Scoring.js'
+import SceneRecuperationWalls from '../Walls/Walls.js'
 import { setupSceneRecuperationWorldDebug } from './World.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../../Audio/SceneMusicPicker.js'
@@ -74,6 +75,10 @@ export default class SceneRecuperationWorld
         }
         this.environment = new MapEnvironment()
         this.recuperationModel = new SceneRecuperationModel({
+            debugParentFolder: this.debugFolder
+        })
+        this.walls = new SceneRecuperationWalls({
+            recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
         this.cascadeTubes = new SceneRecuperationCascadeTubes({
@@ -293,10 +298,7 @@ export default class SceneRecuperationWorld
         this.door?.setOpen?.(false)
         this.television?.setTestingState?.(true)
         this.showerParticles?.start?.(this.testDurationSeconds)
-        this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, {
-            force: true,
-            volume: 1
-        })
+        this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, { volume: 1 })
     }
 
     stopMaterialTest()
@@ -367,6 +369,7 @@ export default class SceneRecuperationWorld
         }
 
         this.isMaterialChoiceValidated = true
+        this.experience.badgeManager?.unlock?.('materiau')
         this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
         this.startValidationDialogue()
@@ -403,6 +406,7 @@ export default class SceneRecuperationWorld
             }
 
             this.television?.setButtonsUnlocked?.(true)
+            this.television?.setPowered?.(true)
         }
         this.experience.dialogueManager?.on?.('end.recuperationButtonsUnlock', this.onArrivalDialogueEnd)
         this.experience.dialogueManager?.startByKey?.(RECUPERATION_ARRIVAL_DIALOGUE_KEY)
@@ -458,6 +462,7 @@ export default class SceneRecuperationWorld
             return
         }
 
+        this.experience.badgeManager?.unlock?.('tuyaux')
         this.scoring?.finalize?.()
         this.isReturningToMap = true
         this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
@@ -768,6 +773,12 @@ export default class SceneRecuperationWorld
         {
             this.cascadeTubes.destroy?.()
             this.cascadeTubes = null
+        }
+
+        if(this.walls)
+        {
+            this.walls.destroy?.()
+            this.walls = null
         }
 
         if(this.recuperationModel)

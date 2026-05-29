@@ -7,10 +7,14 @@ export const SELECTORS = Object.freeze({
     settingsButton: '#pauseSettingsButton',
     settingsModal: '#pauseSettingsModal',
     settingsCloseButton: '#pauseSettingsCloseButton',
+    audioEnabledToggle: '#pauseAudioEnabled',
+    audioControls: '#pauseAudioControls',
     musicVolumeSlider: '#pauseMusicVolume',
     musicVolumeValue: '#pauseMusicVolumeValue',
     sfxVolumeSlider: '#pauseSfxVolume',
     sfxVolumeValue: '#pauseSfxVolumeValue',
+    dialogueVolumeSlider: '#pauseDialogueVolume',
+    dialogueVolumeValue: '#pauseDialogueVolumeValue',
     graphicsQualityButtons: '[data-gfx-quality]',
     keybindButtons: '[data-keybind-action]',
     resetAllButton: '#pauseSettingsResetAll'
@@ -21,7 +25,8 @@ export const SLIDER_GRADIENT_ALPHA = 0.95
 export const VOLUME_PREVIEW_MIN_INTERVAL_MS = 90
 export const VOLUME_PREVIEW_SOUND_BY_TYPE = Object.freeze({
     music: 'pauseMusicPreview',
-    sfx: 'menuClick'
+    sfx: 'menuClick',
+    dialogue: 'menuClick'
 })
 export const KEYBIND_CAPTURE_LABEL = 'Appuyer...'
 export const KEYBIND_ERROR_FLASH_MS = 320

@@ -16,6 +16,11 @@ export default class CenterScreenRaycaster
 
     intersectFirst(objects, recursive = false)
     {
+        return this.intersectFirstHit(objects, recursive)?.object ?? null
+    }
+
+    intersectFirstHit(objects, recursive = false)
+    {
         const camera = this.getCamera()
         if(!camera || !Array.isArray(objects) || objects.length === 0)
         {
@@ -24,6 +29,6 @@ export default class CenterScreenRaycaster
 
         this.raycaster.setFromCamera(this.centerNdc, camera)
         const hits = this.raycaster.intersectObjects(objects, recursive)
-        return hits[0]?.object ?? null
+        return hits[0] ?? null
     }
 }
