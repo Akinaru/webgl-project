@@ -1,23 +1,64 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import * as SceneDistributionModelConstants from './Model.constants.js'
+
+const ROOM_END_WINDOW_NAME_TOKENS = ['room_end1', 'room-end1', 'room end1', 'room_end']
+
 export default class SceneDistributionModel
 {
-    constructor()
+    constructor({
+        debugParentFolder = null
+    } = {})
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.resource = this.resources.items.distributionModel
+        this.backgroundOverrideTexture = this.resources.items.distributionBackgroundResultTexture ?? null
+        this.debug = this.experience.debug
+        this.debugParentFolder = debugParentFolder
+        this.debugFolder = null
+        this.debugStats = {
+            roomEndMeshCount: 0,
+            roomEndMaterialCount: 0,
+            backgroundMaterialCount: 0
+        }
         this.vanneMeshes = []
+        this.roomEndWindowMaterials = []
+        this.backgroundMaterials = []
+        this.visualSettings = {
+            roomEndWindowColor: SceneDistributionModelConstants.ROOM_END_WINDOW_COLOR,
+            roomEndWindowOpacity: SceneDistributionModelConstants.ROOM_END_WINDOW_OPACITY,
+            roomEndWindowTransmission: SceneDistributionModelConstants.ROOM_END_WINDOW_TRANSMISSION,
+            roomEndWindowRoughness: SceneDistributionModelConstants.ROOM_END_WINDOW_ROUGHNESS,
+            roomEndWindowMetalness: SceneDistributionModelConstants.ROOM_END_WINDOW_METALNESS,
+            roomEndWindowIor: SceneDistributionModelConstants.ROOM_END_WINDOW_IOR,
+            roomEndWindowThickness: SceneDistributionModelConstants.ROOM_END_WINDOW_THICKNESS,
+            roomEndWindowEnvIntensity: SceneDistributionModelConstants.ROOM_END_WINDOW_ENV_INTENSITY,
+            roomEndWindowAttenuationDistance: SceneDistributionModelConstants.ROOM_END_WINDOW_ATTENUATION_DISTANCE,
+            roomEndWindowAttenuationColor: SceneDistributionModelConstants.ROOM_END_WINDOW_ATTENUATION_COLOR,
+            roomEndWindowDepthWrite: SceneDistributionModelConstants.ROOM_END_WINDOW_DEPTH_WRITE,
+            backgroundColor: SceneDistributionModelConstants.BACKGROUND_DEFAULT_COLOR,
+            backgroundOpacity: SceneDistributionModelConstants.BACKGROUND_DEFAULT_OPACITY,
+            backgroundDepthWrite: SceneDistributionModelConstants.BACKGROUND_DEFAULT_DEPTH_WRITE,
+            backgroundSide: SceneDistributionModelConstants.BACKGROUND_DEFAULT_SIDE
+        }
+
+        if(this.backgroundOverrideTexture)
+        {
+            this.backgroundOverrideTexture.flipY = true
+            this.backgroundOverrideTexture.needsUpdate = true
+        }
 
         if(this.resource?.scene)
         {
             this.setModel()
+            this.setupDebug()
             return
         }
 
         this.setFallback()
+        this.setupDebug()
     }
 
     setModel()
@@ -184,29 +225,102 @@ export default class SceneDistributionModel
     applyTransparentMaterialRules(mesh)
     {
         const meshName = (mesh.name || '').toLowerCase()
+        const isBackground = meshName.includes('background')
+        const isRoomEndWindow = this.hasNameInHierarchy(mesh, ROOM_END_WINDOW_NAME_TOKENS)
         const isTransparentTarget = SceneDistributionModelConstants.TRANSPARENT_EXACT_NAMES.has(meshName)
             || SceneDistributionModelConstants.TRANSPARENT_PREFIXES.some((prefix) => meshName.startsWith(prefix))
 
-        if(!isTransparentTarget)
+        if(!isTransparentTarget && !isBackground)
         {
             return
+        }
+
+        if(isBackground)
+        {
+            mesh.scale.multiplyScalar(SceneDistributionModelConstants.BACKGROUND_SCALE_MULTIPLIER)
         }
 
         const materials = Array.isArray(mesh.material)
             ? mesh.material
             : [mesh.material]
+        const nextMaterials = []
+        let shouldReplaceMaterial = false
 
         for(const material of materials)
         {
             if(!material)
             {
+                nextMaterials.push(material)
                 continue
             }
 
-            material.transparent = true
-            material.opacity = SceneDistributionModelConstants.TRANSPARENT_OPACITY
-            material.depthWrite = false
-            material.needsUpdate = true
+            let runtimeMaterial = material
+            if(isTransparentTarget && !isRoomEndWindow)
+            {
+                runtimeMaterial.transparent = true
+                runtimeMaterial.opacity = SceneDistributionModelConstants.TRANSPARENT_OPACITY
+                runtimeMaterial.depthWrite = false
+            }
+
+            if(isRoomEndWindow)
+            {
+                runtimeMaterial = new THREE.MeshPhysicalMaterial({
+                    color: new THREE.Color(this.visualSettings.roomEndWindowColor),
+                    map: material.map ?? null,
+                    alphaMap: material.alphaMap ?? null,
+                    transparent: false,
+                    opacity: 1,
+                    transmission: this.visualSettings.roomEndWindowTransmission * this.visualSettings.roomEndWindowOpacity,
+                    roughness: this.visualSettings.roomEndWindowRoughness,
+                    metalness: this.visualSettings.roomEndWindowMetalness,
+                    ior: this.visualSettings.roomEndWindowIor,
+                    thickness: this.visualSettings.roomEndWindowThickness,
+                    attenuationDistance: this.visualSettings.roomEndWindowAttenuationDistance,
+                    attenuationColor: new THREE.Color(this.visualSettings.roomEndWindowAttenuationColor),
+                    envMapIntensity: this.visualSettings.roomEndWindowEnvIntensity,
+                    side: THREE.DoubleSide,
+                    depthWrite: this.visualSettings.roomEndWindowDepthWrite,
+                    depthTest: true
+                })
+                runtimeMaterial.name = `${material.name || mesh.name || 'room_end1'}_window`
+                runtimeMaterial.userData.distributionRole = 'roomEndWindow'
+                this.roomEndWindowMaterials.push(runtimeMaterial)
+                material.dispose?.()
+                shouldReplaceMaterial = true
+            }
+
+            if(isBackground)
+            {
+                runtimeMaterial = new THREE.MeshBasicMaterial({
+                    color: runtimeMaterial.color?.clone?.() ?? new THREE.Color(this.visualSettings.backgroundColor),
+                    map: this.backgroundOverrideTexture ?? runtimeMaterial.map ?? null,
+                    alphaMap: runtimeMaterial.alphaMap ?? null,
+                    transparent: this.visualSettings.backgroundOpacity < 1,
+                    opacity: this.visualSettings.backgroundOpacity,
+                    side: this.resolveBackgroundSide(this.visualSettings.backgroundSide),
+                    depthWrite: this.visualSettings.backgroundDepthWrite,
+                    depthTest: false
+                })
+                runtimeMaterial.name = `${material.name || mesh.name || 'background'}_unlit`
+                runtimeMaterial.userData.distributionRole = 'backgroundUnlit'
+                this.backgroundMaterials.push(runtimeMaterial)
+                material.dispose?.()
+                shouldReplaceMaterial = true
+            }
+
+            runtimeMaterial.needsUpdate = true
+            nextMaterials.push(runtimeMaterial)
+        }
+
+        if(shouldReplaceMaterial)
+        {
+            mesh.material = Array.isArray(mesh.material) ? nextMaterials : nextMaterials[0]
+        }
+
+        if(isBackground)
+        {
+            mesh.castShadow = false
+            mesh.receiveShadow = false
         }
     }
 
@@ -290,6 +404,148 @@ export default class SceneDistributionModel
     isPalmTreePart(object)
     {
         return this.hasNameInHierarchy(object, SceneDistributionModelConstants.PALM_TREE_NAME_TOKENS)
+    }
+
+    resolveBackgroundSide(sideToken)
+    {
+        if(sideToken === 'front')
+        {
+            return THREE.FrontSide
+        }
+
+        if(sideToken === 'double')
+        {
+            return THREE.DoubleSide
+        }
+
+        return THREE.BackSide
+    }
+
+    applyVisualSettings()
+    {
+        const root = this.model ?? this.fallback
+        this.roomEndWindowMaterials = []
+        this.backgroundMaterials = []
+        this.debugStats.roomEndMeshCount = 0
+
+        root?.traverse?.((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            if(this.hasNameInHierarchy(child, ROOM_END_WINDOW_NAME_TOKENS))
+            {
+                this.debugStats.roomEndMeshCount++
+            }
+
+            const materials = Array.isArray(child.material)
+                ? child.material
+                : [child.material]
+
+            for(const material of materials)
+            {
+                if(!material)
+                {
+                    continue
+                }
+
+                if(material.userData?.distributionRole === 'roomEndWindow' || material.name?.endsWith?.('_window'))
+                {
+                    this.roomEndWindowMaterials.push(material)
+                }
+                else if(material.userData?.distributionRole === 'backgroundUnlit' || material.name?.endsWith?.('_unlit'))
+                {
+                    this.backgroundMaterials.push(material)
+                }
+            }
+        })
+
+        this.debugStats.roomEndMaterialCount = this.roomEndWindowMaterials.length
+        this.debugStats.backgroundMaterialCount = this.backgroundMaterials.length
+
+        for(const material of this.roomEndWindowMaterials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.color.set(this.visualSettings.roomEndWindowColor)
+            material.transparent = false
+            material.opacity = 1
+            material.transmission = this.visualSettings.roomEndWindowTransmission * this.visualSettings.roomEndWindowOpacity
+            material.roughness = this.visualSettings.roomEndWindowRoughness
+            material.metalness = this.visualSettings.roomEndWindowMetalness
+            material.ior = this.visualSettings.roomEndWindowIor
+            material.thickness = this.visualSettings.roomEndWindowThickness
+            material.envMapIntensity = this.visualSettings.roomEndWindowEnvIntensity
+            material.attenuationDistance = this.visualSettings.roomEndWindowAttenuationDistance
+            material.attenuationColor.set(this.visualSettings.roomEndWindowAttenuationColor)
+            material.depthWrite = this.visualSettings.roomEndWindowDepthWrite
+            material.needsUpdate = true
+        }
+
+        const backgroundSide = this.resolveBackgroundSide(this.visualSettings.backgroundSide)
+        for(const material of this.backgroundMaterials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.color.set(this.visualSettings.backgroundColor)
+            material.opacity = this.visualSettings.backgroundOpacity
+            material.transparent = this.visualSettings.backgroundOpacity < 1
+            material.depthWrite = this.visualSettings.backgroundDepthWrite
+            material.depthTest = false
+            material.side = backgroundSide
+            material.needsUpdate = true
+        }
+    }
+
+    setupDebug()
+    {
+        if(!this.debug?.isDebugEnabled || this.debugFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder('Distribution vitre/background', {
+            parent: this.debugParentFolder || this.debug.ui,
+            expanded: false
+        })
+
+        this.debug.addBinding(this.debugFolder, this.debugStats, 'roomEndMeshCount', { label: 'room_end1 meshes', readonly: true })
+        this.debug.addBinding(this.debugFolder, this.debugStats, 'roomEndMaterialCount', { label: 'room_end1 materials', readonly: true })
+        this.debug.addBinding(this.debugFolder, this.debugStats, 'backgroundMaterialCount', { label: 'background materials', readonly: true })
+
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowColor', { label: 'room_end1 couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowOpacity', { label: 'room_end1 opacite (visuel)', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowTransmission', { label: 'room_end1 transmission', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowRoughness', { label: 'room_end1 flou', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowMetalness', { label: 'room_end1 metal', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowIor', { label: 'room_end1 ior', min: 1, max: 2.4, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowThickness', { label: 'room_end1 epaisseur', min: 0, max: 1, step: 0.005 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowEnvIntensity', { label: 'room_end1 reflection', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowAttenuationDistance', { label: 'room_end1 attenuation dist', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowAttenuationColor', { label: 'room_end1 attenuation color', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowDepthWrite', { label: 'room_end1 depthWrite' }).on('change', () => this.applyVisualSettings())
+
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundColor', { label: 'background couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundOpacity', { label: 'background opacite', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundDepthWrite', { label: 'background depthWrite' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundSide', {
+            label: 'background side',
+            options: {
+                Back: 'back',
+                Front: 'front',
+                Double: 'double'
+            }
+        }).on('change', () => this.applyVisualSettings())
+
+        this.applyVisualSettings()
     }
 
     removeStaleRoots()
@@ -493,6 +749,9 @@ export default class SceneDistributionModel
 
     destroy()
     {
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
+
         if(this.model)
         {
             this.scene.remove(this.model)
@@ -512,6 +771,8 @@ export default class SceneDistributionModel
         this.groundMeshes = null
         this.vanneMeshes = null
         this.tubeWaterMeshes = null
+        this.roomEndWindowMaterials = null
+        this.backgroundMaterials = null
         this.spawnPosition = null
         this.worldBounds = null
         this.boundaryBox = null

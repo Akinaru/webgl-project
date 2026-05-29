@@ -48,7 +48,9 @@ export default class SceneDistributionWorld
 
         this.setDebug()
         this.environment = new MapEnvironment()
-        this.distributionModel = new SceneDistributionModel()
+        this.distributionModel = new SceneDistributionModel({
+            debugParentFolder: this.debugFolder
+        })
         this.exitDoors = new SceneDistributionDoorController({
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder

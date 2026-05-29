@@ -48,5 +48,10 @@ export default [
         name: 'recuperationWaitingScreenTexture',
         type: 'texture',
         path: 'textures/recuperation/screen/waiting.png'
+    },
+    {
+        name: 'distributionBackgroundResultTexture',
+        type: 'exrTexture',
+        path: 'models/scenes/distribution/textures/background_resultat.exr'
     }
 ]
