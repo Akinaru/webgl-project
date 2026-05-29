@@ -360,13 +360,14 @@ export default class MapWorld
             return
         }
 
-        if(this.experience.sound?.isChannelPlaying?.(MapWorldConstants.MAP_AMBIENT_CHANNEL))
+        if(this.experience.sound?.isSoundPlaying?.(MapWorldConstants.MAP_AMBIENT_SOUND_KEY))
         {
             return
         }
 
+        this.experience.sound?.stopChannel?.('music')
         this.experience.sound?.play?.(MapWorldConstants.MAP_AMBIENT_SOUND_KEY, {
-            channel: MapWorldConstants.MAP_AMBIENT_CHANNEL
+            channel: 'music'
         })
     }
 

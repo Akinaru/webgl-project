@@ -181,13 +181,14 @@ export default class SceneDistributionWorld
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isChannelPlaying?.(DISTRIBUTION_AMBIENT_CHANNEL))
+        if(this.experience.sound?.isSoundPlaying?.(DISTRIBUTION_AMBIENT_SOUND_KEY))
         {
             return
         }
 
+        this.experience.sound?.stopChannel?.('music')
         this.experience.sound?.play?.(DISTRIBUTION_AMBIENT_SOUND_KEY, {
-            channel: DISTRIBUTION_AMBIENT_CHANNEL
+            channel: 'music'
         })
     }
 

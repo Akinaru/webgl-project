@@ -151,7 +151,7 @@ export default class SceneRecyclageWorld
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isChannelPlaying?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL))
+        if(this.experience.sound?.isAnySoundPlaying?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEYS))
         {
             return
         }
@@ -160,13 +160,15 @@ export default class SceneRecyclageWorld
             SceneRecyclageWorldConstants.RECYCLAGE_MUSIC_STORAGE_KEY,
             SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEYS
         )
+
         if(!musicKey)
         {
             return
         }
 
+        this.experience.sound?.stopChannel?.('music')
         this.experience.sound?.play?.(musicKey, {
-            channel: SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL
+            channel: 'music'
         })
     }
 

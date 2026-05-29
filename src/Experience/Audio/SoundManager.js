@@ -83,7 +83,9 @@ export default class SoundManager
         const voices = Array.from(this.activeVoices.values())
         for(const voice of voices)
         {
-            if(voice.channel === 'dialogue') continue
+            if(voice.channel === 'dialogue' || voice.isStopping) continue
+
+            voice.isStopping = true
             const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
             const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
             if(!handledAsync)
@@ -634,13 +636,14 @@ export default class SoundManager
             pauseGroup,
             sourceType,
             isPaused: false,
+            isStopping: false,
             startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : null,
             expectedDurationMs: Number.isFinite(expectedDurationMs) ? expectedDurationMs : null,
             getProgress: typeof getProgress === 'function' ? getProgress : null,
             defaultFadeOutMs,
             pause: typeof pause === 'function' ? pause : null,
             resume: typeof resume === 'function' ? resume : null,
-            stop,
+            stop: typeof stop === 'function' ? stop : null,
             cleanup,
             setVolume: typeof setVolume === 'function' ? setVolume : null
         })
@@ -675,11 +678,12 @@ export default class SoundManager
 
         for(const voice of voices)
         {
-            if(voice.channel !== channel)
+            if(voice.channel !== channel || voice.isStopping)
             {
                 continue
             }
 
+            voice.isStopping = true
             const fadeOutMs = Number.isFinite(voice.defaultFadeOutMs) ? voice.defaultFadeOutMs : 0
             const handledAsync = Boolean(voice.stop?.({ fadeOutMs }))
             if(!handledAsync)
@@ -701,7 +705,43 @@ export default class SoundManager
 
         for(const voice of this.activeVoices.values())
         {
-            if(voice.channel === channel)
+            if(voice.channel === channel && !voice.isStopping)
+            {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    isSoundPlaying(soundName)
+    {
+        if(typeof soundName !== 'string' || soundName.trim() === '')
+        {
+            return false
+        }
+
+        for(const voice of this.activeVoices.values())
+        {
+            if(voice.soundName === soundName && !voice.isStopping)
+            {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    isAnySoundPlaying(soundNames = [])
+    {
+        if(!Array.isArray(soundNames) || soundNames.length === 0)
+        {
+            return false
+        }
+
+        for(const voice of this.activeVoices.values())
+        {
+            if(soundNames.includes(voice.soundName) && !voice.isStopping)
             {
                 return true
             }
