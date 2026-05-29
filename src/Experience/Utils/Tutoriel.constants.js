@@ -20,3 +20,14 @@ export const TUTORIAL_STATUS = {
     ACTIVE: 'active',
     FINISHED: 'finished'
 }
+
+export const TUTORIAL_TARGET_PROGRESS = Object.freeze({
+    LOOK: 2200,
+    MOVE_FORWARD: 1100,
+    MOVE_BACKWARD: 1100,
+    MOVE_LEFT: 1100,
+    MOVE_RIGHT: 1100
+})
+
+export const TUTORIAL_MOUSE_PROGRESS_MULTIPLIER = 0.35
+export const TUTORIAL_STEP_EXIT_ANIMATION_MS = 360

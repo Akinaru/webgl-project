@@ -817,9 +817,9 @@ export function applyVisualScale()
 
 
 /**
- * Met à jour le contexte de scène (target, rails, ground meshes).
+ * Met à jour le contexte de scène (target, rails, ground/collision meshes).
  */
-export function setSceneContext({ scene = null, groundMeshes = null, rails = null, target = null } = {})
+export function setSceneContext({ scene = null, groundMeshes = null, collisionMeshes = null, rails = null, target = null } = {})
 {
     if(scene && scene !== this.scene)
     {
@@ -849,6 +849,11 @@ export function setSceneContext({ scene = null, groundMeshes = null, rails = nul
     if(Array.isArray(groundMeshes))
     {
         this.follow.groundMeshes = groundMeshes
+    }
+
+    if(Array.isArray(collisionMeshes))
+    {
+        this.follow.collisionMeshes = collisionMeshes
     }
 
     if(rails)

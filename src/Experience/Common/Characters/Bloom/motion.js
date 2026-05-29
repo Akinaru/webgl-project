@@ -67,6 +67,7 @@ export function updateMotion(deltaSeconds)
 export function updateDirectFollowMotion(deltaSeconds, bobOffset)
 {
     this.previousAnchorPosition.copy(this.railAnchorPosition)
+    this.collisionResolvedAnchor.copy(this.railAnchorPosition)
     const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
 
     // On définit une distance de confort autour du joueur
@@ -82,8 +83,11 @@ export function updateDirectFollowMotion(deltaSeconds, bobOffset)
         const moveSpeed = this.rails.settings.speed
         const step = moveSpeed * deltaSeconds
         toTarget.normalize().multiplyScalar(Math.min(step, distance - comfortDistance))
-        this.railAnchorPosition.add(toTarget)
+        this.collisionResolvedAnchor.add(toTarget)
     }
+
+    this.resolveCollisionAtAnchor(this.previousAnchorPosition, this.collisionResolvedAnchor)
+    this.railAnchorPosition.copy(this.collisionResolvedAnchor)
 
     const fallbackGroundY = this.railAnchorPosition.y
     const groundY = this.resolveGroundYAt(
@@ -114,12 +118,16 @@ export function updateDirectFollowMotion(deltaSeconds, bobOffset)
 export function updateRailMotion(deltaSeconds, bobOffset)
 {
     this.previousAnchorPosition.copy(this.railAnchorPosition)
+    this.collisionResolvedAnchor.copy(this.railAnchorPosition)
 
     const didMove = this.rails.moveAnchorTowards(
-        this.railAnchorPosition,
+        this.collisionResolvedAnchor,
         this.followTargetPosition,
         deltaSeconds
     )
+
+    this.resolveCollisionAtAnchor(this.previousAnchorPosition, this.collisionResolvedAnchor)
+    this.railAnchorPosition.copy(this.collisionResolvedAnchor)
 
     const fallbackGroundY = this.railAnchorPosition.y
     const groundY = this.resolveGroundYAt(
@@ -494,6 +502,43 @@ export function resolveGroundYAt(x, z, fallbackY = 0)
     return fallbackY
 }
 
+/**
+ * Empêche Bloom de traverser les meshes de collision transmis par la scène.
+ */
+export function resolveCollisionAtAnchor(previousAnchor, nextAnchor)
+{
+    const collisionMeshes = this.follow.collisionMeshes
+    if(!Array.isArray(collisionMeshes) || collisionMeshes.length === 0)
+    {
+        return nextAnchor
+    }
+
+    this.collisionRayDirection.subVectors(nextAnchor, previousAnchor)
+    const distance = this.collisionRayDirection.length()
+    if(distance <= 1e-5)
+    {
+        return nextAnchor
+    }
+
+    this.collisionRayDirection.normalize()
+    this.collisionRayOrigin.set(previousAnchor.x, previousAnchor.y + this.baseY, previousAnchor.z)
+    this.collisionRaycaster.set(this.collisionRayOrigin, this.collisionRayDirection)
+    this.collisionRaycaster.near = 0
+    this.collisionRaycaster.far = distance + BloomConstants.BLOOM_COLLISION_RAY_PADDING
+
+    const hits = this.collisionRaycaster.intersectObjects(collisionMeshes, false)
+    const hit = hits.find((entry) => entry?.distance > 1e-4)
+    if(!hit)
+    {
+        return nextAnchor
+    }
+
+    const safeDistance = Math.max(0, hit.distance - BloomConstants.BLOOM_COLLISION_SAFE_DISTANCE)
+    nextAnchor.x = previousAnchor.x + (this.collisionRayDirection.x * safeDistance)
+    nextAnchor.z = previousAnchor.z + (this.collisionRayDirection.z * safeDistance)
+    return nextAnchor
+}
+
 
 /**
  * Anime procéduralement les bras en complément de l animation.
@@ -547,4 +592,3 @@ export function applyAnimationToSecondArm()
         targetNode.quaternion.copy(targetBase).multiply(this.tmpArmDeltaQuaternion)
     }
 }
-

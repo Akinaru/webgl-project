@@ -32,7 +32,8 @@ const INITIAL_OBJECTIVE_CONTEXT = Object.freeze({
 })
 const POST_TUTORIAL_OBJECTIVE_KEY = 'intro_follow_bloom'
 const INTRO_DIALOGUE_END_EVENT = 'end.experienceIntroObjective'
-const TUTORIAL_START_DELAY_MS = 5000
+const TUTORIAL_START_DELAY_MS = 8000
+const TUTORIAL_READY_POLL_INTERVAL_MS = 100
 
 export default class Experience
 {
@@ -103,6 +104,7 @@ export default class Experience
         this.menu = new Menu(this)
         this.hasStartedIntroDialogue = false
         this.tutorialStartTimeoutId = null
+        this.tutorialReadyPollTimeoutId = null
         this.onIntroDialogueEnd = ({ key } = {}) =>
         {
             if(key !== this.dialogueManager?.repository?.getTutorialCompletedDialogueKey?.())
@@ -133,7 +135,6 @@ export default class Experience
                 return
             }
 
-            this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
             this.scheduleTutorialStart()
         })
 
@@ -166,6 +167,7 @@ export default class Experience
     destroy()
     {
         this.clearTutorialStartTimeout()
+        this.clearTutorialReadyPollTimeout()
         this.time.off(`${EventEnum.TICK}.experience`)
 
         this.sceneManager.destroy?.()
@@ -219,9 +221,39 @@ export default class Experience
     scheduleTutorialStart()
     {
         this.clearTutorialStartTimeout()
+
+        if(this.isTutorialRuntimeReady())
+        {
+            this.startTutorialAfterDelay()
+            return
+        }
+
+        this.clearTutorialReadyPollTimeout()
+        this.tutorialReadyPollTimeoutId = window.setTimeout(() =>
+        {
+            this.tutorialReadyPollTimeoutId = null
+            this.scheduleTutorialStart()
+        }, TUTORIAL_READY_POLL_INTERVAL_MS)
+    }
+
+    isTutorialRuntimeReady()
+    {
+        if(!this.resources?.isReady)
+        {
+            return false
+        }
+
+        const player = this.sceneManager?.currentScene?.world?.player
+        return Boolean(player)
+    }
+
+    startTutorialAfterDelay()
+    {
+        this.clearTutorialStartTimeout()
         this.tutorialStartTimeoutId = window.setTimeout(() =>
         {
             this.tutorialStartTimeoutId = null
+            this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
             this.tutoriel?.start?.()
         }, TUTORIAL_START_DELAY_MS)
     }
@@ -237,6 +269,17 @@ export default class Experience
         this.tutorialStartTimeoutId = null
     }
 
+    clearTutorialReadyPollTimeout()
+    {
+        if(this.tutorialReadyPollTimeoutId === null)
+        {
+            return
+        }
+
+        window.clearTimeout(this.tutorialReadyPollTimeoutId)
+        this.tutorialReadyPollTimeoutId = null
+    }
+
     handleTutorialFinished = ({ forceStartDialogue = false } = {}) =>
     {
         if(this.hasStartedIntroDialogue)
@@ -250,6 +293,7 @@ export default class Experience
         }
 
         this.clearTutorialStartTimeout()
+        this.clearTutorialReadyPollTimeout()
         this.hasStartedIntroDialogue = true
         this.setTutorialCompleted(true)
         this.objectiveManager?.completeCurrentObjective?.()

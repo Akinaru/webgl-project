@@ -27,6 +27,11 @@ const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
 const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_2'
 const RECUPERATION_TEST_WATER_SOUND = 'recuperationTestWaterFalling'
 const RECUPERATION_TEST_WATER_CHANNEL = 'recuperationTestWater'
+const RECUPERATION_DIALOGUE_KEYS = new Set([
+    RECUPERATION_ARRIVAL_DIALOGUE_KEY,
+    RECUPERATION_VALIDATION_DIALOGUE_KEY,
+    RECUPERATION_TUBE_ROOM_DIALOGUE_KEY
+])
 
 export default class SceneRecuperationWorld
 {
@@ -46,6 +51,32 @@ export default class SceneRecuperationWorld
         this.hasStartedRecuperationDialogue = false
         this.hasStartedArrivalDialogue = false
         this.hasStartedValidationDialogue = false
+        this.activeRecuperationDialogueCount = 0
+        this.onDialogueStart = ({ key } = {}) =>
+        {
+            if(!RECUPERATION_DIALOGUE_KEYS.has(key))
+            {
+                return
+            }
+
+            this.activeRecuperationDialogueCount += 1
+            this.experience.sound?.setMusicRuntimeVolumeScale?.(SceneRecuperationWorldConstants.RECUPERATION_DIALOGUE_MUSIC_DUCK_SCALE)
+        }
+        this.onDialogueEndForMusicDuck = ({ key } = {}) =>
+        {
+            if(!RECUPERATION_DIALOGUE_KEYS.has(key))
+            {
+                return
+            }
+
+            this.activeRecuperationDialogueCount = Math.max(0, this.activeRecuperationDialogueCount - 1)
+            if(this.activeRecuperationDialogueCount <= 0)
+            {
+                this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
+            }
+        }
+        this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
+        this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
 
         if(this.resources.isReady)
         {
@@ -146,6 +177,7 @@ export default class SceneRecuperationWorld
             this.experience.bloom.setSceneContext({
                 scene: this.experience.scene,
                 groundMeshes: this.recuperationModel.getGroundMeshes?.() ?? [],
+                collisionMeshes: this.recuperationModel.getCollisionMeshes?.() ?? [],
                 rails: [],
                 target: this.player
             })
@@ -695,6 +727,9 @@ export default class SceneRecuperationWorld
 
     destroy()
     {
+        this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
+        this.experience.dialogueManager?.off?.('start.recuperationMusicDuck')
+        this.experience.dialogueManager?.off?.('end.recuperationMusicDuck')
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)

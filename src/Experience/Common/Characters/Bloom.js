@@ -74,6 +74,7 @@ constructor({
         getTargetPosition: typeof follow.getTargetPosition === 'function' ? follow.getTargetPosition : null,
         enabled: Boolean(follow.target || follow.getTargetPosition),
         groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
+        collisionMeshes: Array.isArray(follow.collisionMeshes) ? follow.collisionMeshes : [],
         groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65
     }
     this.followOverride = {
@@ -110,7 +111,11 @@ constructor({
     }
 
     this.groundRaycaster = new THREE.Raycaster()
+    this.collisionRaycaster = new THREE.Raycaster()
     this.groundNormal = new THREE.Vector3()
+    this.collisionRayDirection = new THREE.Vector3()
+    this.collisionRayOrigin = new THREE.Vector3()
+    this.collisionResolvedAnchor = new THREE.Vector3()
 
     this.locomotionSpeed = 0
     this.walkCyclePhase = 0

@@ -15,3 +15,5 @@ export const WALKING_SAND_PLAYBACK_MULTIPLIER = 2.0
 export const WALKING_STONE_PLAYBACK_MULTIPLIER = 1.2
 export const MAP_AMBIENT_CHANNEL = 'mapAmbience'
 export const MAP_AMBIENT_SOUND_KEY = 'mapMusicIntro'
+export const MAP_INTRO_DIALOGUE_KEY = 'intro'
+export const MAP_INTRO_MUSIC_DUCK_SCALE = 0.35
