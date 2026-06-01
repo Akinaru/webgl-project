@@ -41,6 +41,7 @@ const RECUPERATION_DIALOGUE_KEYS = new Set([
     RECUPERATION_VALIDATION_DIALOGUE_KEY,
     RECUPERATION_TUBE_ROOM_DIALOGUE_KEY
 ])
+const RECUPERATION_BLOOM_SOL1_DIALOGUE_NODES = new Set(SceneRecuperationWorldConstants.RECUPERATION_BLOOM_DIALOGUE_NODE_KEYS)
 
 export default class SceneRecuperationWorld
 {
@@ -62,6 +63,8 @@ export default class SceneRecuperationWorld
         this.hasStartedArrivalDialogue = false
         this.hasStartedValidationDialogue = false
         this.activeRecuperationDialogueCount = 0
+        this.selectionDialoguePlayedByMaterialKey = new Set()
+        this.hasPlayedFirstTestResultDialogue = false
         this.onDialogueStart = ({ key } = {}) =>
         {
             if(!RECUPERATION_DIALOGUE_KEYS.has(key))
@@ -87,6 +90,26 @@ export default class SceneRecuperationWorld
         }
         this.pendingReturnToMapAfterDialogue = false
         this.hasSwitchedCeilingLightRooms = false
+        this.bloomSol1HoldTimeoutId = null
+        this.bloomPreviousFollowTarget = null
+        this.bloomTemporaryTarget = null
+        this.isBloomMovingToSol1 = false
+        this.bloomSol1ArrivalDistanceSq = SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_ARRIVAL_DISTANCE * SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_ARRIVAL_DISTANCE
+        this.bloomSol1LastDistanceSq = Infinity
+        this.bloomSol1LastProgressAtMs = 0
+        this.bloomSol1StartAtMs = 0
+        this.bloomPreviousSpeed = null
+        this.bloomPreviousCollisionMeshes = null
+        this.hasBloomSol1CollisionBypass = false
+        this.onDialogueStateForBloomSol1 = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RECUPERATION_VALIDATION_DIALOGUE_KEY || !RECUPERATION_BLOOM_SOL1_DIALOGUE_NODES.has(nodeId))
+            {
+                return
+            }
+
+            this.startBloomSol1TemporaryMove()
+        }
         this.onTubeCompletionDialogueEnd = ({ key } = {}) =>
         {
             if(key !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || this.pendingReturnToMapAfterDialogue !== true)
@@ -99,6 +122,7 @@ export default class SceneRecuperationWorld
         }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
+        this.experience.dialogueManager?.on?.('state.recuperationBloomSol1', this.onDialogueStateForBloomSol1)
         this.experience.dialogueManager?.on?.('end.recuperationTubeCompletion', this.onTubeCompletionDialogueEnd)
 
         if(this.resources.isReady)
@@ -111,6 +135,161 @@ export default class SceneRecuperationWorld
         {
             this.setUp()
         })
+    }
+
+    startBloomSol1TemporaryMove()
+    {
+        const bloom = this.experience?.bloom
+        const bloomFollow = bloom?.follow
+        const bloomModel = bloom?.model
+        if(!bloom || !bloomFollow || !bloomModel)
+        {
+            return
+        }
+
+        const sol1Bounds = this.recuperationModel?.getBoundsForNameTokens?.(
+            [SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_MESH_TOKEN],
+            { exact: true }
+        )
+        if(!sol1Bounds)
+        {
+            return
+        }
+
+        const sol1Center = sol1Bounds.getCenter(new THREE.Vector3())
+        if(!this.bloomTemporaryTarget)
+        {
+            this.bloomTemporaryTarget = {
+                position: new THREE.Vector3()
+            }
+        }
+        this.bloomTemporaryTarget.position.set(sol1Center.x, sol1Center.y, sol1Center.z)
+
+        if(!this.bloomPreviousFollowTarget)
+        {
+            this.bloomPreviousFollowTarget = bloomFollow.target ?? null
+        }
+        if(this.bloomPreviousSpeed === null)
+        {
+            this.bloomPreviousSpeed = bloom.rails?.settings?.speed ?? null
+        }
+        if(this.bloomPreviousCollisionMeshes === null)
+        {
+            this.bloomPreviousCollisionMeshes = Array.isArray(bloomFollow.collisionMeshes)
+                ? [...bloomFollow.collisionMeshes]
+                : []
+        }
+
+        bloomFollow.target = this.bloomTemporaryTarget
+        bloomFollow.enabled = true
+        bloom.clearFollowOverride?.()
+        if(Number.isFinite(this.bloomPreviousSpeed) && bloom.rails?.settings)
+        {
+            bloom.rails.settings.speed = Math.max(0.4, this.bloomPreviousSpeed * SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_SPEED_SCALE)
+        }
+
+        const distanceToTargetSq = bloomModel.position.distanceToSquared(this.bloomTemporaryTarget.position)
+        const nowMs = this.experience.time.elapsed ?? 0
+        this.isBloomMovingToSol1 = true
+        this.bloomSol1StartAtMs = nowMs
+        this.bloomSol1LastProgressAtMs = nowMs
+        this.bloomSol1LastDistanceSq = distanceToTargetSq
+        this.hasBloomSol1CollisionBypass = false
+
+        if(this.bloomSol1HoldTimeoutId !== null)
+        {
+            window.clearTimeout(this.bloomSol1HoldTimeoutId)
+            this.bloomSol1HoldTimeoutId = null
+        }
+    }
+
+    updateBloomSol1TemporaryMove()
+    {
+        if(!this.isBloomMovingToSol1)
+        {
+            return
+        }
+
+        const bloom = this.experience?.bloom
+        const bloomModel = bloom?.model
+        if(!bloom || !bloomModel || !this.bloomTemporaryTarget?.position)
+        {
+            this.finishBloomSol1TemporaryMove()
+            return
+        }
+
+        const nowMs = this.experience.time.elapsed ?? 0
+        const currentDistanceSq = bloomModel.position.distanceToSquared(this.bloomTemporaryTarget.position)
+        if(currentDistanceSq <= this.bloomSol1ArrivalDistanceSq)
+        {
+            this.isBloomMovingToSol1 = false
+            this.bloomSol1HoldTimeoutId = window.setTimeout(() =>
+            {
+                this.bloomSol1HoldTimeoutId = null
+                this.finishBloomSol1TemporaryMove()
+            }, SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_HOLD_MS)
+            return
+        }
+
+        if(currentDistanceSq + 1e-5 < this.bloomSol1LastDistanceSq)
+        {
+            this.bloomSol1LastDistanceSq = currentDistanceSq
+            this.bloomSol1LastProgressAtMs = nowMs
+            return
+        }
+
+        const noProgressDurationMs = nowMs - this.bloomSol1LastProgressAtMs
+        if(noProgressDurationMs < SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_STUCK_CHECK_DELAY_MS || this.hasBloomSol1CollisionBypass)
+        {
+            return
+        }
+
+        const progressSq = Math.max(0, this.bloomSol1LastDistanceSq - currentDistanceSq)
+        const hasMeaningfulProgress = progressSq >= (SceneRecuperationWorldConstants.RECUPERATION_BLOOM_SOL1_STUCK_MIN_PROGRESS ** 2)
+        if(hasMeaningfulProgress)
+        {
+            this.bloomSol1LastProgressAtMs = nowMs
+            this.bloomSol1LastDistanceSq = currentDistanceSq
+            return
+        }
+
+        if(bloom.follow)
+        {
+            bloom.follow.collisionMeshes = []
+            this.hasBloomSol1CollisionBypass = true
+            this.bloomSol1LastProgressAtMs = nowMs
+            this.bloomSol1LastDistanceSq = currentDistanceSq
+        }
+    }
+
+    finishBloomSol1TemporaryMove()
+    {
+        this.isBloomMovingToSol1 = false
+        const bloom = this.experience?.bloom
+        if(!bloom?.follow)
+        {
+            this.bloomPreviousFollowTarget = null
+            this.bloomPreviousSpeed = null
+            this.bloomPreviousCollisionMeshes = null
+            this.hasBloomSol1CollisionBypass = false
+            return
+        }
+
+        bloom.follow.target = this.bloomPreviousFollowTarget ?? this.player ?? null
+        bloom.follow.enabled = Boolean(bloom.follow.target || bloom.follow.getTargetPosition)
+        if(Number.isFinite(this.bloomPreviousSpeed) && bloom.rails?.settings)
+        {
+            bloom.rails.settings.speed = this.bloomPreviousSpeed
+        }
+        if(this.bloomPreviousCollisionMeshes)
+        {
+            bloom.follow.collisionMeshes = [...this.bloomPreviousCollisionMeshes]
+        }
+
+        this.bloomPreviousFollowTarget = null
+        this.bloomPreviousSpeed = null
+        this.bloomPreviousCollisionMeshes = null
+        this.hasBloomSol1CollisionBypass = false
     }
 
     setUp()
@@ -286,6 +465,7 @@ export default class SceneRecuperationWorld
         this.collisionDebug?.update?.()
         this.materiau?.update(delta)
         this.updateMaterialTesting(delta)
+        this.updateBloomSol1TemporaryMove()
         this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
         this.checkWallCrossTeleport()
@@ -347,10 +527,7 @@ export default class SceneRecuperationWorld
 
             if(nextKey && this.experience?.isAutoFlowEnabled?.() !== false)
             {
-                this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
-                    phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
-                    materialKey: nextKey
-                })
+                this.startSelectionDialogueOncePerMaterial(nextKey)
             }
         }
 
@@ -416,11 +593,37 @@ export default class SceneRecuperationWorld
 
         if(this.currentMaterialSelection?.key && this.experience?.isAutoFlowEnabled?.() !== false)
         {
-            this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
-                phase: RECUPERATION_DIALOGUE_PHASES.TEST_RESULT,
-                materialKey: this.currentMaterialSelection.key
-            })
+            this.startFirstTestResultDialogueOnce(this.currentMaterialSelection.key)
         }
+    }
+
+    startSelectionDialogueOncePerMaterial(materialKey)
+    {
+        const normalizedMaterialKey = String(materialKey || '').trim().toLowerCase()
+        if(normalizedMaterialKey === '' || this.selectionDialoguePlayedByMaterialKey.has(normalizedMaterialKey))
+        {
+            return
+        }
+
+        this.selectionDialoguePlayedByMaterialKey.add(normalizedMaterialKey)
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
+            materialKey: normalizedMaterialKey
+        })
+    }
+
+    startFirstTestResultDialogueOnce(materialKey)
+    {
+        if(this.hasPlayedFirstTestResultDialogue)
+        {
+            return
+        }
+
+        this.hasPlayedFirstTestResultDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.TEST_RESULT,
+            materialKey: String(materialKey || '').trim().toLowerCase()
+        })
     }
 
     setLightDebugBindings()
@@ -860,6 +1063,7 @@ export default class SceneRecuperationWorld
         this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
         this.experience.dialogueManager?.off?.('start.recuperationMusicDuck')
         this.experience.dialogueManager?.off?.('end.recuperationMusicDuck')
+        this.experience.dialogueManager?.off?.('state.recuperationBloomSol1')
         this.experience.dialogueManager?.off?.('end.recuperationTubeCompletion')
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
@@ -870,6 +1074,12 @@ export default class SceneRecuperationWorld
             window.clearTimeout(this.returnToRecyclageTimeoutId)
             this.returnToRecyclageTimeoutId = null
         }
+        if(this.bloomSol1HoldTimeoutId !== null)
+        {
+            window.clearTimeout(this.bloomSol1HoldTimeoutId)
+            this.bloomSol1HoldTimeoutId = null
+        }
+        this.finishBloomSol1TemporaryMove()
         this.onArrivalDialogueEnd = null
 
         if(this.player)
@@ -993,6 +1203,8 @@ export default class SceneRecuperationWorld
         this.isExitTeleportActive = false
         this.isReturningToMap = false
         this.returnToRecyclageTimeoutId = null
+        this.selectionDialoguePlayedByMaterialKey?.clear?.()
+        this.hasPlayedFirstTestResultDialogue = false
         this.debugFolder?.dispose?.()
         this.debugFolder = null
 

@@ -156,7 +156,7 @@
   "recuperationFinalTubeComplete": {
     "label": "Recuperation final tube complete",
     "resourceKey": "",
-    "fallbackPath": "sounds/dialogues/recuperation_1/recuperation_016.mp3",
+    "fallbackPath": "sounds/dialogues/recuperation_2/recuperation_016.wav",
     "volume": 1,
     "playbackRate": 1,
     "channel": "dialogue",

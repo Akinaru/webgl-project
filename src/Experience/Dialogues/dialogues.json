@@ -238,29 +238,51 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Tu as sélectionné la carapace de scarabée.",
-          "next": "recuperation_008",
+          "next": "recuperation_1_selection_tip_branch",
           "actions": []
         },
         "recuperation_006": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Tu as sélectionné le verre.",
-          "next": "recuperation_008",
+          "next": "recuperation_1_selection_tip_branch",
           "actions": []
         },
         "recuperation_007": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Tu as sélectionné la végétation.",
-          "next": "recuperation_008",
+          "next": "recuperation_1_selection_tip_branch",
           "actions": []
+        },
+        "recuperation_1_selection_tip_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "flagEquals",
+                  "key": "dialogue.recuperation.selection.tipPlayed",
+                  "value": true
+                }
+              ],
+              "next": "recuperation_validation_end"
+            }
+          ],
+          "fallbackNext": "recuperation_008"
         },
         "recuperation_008": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Tu peux faire une simulation de pluie pour voir comment ce matériau récupère l’eau.",
           "next": "recuperation_validation_end",
-          "actions": []
+          "actions": [
+            {
+              "type": "setFlag",
+              "key": "dialogue.recuperation.selection.tipPlayed",
+              "value": true
+            }
+          ]
         },
         "recuperation_009": {
           "type": "line",
