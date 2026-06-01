@@ -64,6 +64,20 @@ export default class DialogueManager extends EventEmitter
         this.flags[key] = value
     }
 
+    getFlagsSnapshot()
+    {
+        return {
+            ...this.flags
+        }
+    }
+
+    setFlagsSnapshot(flags = {})
+    {
+        this.flags = (flags && typeof flags === 'object')
+            ? { ...flags }
+            : {}
+    }
+
     getFlag(key)
     {
         return this.flags[key]
@@ -590,5 +604,29 @@ export default class DialogueManager extends EventEmitter
         this.debugFolder?.dispose?.()
         this.queue.length = 0
         this.state = this.createEmptyState()
+    }
+
+    resetRuntimeProgress()
+    {
+        this.experience?.sound?.stopDialogue?.()
+        this.clearAutoAdvanceTimers()
+        this.queue.length = 0
+        this.state = this.createEmptyState()
+        this.flags = {}
+        this.isPaused = false
+        this.emitState()
+    }
+
+    restoreRuntimeSnapshot(snapshot = {})
+    {
+        this.experience?.sound?.stopDialogue?.()
+        this.clearAutoAdvanceTimers()
+        this.queue.length = 0
+        this.state = this.createEmptyState()
+        this.flags = (snapshot?.flags && typeof snapshot.flags === 'object')
+            ? { ...snapshot.flags }
+            : {}
+        this.isPaused = false
+        this.emitState()
     }
 }

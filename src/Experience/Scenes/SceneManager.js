@@ -62,25 +62,30 @@ export default class SceneManager
         this.sceneFactories.set(key, factory)
     }
 
-    switchTo(key)
+    switchTo(key, { force = false } = {})
     {
-        if(this.currentKey === key)
+        if(this.currentKey === key && force !== true)
         {
             return
         }
 
         if(this.isTransitioning)
         {
-            this.pendingSwitchKey = key
+            this.pendingSwitchKey = {
+                key,
+                force: force === true
+            }
             return
         }
 
-        this.performSceneSwitch(key)
+        this.performSceneSwitch(key, {
+            force: force === true
+        })
     }
 
-    async performSceneSwitch(key)
+    async performSceneSwitch(key, { force = false } = {})
     {
-        if(this.currentKey === key)
+        if(this.currentKey === key && force !== true)
         {
             return
         }
@@ -167,6 +172,7 @@ export default class SceneManager
 
         this.currentScene.enter?.(previousKey)
         this.currentScene.resize?.()
+        this.experience.captureSceneStartCheckpoint?.(key)
 
         // On complète la transition (ce qui cache l'overlay)
         await this.completeTransitionOverlay({
@@ -174,11 +180,13 @@ export default class SceneManager
         })
         this.isTransitioning = false
 
-        if(this.pendingSwitchKey && this.pendingSwitchKey !== this.currentKey)
+        if(this.pendingSwitchKey && this.pendingSwitchKey.key !== this.currentKey)
         {
-            const nextKey = this.pendingSwitchKey
+            const nextSwitch = this.pendingSwitchKey
             this.pendingSwitchKey = null
-            this.switchTo(nextKey)
+            this.switchTo(nextSwitch.key, {
+                force: nextSwitch.force === true
+            })
             return
         }
 

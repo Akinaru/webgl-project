@@ -121,6 +121,27 @@ export default class ActionTracker extends EventEmitter
         this.trigger('change', [this.getState()])
     }
 
+    restoreState(state = {})
+    {
+        const nextDoneById = Object.create(null)
+        const rawDoneById = state?.doneById
+        if(rawDoneById && typeof rawDoneById === 'object')
+        {
+            for(const [actionId, isDone] of Object.entries(rawDoneById))
+            {
+                nextDoneById[actionId] = isDone === true
+            }
+        }
+
+        const rawTimeline = Array.isArray(state?.timeline) ? state.timeline : []
+        this.doneById = nextDoneById
+        this.timeline = rawTimeline.map((item) => ({
+            ...item
+        }))
+        this.updateDebugState(this.timeline[this.timeline.length - 1] ?? null)
+        this.trigger('change', [this.getState()])
+    }
+
     setDebug()
     {
         if(!this.debug?.isDebugEnabled)
