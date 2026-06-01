@@ -398,6 +398,7 @@ export default class MapWorld
         bloom.setSceneContext({
             scene: this.experience.scene,
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
+            collisionMeshes: this.mapModel.getCollisionMeshes?.() ?? [],
             rails: BLOOM_RAILS,
             target: this.player
         })
