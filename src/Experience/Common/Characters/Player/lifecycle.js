@@ -15,7 +15,11 @@ export function destroy()
 
     const isCanvasStillPointerLocked = this.inputs?.isPointerLocked?.(this.canvas) || false
     document.body.classList.toggle('is-pointer-locked', isCanvasStillPointerLocked)
+    this.removeDebugPositionAutoRefresh?.()
+    this.removeDebugPositionAutoRefresh = null
+    this.syncDebugPositionState = null
+    this.debugPositionState = null
+    this.debugPositionFolder = null
     this.debugFolder?.dispose?.()
     this.collisionOctreePayloads = []
 }
-

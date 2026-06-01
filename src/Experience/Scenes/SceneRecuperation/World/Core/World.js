@@ -168,8 +168,9 @@ export default class SceneRecuperationWorld
             collisionBoxes: [],
             collisionMeshes: this.recuperationModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.recuperationModel.getGroundMeshes?.() ?? [],
-            spawnPosition: this.recuperationModel.getSpawnPosition?.(),
-            spawnYaw: 0
+            spawnPosition: SceneRecuperationWorldConstants.RECUPERATION_SPAWN_POSITION,
+            spawnYaw: THREE.MathUtils.degToRad(SceneRecuperationWorldConstants.RECUPERATION_SPAWN_YAW_DEG),
+            spawnPitch: THREE.MathUtils.degToRad(SceneRecuperationWorldConstants.RECUPERATION_SPAWN_PITCH_DEG)
         })
         this.light = new MapLight({
             environment: this.environment,
