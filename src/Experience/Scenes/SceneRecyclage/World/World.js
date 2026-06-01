@@ -7,6 +7,8 @@ import MapEnvironment from '../../Map/World/MapEnvironment.js'
 import MapLight from '../../Map/World/MapLight.js'
 import SceneRecyclageModel from './Model.js'
 import SceneRecyclageWalls from './Walls/Walls.js'
+import SceneRecuperationCascadeTubes from '../../SceneRecuperation/World/Water/CascadeTubes.js'
+import SlopeSplash from '../../SceneRecuperation/World/Water/SlopeSplash.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
@@ -16,7 +18,6 @@ import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 let recyclageWorldInstanceIndex = 0
 const VALIDATION_BUTTON_NAME_TOKEN = 'button_right'
 const VALIDATION_BUTTON_MAX_DISTANCE = 2.6
-
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -75,6 +76,7 @@ export default class SceneRecyclageWorld
         this.isSetUp = true
 
         this.setDebug()
+        this.setWaterDebugFolders()
         this.environment = new MapEnvironment()
         this.recyclageModel = new SceneRecyclageModel({
             resourceKey: this.variantConfig.modelResourceKey
@@ -83,6 +85,7 @@ export default class SceneRecyclageWorld
             recyclageModel: this.recyclageModel,
             debugParentFolder: this.debugFolder
         })
+        this.setWaterEffects()
         this.collectValidationButtonMeshes()
         this.player = new Player({
             groundHeight: 0,
@@ -102,6 +105,7 @@ export default class SceneRecyclageWorld
             getFocusPosition: () => this.player?.position ?? null,
             debugParentFolder: this.debugFolder
         })
+        this.applyNanobotsRecuperationSunPreset()
 
         if(this.experience.bloom)
         {
@@ -144,6 +148,90 @@ export default class SceneRecyclageWorld
     setDebug()
     {
         setupSceneRecyclageWorldDebug.call(this)
+    }
+
+    setWaterDebugFolders()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || this.variantConfig?.sceneKey !== SceneEnum.NANOBOTS || !this.debugFolder)
+        {
+            return
+        }
+
+        this.waterDebugFolder = this.experience.debug.addFolder('Eau', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        this.waterTubesDebugFolder = this.experience.debug.addFolder('Tuyaux', {
+            parent: this.waterDebugFolder,
+            expanded: false
+        })
+        this.waterSlopesDebugFolder = this.experience.debug.addFolder('Pentes', {
+            parent: this.waterDebugFolder,
+            expanded: false
+        })
+    }
+
+    setWaterEffects()
+    {
+        if(this.variantConfig?.sceneKey !== SceneEnum.NANOBOTS)
+        {
+            return
+        }
+
+        this.sharedWaterColors = {
+            baseColor: new THREE.Color('#1F9CD2'),
+            deepFoamColor: new THREE.Color('#9AF6FE'),
+            surfaceFoamColor: new THREE.Color('#FDFDF7')
+        }
+
+        this.cascadeTubes = new SceneRecuperationCascadeTubes({
+            recuperationModel: this.recyclageModel,
+            debugTubeFolder: this.waterTubesDebugFolder,
+            debugSlopeFolder: this.waterSlopesDebugFolder,
+            sharedWaterColors: this.sharedWaterColors,
+            slopeFlowAngleOffsetByMeshName: this.createNanobotsSlopeFlowAngleOffsets()
+        })
+
+        this.slopeSplash = new SlopeSplash({
+            debugParentFolder: this.waterDebugFolder,
+            emitters: this.createNanobotsSlopeSplashEmitters()
+        })
+    }
+
+    createNanobotsSlopeSplashEmitters()
+    {
+        return SceneRecyclageWorldConstants.NANOBOTS_SLOPE_SPLASH_EMITTERS.map((emitter) => ({ ...emitter }))
+    }
+
+    createNanobotsSlopeFlowAngleOffsets()
+    {
+        return SceneRecyclageWorldConstants.NANOBOTS_REVERSED_SLOPE_MESH_NAMES.reduce((offsets, meshName) =>
+        {
+            offsets[meshName.toLowerCase()] = Math.PI
+            return offsets
+        }, {})
+    }
+
+    applyNanobotsRecuperationSunPreset()
+    {
+        if(this.variantConfig?.sceneKey !== SceneEnum.NANOBOTS || !this.light)
+        {
+            return
+        }
+
+        const preset = SceneRecyclageWorldConstants.NANOBOTS_RECUPERATION_SUN_PRESET
+        Object.assign(this.light.state, preset.state)
+        this.light.ambientColor.set(preset.colors.ambient)
+        this.light.skyColor.set(preset.colors.sky)
+        this.light.groundColor.set(preset.colors.ground)
+        this.light.sunColor.set(preset.colors.sun)
+        this.light.applyLightColorsAndIntensity()
+        this.light.updateCoordinates()
+        this.light.updateFocusPosition()
+        this.light.sunLight.position.setFromSpherical(this.light.spherical).add(this.light.focusPosition)
+        this.light.sunTarget.position.copy(this.light.focusPosition)
+        this.light.updateSunVisual()
+        this.light.updateShadow()
     }
 
     startArrivalDialogue()
@@ -241,6 +329,8 @@ export default class SceneRecyclageWorld
     update(delta = this.experience.time.delta)
     {
         this.syncAmbientSound()
+        this.cascadeTubes?.update?.(delta)
+        this.slopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
     }
@@ -279,6 +369,18 @@ export default class SceneRecyclageWorld
         {
             this.environment.destroy?.()
             this.environment = null
+        }
+
+        if(this.cascadeTubes)
+        {
+            this.cascadeTubes.destroy?.()
+            this.cascadeTubes = null
+        }
+
+        if(this.slopeSplash)
+        {
+            this.slopeSplash.destroy?.()
+            this.slopeSplash = null
         }
 
         this.experience.sound?.stopChannel?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL)
