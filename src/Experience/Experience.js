@@ -8,6 +8,7 @@ import Resources from './Utils/Resources.js'
 import { bootSources } from './Source/sources.js'
 import EventEnum from './Enum/EventEnum.js'
 import SceneManager from './Scenes/SceneManager.js'
+import SceneEnum from './Enum/SceneEnum.js'
 import MetierManager from './Metiers/MetierManager.js'
 import MetierEnum from './Enum/MetierEnum.js'
 import ActionId from './Actions/ActionId.js'
@@ -123,6 +124,7 @@ export default class Experience
         this.debugAutomationState = {
             [DEBUG_AUTOMATION_ENABLED_KEY]: true
         }
+        this.sceneStartSnapshots = new Map()
 
         this.menu.start().then(() =>
         {
@@ -312,6 +314,119 @@ export default class Experience
     setAutoFlowEnabled(enabled)
     {
         this.debugAutomationState[DEBUG_AUTOMATION_ENABLED_KEY] = enabled === true
+    }
+
+    createProgressSnapshot()
+    {
+        return {
+            metierValues: this.metierManager?.getValues?.() ?? {},
+            actionTracker: this.actionTracker?.getState?.() ?? { doneById: {}, timeline: [] },
+            dialogue: {
+                flags: this.dialogueManager?.getFlagsSnapshot?.() ?? {}
+            },
+            badges: this.badgeManager?.getUnlockedKeys?.() ?? [],
+            objectives: this.objectiveManager?.getStateSnapshot?.() ?? {
+                state: null,
+                completedObjectives: {}
+            },
+            tutorial: {
+                completed: this.debugTutorialState?.[DEBUG_TUTORIAL_COMPLETED_KEY] === true,
+                hasStartedIntroDialogue: this.hasStartedIntroDialogue === true
+            }
+        }
+    }
+
+    applyProgressSnapshot(snapshot = {})
+    {
+        this.dialogueManager?.restoreRuntimeSnapshot?.({
+            flags: snapshot?.dialogue?.flags ?? {}
+        })
+        this.metierManager?.setValues?.(snapshot?.metierValues ?? {})
+        this.actionTracker?.restoreState?.(snapshot?.actionTracker ?? {})
+        this.badgeManager?.setUnlockedKeys?.(snapshot?.badges ?? [])
+        this.objectiveManager?.restoreStateSnapshot?.(snapshot?.objectives ?? {})
+
+        const tutorialCompleted = snapshot?.tutorial?.completed === true
+        this.setTutorialCompleted(tutorialCompleted)
+        this.hasStartedIntroDialogue = snapshot?.tutorial?.hasStartedIntroDialogue === true
+    }
+
+    captureSceneStartCheckpoint(sceneKey)
+    {
+        if(typeof sceneKey !== 'string' || sceneKey.trim() === '')
+        {
+            return
+        }
+
+        this.sceneStartSnapshots.set(sceneKey, this.createProgressSnapshot())
+    }
+
+    restartCurrentSceneFromStart()
+    {
+        const currentSceneKey = this.sceneManager?.currentKey ?? null
+        if(!currentSceneKey)
+        {
+            return
+        }
+
+        const checkpoint = this.sceneStartSnapshots.get(currentSceneKey)
+        if(checkpoint)
+        {
+            this.applyProgressSnapshot(checkpoint)
+        }
+
+        this.sceneManager?.switchTo?.(currentSceneKey, {
+            force: true
+        })
+
+        if(currentSceneKey === SceneEnum.MAP)
+        {
+            this.startIntroDialogueAfterMapRestart()
+        }
+    }
+
+    startIntroDialogueAfterMapRestart()
+    {
+        this.tutoriel?.complete?.({
+            immediate: true,
+            emitFinished: false
+        })
+        this.setTutorialCompleted(true)
+        this.hasStartedIntroDialogue = false
+        this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
+
+        const tryStart = () =>
+        {
+            if(this.sceneManager?.isTransitioning)
+            {
+                window.setTimeout(tryStart, 50)
+                return
+            }
+
+            this.handleTutorialFinished({
+                forceStartDialogue: true
+            })
+        }
+
+        tryStart()
+    }
+
+    restartFromBeginning()
+    {
+        this.dialogueManager?.resetRuntimeProgress?.()
+        this.metierManager?.resetAll?.()
+        this.actionTracker?.reset?.()
+        this.badgeManager?.reset?.()
+        this.objectiveManager?.resetProgress?.()
+        this.objectiveManager?.showInitialObjective?.(INITIAL_OBJECTIVE_CONTEXT)
+        this.tutoriel?.restart?.()
+        this.setTutorialCompleted(false)
+        this.hasStartedIntroDialogue = false
+        this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
+        this.sceneStartSnapshots.clear()
+        this.sceneManager?.switchTo?.(this.sceneManager?.getInitialScene?.(), {
+            force: true
+        })
     }
 
     setDebugTutorial()

@@ -64,6 +64,24 @@ export default class BadgeManager extends EventEmitter
         this.emitState()
     }
 
+    getUnlockedKeys()
+    {
+        return Array.from(this.unlockedKeys)
+    }
+
+    setUnlockedKeys(keys = [])
+    {
+        this.unlockedKeys.clear()
+        for(const key of keys)
+        {
+            if(this.repository.getByKey(key))
+            {
+                this.unlockedKeys.add(key)
+            }
+        }
+        this.emitState()
+    }
+
     getProgressRatio()
     {
         const totalCount = this.repository.getCount()

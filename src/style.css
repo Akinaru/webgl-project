@@ -1008,6 +1008,11 @@ body.is-recuperation-material-cursor .dialogue__cursor
     display: none;
 }
 
+.pause-menu.is-confirm-open .pause-menu__panel
+{
+    display: none;
+}
+
 .pause-settings
 {
     --settings-text-color: rgba(244, 250, 255, 0.82);
@@ -1028,6 +1033,61 @@ body.is-recuperation-material-cursor .dialogue__cursor
 .pause-settings.is-visible
 {
     display: block;
+}
+
+.pause-confirm
+{
+    display: none;
+    width: min(92vw, 620px);
+    padding: clamp(2rem, 3.2vw, 2.6rem);
+    font-family: "Nunito", "Segoe UI", sans-serif;
+}
+
+.pause-confirm.is-visible
+{
+    display: block;
+}
+
+.pause-confirm__title
+{
+    margin: 0;
+    color: rgba(255, 255, 255, 0.96);
+    font-size: clamp(1.2rem, 2vw, 1.5rem);
+    font-weight: 700;
+}
+
+.pause-confirm__message
+{
+    margin: 0.9rem 0 0;
+    color: rgba(244, 250, 255, 0.92);
+    line-height: 1.45;
+    font-size: 0.98rem;
+}
+
+.pause-confirm__actions
+{
+    margin-top: 1.35rem;
+    display: flex;
+    gap: 0.7rem;
+    justify-content: flex-end;
+}
+
+.pause-confirm__button
+{
+    min-width: 168px;
+}
+
+.pause-menu__button--warning
+{
+    border-color: rgba(255, 196, 132, 0.82);
+    color: rgba(255, 236, 214, 0.98);
+}
+
+.pause-confirm__button--danger
+{
+    border-color: rgba(255, 124, 124, 0.95);
+    color: rgba(255, 234, 234, 0.98);
+    background: linear-gradient(180deg, rgba(199, 61, 61, 0.52), rgba(135, 28, 28, 0.58));
 }
 
 .pause-settings__header

@@ -155,6 +155,20 @@ export default class MetierManager extends EventEmitter
         return values
     }
 
+    setValues(values = {})
+    {
+        for(const config of METIER_CONFIGS)
+        {
+            const nextValue = Number(values?.[config.id] ?? 0)
+            this.setMetierValue(config.id, Number.isFinite(nextValue) ? nextValue : 0)
+        }
+    }
+
+    resetAll()
+    {
+        this.setValues({})
+    }
+
     getSortedMetiers()
     {
         return this.getAll()

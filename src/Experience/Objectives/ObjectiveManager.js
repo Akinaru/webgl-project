@@ -132,6 +132,47 @@ export default class ObjectiveManager extends EventEmitter
         }])
     }
 
+    getStateSnapshot()
+    {
+        return {
+            state: {
+                ...this.state
+            },
+            completedObjectives: {
+                ...this.completedObjectives
+            }
+        }
+    }
+
+    restoreStateSnapshot(snapshot = {})
+    {
+        const nextState = snapshot?.state && typeof snapshot.state === 'object'
+            ? snapshot.state
+            : this.createEmptyState()
+        const nextCompleted = snapshot?.completedObjectives && typeof snapshot.completedObjectives === 'object'
+            ? snapshot.completedObjectives
+            : {}
+
+        this.state = {
+            active: nextState.active === true,
+            objectiveKey: nextState.objectiveKey ?? null,
+            objective: nextState.objective ?? null,
+            context: nextState.context ?? {}
+        }
+        this.completedObjectives = {
+            ...nextCompleted
+        }
+
+        this.emitState()
+    }
+
+    resetProgress()
+    {
+        this.state = this.createEmptyState()
+        this.completedObjectives = {}
+        this.emitState()
+    }
+
     setDebug()
     {
         if(!this.debug?.isDebugEnabled)
