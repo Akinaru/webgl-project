@@ -18,6 +18,7 @@ import SceneRecuperationCollisionDebug from '../Debug/SceneRecuperationCollision
 import SceneRecuperationCascadeTubes from '../Water/CascadeTubes.js'
 import SceneRecuperationScoring from '../Progression/Scoring.js'
 import SceneRecuperationWalls from '../Walls/Walls.js'
+import SceneRecuperationCeilingLights from '../Lights/CeilingLights.js'
 import { setupSceneRecuperationWorldDebug } from './World.debug.js'
 import * as SceneRecuperationWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../../Audio/SceneMusicPicker.js'
@@ -84,6 +85,7 @@ export default class SceneRecuperationWorld
             }
         }
         this.pendingReturnToMapAfterDialogue = false
+        this.hasSwitchedCeilingLightRooms = false
         this.onTubeCompletionDialogueEnd = ({ key } = {}) =>
         {
             if(key !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || this.pendingReturnToMapAfterDialogue !== true)
@@ -145,7 +147,8 @@ export default class SceneRecuperationWorld
         })
         this.door = new Door({
             recuperationModel: this.recuperationModel,
-            debugParentFolder: this.debugFolder
+            debugParentFolder: this.debugFolder,
+            onOpened: () => this.handleDoorOpened()
         })
         this.television = new Television({
             recuperationModel: this.recuperationModel,
@@ -176,6 +179,14 @@ export default class SceneRecuperationWorld
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder
         })
+        this.ceilingLights = new SceneRecuperationCeilingLights({
+            recuperationModel: this.recuperationModel
+        })
+        this.ceilingLights.setZones({
+            room1: true,
+            room2: false
+        })
+        this.setLightDebugBindings()
 
         this.tubeWaterController = new SceneRecuperationTubeWaterController({
             recuperationModel: this.recuperationModel,
@@ -257,6 +268,7 @@ export default class SceneRecuperationWorld
         this.syncAmbientSound()
         this.cascadeTubes?.update?.(delta)
         this.water?.update?.(delta)
+        this.ceilingLights?.update?.(delta)
         this.door?.update?.(delta)
         this.television?.update?.(delta)
         this.showerParticles?.update?.(delta)
@@ -323,6 +335,7 @@ export default class SceneRecuperationWorld
         if(previousKey !== nextKey)
         {
             this.isMaterialChoiceValidated = false
+            this.resetCeilingLightRooms()
             this.stopMaterialTest()
             this.television?.setTestResult?.(null)
 
@@ -338,6 +351,7 @@ export default class SceneRecuperationWorld
         if(!this.currentMaterialSelection)
         {
             this.isMaterialChoiceValidated = false
+            this.resetCeilingLightRooms()
             this.stopMaterialTest()
         }
 
@@ -357,6 +371,7 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = false
         this.isMaterialTestRunning = true
         this.materialTestElapsed = 0
+        this.resetCeilingLightRooms()
         this.door?.setOpen?.(false)
         this.television?.setTestingState?.(true)
         this.showerParticles?.start?.(this.testDurationSeconds)
@@ -402,6 +417,49 @@ export default class SceneRecuperationWorld
         }
     }
 
+    setLightDebugBindings()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || !this.lightDebugFolder || !this.ceilingLights || this.lightDebugBound)
+        {
+            return
+        }
+
+        this.lightDebugBound = true
+        const settings = this.ceilingLights.settings
+        const applySettings = () => this.ceilingLights?.applySettings?.()
+
+        this.experience.debug.addThreeColorBinding(this.lightDebugFolder, settings, 'emissiveColor', {
+            label: 'emissive color'
+        })?.on?.('change', applySettings)
+        this.experience.debug.addBinding(this.lightDebugFolder, settings, 'emissiveIntensity', {
+            label: 'emissive intensity',
+            min: 0,
+            max: 5,
+            step: 0.01
+        })?.on?.('change', applySettings)
+        this.experience.debug.addThreeColorBinding(this.lightDebugFolder, settings, 'pointColor', {
+            label: 'point color'
+        })?.on?.('change', applySettings)
+        this.experience.debug.addBinding(this.lightDebugFolder, settings, 'pointIntensity', {
+            label: 'point intensity',
+            min: 0,
+            max: 10,
+            step: 0.01
+        })?.on?.('change', applySettings)
+        this.experience.debug.addBinding(this.lightDebugFolder, settings, 'pointDistance', {
+            label: 'point distance',
+            min: 0,
+            max: 20,
+            step: 0.01
+        })?.on?.('change', applySettings)
+        this.experience.debug.addBinding(this.lightDebugFolder, settings, 'pointHeightOffset', {
+            label: 'point height',
+            min: -2,
+            max: 2,
+            step: 0.01
+        })?.on?.('change', applySettings)
+    }
+
     buildMaterialTestResult(selection)
     {
         const key = selection?.key ?? null
@@ -439,10 +497,34 @@ export default class SceneRecuperationWorld
         }
 
         this.isMaterialChoiceValidated = true
+        this.hasSwitchedCeilingLightRooms = false
         this.experience.badgeManager?.unlock?.('materiau')
         this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
         this.startValidationDialogue()
+    }
+
+    handleDoorOpened()
+    {
+        if(this.hasSwitchedCeilingLightRooms)
+        {
+            return
+        }
+
+        this.hasSwitchedCeilingLightRooms = true
+        this.ceilingLights?.setZones?.({
+            room1: false,
+            room2: true
+        })
+    }
+
+    resetCeilingLightRooms()
+    {
+        this.hasSwitchedCeilingLightRooms = false
+        this.ceilingLights?.setZones?.({
+            room1: true,
+            room2: false
+        })
     }
 
     setRoom2Trigger()
@@ -824,6 +906,12 @@ export default class SceneRecuperationWorld
         {
             this.windTurbine.destroy?.()
             this.windTurbine = null
+        }
+
+        if(this.ceilingLights)
+        {
+            this.ceilingLights.destroy?.()
+            this.ceilingLights = null
         }
 
         this.clearWallCrossTeleportVisual()

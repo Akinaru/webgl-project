@@ -3,12 +3,13 @@ import Experience from '../../../../Experience.js'
 import * as DoorConstants from './Door.constants.js'
 export default class Door
 {
-    constructor({ recuperationModel = null, debugParentFolder = null } = {})
+    constructor({ recuperationModel = null, debugParentFolder = null, onOpened = null } = {})
     {
         this.experience = new Experience()
         this.recuperationModel = recuperationModel
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
+        this.onOpened = typeof onOpened === 'function' ? onOpened : null
 
         this.object = this.recuperationModel?.getFirstObjectForNameTokens?.(DoorConstants.DOOR_NAME_TOKENS, { exact: true }) ?? null
         this.settings = {
@@ -17,6 +18,7 @@ export default class Door
             animationSpeed: DoorConstants.DEFAULT_ANIMATION_SPEED
         }
         this.isOpen = false
+        this.hasReachedOpenTarget = false
         this.currentY = this.object?.position?.y ?? this.settings.closedY
 
         this.applyImmediateY(this.settings.closedY)
@@ -25,7 +27,18 @@ export default class Door
 
     setOpen(isOpen)
     {
-        this.isOpen = Boolean(isOpen)
+        const nextIsOpen = Boolean(isOpen)
+        if(this.isOpen === nextIsOpen)
+        {
+            return
+        }
+
+        this.isOpen = nextIsOpen
+
+        if(this.isOpen)
+        {
+            this.hasReachedOpenTarget = false
+        }
     }
 
     getTargetY()
@@ -61,6 +74,18 @@ export default class Door
             deltaSeconds
         )
         this.object.position.y = this.currentY
+
+        if(this.isOpen && !this.hasReachedOpenTarget)
+        {
+            const remainingDistance = Math.abs(targetY - this.currentY)
+            if(remainingDistance <= 0.01)
+            {
+                this.hasReachedOpenTarget = true
+                this.currentY = targetY
+                this.object.position.y = targetY
+                this.onOpened?.()
+            }
+        }
     }
 
     setDebug()

@@ -6,6 +6,10 @@ export function setupSceneRecuperationWorldDebug()
     }
 
     this.debugFolder = this.experience.debug.addFolder('Scene recuperation', { expanded: false })
+    this.lightDebugFolder = this.experience.debug.addFolder('Light', {
+        parent: this.debugFolder,
+        expanded: false
+    })
     this.waterDebugFolder = this.experience.debug.addFolder('Eau', {
         parent: this.debugFolder,
         expanded: false
