@@ -468,7 +468,7 @@
         "recyclage_101": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Voici nos petits héros invisibles. \nIls nettoient l’eau… mais parfois, ils se salissent eux-mêmes. Et là, c’est à toi d’intervenir. \nQuel serait ton premier réflexe si un objet est endommagé?",
+          "text": "Voici nos petits héros invisibles. \nIls nettoient l’eau… mais parfois, ils se salissent eux-mêmes. Et là, c’est à toi d’intervenir. \nQuel serait ton premier réflexe si un objet etait endommagé?",
           "next": "recyclage_101_choice",
           "actions": []
         },
@@ -537,7 +537,7 @@
         "recyclage_105": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Super ! Grâce à toi l’eau peut se recycler à l’infini ! Il nous reste plus qu’à la distribuer à tout le monde !",
+          "text": "Super ! Grâce à toi l’eau peut se recycler à l’infini ! Il ne nous reste plus qu’à la distribuer à tout le monde !",
           "next": "recyclage_1_end",
           "actions": []
         },
@@ -562,7 +562,7 @@
         "recyclage_002": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Ici dans la salle du recyclage, l’eau sale ne part pas à l’égout.",
+          "text": "Ici dans la salle du recyclage, l’eau sale ne part pas à l’égout.\nElle revient à la terre grâce aux champignons filtres que tu vas planter.",
           "next": "recyclage_003",
           "actions": []
         },

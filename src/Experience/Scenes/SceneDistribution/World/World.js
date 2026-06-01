@@ -34,6 +34,7 @@ export default class SceneDistributionWorld
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.distributionWorld${distributionWorldInstanceIndex++}`
         this.hasStartedResultSequence = false
+        this.hasValidatedDistribution = false
         this.onCompletedDistributionDialogueEnd = ({ key } = {}) =>
         {
             if(key !== DISTRIBUTION_DIALOGUE_KEY)
@@ -239,9 +240,11 @@ export default class SceneDistributionWorld
 
         // On ouvre la porte
         this.exitDoors?.setOpen?.(true)
+        this.hasValidatedDistribution = true
 
         // On enregistre les scores à ce moment précis pour la répartition finale
         this.scoring?.applyFinalScoring(state)
+        this.startResultSequence()
 
         console.log('[SceneDistributionWorld] Distribution validée, porte ouverte.')
     }
@@ -249,6 +252,11 @@ export default class SceneDistributionWorld
     startResultSequence()
     {
         if(this.hasStartedResultSequence)
+        {
+            return
+        }
+
+        if(this.hasValidatedDistribution !== true)
         {
             return
         }
