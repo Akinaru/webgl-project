@@ -182,6 +182,71 @@ export function setDebug()
         max: 80,
         step: 0.1
     })
+
+    this.debugPositionFolder = this.debug.addFolder('Position', {
+        parent: this.debugFolder,
+        expanded: false
+    })
+
+    this.debugPositionState = {
+        playerX: 0,
+        playerY: 0,
+        playerZ: 0,
+        playerYaw: 0,
+        playerPitch: 0,
+        cameraX: 0,
+        cameraY: 0,
+        cameraZ: 0,
+        cameraYaw: 0,
+        cameraPitch: 0,
+        cameraRoll: 0
+    }
+
+    const positionFields = [
+        ['playerX', 'player x'],
+        ['playerY', 'player y'],
+        ['playerZ', 'player z'],
+        ['playerYaw', 'player yaw'],
+        ['playerPitch', 'player pitch'],
+        ['cameraX', 'camera x'],
+        ['cameraY', 'camera y'],
+        ['cameraZ', 'camera z'],
+        ['cameraYaw', 'camera yaw'],
+        ['cameraPitch', 'camera pitch'],
+        ['cameraRoll', 'camera roll']
+    ]
+
+    for(const [key, label] of positionFields)
+    {
+        this.debug.addManualBinding(this.debugPositionFolder, this.debugPositionState, key, {
+            label,
+            readonly: true,
+            format: (value) => Number(value || 0).toFixed(3)
+        }, 'auto')
+    }
+
+    this.syncDebugPositionState = () =>
+    {
+        if(!this.debugPositionState)
+        {
+            return
+        }
+
+        this.debugPositionState.playerX = this.position?.x ?? 0
+        this.debugPositionState.playerY = this.position?.y ?? 0
+        this.debugPositionState.playerZ = this.position?.z ?? 0
+        this.debugPositionState.playerYaw = THREE.MathUtils.radToDeg(this.yaw ?? 0)
+        this.debugPositionState.playerPitch = THREE.MathUtils.radToDeg(this.pitch ?? 0)
+        this.debugPositionState.cameraX = this.camera?.position?.x ?? 0
+        this.debugPositionState.cameraY = this.camera?.position?.y ?? 0
+        this.debugPositionState.cameraZ = this.camera?.position?.z ?? 0
+        this.debugPositionState.cameraYaw = THREE.MathUtils.radToDeg(this.camera?.rotation?.y ?? 0)
+        this.debugPositionState.cameraPitch = THREE.MathUtils.radToDeg(this.camera?.rotation?.x ?? 0)
+        this.debugPositionState.cameraRoll = THREE.MathUtils.radToDeg(this.camera?.rotation?.z ?? 0)
+    }
+
+    this.syncDebugPositionState()
+    this.removeDebugPositionAutoRefresh = this.debug.addAutoRefresh(this.syncDebugPositionState)
 }
 
 
@@ -214,5 +279,4 @@ export function normalizeBoundaryBox(boundaryBox)
 
     return { minX, maxX, minZ, maxZ }
 }
-
 

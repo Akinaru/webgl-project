@@ -113,7 +113,8 @@ export default class SceneRecuperationCascadeTubes
 
             entries.push({
                 mesh: child,
-                surfaceType: isPlanMesh ? SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE : SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE
+                surfaceType: isPlanMesh ? SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE : SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE,
+                flowAngleOffset: this.getFlowAngleOffsetForMesh(child, isPlanMesh ? SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE : SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE)
             })
         })
 
@@ -124,14 +125,15 @@ export default class SceneRecuperationCascadeTubes
     {
         for(const entry of this.cascadeSurfaceEntries)
         {
-            const { mesh, surfaceType } = entry
+            const { mesh, surfaceType, flowAngleOffset = 0 } = entry
             const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
             const patchedMaterials = sourceMaterials.map((material) => this.createCascadeTubeMaterial(material, mesh, {
                 isOverlay: false,
-                surfaceType
+                surfaceType,
+                flowAngleOffset
             }))
             mesh.material = Array.isArray(mesh.material) ? patchedMaterials : patchedMaterials[0]
-            this.attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType)
+            this.attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType, flowAngleOffset)
         }
     }
 
@@ -145,7 +147,7 @@ export default class SceneRecuperationCascadeTubes
         return surfaceType === SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE ? cascadeSlopeShaderChunks : cascadeTubeShaderChunks
     }
 
-    createCascadeTubeMaterial(baseMaterial, mesh, { isOverlay = false, surfaceType = SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE } = {})
+    createCascadeTubeMaterial(baseMaterial, mesh, { isOverlay = false, surfaceType = SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_TUBE, flowAngleOffset = 0 } = {})
     {
         const material = baseMaterial?.clone?.() ?? baseMaterial
         if(!material)
@@ -173,7 +175,8 @@ export default class SceneRecuperationCascadeTubes
             foamColor: { value: settings.foamColor },
             flowSpeed: { value: settings.flowSpeed },
             flowScale: { value: settings.flowScale },
-            flowAngle: { value: settings.flowAngle },
+            flowAngle: { value: settings.flowAngle + flowAngleOffset },
+            flowAngleOffset: { value: flowAngleOffset },
             foamSpeed: { value: settings.foamSpeed },
             foamNoiseFrequency: { value: settings.foamNoiseFrequency },
             foamThreshold: { value: settings.foamThreshold },
@@ -265,11 +268,12 @@ export default class SceneRecuperationCascadeTubes
         }
     }
 
-    attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType)
+    attachFoamOverlayMesh(mesh, sourceMaterials, surfaceType, flowAngleOffset = 0)
     {
         const overlayMaterials = sourceMaterials.map((material) => this.createCascadeTubeMaterial(material, mesh, {
             isOverlay: true,
-            surfaceType
+            surfaceType,
+            flowAngleOffset
         }))
         const surfaceSettings = this.getSurfaceSettings(surfaceType)
         const overlayMesh = new THREE.Mesh(
@@ -293,6 +297,21 @@ export default class SceneRecuperationCascadeTubes
 
         mesh.add(overlayMesh)
         this.overlayMeshes.push(overlayMesh)
+    }
+
+    getFlowAngleOffsetForMesh(mesh, surfaceType)
+    {
+        if(surfaceType !== SceneRecuperationCascadeTubesConstants.SURFACE_TYPE_SLOPE)
+        {
+            return 0
+        }
+
+        const normalizedName = String(mesh?.name || '')
+            .toLowerCase()
+            .trim()
+            .replace(/[\s_]+/g, '_')
+
+        return SceneRecuperationCascadeTubesConstants.SLOPE_FLOW_ANGLE_OFFSET_BY_MESH_NAME[normalizedName] ?? 0
     }
 
     createPatternOffset(mesh, variant = 'base')
@@ -472,7 +491,7 @@ export default class SceneRecuperationCascadeTubes
             uniforms.foamColor.value.copy(settings.foamColor)
             uniforms.flowSpeed.value = settings.flowSpeed + (uniforms.flowSpeedOffset?.value || 0)
             uniforms.flowScale.value = settings.flowScale
-            uniforms.flowAngle.value = settings.flowAngle
+            uniforms.flowAngle.value = settings.flowAngle + (uniforms.flowAngleOffset?.value ?? 0)
             uniforms.foamSpeed.value = settings.foamSpeed + (uniforms.foamSpeedOffset?.value || 0)
             uniforms.foamNoiseFrequency.value = settings.foamNoiseFrequency
             uniforms.foamThreshold.value = settings.foamThreshold

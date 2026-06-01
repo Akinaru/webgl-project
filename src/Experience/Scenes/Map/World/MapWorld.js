@@ -10,8 +10,10 @@ import MapCollisionDebug from './MapCollision.debug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
+import MapFireflies from './Fireflies.js'
 import MapVisibilityDebug from './MapVisibility.debug.js'
 import MapFog from './MapFog.js'
+import MapObjects from './MapObjects.js'
 import bloomRails from './bloomRails.json'
 import * as MapWorldConstants from './MapWorld.constants.js'
 function isRailsGraph(value)
@@ -155,6 +157,15 @@ export default class MapWorld
             return
         }
 
+        this.objects = new MapObjects({
+            mapModel: this.mapModel
+        })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.fog = new MapFog({ environment: this.environment })
         await this.waitForNextFrame()
         if(this.isDestroyed)
@@ -195,6 +206,16 @@ export default class MapWorld
                 spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION
             }
         )
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
+        this.fireflies = new MapFireflies({
+            getFocusPosition: () => this.player?.position ?? null,
+            getFog: () => this.fog ?? null
+        })
         await this.waitForNextFrame()
         if(this.isDestroyed)
         {
@@ -296,6 +317,7 @@ export default class MapWorld
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
         this.bushes?.update?.(delta)
+        this.fireflies?.update?.(delta)
         this.player?.update(delta)
         this.collisionDebug?.update?.()
         this.updateWaterEntrySound()
@@ -840,6 +862,9 @@ export default class MapWorld
         this.bushes?.setDebug?.({
             parentFolder: this.bushDebugFolder
         })
+        this.fireflies?.setDebug?.({
+            parentFolder: this.vegetationDebugFolder
+        })
     }
 
     destroy()
@@ -900,6 +925,12 @@ export default class MapWorld
             this.bushes = null
         }
 
+        if(this.fireflies)
+        {
+            this.fireflies.destroy?.()
+            this.fireflies = null
+        }
+
         if(this.collisionDebug)
         {
             this.collisionDebug.destroy?.()
@@ -916,6 +947,12 @@ export default class MapWorld
         {
             this.clouds.destroy?.()
             this.clouds = null
+        }
+
+        if(this.objects)
+        {
+            this.objects.destroy?.()
+            this.objects = null
         }
 
         if(this.light)

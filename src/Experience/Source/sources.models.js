@@ -35,5 +35,15 @@ export default [
         name: 'buildingFeuilleModel',
         type: 'gltfModel',
         path: 'models/scenes/map/building_feuille_Draco.glb'
+    },
+    {
+        name: 'mapObjectsLowPolyModel',
+        type: 'gltfModel',
+        path: 'models/scenes/map/objects_low_poly/scene.gltf'
+    },
+    {
+        name: 'mapMedievalPropsModel',
+        type: 'gltfModel',
+        path: 'models/scenes/map/low_poly_medieval_environment_pack_35_props/scene.gltf'
     }
 ]

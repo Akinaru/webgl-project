@@ -12,3 +12,10 @@ export const RECUPERATION_AMBIENT_SOUND_KEYS = Object.freeze([
 export const RECUPERATION_DIALOGUE_MUSIC_DUCK_SCALE = 0.72
 export const AUTO_SWITCH_TO_RECYCLAGE_DELAY_MS = 5000
 export const RECUPERATION_FINAL_TUBE_COMPLETE_SOUND_KEY = 'recuperationFinalTubeComplete'
+export const RECUPERATION_SPAWN_POSITION = Object.freeze({
+    x: -4.391,
+    y: 0.922,
+    z: 0.037
+})
+export const RECUPERATION_SPAWN_YAW_DEG = -450.127
+export const RECUPERATION_SPAWN_PITCH_DEG = -0.630
