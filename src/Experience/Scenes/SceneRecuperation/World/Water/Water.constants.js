@@ -5,6 +5,6 @@ export const WATER_OPACITY              = 1.0
 export const WATER_SCALE                = 1.13
 export const WATER_SPEED                = 0.04
 export const WATER_THRESHOLD_MID        = 0.46
-export const WATER_THRESHOLD_LIGHT      = 0.65
+export const WATER_THRESHOLD_LIGHT      = 1.01
 export const WATER_PLAN_MESH_NAMES      = ['water']
 export const WATER_BASE_TINT_MESH_NAMES = ['shad_plat', 'shad_plat 1']

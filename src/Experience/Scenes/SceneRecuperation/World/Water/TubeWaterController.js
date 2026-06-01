@@ -54,7 +54,7 @@ constructor({ recuperationModel, debugParentFolder = null, sharedWaterColors = n
         waterShadowStrength: 0.48,
         waterMidLow: 0.82,
         waterMidHigh: 1.08,
-        waterHighlightMix: 0.36,
+        waterHighlightMix: 0,
         bodyBlendBase: 0.62,
         bodyBlendGain: 0.18,
         emissiveBase: 0.55,

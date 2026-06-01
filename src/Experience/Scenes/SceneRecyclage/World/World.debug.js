@@ -5,5 +5,5 @@ export function setupSceneRecyclageWorldDebug()
         return
     }
 
-    this.debugFolder = this.experience.debug.addFolder('Scene recyclage', { expanded: false })
+    this.debugFolder = this.experience.debug.addFolder(this.variantConfig?.debugLabel || 'Scene recyclage', { expanded: false })
 }

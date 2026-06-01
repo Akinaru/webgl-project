@@ -16,6 +16,7 @@ import SceneRecuperationTubeWaterController from '../Water/TubeWaterController.j
 import SceneRecuperationRoom2Trigger from '../Progression/Room2Trigger.js'
 import SceneRecuperationCollisionDebug from '../Debug/SceneRecuperationCollision.debug.js'
 import SceneRecuperationCascadeTubes from '../Water/CascadeTubes.js'
+import SlopeSplash from '../Water/SlopeSplash.js'
 import SceneRecuperationScoring from '../Progression/Scoring.js'
 import SceneRecuperationWalls from '../Walls/Walls.js'
 import SceneRecuperationCeilingLights from '../Lights/CeilingLights.js'
@@ -340,6 +341,9 @@ export default class SceneRecuperationWorld
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.waterDebugFolder
         })
+        this.slopeSplash = new SlopeSplash({
+            debugParentFolder: this.waterDebugFolder
+        })
 
         this.player = new Player({
             groundHeight: 0,
@@ -452,6 +456,7 @@ export default class SceneRecuperationWorld
         this.door?.update?.(delta)
         this.television?.update?.(delta)
         this.showerParticles?.update?.(delta)
+        this.slopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.windTurbine?.update?.(delta)
         this.player?.update(delta)
@@ -1149,6 +1154,12 @@ export default class SceneRecuperationWorld
         {
             this.showerParticles.destroy?.()
             this.showerParticles = null
+        }
+
+        if(this.slopeSplash)
+        {
+            this.slopeSplash.destroy?.()
+            this.slopeSplash = null
         }
 
         if(this.cascadeTubes)

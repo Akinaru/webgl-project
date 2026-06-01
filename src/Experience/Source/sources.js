@@ -29,6 +29,9 @@ export const sceneSources = {
     [SceneEnum.RECYCLAGE]: [
         ...modelSources.filter(s => s.name === 'recyclageModel')
     ],
+    [SceneEnum.NANOBOTS]: [
+        ...modelSources.filter(s => s.name === 'nanobotsModel')
+    ],
     [SceneEnum.DISTRIBUTION]: [
         ...modelSources.filter(s => s.name === 'distributionModel'),
         // La distribution partage maintenant la texture des murs de récupération
@@ -44,5 +47,6 @@ export default [
     ...sceneSources[SceneEnum.MAP],
     ...sceneSources[SceneEnum.RECUPERATION],
     ...sceneSources[SceneEnum.RECYCLAGE],
+    ...sceneSources[SceneEnum.NANOBOTS],
     ...sceneSources[SceneEnum.DISTRIBUTION]
 ]

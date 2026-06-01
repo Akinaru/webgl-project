@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import Experience from '../../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
+import { applyMatteWaterMaterial, stripSpecularReflectionsFromShader } from '../../../Map/World/Shaders/Common/disableSpecularReflections.js'
 import { recuperationWaterVisibleGradientShaderChunks } from '../Shaders/Water/visibleGradientShaderChunks.js'
 import * as C from './Water.constants.js'
 
@@ -119,6 +120,7 @@ export default class SceneRecuperationWater
         const material = baseMaterial?.clone?.() ?? baseMaterial
         if(!material) return material
 
+        applyMatteWaterMaterial(material)
         material.alphaMap = this.waterDistributionTexture
         material.transparent = true
         material.alphaTest = 0.5
@@ -155,6 +157,7 @@ export default class SceneRecuperationWater
             shader.uniforms.uWaterThresholdLight = uniforms.thresholdLight
 
             applyStandardMaterialPatch(shader, recuperationWaterVisibleGradientShaderChunks)
+            stripSpecularReflectionsFromShader(shader)
         }
         material.customProgramCacheKey = () =>
         {
@@ -173,6 +176,7 @@ export default class SceneRecuperationWater
         const material = baseMaterial?.clone?.() ?? baseMaterial
         if(!material) return material
 
+        applyMatteWaterMaterial(material)
         material.color?.copy?.(this.colorDeep)
         material.emissive?.set?.(0x000000)
         material.needsUpdate = true

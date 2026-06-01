@@ -3,6 +3,7 @@ import SceneEnum from '../Enum/SceneEnum.js'
 import MapScene from './Map/MapScene.js'
 import SceneRecuperationScene from './SceneRecuperation/SceneRecuperationScene.js'
 import SceneRecyclageScene from './SceneRecyclage/SceneRecyclageScene.js'
+import SceneNanobotsScene from './SceneNanobots/SceneNanobotsScene.js'
 import SceneDistributionScene from './SceneDistribution/Scene.js'
 import LoadingPhrases from './LoadingPhrases.js'
 import Disposal from '../Utils/Disposal.js'
@@ -26,6 +27,7 @@ export default class SceneManager
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
         this.register(SceneEnum.RECYCLAGE, () => new SceneRecyclageScene())
+        this.register(SceneEnum.NANOBOTS, () => new SceneNanobotsScene())
         this.register(SceneEnum.DISTRIBUTION, () => new SceneDistributionScene())
 
         this.setTransitionOverlay()
@@ -309,7 +311,10 @@ export default class SceneManager
                 return 'Recuperation'
 
             case SceneEnum.RECYCLAGE:
-                return 'Recyclage'
+                return 'Champignons'
+
+            case SceneEnum.NANOBOTS:
+                return 'Nanobots'
 
             case SceneEnum.DISTRIBUTION:
                 return 'Distribution'
@@ -342,47 +347,24 @@ export default class SceneManager
         }
 
         this.debugFolder = this.debug.addFolder('🎬 Scenes', { expanded: false })
-        const debugActions = {
-            goMap: () =>
-            {
-                this.switchTo(SceneEnum.MAP)
-            },
-            goRecuperation: () =>
-            {
-                this.switchTo(SceneEnum.RECUPERATION)
-            },
-            goRecyclage: () =>
-            {
-                this.switchTo(SceneEnum.RECYCLAGE)
-            },
-            goDistribution: () =>
-            {
-                this.switchTo(SceneEnum.DISTRIBUTION)
-            }
-        }
+        const sceneButtons = [
+            { key: SceneEnum.MAP, label: 'Map' },
+            { key: SceneEnum.RECUPERATION, label: 'Recuperation' },
+            { key: SceneEnum.RECYCLAGE, label: 'Champignons' },
+            { key: SceneEnum.NANOBOTS, label: 'Nanobots' },
+            { key: SceneEnum.DISTRIBUTION, label: 'Distribution' }
+        ]
 
-        this.debug.addButtons(this.debugFolder, {
-            label: 'Liste des scenes',
-            columns: 4,
-            buttons: [
+        for(const sceneButton of sceneButtons)
+        {
+            this.debug.addButton(this.debugFolder, {
+                title: sceneButton.label,
+                onClick: () =>
                 {
-                    label: 'Map',
-                    onClick: debugActions.goMap
-                },
-                {
-                    label: 'Recuperation',
-                    onClick: debugActions.goRecuperation
-                },
-                {
-                    label: 'Recyclage',
-                    onClick: debugActions.goRecyclage
-                },
-                {
-                    label: 'Distribution',
-                    onClick: debugActions.goDistribution
+                    this.switchTo(sceneButton.key)
                 }
-            ]
-        })
+            })
+        }
 
         this.setDebugStats()
     }

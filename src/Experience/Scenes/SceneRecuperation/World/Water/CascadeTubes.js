@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../../Experience.js'
 import * as SceneRecuperationCascadeTubesConstants from './CascadeTubes.constants.js'
 import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
+import { applyMatteWaterMaterial, stripSpecularReflectionsFromShader } from '../../../Map/World/Shaders/Common/disableSpecularReflections.js'
 import { cascadeTubeShaderChunks } from '../Shaders/CascadeTubes/cascadeTubeShaderChunks.js'
 import { cascadeSlopeShaderChunks } from '../Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
 export default class SceneRecuperationCascadeTubes
@@ -167,6 +168,7 @@ export default class SceneRecuperationCascadeTubes
         material.transparent = true
         material.side = THREE.DoubleSide
         material.depthWrite = !isOverlay
+        applyMatteWaterMaterial(material)
         material.userData = material.userData || {}
         material.userData.isRecuperationCascadeTubeMaterial = true
         material.userData.recuperationCascadeTubeUniforms = {
@@ -217,6 +219,7 @@ export default class SceneRecuperationCascadeTubes
             shader.uniforms.uCascadeSeamOffset = uniforms.seamOffset
 
             applyStandardMaterialPatch(shader, this.getShaderChunks(surfaceType))
+            stripSpecularReflectionsFromShader(shader)
         }
 
         material.customProgramCacheKey = () =>
