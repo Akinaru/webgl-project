@@ -22,6 +22,11 @@ const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
 const DISTRIBUTION_AMBIENT_CHANNEL = 'distributionAmbience'
 const DISTRIBUTION_DIALOGUE_KEY = 'distribution'
 const RESULT_DIALOGUE_KEY = 'resultat'
+const DISTRIBUTION_COMPLETED_NODE_KEY = 'distribution_005'
+const DISTRIBUTION_BLOOM_ROOM_END_TOKEN = 'room_end_2'
+const DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN = 'door_exit'
+const DISTRIBUTION_BLOOM_PATH_SPEED_SCALE = 0.28
+const DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE = 0.7
 const DISTRIBUTION_DIALOGUE_PHASES = Object.freeze({
     COMPLETED: 'completed'
 })
@@ -34,6 +39,22 @@ export default class SceneDistributionWorld
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.distributionWorld${distributionWorldInstanceIndex++}`
         this.hasStartedResultSequence = false
+        this.hasValidatedDistribution = false
+        this.hasRequestedBloomToRoomEnd = false
+        this.bloomPathStage = 'idle'
+        this.bloomPathPreviousSpeed = null
+        this.bloomPathArrivalDistanceSq = DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE * DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE
+        this.bloomDoorExitTarget = null
+        this.bloomRoomEndTarget = null
+        this.onDistributionDialogueState = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY || nodeId !== DISTRIBUTION_COMPLETED_NODE_KEY)
+            {
+                return
+            }
+
+            this.startBloomPathToRoomEndViaDoor()
+        }
         this.onCompletedDistributionDialogueEnd = ({ key } = {}) =>
         {
             if(key !== DISTRIBUTION_DIALOGUE_KEY)
@@ -44,6 +65,7 @@ export default class SceneDistributionWorld
             this.experience.dialogueManager?.off?.('end.distributionCompleted', this.onCompletedDistributionDialogueEnd)
             this.startResultDialogue()
         }
+        this.experience.dialogueManager?.on?.('state.distributionBloomRoomEnd', this.onDistributionDialogueState)
 
         if(this.resources.isReady)
         {
@@ -55,6 +77,105 @@ export default class SceneDistributionWorld
         {
             this.setUp()
         })
+    }
+
+    resolveDistributionTargetCenter(token)
+    {
+        const bounds = this.distributionModel?.getBoundsForNameTokens?.([token], { exact: true })
+            ?? this.distributionModel?.getBoundsForNameTokens?.([token], { exact: false })
+        return bounds?.getCenter?.(new THREE.Vector3()) ?? null
+    }
+
+    startBloomPathToRoomEndViaDoor()
+    {
+        if(this.hasRequestedBloomToRoomEnd)
+        {
+            return
+        }
+
+        const bloom = this.experience?.bloom
+        const bloomFollow = bloom?.follow
+        if(!bloom || !bloomFollow)
+        {
+            return
+        }
+
+        const doorExitCenter = this.resolveDistributionTargetCenter(DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN)
+        const roomEndCenter = this.resolveDistributionTargetCenter(DISTRIBUTION_BLOOM_ROOM_END_TOKEN)
+        if(!doorExitCenter || !roomEndCenter)
+        {
+            return
+        }
+
+        if(!this.bloomDoorExitTarget)
+        {
+            this.bloomDoorExitTarget = {
+                position: new THREE.Vector3()
+            }
+        }
+        if(!this.bloomRoomEndTarget)
+        {
+            this.bloomRoomEndTarget = {
+                position: new THREE.Vector3()
+            }
+        }
+        this.bloomDoorExitTarget.position.copy(doorExitCenter)
+        this.bloomRoomEndTarget.position.set(roomEndCenter.x, roomEndCenter.y, roomEndCenter.z)
+
+        if(this.bloomPathPreviousSpeed === null)
+        {
+            this.bloomPathPreviousSpeed = bloom.rails?.settings?.speed ?? null
+        }
+        if(Number.isFinite(this.bloomPathPreviousSpeed) && bloom.rails?.settings)
+        {
+            bloom.rails.settings.speed = Math.max(0.2, this.bloomPathPreviousSpeed * DISTRIBUTION_BLOOM_PATH_SPEED_SCALE)
+        }
+
+        bloomFollow.target = this.bloomDoorExitTarget
+        bloomFollow.enabled = true
+        bloom.clearFollowOverride?.()
+        this.bloomPathStage = 'toDoor'
+        this.hasRequestedBloomToRoomEnd = true
+    }
+
+    updateBloomPathToRoomEndViaDoor()
+    {
+        if(this.bloomPathStage !== 'toDoor' && this.bloomPathStage !== 'toEnd')
+        {
+            return
+        }
+
+        const bloom = this.experience?.bloom
+        const bloomModel = bloom?.model
+        const bloomFollow = bloom?.follow
+        if(!bloomModel || !bloomFollow)
+        {
+            return
+        }
+
+        if(this.bloomPathStage === 'toDoor')
+        {
+            const distanceSqToDoor = bloomModel.position.distanceToSquared(this.bloomDoorExitTarget?.position ?? new THREE.Vector3())
+            if(distanceSqToDoor <= this.bloomPathArrivalDistanceSq)
+            {
+                bloomFollow.target = this.bloomRoomEndTarget
+                this.bloomPathStage = 'toEnd'
+            }
+            return
+        }
+
+        const distanceSqToEnd = bloomModel.position.distanceToSquared(this.bloomRoomEndTarget?.position ?? new THREE.Vector3())
+        if(distanceSqToEnd > this.bloomPathArrivalDistanceSq)
+        {
+            return
+        }
+
+        if(Number.isFinite(this.bloomPathPreviousSpeed) && bloom.rails?.settings)
+        {
+            bloom.rails.settings.speed = this.bloomPathPreviousSpeed
+        }
+        this.bloomPathPreviousSpeed = null
+        this.bloomPathStage = 'done'
     }
 
     setUp()
@@ -119,7 +240,7 @@ export default class SceneDistributionWorld
         })
         this.scoring = new SceneDistributionScoring()
         this.validationButton = new ValidationButton({
-            position: new THREE.Vector3(-1.2, -0.8, -0.8),
+            buttonMeshes: this.distributionModel.getMeshesForNameTokens?.(['button-buttonsimulation_1'], { exact: true }) ?? [],
             onValidate: () => this.handleValidation(),
             debugParentFolder: this.debugFolder
         })
@@ -155,6 +276,7 @@ export default class SceneDistributionWorld
             this.experience.bloom.setSceneContext({
                 scene: this.experience.scene,
                 groundMeshes: this.distributionModel.getGroundMeshes?.() ?? [],
+                collisionMeshes: this.distributionModel.getCollisionMeshes?.() ?? [],
                 rails: [],
                 target: this.player
             })
@@ -214,6 +336,7 @@ export default class SceneDistributionWorld
         this.balanceMonitor?.update?.()
         this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
         this.resultTrigger?.update?.(delta)
+        this.updateBloomPathToRoomEndViaDoor()
     }
 
     syncAmbientSound()
@@ -239,9 +362,11 @@ export default class SceneDistributionWorld
 
         // On ouvre la porte
         this.exitDoors?.setOpen?.(true)
+        this.hasValidatedDistribution = true
 
         // On enregistre les scores à ce moment précis pour la répartition finale
         this.scoring?.applyFinalScoring(state)
+        this.startResultSequence()
 
         console.log('[SceneDistributionWorld] Distribution validée, porte ouverte.')
     }
@@ -249,6 +374,11 @@ export default class SceneDistributionWorld
     startResultSequence()
     {
         if(this.hasStartedResultSequence)
+        {
+            return
+        }
+
+        if(this.hasValidatedDistribution !== true)
         {
             return
         }
@@ -268,7 +398,13 @@ export default class SceneDistributionWorld
 
     destroy()
     {
+        if(Number.isFinite(this.bloomPathPreviousSpeed) && this.experience?.bloom?.rails?.settings)
+        {
+            this.experience.bloom.rails.settings.speed = this.bloomPathPreviousSpeed
+        }
+        this.bloomPathPreviousSpeed = null
         this.resources.off(this.readyEventName)
+        this.experience.dialogueManager?.off?.('state.distributionBloomRoomEnd')
         this.experience.dialogueManager?.off?.('end.distributionCompleted')
         this.experience.dialogueManager?.off?.('end.distributionResult')
         this.valveController?.destroy?.()

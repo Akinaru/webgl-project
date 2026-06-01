@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../Experience.js'
 import * as SceneDistributionModelConstants from './Model.constants.js'
 
-const ROOM_END_WINDOW_NAME_TOKENS = ['room_end1', 'room-end1', 'room end1', 'room_end']
+const ROOM_END_WINDOW_EXACT_NAMES = new Set(['room_end.1'])
 
 export default class SceneDistributionModel
 {
@@ -229,8 +229,10 @@ export default class SceneDistributionModel
     applyTransparentMaterialRules(mesh)
     {
         const meshName = (mesh.name || '').toLowerCase()
-        const isBackground = meshName.includes('background')
-        const isRoomEndWindow = this.hasNameInHierarchy(mesh, ROOM_END_WINDOW_NAME_TOKENS)
+        const isBackground = SceneDistributionModelConstants.BACKGROUND_OVERRIDE_ENABLED === true
+            && meshName.includes('background')
+        const isRoomEndWindow = SceneDistributionModelConstants.ROOM_END_WINDOW_OVERRIDE_ENABLED === true
+            && this.hasExactNameInHierarchy(mesh, ROOM_END_WINDOW_EXACT_NAMES)
         const isTransparentTarget = SceneDistributionModelConstants.TRANSPARENT_EXACT_NAMES.has(meshName)
             || SceneDistributionModelConstants.TRANSPARENT_PREFIXES.some((prefix) => meshName.startsWith(prefix))
 
@@ -303,7 +305,7 @@ export default class SceneDistributionModel
                     opacity: this.visualSettings.backgroundOpacity,
                     side: this.resolveBackgroundSide(this.visualSettings.backgroundSide),
                     depthWrite: this.visualSettings.backgroundDepthWrite,
-                    depthTest: false
+                    depthTest: true
                 })
                 runtimeMaterial.name = `${material.name || mesh.name || 'background'}_unlit`
                 runtimeMaterial.userData.distributionRole = 'backgroundUnlit'
@@ -405,6 +407,27 @@ export default class SceneDistributionModel
         return false
     }
 
+    hasExactNameInHierarchy(object, exactNames = new Set())
+    {
+        if(!(exactNames instanceof Set) || exactNames.size === 0)
+        {
+            return false
+        }
+
+        let current = object
+        while(current)
+        {
+            const name = String(current.name || '').toLowerCase().trim()
+            if(exactNames.has(name))
+            {
+                return true
+            }
+            current = current.parent
+        }
+
+        return false
+    }
+
     isPalmTreePart(object)
     {
         return this.hasNameInHierarchy(object, SceneDistributionModelConstants.PALM_TREE_NAME_TOKENS)
@@ -439,7 +462,7 @@ export default class SceneDistributionModel
                 return
             }
 
-            if(this.hasNameInHierarchy(child, ROOM_END_WINDOW_NAME_TOKENS))
+            if(SceneDistributionModelConstants.ROOM_END_WINDOW_OVERRIDE_ENABLED === true && this.hasExactNameInHierarchy(child, ROOM_END_WINDOW_EXACT_NAMES))
             {
                 this.debugStats.roomEndMeshCount++
             }
@@ -503,7 +526,7 @@ export default class SceneDistributionModel
             material.opacity = this.visualSettings.backgroundOpacity
             material.transparent = this.visualSettings.backgroundOpacity < 1
             material.depthWrite = this.visualSettings.backgroundDepthWrite
-            material.depthTest = false
+            material.depthTest = true
             material.side = backgroundSide
             material.needsUpdate = true
         }

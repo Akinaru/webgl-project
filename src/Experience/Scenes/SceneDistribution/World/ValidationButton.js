@@ -10,6 +10,7 @@ const VALIDATION_BUTTON_LIGHT_HEIGHT_OFFSET = 0.12
 export default class ValidationButton
 {
     constructor({
+        buttonMeshes = [],
         position = new THREE.Vector3(5, 0, 0),
         onValidate = null,
         debugParentFolder = null
@@ -20,24 +21,34 @@ export default class ValidationButton
         this.debug = this.experience.debug
         this.inputs = this.experience.inputs
         this.onValidate = onValidate
+        this.buttonMeshes = Array.isArray(buttonMeshes)
+            ? buttonMeshes.filter((mesh) => mesh instanceof THREE.Mesh)
+            : []
+        this.activeButtonMesh = this.buttonMeshes[0] ?? null
+        this.activeButtonBaseY = this.activeButtonMesh?.position?.y ?? 0
 
         this.position = position
-        this.group = new THREE.Group()
-        this.group.position.copy(this.position)
-        this.scene.add(this.group)
+        this.group = null
 
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
         })
 
-        this.setPedestal()
-        this.setButton()
+        if(!this.activeButtonMesh)
+        {
+            this.setPedestal()
+            this.setButton()
+        }
         this.setEvents()
         this.setDebug(debugParentFolder)
     }
 
     setPedestal()
     {
+        this.group = new THREE.Group()
+        this.group.position.copy(this.position)
+        this.scene.add(this.group)
+
         this.pedestal = new THREE.Mesh(
             new THREE.CylinderGeometry(0.2, 0.25, 1.2, 16),
             new THREE.MeshStandardMaterial({
@@ -90,9 +101,19 @@ export default class ValidationButton
     {
         this.onMouseDown = () =>
         {
-            const hit = this.centerRaycaster.intersectFirstHit([this.buttonMesh], false)
+            const meshes = this.buttonMeshes.length > 0
+                ? this.buttonMeshes
+                : [this.buttonMesh].filter(Boolean)
+            const hit = this.centerRaycaster.intersectFirstHit(meshes, false)
             if(hit && hit.distance < 3)
             {
+                this.activeButtonMesh = hit.object instanceof THREE.Mesh
+                    ? hit.object
+                    : this.activeButtonMesh
+                if(this.activeButtonMesh)
+                {
+                    this.activeButtonBaseY = this.activeButtonMesh.position.y
+                }
                 this.pressButton()
             }
         }
@@ -103,13 +124,19 @@ export default class ValidationButton
     pressButton()
     {
         this.experience.sound?.playMenuClick?.()
-        
-        // Animation de pression
-        const originalY = 0.08
-        this.buttonMesh.position.y = 0.02
-        
+
+        const buttonMesh = this.activeButtonMesh ?? this.buttonMesh
+        const originalY = buttonMesh?.position?.y ?? this.activeButtonBaseY
+        if(buttonMesh)
+        {
+            buttonMesh.position.y = originalY - 0.04
+        }
+
         setTimeout(() => {
-            if(this.buttonMesh) this.buttonMesh.position.y = originalY
+            if(buttonMesh)
+            {
+                buttonMesh.position.y = originalY
+            }
             this.onValidate?.()
         }, 150)
     }
@@ -122,6 +149,11 @@ export default class ValidationButton
             parent: parent || this.debug.ui,
             expanded: false
         })
+
+        if(!this.group)
+        {
+            return
+        }
 
         this.debug.addBinding(folder, this.group.position, 'x', { min: -20, max: 20, step: 0.1, label: 'Pos X' })
         this.debug.addBinding(folder, this.group.position, 'y', { min: -5, max: 10, step: 0.1, label: 'Pos Y' })
@@ -136,13 +168,16 @@ export default class ValidationButton
     destroy()
     {
         this.inputs?.off('sceneinteractdown.distributionValidation')
-        this.scene.remove(this.group)
-        this.pedestal.geometry.dispose()
-        this.pedestal.material.dispose()
-        this.buttonBase.geometry.dispose()
-        this.buttonBase.material.dispose()
-        this.buttonMesh.geometry.dispose()
-        this.buttonMesh.material.dispose()
+        if(this.group)
+        {
+            this.scene.remove(this.group)
+        }
+        this.pedestal?.geometry?.dispose?.()
+        this.pedestal?.material?.dispose?.()
+        this.buttonBase?.geometry?.dispose?.()
+        this.buttonBase?.material?.dispose?.()
+        this.buttonMesh?.geometry?.dispose?.()
+        this.buttonMesh?.material?.dispose?.()
         this.buttonRoot?.remove?.(this.buttonLight)
         this.buttonLight = null
         this.group = null
