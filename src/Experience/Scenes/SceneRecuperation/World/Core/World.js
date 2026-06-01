@@ -27,6 +27,13 @@ const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
 const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_2'
 const RECUPERATION_TEST_WATER_SOUND = 'recuperationTestWaterFalling'
 const RECUPERATION_TEST_WATER_CHANNEL = 'recuperationTestWater'
+const RECUPERATION_DIALOGUE_PHASES = Object.freeze({
+    SELECTION: 'selection',
+    TEST_RESULT: 'testResult',
+    VALIDATED: 'validated',
+    TUBE_ROOM: 'tubeRoom',
+    COMPLETED: 'completed'
+})
 const RECUPERATION_DIALOGUE_KEYS = new Set([
     RECUPERATION_ARRIVAL_DIALOGUE_KEY,
     RECUPERATION_VALIDATION_DIALOGUE_KEY,
@@ -76,8 +83,20 @@ export default class SceneRecuperationWorld
                 this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
             }
         }
+        this.pendingReturnToMapAfterDialogue = false
+        this.onTubeCompletionDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || this.pendingReturnToMapAfterDialogue !== true)
+            {
+                return
+            }
+
+            this.pendingReturnToMapAfterDialogue = false
+            this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
+        }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
+        this.experience.dialogueManager?.on?.('end.recuperationTubeCompletion', this.onTubeCompletionDialogueEnd)
 
         if(this.resources.isReady)
         {
@@ -306,6 +325,14 @@ export default class SceneRecuperationWorld
             this.isMaterialChoiceValidated = false
             this.stopMaterialTest()
             this.television?.setTestResult?.(null)
+
+            if(nextKey && this.experience?.isAutoFlowEnabled?.() !== false)
+            {
+                this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+                    phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
+                    materialKey: nextKey
+                })
+            }
         }
 
         if(!this.currentMaterialSelection)
@@ -365,6 +392,14 @@ export default class SceneRecuperationWorld
         const result = this.buildMaterialTestResult(this.currentMaterialSelection)
         this.scoring?.markMaterialTest?.(this.currentMaterialSelection?.key ?? null)
         this.television?.setTestResult?.(result)
+
+        if(this.currentMaterialSelection?.key && this.experience?.isAutoFlowEnabled?.() !== false)
+        {
+            this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+                phase: RECUPERATION_DIALOGUE_PHASES.TEST_RESULT,
+                materialKey: this.currentMaterialSelection.key
+            })
+        }
     }
 
     buildMaterialTestResult(selection)
@@ -449,18 +484,15 @@ export default class SceneRecuperationWorld
 
     startValidationDialogue()
     {
-        if(this.hasStartedValidationDialogue)
-        {
-            return
-        }
-
         if(this.experience?.isAutoFlowEnabled?.() === false)
         {
             return
         }
 
-        this.hasStartedValidationDialogue = true
-        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY)
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.VALIDATED,
+            materialKey: this.currentMaterialSelection?.key ?? null
+        })
     }
 
     handleRoom2Enter()
@@ -475,7 +507,9 @@ export default class SceneRecuperationWorld
         if(!this.hasStartedRecuperationDialogue)
         {
             this.hasStartedRecuperationDialogue = true
-            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY)
+            this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY, {
+                phase: RECUPERATION_DIALOGUE_PHASES.TUBE_ROOM
+            })
         }
     }
 
@@ -738,6 +772,7 @@ export default class SceneRecuperationWorld
         this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
         this.experience.dialogueManager?.off?.('start.recuperationMusicDuck')
         this.experience.dialogueManager?.off?.('end.recuperationMusicDuck')
+        this.experience.dialogueManager?.off?.('end.recuperationTubeCompletion')
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)

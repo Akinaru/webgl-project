@@ -20,6 +20,11 @@ import { setupSceneDistributionWorldDebug } from './World.debug.js'
 let distributionWorldInstanceIndex = 0
 const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
 const DISTRIBUTION_AMBIENT_CHANNEL = 'distributionAmbience'
+const DISTRIBUTION_DIALOGUE_KEY = 'distribution'
+const RESULT_DIALOGUE_KEY = 'resultat'
+const DISTRIBUTION_DIALOGUE_PHASES = Object.freeze({
+    COMPLETED: 'completed'
+})
 
 export default class SceneDistributionWorld
 {
@@ -29,6 +34,16 @@ export default class SceneDistributionWorld
         this.resources = this.experience.resources
         this.readyEventName = `${EventEnum.READY}.distributionWorld${distributionWorldInstanceIndex++}`
         this.hasStartedResultSequence = false
+        this.onCompletedDistributionDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== DISTRIBUTION_DIALOGUE_KEY)
+            {
+                return
+            }
+
+            this.experience.dialogueManager?.off?.('end.distributionCompleted', this.onCompletedDistributionDialogueEnd)
+            this.startResultDialogue()
+        }
 
         if(this.resources.isReady)
         {
@@ -163,6 +178,26 @@ export default class SceneDistributionWorld
         }, 2500)
     }
 
+    startResultDialogue()
+    {
+        this.onResultDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== RESULT_DIALOGUE_KEY)
+            {
+                return
+            }
+
+            setTimeout(() => {
+                this.experience.menu?.endMenu?.open?.()
+            }, 3500)
+            
+            this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
+        }
+
+        this.experience.dialogueManager?.on?.('end.distributionResult', this.onResultDialogueEnd)
+        this.experience.dialogueManager?.startByKey?.(RESULT_DIALOGUE_KEY)
+    }
+
     setDebug()
     {
         setupSceneDistributionWorldDebug.call(this)
@@ -225,29 +260,17 @@ export default class SceneDistributionWorld
 
         this.hasStartedResultSequence = true
         this.experience.badgeManager?.unlock?.('distribution')
-
-        this.onResultDialogueEnd = ({ key } = {}) =>
-        {
-            if(key !== 'resultat')
-            {
-                return
-            }
-
-            // Chill time (3.5s) before opening the end menu to let the user see the badge notification
-            setTimeout(() => {
-                this.experience.menu?.endMenu?.open?.()
-            }, 3500)
-            
-            this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
-        }
-
-        this.experience.dialogueManager?.on?.('end.distributionResult', this.onResultDialogueEnd)
-        this.experience.dialogueManager?.startByKey?.('resultat')
+        this.experience.dialogueManager?.on?.('end.distributionCompleted', this.onCompletedDistributionDialogueEnd)
+        this.experience.dialogueManager?.startByKey?.(DISTRIBUTION_DIALOGUE_KEY, {
+            phase: DISTRIBUTION_DIALOGUE_PHASES.COMPLETED
+        })
     }
 
     destroy()
     {
         this.resources.off(this.readyEventName)
+        this.experience.dialogueManager?.off?.('end.distributionCompleted')
+        this.experience.dialogueManager?.off?.('end.distributionResult')
         this.valveController?.destroy?.()
         this.valveController = null
         this.tubeWaterController?.destroy?.()
