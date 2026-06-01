@@ -483,12 +483,12 @@ export function buildWindowTubeDependencies()
 
     if(t1Uuid)
     {
-        this.requiredWindowByTubeUuid.set(t1Uuid, SceneRecuperationTubeWaterControllerConstants.PRIMARY_WINDOW_KEY)
+        this.requiredWindowByTubeUuid.set(t1Uuid, SceneRecuperationTubeWaterControllerConstants.AFTER_20_WINDOW_KEY)
     }
 
     if(b1Uuid)
     {
-        this.requiredWindowByTubeUuid.set(b1Uuid, SceneRecuperationTubeWaterControllerConstants.PRIMARY_WINDOW_KEY)
+        this.requiredWindowByTubeUuid.set(b1Uuid, SceneRecuperationTubeWaterControllerConstants.AFTER_20_WINDOW_KEY)
     }
 
     if(main14Uuid)
@@ -498,7 +498,7 @@ export function buildWindowTubeDependencies()
 
     if(main21Uuid)
     {
-        this.requiredWindowByTubeUuid.set(main21Uuid, SceneRecuperationTubeWaterControllerConstants.AFTER_20_WINDOW_KEY)
+        this.requiredWindowByTubeUuid.set(main21Uuid, SceneRecuperationTubeWaterControllerConstants.PRIMARY_WINDOW_KEY)
     }
 }
 
@@ -829,4 +829,3 @@ export function findClosestJoinPairBetweenTubes(fromTubeUuid, toTubeUuid)
 
     return bestPair
 }
-
