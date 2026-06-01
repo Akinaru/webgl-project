@@ -61,6 +61,8 @@ export default class SceneRecuperationWorld
         this.hasStartedArrivalDialogue = false
         this.hasStartedValidationDialogue = false
         this.activeRecuperationDialogueCount = 0
+        this.selectionDialoguePlayedByMaterialKey = new Set()
+        this.hasPlayedFirstTestResultDialogue = false
         this.onDialogueStart = ({ key } = {}) =>
         {
             if(!RECUPERATION_DIALOGUE_KEYS.has(key))
@@ -341,10 +343,7 @@ export default class SceneRecuperationWorld
 
             if(nextKey && this.experience?.isAutoFlowEnabled?.() !== false)
             {
-                this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
-                    phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
-                    materialKey: nextKey
-                })
+                this.startSelectionDialogueOncePerMaterial(nextKey)
             }
         }
 
@@ -410,11 +409,37 @@ export default class SceneRecuperationWorld
 
         if(this.currentMaterialSelection?.key && this.experience?.isAutoFlowEnabled?.() !== false)
         {
-            this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
-                phase: RECUPERATION_DIALOGUE_PHASES.TEST_RESULT,
-                materialKey: this.currentMaterialSelection.key
-            })
+            this.startFirstTestResultDialogueOnce(this.currentMaterialSelection.key)
         }
+    }
+
+    startSelectionDialogueOncePerMaterial(materialKey)
+    {
+        const normalizedMaterialKey = String(materialKey || '').trim().toLowerCase()
+        if(normalizedMaterialKey === '' || this.selectionDialoguePlayedByMaterialKey.has(normalizedMaterialKey))
+        {
+            return
+        }
+
+        this.selectionDialoguePlayedByMaterialKey.add(normalizedMaterialKey)
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
+            materialKey: normalizedMaterialKey
+        })
+    }
+
+    startFirstTestResultDialogueOnce(materialKey)
+    {
+        if(this.hasPlayedFirstTestResultDialogue)
+        {
+            return
+        }
+
+        this.hasPlayedFirstTestResultDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.TEST_RESULT,
+            materialKey: String(materialKey || '').trim().toLowerCase()
+        })
     }
 
     setLightDebugBindings()
@@ -981,6 +1006,8 @@ export default class SceneRecuperationWorld
         this.isExitTeleportActive = false
         this.isReturningToMap = false
         this.returnToRecyclageTimeoutId = null
+        this.selectionDialoguePlayedByMaterialKey?.clear?.()
+        this.hasPlayedFirstTestResultDialogue = false
         this.debugFolder?.dispose?.()
         this.debugFolder = null
 
