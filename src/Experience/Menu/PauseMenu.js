@@ -791,6 +791,7 @@ export default class PauseMenu extends EventEmitter
     {
         const safeQuality = String(quality || '').trim().toLowerCase()
         this.experience?.renderer?.setGraphicsQuality?.(safeQuality)
+        this.experience?.bloom?.refreshGraphicsQuality?.()
         this.syncGraphicsQualityUI()
     }
 

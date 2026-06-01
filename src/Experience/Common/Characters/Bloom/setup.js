@@ -303,14 +303,19 @@ export function applyBloomColorTexture(mesh)
         this.bloomTransmissionTexture2.needsUpdate = true
     }
 
-    if(this.bloomReflectionEnvTexture)
+    const isLowGraphicsQuality = this.experience?.renderer?.getGraphicsQuality?.() === 'low'
+    const bloomReflectionEnvTexture = isLowGraphicsQuality
+        ? null
+        : this.bloomReflectionEnvTexture
+
+    if(bloomReflectionEnvTexture)
     {
-        this.bloomReflectionEnvTexture.mapping = THREE.EquirectangularReflectionMapping
+        bloomReflectionEnvTexture.mapping = THREE.EquirectangularReflectionMapping
         if('NoColorSpace' in THREE)
         {
-            this.bloomReflectionEnvTexture.colorSpace = THREE.NoColorSpace
+            bloomReflectionEnvTexture.colorSpace = THREE.NoColorSpace
         }
-        this.bloomReflectionEnvTexture.needsUpdate = true
+        bloomReflectionEnvTexture.needsUpdate = true
     }
 
     const transmissionTexture = this.getTransmissionTextureForMesh(mesh)
@@ -388,10 +393,15 @@ export function applyBloomColorTexture(mesh)
 
         material.roughness = this.tuning.roughness
         material.metalness = this.tuning.metalness
-        if(this.bloomReflectionEnvTexture)
+        if(bloomReflectionEnvTexture)
         {
-            material.envMap = this.bloomReflectionEnvTexture
+            material.envMap = bloomReflectionEnvTexture
             material.envMapIntensity = this.tuning.envMapIntensity
+        }
+        else
+        {
+            material.envMap = null
+            material.envMapIntensity = 0
         }
         this.applyBloomReflectionMaskToMaterial(material, transmissionTexture, hasUv)
 
@@ -400,6 +410,24 @@ export function applyBloomColorTexture(mesh)
     }
 
     mesh.material = Array.isArray(mesh.material) ? nextMaterials : nextMaterials[0]
+}
+
+export function refreshGraphicsQuality()
+{
+    if(!this.model)
+    {
+        return
+    }
+
+    this.model.traverse((child) =>
+    {
+        if(!child?.isMesh || !this.isBloomTargetMesh(child))
+        {
+            return
+        }
+
+        this.applyBloomColorTexture(child)
+    })
 }
 
 
