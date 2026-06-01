@@ -88,7 +88,7 @@ export default class Menu
         this.pauseMenu = new PauseMenu({
             experience: this.experience,
             isEnabled: () => this.hasResolved && !this.isDestroyed,
-            canAutoOpen: () => !this.endMenu?.isOpen?.()
+            canAutoOpen: () => !this.endMenu?.isOpen?.() && !this.experience?.isNanobotInspecting
         })
 
         this.endMenu = new EndMenu(this.experience)

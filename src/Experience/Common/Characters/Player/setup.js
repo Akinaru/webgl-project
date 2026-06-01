@@ -56,6 +56,11 @@ export function setPointerLock()
             return
         }
 
+        if(this.experience?.isNanobotInspecting)
+        {
+            return
+        }
+
         if(!this.inputs?.isPointerLocked?.(this.canvas))
         {
             this.inputs?.requestPointerLock?.(this.canvas)
@@ -279,4 +284,3 @@ export function normalizeBoundaryBox(boundaryBox)
 
     return { minX, maxX, minZ, maxZ }
 }
-

@@ -531,7 +531,11 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "J’espère que c’était clair comme de l’eau de roche. Aller hop hop hop, au travail !",
-          "next": "recyclage_105",
+          "next": "recyclage_1_pause_end",
+          "actions": []
+        },
+        "recyclage_1_pause_end": {
+          "type": "end",
           "actions": []
         },
         "recyclage_105": {
@@ -542,6 +546,24 @@
           "actions": []
         },
         "recyclage_1_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "recyclage_1_validation": {
+      "key": "recyclage_1_validation",
+      "once": false,
+      "startNode": "recyclage_105",
+      "nodes": {
+        "recyclage_105": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Super ! Grâce à toi l’eau peut se recycler à l’infini ! Il nous reste plus qu’à la distribuer à tout le monde !",
+          "next": "recyclage_1_validation_end",
+          "actions": []
+        },
+        "recyclage_1_validation_end": {
           "type": "end",
           "actions": []
         }

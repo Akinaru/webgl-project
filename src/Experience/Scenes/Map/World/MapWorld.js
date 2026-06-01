@@ -8,6 +8,7 @@ import MapLight from './MapLight.js'
 import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollision.debug.js'
 import Water from './Water.js'
+import MapWaterfalls from './MapWaterfalls.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
 import MapFireflies from './Fireflies.js'
@@ -182,6 +183,15 @@ export default class MapWorld
             return
         }
 
+        this.waterfalls = new MapWaterfalls({
+            mapModel: this.mapModel
+        })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
@@ -316,6 +326,7 @@ export default class MapWorld
         this.light?.update?.(delta)
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
+        this.waterfalls?.update?.(delta)
         this.bushes?.update?.(delta)
         this.fireflies?.update?.(delta)
         this.player?.update(delta)
@@ -905,6 +916,12 @@ export default class MapWorld
         {
             this.water.destroy?.()
             this.water = null
+        }
+
+        if(this.waterfalls)
+        {
+            this.waterfalls.destroy?.()
+            this.waterfalls = null
         }
 
         if(this.visibilityDebug)
