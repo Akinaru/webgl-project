@@ -82,7 +82,7 @@ export default class SceneDistributionWalls
         const mat = new THREE.MeshStandardMaterial({
             roughness: src?.roughness ?? 1.0,
             metalness: src?.metalness ?? 0.0,
-            side:      src?.side      ?? THREE.DoubleSide
+            side:      THREE.DoubleSide
         })
         mat.color.copy(this.wallColor)
         mat.customProgramCacheKey = () => `wall-slab-distrib-${mat.uuid}`

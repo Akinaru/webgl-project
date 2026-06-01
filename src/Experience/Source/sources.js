@@ -32,7 +32,8 @@ export const sceneSources = {
     [SceneEnum.DISTRIBUTION]: [
         ...modelSources.filter(s => s.name === 'distributionModel'),
         // La distribution partage maintenant la texture des murs de récupération
-        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture')
+        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture'
+            || s.name === 'distributionBackgroundResultTexture')
     ]
 }
 

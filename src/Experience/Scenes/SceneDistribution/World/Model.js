@@ -305,7 +305,7 @@ export default class SceneDistributionModel
                     opacity: this.visualSettings.backgroundOpacity,
                     side: this.resolveBackgroundSide(this.visualSettings.backgroundSide),
                     depthWrite: this.visualSettings.backgroundDepthWrite,
-                    depthTest: false
+                    depthTest: true
                 })
                 runtimeMaterial.name = `${material.name || mesh.name || 'background'}_unlit`
                 runtimeMaterial.userData.distributionRole = 'backgroundUnlit'
@@ -526,7 +526,7 @@ export default class SceneDistributionModel
             material.opacity = this.visualSettings.backgroundOpacity
             material.transparent = this.visualSettings.backgroundOpacity < 1
             material.depthWrite = this.visualSettings.backgroundDepthWrite
-            material.depthTest = false
+            material.depthTest = true
             material.side = backgroundSide
             material.needsUpdate = true
         }

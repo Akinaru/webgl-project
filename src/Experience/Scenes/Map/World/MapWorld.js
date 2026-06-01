@@ -94,12 +94,15 @@ export default class MapWorld
 
             this.experience.sound?.setMusicRuntimeVolumeScale?.(MapWorldConstants.MAP_INTRO_MUSIC_DUCK_SCALE)
         }
-        this.onDialogueEnd = ({ key } = {}) =>
+        this.onDialogueEnd = ({ key, interrupted = false } = {}) =>
         {
             if(key === MapWorldConstants.MAP_INTRO_DIALOGUE_KEY)
             {
                 this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
-                this.teleportToRecuperationAfterIntro()
+                if(interrupted !== true)
+                {
+                    this.teleportToRecuperationAfterIntro()
+                }
             }
         }
         this.experience.dialogueManager?.on?.('start.mapWorldMusicDuck', this.onDialogueStart)

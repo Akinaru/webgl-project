@@ -315,10 +315,10 @@ export default class DialogueManager extends EventEmitter
             return
         }
 
-        this.endCurrentDialogue()
+        this.endCurrentDialogue(this.state.node, { interrupted: true })
     }
 
-    endCurrentDialogue(node = this.state.node)
+    endCurrentDialogue(node = this.state.node, { interrupted = false } = {})
     {
         if(!this.isRunning())
         {
@@ -340,13 +340,14 @@ export default class DialogueManager extends EventEmitter
         const endedKey = this.state.dialogueKey
         this.experience?.sound?.stopDialogue?.()
         this.state = this.createEmptyState()
-        if(typeof endedKey === 'string' && endedKey.trim() !== '')
+        if(interrupted !== true && typeof endedKey === 'string' && endedKey.trim() !== '')
         {
             this.setFlag(`dialogue.completed.${endedKey}`, true)
         }
 
         this.trigger('end', [{
-            key: endedKey
+            key: endedKey,
+            interrupted: interrupted === true
         }])
         this.emitState()
         this.startNextQueuedDialogue()
