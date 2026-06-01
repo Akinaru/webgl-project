@@ -10,6 +10,7 @@ import MapCollisionDebug from './MapCollision.debug.js'
 import Water from './Water.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
+import MapFireflies from './Fireflies.js'
 import MapVisibilityDebug from './MapVisibility.debug.js'
 import MapFog from './MapFog.js'
 import bloomRails from './bloomRails.json'
@@ -201,6 +202,16 @@ export default class MapWorld
             return
         }
 
+        this.fireflies = new MapFireflies({
+            getFocusPosition: () => this.player?.position ?? null,
+            getFog: () => this.fog ?? null
+        })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         this.setVegetationDebug()
 
         this.light = new MapLight({
@@ -296,6 +307,7 @@ export default class MapWorld
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
         this.bushes?.update?.(delta)
+        this.fireflies?.update?.(delta)
         this.player?.update(delta)
         this.collisionDebug?.update?.()
         this.updateWaterEntrySound()
@@ -840,6 +852,9 @@ export default class MapWorld
         this.bushes?.setDebug?.({
             parentFolder: this.bushDebugFolder
         })
+        this.fireflies?.setDebug?.({
+            parentFolder: this.vegetationDebugFolder
+        })
     }
 
     destroy()
@@ -898,6 +913,12 @@ export default class MapWorld
         {
             this.bushes.destroy?.()
             this.bushes = null
+        }
+
+        if(this.fireflies)
+        {
+            this.fireflies.destroy?.()
+            this.fireflies = null
         }
 
         if(this.collisionDebug)
