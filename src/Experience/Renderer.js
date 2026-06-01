@@ -24,15 +24,15 @@ const GRAPHICS_QUALITY_PRESETS = Object.freeze({
         pixelRatioScale: 0.88,
         shadowsEnabled: true,
         ambientOcclusionEnabled: true,
-        ambientOcclusionIntensityMultiplier: 0.65,
-        ambientOcclusionKernelRadiusMultiplier: 0.72
+        ambientOcclusionIntensityMultiplier: 0.35,
+        ambientOcclusionKernelRadiusMultiplier: 0.65
     }),
     [GRAPHICS_QUALITY.HIGH]: Object.freeze({
         pixelRatioScale: 1,
         shadowsEnabled: true,
         ambientOcclusionEnabled: true,
-        ambientOcclusionIntensityMultiplier: 1,
-        ambientOcclusionKernelRadiusMultiplier: 1
+        ambientOcclusionIntensityMultiplier: 0.55,
+        ambientOcclusionKernelRadiusMultiplier: 0.85
     })
 })
 
@@ -48,14 +48,14 @@ export default class Renderer
         this.ambientOcclusion = {
             enabled: true,
             recuperationOnly: false,
-            intensity: 0.007,
+            intensity: 0.005,
             bias: 0.35,
             scale: 1,
-            kernelRadius: 4,
+            kernelRadius: 3,
             minResolution: 0,
             blur: true,
-            blurRadius: 7,
-            blurStdDev: 2.9
+            blurRadius: 5,
+            blurStdDev: 2.4
         }
 
         this.setInstance()
