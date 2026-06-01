@@ -3,7 +3,8 @@ export const TUTORIAL_STEP_IDS = Object.freeze({
     MOVE_FORWARD: 'moveForward',
     MOVE_BACKWARD: 'moveBackward',
     MOVE_LEFT: 'moveLeft',
-    MOVE_RIGHT: 'moveRight'
+    MOVE_RIGHT: 'moveRight',
+    PAUSE_MENU: 'pauseMenu'
 })
 
 export const CODE_LABELS = Object.freeze({
@@ -26,7 +27,8 @@ export const TUTORIAL_TARGET_PROGRESS = Object.freeze({
     MOVE_FORWARD: 1100,
     MOVE_BACKWARD: 1100,
     MOVE_LEFT: 1100,
-    MOVE_RIGHT: 1100
+    MOVE_RIGHT: 1100,
+    PAUSE_MENU: 1
 })
 
 export const TUTORIAL_MOUSE_PROGRESS_MULTIPLIER = 0.35
