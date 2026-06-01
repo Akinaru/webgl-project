@@ -226,6 +226,11 @@ export default class SceneRecyclageWorld
         this.light.groundColor.set(preset.colors.ground)
         this.light.sunColor.set(preset.colors.sun)
         this.light.applyLightColorsAndIntensity()
+        this.light.sunLight.visible = this.light.state.sunIntensity > 0
+        if(this.light.sunVisual)
+        {
+            this.light.sunVisual.visible = this.light.state.sunIntensity > 0
+        }
         this.light.updateCoordinates()
         this.light.updateFocusPosition()
         this.light.sunLight.position.setFromSpherical(this.light.spherical).add(this.light.focusPosition)

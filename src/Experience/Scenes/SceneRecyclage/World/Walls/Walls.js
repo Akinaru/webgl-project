@@ -73,6 +73,7 @@ export default class SceneRecyclageWalls
     patchMesh(mesh)
     {
         const sourceMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+        const materialSide = this.resolveMaterialSide(sourceMaterial)
         const uniforms = {
             uWallSlabs: { value: this.slabsTexture },
             uWallScale: { value: DEFAULTS.wallScale },
@@ -87,9 +88,10 @@ export default class SceneRecyclageWalls
         const material = new THREE.MeshStandardMaterial({
             roughness: sourceMaterial?.roughness ?? 1,
             metalness: sourceMaterial?.metalness ?? 0,
-            side: sourceMaterial?.side ?? THREE.DoubleSide
+            side: materialSide
         })
         material.color.copy(this.wallColor)
+        material.shadowSide = materialSide
         material.customProgramCacheKey = () => `wall-slab-recyclage-${material.uuid}`
         material.onBeforeCompile = (shader) =>
         {
@@ -99,6 +101,22 @@ export default class SceneRecyclageWalls
 
         this.materials.push(material)
         mesh.material = material
+    }
+
+    resolveMaterialSide(sourceMaterial)
+    {
+        const normalizedSide = sourceMaterial?.side
+        if(normalizedSide === THREE.BackSide || normalizedSide === THREE.FrontSide || normalizedSide === THREE.DoubleSide)
+        {
+            if(normalizedSide === THREE.DoubleSide)
+            {
+                return THREE.BackSide
+            }
+
+            return normalizedSide
+        }
+
+        return THREE.BackSide
     }
 
     ensureWallGeometryNormals(mesh)
