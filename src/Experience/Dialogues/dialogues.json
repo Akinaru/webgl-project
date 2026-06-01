@@ -17,7 +17,7 @@
         "intro_001": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Bonjour… Je m’appelle Bloom. Et toi ? Non, ne réponds pas encore. Je sais déjà que tu es là parce que le monde a changé. Parce que l’eau, autrefois banale, est devenue rare et précieuse.",
+          "text": "Bonjour… Je m’appelle Bloom ! Je sais que tu es là parce que le monde a changé. Parce que l’eau, autrefois banale, est devenue rare et précieuse.",
           "next": "intro_002",
           "actions": []
         },
@@ -45,14 +45,67 @@
         "intro_005": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Toi, apprenti-citoyen, tu vas découvrir comment nous vivons, comment nous pensons, comment nous survivons… ensemble.",
-          "next": "intro_006",
+          "text": "Toi, apprenti-citoyen, tu vas découvrir comment nous vivons, comment nous pensons, et comment nous survivons, tous ensemble. Mais dis-moi, pour toi, l’eau c’est surtout quoi ?",
+          "next": "intro_005_choice",
           "actions": []
+        },
+        "intro_005_choice": {
+          "type": "choice",
+          "choices": [
+            {
+              "id": "intro_005_choice_travailleur",
+              "text": "Un outil vital.",
+              "next": "intro_006",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "TRAVAILLEUR",
+                  "amount": 3
+                }
+              ]
+            },
+            {
+              "id": "intro_005_choice_inventeur",
+              "text": "Un mystère à comprendre.",
+              "next": "intro_006",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "INVENTEUR",
+                  "amount": 4
+                }
+              ]
+            },
+            {
+              "id": "intro_005_choice_meneur",
+              "text": "Une responsabilité à gérer.",
+              "next": "intro_006",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "MENEUR",
+                  "amount": 3
+                }
+              ]
+            },
+            {
+              "id": "intro_005_choice_botaniste",
+              "text": "Un cadeau de la nature.",
+              "next": "intro_006",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "BOTANISTE",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
         },
         "intro_006": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Aller on se jette à l’eau ! Le parcours se fera en 3 grandes étapes : la récupération de l’eau, le recyclage et la distribution.",
+          "text": "D’accord ! Alors on se jette à l’eau ! Le parcours se fera en 3 grandes étapes : la récupération de l’eau, le recyclage et la distribution.",
           "next": "intro_007",
           "actions": []
         },
@@ -73,47 +126,29 @@
         "recuperation_001": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Regarde autour de toi. Ces bâtiments… ils ne sont pas juste beaux. Ils sont intelligents. \nChaque matériau choisit comment il veut récupérer la pluie. ",
+          "text": "Voici la station de test. Ici, les matériaux ne sont pas juste beaux, ils sont intelligents. \nChaque matériau choisit comment il veut récupérer la pluie.",
           "next": "recuperation_002",
           "actions": []
         },
         "recuperation_002": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Toi, ton rôle coule de source : tu vas décider du meilleur matériau à utiliser pour ce nouveau quartier.",
+          "text": "Toi, ton rôle coule de source : tu vas décider du meilleur matériau à utiliser pour les bâtiments du quartier.",
           "next": "recuperation_003",
           "actions": []
         },
         "recuperation_003": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "La carapace scarabé ? Elle imite la nature : robuste, auto-nettoyante, pleine de secrets.Le verre ? Transparent et lisse, il laisse glisser chaque goutte librement.Ou la végétation ? Vivante, respirante… elle boit, filtre, et donne de l’ombre.",
+          "text": "La carapace de scarabée ? Le verre ? Ou la végétation ?",
           "next": "recuperation_004",
           "actions": []
         },
         "recuperation_004": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Choisis, applique et simules la pluie pour trouver le meilleur matériau.",
+          "text": "Choisis un matériau et simules la pluie pour trouver le meilleur pour récupérer l’eau. Une fois que ton choix est fait, clique sur le bouton “Valider”.",
           "next": "recuperation_end",
-          "actions": []
-        },
-        "recuperation_005": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Hourra ! Tu as choisis un super matériau, l’eau peut circuler !",
-          "next": "recuperation_validation_end",
-          "actions": []
-        },
-        "recuperation_validation_end": {
-          "type": "end",
-          "actions": []
-        },
-        "recuperation_006": {
-          "type": "line",
-          "speaker": "Bloom",
-          "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPlus tu es efficace, moins de gouttes d’eau seront perdues.",
-          "next": "recuperation_tuyaux_end",
           "actions": []
         },
         "recuperation_end": {
@@ -125,12 +160,176 @@
     "recuperation_1": {
       "key": "recuperation_1",
       "once": false,
-      "startNode": "recuperation_005",
+      "startNode": "recuperation_1_phase_branch",
       "nodes": {
+        "recuperation_1_phase_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "selection"
+                }
+              ],
+              "next": "recuperation_1_selection_branch"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "testResult"
+                }
+              ],
+              "next": "recuperation_009"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "validated"
+                }
+              ],
+              "next": "recuperation_1_validation_branch"
+            }
+          ],
+          "fallbackNext": "recuperation_validation_end"
+        },
+        "recuperation_1_selection_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau0"
+                }
+              ],
+              "next": "recuperation_005"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau1"
+                }
+              ],
+              "next": "recuperation_006"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau2"
+                }
+              ],
+              "next": "recuperation_007"
+            }
+          ],
+          "fallbackNext": "recuperation_validation_end"
+        },
         "recuperation_005": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Hourra ! Tu as choisis un super matériau, l’eau peut circuler !",
+          "text": "Tu as sélectionné la carapace de scarabée.",
+          "next": "recuperation_008",
+          "actions": []
+        },
+        "recuperation_006": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Tu as sélectionné le verre.",
+          "next": "recuperation_008",
+          "actions": []
+        },
+        "recuperation_007": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Tu as sélectionné la végétation.",
+          "next": "recuperation_008",
+          "actions": []
+        },
+        "recuperation_008": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Tu peux faire une simulation de pluie pour voir comment ce matériau récupère l’eau.",
+          "next": "recuperation_validation_end",
+          "actions": []
+        },
+        "recuperation_009": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Le résultat du test s’affiche sur l’écran, tu peux continuer à faire des tests, ou bien valider ce choix de matériau pour le quartier.",
+          "next": "recuperation_validation_end",
+          "actions": []
+        },
+        "recuperation_1_validation_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau0"
+                }
+              ],
+              "next": "recuperation_010"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau1"
+                }
+              ],
+              "next": "recuperation_011"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "materialKey",
+                  "value": "materiau2"
+                }
+              ],
+              "next": "recuperation_012"
+            }
+          ],
+          "fallbackNext": "recuperation_validation_end"
+        },
+        "recuperation_010": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Hourra ! Tu as choisis la carapace de scarabée, l’eau peut maintenant circuler !",
+          "next": "recuperation_013",
+          "actions": []
+        },
+        "recuperation_011": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Hourra ! Tu as choisis le verre, l’eau peut maintenant circuler !",
+          "next": "recuperation_013",
+          "actions": []
+        },
+        "recuperation_012": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Hourra ! Tu as choisis la végétation, l’eau peut maintenant circuler !",
+          "next": "recuperation_013",
+          "actions": []
+        },
+        "recuperation_013": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Suis-moi dans la salle des tuyaux !",
           "next": "recuperation_validation_end",
           "actions": []
         },
@@ -143,12 +342,93 @@
     "recuperation_2": {
       "key": "recuperation_2",
       "once": false,
-      "startNode": "recuperation_006",
+      "startNode": "recuperation_2_phase_branch",
       "nodes": {
-        "recuperation_006": {
+        "recuperation_2_phase_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "tubeRoom"
+                }
+              ],
+              "next": "recuperation_014"
+            },
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "completed"
+                }
+              ],
+              "next": "recuperation_016"
+            }
+          ],
+          "fallbackNext": "recuperation_tuyaux_end"
+        },
+        "recuperation_014": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPlus tu es efficace, moins de gouttes d’eau seront perdues.",
+          "text": "Aide-moi à orienter les tuyaux pour acheminer l’eau de la manière la plus fluide possible.\nPour toi, le meilleur chemin, c’est quoi ?",
+          "next": "recuperation_014_choice",
+          "actions": []
+        },
+        "recuperation_014_choice": {
+          "type": "choice",
+          "choices": [
+            {
+              "id": "recuperation_014_choice_botaniste",
+              "text": "Le plus organique",
+              "next": "recuperation_015",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "BOTANISTE",
+                  "amount": 3
+                }
+              ]
+            },
+            {
+              "id": "recuperation_014_choice_inventeur",
+              "text": "Le mieux réfléchi",
+              "next": "recuperation_015",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "INVENTEUR",
+                  "amount": 4
+                }
+              ]
+            },
+            {
+              "id": "recuperation_014_choice_meneur",
+              "text": "Le plus court",
+              "next": "recuperation_015",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "MENEUR",
+                  "amount": 5
+                }
+              ]
+            }
+          ]
+        },
+        "recuperation_015": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Clique sur chaque tuyaux pour pour changer son orientation et créer un chemin.",
+          "next": "recuperation_tuyaux_end",
+          "actions": []
+        },
+        "recuperation_016": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Félicitations ! Tu as débloqué l’eau, le quartier va pouvoir suivre le courant.",
           "next": "recuperation_tuyaux_end",
           "actions": []
         },
@@ -166,14 +446,55 @@
         "recyclage_101": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Voici nos petits héros invisibles. \nIls nettoient l’eau… mais parfois, ils se salissent eux-mêmes. Et là, c’est à toi d’intervenir.",
-          "next": "recyclage_102",
+          "text": "Voici nos petits héros invisibles. \nIls nettoient l’eau… mais parfois, ils se salissent eux-mêmes. Et là, c’est à toi d’intervenir. \nQuel serait ton premier réflexe si un objet est endommagé?",
+          "next": "recyclage_101_choice",
           "actions": []
+        },
+        "recyclage_101_choice": {
+          "type": "choice",
+          "choices": [
+            {
+              "id": "recyclage_101_choice_inventeur",
+              "text": "Trouver une astuce",
+              "next": "recyclage_102",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "INVENTEUR",
+                  "amount": 5
+                }
+              ]
+            },
+            {
+              "id": "recyclage_101_choice_botaniste",
+              "text": "Prendre soin de l'objet",
+              "next": "recyclage_102",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "BOTANISTE",
+                  "amount": 4
+                }
+              ]
+            },
+            {
+              "id": "recyclage_101_choice_travailleur",
+              "text": "Agir vite",
+              "next": "recyclage_102",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "TRAVAILLEUR",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
         },
         "recyclage_102": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Devant cette borne, utilise tes mains - oui, tes vraies mains - pour essuyer les taches sur les nanobots.",
+          "text": "Devant cette borne, utilise tes mains, pour essuyer les taches sur les nanobots.",
           "next": "recyclage_103",
           "actions": []
         },
@@ -188,6 +509,13 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "J’espère que c’était clair comme de l’eau de roche. Aller hop hop hop, au travail !",
+          "next": "recyclage_105",
+          "actions": []
+        },
+        "recyclage_105": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Super ! Grâce à toi l’eau peut se recycler à l’infini ! Il nous reste plus qu’à la distribuer à tout le monde !",
           "next": "recyclage_1_end",
           "actions": []
         },
@@ -212,28 +540,28 @@
         "recyclage_002": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Ici dans la salle du recyclage, l’eau sale ne part pas à l’égout. \nElle revient à la terre… grâce à eux :  les champignons filtres. ",
+          "text": "Ici dans la salle du recyclage, l’eau sale ne part pas à l’égout.",
           "next": "recyclage_003",
           "actions": []
         },
         "recyclage_003": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Ils mangent les polluants, et en retour, ils brillent. \nPlus tu leur donnes d’énergie en cliquant, plus ils s’allument.",
+          "text": "Ils mangent les polluants, et en retour, ils brillent. \nPlace-les aux bons endroits et n’aie pas peur de toucher et de cliquer pour les faire briller.",
           "next": "recyclage_004",
           "actions": []
         },
         "recyclage_004": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Wahou, c’est super, tu t’en sors comme un poisson dans l’eau !",
+          "text": "Wahou, c’est super, tu t’en es sorti comme un poisson dans l’eau ! Je suis fière de toi.",
           "next": "recyclage_005",
           "actions": []
         },
         "recyclage_005": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Place-les aux bons endroits et n’aie pas peur de toucher et de cliquer pour les faire briller. Chaque luminescence est une victoire contre la pollution. Et moi, je suis fière de toi.",
+          "text": "Allons dans la seconde pièce du recyclage : le recyclage avec les nanobots !",
           "next": "recyclage_0_end",
           "actions": []
         },
@@ -246,19 +574,76 @@
     "distribution": {
       "key": "distribution",
       "once": false,
-      "startNode": "distribution_001",
+      "startNode": "distribution_phase_branch",
       "nodes": {
+        "distribution_phase_branch": {
+          "type": "branch",
+          "branches": [
+            {
+              "conditions": [
+                {
+                  "type": "contextEquals",
+                  "key": "phase",
+                  "value": "completed"
+                }
+              ],
+              "next": "distribution_005"
+            }
+          ],
+          "fallbackNext": "distribution_001"
+        },
         "distribution_001": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Ahh la dernière étape, nous voyons le bout du tuyau !\nMaintenant, l’eau est propre. Il faut la donner. Mais à qui et combien ?",
-          "next": "distribution_002",
+          "text": "Ahh la dernière étape, nous voyons le bout du tuyau !\nMaintenant, l’eau est propre. Il faut la donner. Mais en cas de pénurie d'eau, tu priorises qui ?",
+          "next": "distribution_001_choice",
           "actions": []
+        },
+        "distribution_001_choice": {
+          "type": "choice",
+          "choices": [
+            {
+              "id": "distribution_001_choice_meneur",
+              "text": "Les familles et les hôpitaux.",
+              "next": "distribution_002",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "MENEUR",
+                  "amount": 5
+                }
+              ]
+            },
+            {
+              "id": "distribution_001_choice_travailleur",
+              "text": "Les ouvriers dans l’industrie.",
+              "next": "distribution_002",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "TRAVAILLEUR",
+                  "amount": 4
+                }
+              ]
+            },
+            {
+              "id": "distribution_001_choice_botaniste",
+              "text": "Les jardins et les animaux.",
+              "next": "distribution_002",
+              "actions": [
+                {
+                  "type": "addMetier",
+                  "metier": "BOTANISTE",
+                  "amount": 4
+                }
+              ]
+            }
+          ]
         },
         "distribution_002": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Ouvre les vannes et envoie l’eau pour l’agriculture, les foyers, les hôpitaux et l’industrie. ",
+          "text": "Mmhh intéressant ce choix. Maintenant ouvre les vannes et répartie l’eau pour l’agriculture, les foyers, et l’industrie.",
           "next": "distribution_003",
           "actions": []
         },
@@ -272,7 +657,14 @@
         "distribution_004": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Et si tu atteins les jauges sans déborder… alors tu as compris : l’eau n’est pas une course. \nC’est un équilibre.",
+          "text": "Distribue l’eau et quand tu penses avoir fait la meilleure répartition, clique sur le bouton valider.",
+          "next": "distribution_end",
+          "actions": []
+        },
+        "distribution_005": {
+          "type": "line",
+          "speaker": "Bloom",
+          "text": "Wahou, bravo à toi ! Toutes les étapes sont finies ! Allons dans la salle finale pour te parler de ton intégration dans Altera !",
           "next": "distribution_end",
           "actions": []
         },
@@ -346,7 +738,7 @@
         "resultat_002_inventeur": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Tu as choisi la carapace scarabé. Tu as simulé la pluie plusieurs fois. Tu as utilisé peu de tuyaux, mais avec précision. Tu as nettoyé tous les nanobots, rapidement.\nTu es celui qui imagine les solutions de demain. Qui analyse, qui innove, qui construit les circuits de l’avenir.\nBienvenue, Inventeur. Altera a besoin de ton esprit.",
+          "text": "Tu es celui qui imagine les solutions de demain. Qui analyse, qui innove, qui construit les circuits de l’avenir.\nBienvenue, Inventeur. Altera a besoin de ton esprit.",
           "next": "resultat_end",
           "actions": [
             {
@@ -358,7 +750,7 @@
         "resultat_002_travailleur": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Tu as choisi le verre. Tu as utilisé beaucoup de tuyaux. Tu as planté peu de champignons, mais tu as nettoyé les nanobots avec acharnement. Tu as respecté les quotas, sans dépasser.\nTu es celui qui met les mains dans le cambouis. Qui installe, qui vide, qui transporte. Sans toi, rien ne fonctionne.\nBienvenue, Travailleur. Altera repose sur tes épaules.",
+          "text": "Tu es celui qui met les mains dans le cambouis. Qui installe, qui vide, qui transporte. Sans toi, rien ne fonctionne.\nBienvenue, Travailleur. Altera repose sur tes épaules.",
           "next": "resultat_end",
           "actions": [
             {
@@ -370,7 +762,7 @@
         "resultat_002_botaniste": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Tu as regardé l’arbre au début. Tu as planté beaucoup de champignons, sur la terre. Tu as pris ton temps pour la distribution.\nTu es celui qui écoute la nature. Qui plante, qui trie, qui protège la faune et la flore. Tu sais que l’eau vit grâce à la vie.\nBienvenue, Botaniste. Altera respire grâce à toi.",
+          "text": "Tu es celui qui écoute la nature. Qui plante, qui trie, qui protège la faune et la flore.\nBienvenue, Botaniste. Altera respire grâce à toi.",
           "next": "resultat_end",
           "actions": [
             {
@@ -382,7 +774,7 @@
         "resultat_002_meneur": {
           "type": "line",
           "speaker": "Bloom",
-          "text": "Tu as simulé la pluie zero fois - tu as préféré agir. Tu as dirigé les tuyaux avec rapidité. Tu as distribué l’eau sans dépasser, en temps record.\nTu es celui qui organise, qui décide, qui répartit. Tu gères les crises, tu inspires les autres, tu assures l’équité.\nBienvenue, Meneur. Altera te suit.",
+          "text": "Tu es celui qui organise, qui décide, qui répartit. Tu gères les crises, tu inspires les autres, tu assures l’équité.\nBienvenue, Meneur. Altera te suit.",
           "next": "resultat_end",
           "actions": [
             {

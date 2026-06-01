@@ -17,12 +17,12 @@ export default [
     {
         name: 'voice_1',
         type: 'audioBuffer',
-        path: 'sounds/dialogues/intro/intro_001.mp3'
+        path: 'sounds/dialogues/intro/intro_001.wav'
     },
     {
         name: 'voice_2',
         type: 'audioBuffer',
-        path: 'sounds/dialogues/intro/intro_002.mp3'
+        path: 'sounds/dialogues/intro/intro_002.wav'
     },
     {
         name: 'waterSplash4Sound',
