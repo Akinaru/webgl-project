@@ -8,8 +8,13 @@ export const NON_COLLIDABLE_NAME_TOKENS = [
 ]
 
 export const COLLIDABLE_OVERRIDE_NAME_TOKENS = [
+    'cube',
     'citerne',
     'citerne_instance'
+]
+
+export const BIDIRECTIONAL_COLLISION_NAME_TOKENS = [
+    'cube'
 ]
 
 export const VANNE_NAME_TOKENS = [

@@ -153,6 +153,15 @@
     "channel": "recuperationTestWater",
     "audioType": "sfx"
   },
+  "recuperationFinalTubeComplete": {
+    "label": "Recuperation final tube complete",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/recuperation_1/recuperation_016.mp3",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
+  },
   "recuperationAmbientWaves": {
     "label": "Recuperation ambient waves",
     "resourceKey": "recuperationAmbientWavesSound",

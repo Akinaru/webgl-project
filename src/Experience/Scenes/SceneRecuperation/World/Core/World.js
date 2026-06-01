@@ -50,6 +50,7 @@ export default class SceneRecuperationWorld
 
         this.isExitTeleportActive = false
         this.isReturningToMap = false
+        this.returnToRecyclageTimeoutId = null
         this.testDurationSeconds = 5.5
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
@@ -532,18 +533,13 @@ export default class SceneRecuperationWorld
 
         this.experience.badgeManager?.unlock?.('tuyaux')
         this.scoring?.finalize?.()
+        this.experience.sound?.play?.(SceneRecuperationWorldConstants.RECUPERATION_FINAL_TUBE_COMPLETE_SOUND_KEY)
         this.isReturningToMap = true
-
-        if(this.experience?.isAutoFlowEnabled?.() === false)
+        this.returnToRecyclageTimeoutId = window.setTimeout(() =>
         {
+            this.returnToRecyclageTimeoutId = null
             this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
-            return
-        }
-
-        this.pendingReturnToMapAfterDialogue = true
-        this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY, {
-            phase: RECUPERATION_DIALOGUE_PHASES.COMPLETED
-        })
+        }, SceneRecuperationWorldConstants.AUTO_SWITCH_TO_RECYCLAGE_DELAY_MS)
     }
 
     setWallCrossTeleport()
@@ -781,6 +777,11 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_WATER_AMBIENT_CHANNEL)
+        if(this.returnToRecyclageTimeoutId !== null)
+        {
+            window.clearTimeout(this.returnToRecyclageTimeoutId)
+            this.returnToRecyclageTimeoutId = null
+        }
         this.onArrivalDialogueEnd = null
 
         if(this.player)
@@ -891,7 +892,7 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = false
         this.isExitTeleportActive = false
         this.isReturningToMap = false
-        this.pendingReturnToMapAfterDialogue = false
+        this.returnToRecyclageTimeoutId = null
         this.debugFolder?.dispose?.()
         this.debugFolder = null
 
