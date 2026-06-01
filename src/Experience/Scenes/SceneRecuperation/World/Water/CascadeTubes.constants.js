@@ -32,3 +32,7 @@ export const FLOW_SPEED_VARIATION_AMPLITUDE = 0.012
 export const FOAM_SPEED_VARIATION_AMPLITUDE = 0.02
 export const CASCADE_GROUP_SALLE_TUBE = 'salleTube'
 export const CASCADE_GROUP_SALLE_CHOIX = 'salleChoix'
+
+export const SLOPE_FLOW_ANGLE_OFFSET_BY_MESH_NAME = Object.freeze({
+    shad_pente_1: Math.PI
+})

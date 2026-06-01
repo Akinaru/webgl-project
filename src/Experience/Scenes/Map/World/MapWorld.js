@@ -13,6 +13,7 @@ import CloudLayer from './CloudLayer.js'
 import MapFireflies from './Fireflies.js'
 import MapVisibilityDebug from './MapVisibility.debug.js'
 import MapFog from './MapFog.js'
+import MapObjects from './MapObjects.js'
 import bloomRails from './bloomRails.json'
 import * as MapWorldConstants from './MapWorld.constants.js'
 function isRailsGraph(value)
@@ -150,6 +151,15 @@ export default class MapWorld
         }
 
         this.environment = new MapEnvironment()
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
+        this.objects = new MapObjects({
+            mapModel: this.mapModel
+        })
         await this.waitForNextFrame()
         if(this.isDestroyed)
         {
@@ -937,6 +947,12 @@ export default class MapWorld
         {
             this.clouds.destroy?.()
             this.clouds = null
+        }
+
+        if(this.objects)
+        {
+            this.objects.destroy?.()
+            this.objects = null
         }
 
         if(this.light)

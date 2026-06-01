@@ -16,7 +16,10 @@ export const commonSources = [
 // --- Sources spécifiques par scène ---
 export const sceneSources = {
     [SceneEnum.MAP]: [
-        ...modelSources.filter(s => s.name === 'mapModel' || s.name.startsWith('building')),
+        ...modelSources.filter((s) => s.name === 'mapModel'
+            || s.name.startsWith('building')
+            || s.name.startsWith('mapObjects')
+            || s.name.startsWith('mapMedieval')),
         ...textureSources.filter(s => s.name.startsWith('building'))
     ],
     [SceneEnum.RECUPERATION]: [
