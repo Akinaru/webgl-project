@@ -4,12 +4,13 @@ import * as SceneRecyclageModelConstants from './Model.constants.js'
 
 export default class SceneRecyclageModel
 {
-    constructor()
+    constructor({ resourceKey = 'recyclageModel' } = {})
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
-        this.resource = this.resources.items.recyclageModel
+        this.resourceKey = resourceKey
+        this.resource = this.resources.items[this.resourceKey]
 
         if(this.resource?.scene)
         {

@@ -1,4 +1,5 @@
 import Experience from '../../../Experience.js'
+import * as THREE from 'three'
 import EventEnum from '../../../Enum/EventEnum.js'
 import SceneEnum from '../../../Enum/SceneEnum.js'
 import Player from '../../../Common/Characters/Player.js'
@@ -8,30 +9,24 @@ import SceneRecyclageModel from './Model.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
+import { SCENE_RECYCLAGE_VARIANTS } from '../SceneRecyclage.config.js'
 
 let recyclageWorldInstanceIndex = 0
 
 export default class SceneRecyclageWorld
 {
-    constructor()
+    constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
     {
         this.experience = new Experience()
         this.resources = this.experience.resources
+        this.variantConfig = variantConfig
         this.readyEventName = `${EventEnum.READY}.recyclageWorld${recyclageWorldInstanceIndex++}`
         this.hasStartedArrivalDialogue = false
-        this.hasStartedInstructionDialogue = false
         this.hasCompletedScene = false
 
         this.onDialogueEnd = ({ key } = {}) =>
         {
-            if(key === SceneRecyclageWorldConstants.RECYCLAGE_ARRIVAL_DIALOGUE_KEY)
-            {
-                this.experience.badgeManager?.unlock?.('recyclage_1')
-                this.startInstructionDialogue()
-                return
-            }
-
-            if(key === SceneRecyclageWorldConstants.RECYCLAGE_INSTRUCTIONS_DIALOGUE_KEY)
+            if(key === this.variantConfig.arrivalDialogueKey)
             {
                 this.completeScene()
             }
@@ -59,7 +54,9 @@ export default class SceneRecyclageWorld
 
         this.setDebug()
         this.environment = new MapEnvironment()
-        this.recyclageModel = new SceneRecyclageModel()
+        this.recyclageModel = new SceneRecyclageModel({
+            resourceKey: this.variantConfig.modelResourceKey
+        })
         this.player = new Player({
             groundHeight: 0,
             boundaryRadius: this.recyclageModel.getBoundaryRadius?.() ?? 48,
@@ -69,8 +66,9 @@ export default class SceneRecyclageWorld
             useMeshCollisionRaycast: true,
             collisionMeshes: this.recyclageModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.recyclageModel.getGroundMeshes?.() ?? [],
-            spawnPosition: this.recyclageModel.getSpawnPosition?.(),
-            spawnYaw: 0
+            spawnPosition: this.variantConfig.spawnPosition ?? this.recyclageModel.getSpawnPosition?.(),
+            spawnYaw: THREE.MathUtils.degToRad(this.variantConfig.spawnYawDeg ?? 0),
+            spawnPitch: THREE.MathUtils.degToRad(this.variantConfig.spawnPitchDeg ?? 0)
         })
         this.light = new MapLight({
             environment: this.environment,
@@ -110,23 +108,7 @@ export default class SceneRecyclageWorld
 
         this.hasStartedArrivalDialogue = true
         this.experience.dialogueManager?.on?.('end.recyclageWorld', this.onDialogueEnd)
-        this.experience.dialogueManager?.startByKey?.(SceneRecyclageWorldConstants.RECYCLAGE_ARRIVAL_DIALOGUE_KEY)
-    }
-
-    startInstructionDialogue()
-    {
-        if(this.hasStartedInstructionDialogue)
-        {
-            return
-        }
-
-        if(this.experience?.isAutoFlowEnabled?.() === false)
-        {
-            return
-        }
-
-        this.hasStartedInstructionDialogue = true
-        this.experience.dialogueManager?.startByKey?.(SceneRecyclageWorldConstants.RECYCLAGE_INSTRUCTIONS_DIALOGUE_KEY)
+        this.experience.dialogueManager?.startByKey?.(this.variantConfig.arrivalDialogueKey)
     }
 
     completeScene()
@@ -141,24 +123,27 @@ export default class SceneRecyclageWorld
             return
         }
 
-        this.experience.badgeManager?.unlock?.('recyclage_2')
+        if(this.variantConfig.completionBadgeKey)
+        {
+            this.experience.badgeManager?.unlock?.(this.variantConfig.completionBadgeKey)
+        }
         this.hasCompletedScene = true
         this.completeSceneTimeout = window.setTimeout(() =>
         {
-            this.experience.sceneManager?.switchTo?.(SceneEnum.DISTRIBUTION)
+            this.experience.sceneManager?.switchTo?.(this.variantConfig.completionTargetScene ?? SceneEnum.DISTRIBUTION)
         }, SceneRecyclageWorldConstants.RECYCLAGE_DISTRIBUTION_SWITCH_DELAY_MS)
     }
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isAnySoundPlaying?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEYS))
+        if(this.experience.sound?.isAnySoundPlaying?.(this.variantConfig.ambientSoundKeys))
         {
             return
         }
 
         const musicKey = pickCycledSceneMusic(
-            SceneRecyclageWorldConstants.RECYCLAGE_MUSIC_STORAGE_KEY,
-            SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_SOUND_KEYS
+            this.variantConfig.musicStorageKey,
+            this.variantConfig.ambientSoundKeys
         )
 
         if(!musicKey)

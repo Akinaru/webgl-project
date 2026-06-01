@@ -1,6 +1,7 @@
 import BaseScene from '../BaseScene.js'
 import SceneEnum from '../../Enum/SceneEnum.js'
 import SceneRecyclageWorld from './World/World.js'
+import { SCENE_RECYCLAGE_VARIANTS } from './SceneRecyclage.config.js'
 
 export default class SceneRecyclageScene extends BaseScene
 {
@@ -11,7 +12,7 @@ export default class SceneRecyclageScene extends BaseScene
 
     enter()
     {
-        this.world = new SceneRecyclageWorld()
+        this.world = new SceneRecyclageWorld(SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
     }
 
     update(delta)

@@ -22,6 +22,11 @@ export default [
         path: 'models/scenes/recyclage/SceneRecyclage_Draco.glb'
     },
     {
+        name: 'nanobotsModel',
+        type: 'gltfModel',
+        path: 'models/scenes/nanobots/SceneNanobot_Draco.glb'
+    },
+    {
         name: 'distributionModel',
         type: 'gltfModel',
         path: 'models/scenes/distribution/SceneDistribution_Draco.glb'
