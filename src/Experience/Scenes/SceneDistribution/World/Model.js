@@ -109,6 +109,10 @@ export default class SceneDistributionModel
             }
 
             this.applyCollisionMaterialFixes(child)
+            child.userData.forceBidirectionalCollision = this.hasNameInHierarchy(
+                child,
+                SceneDistributionModelConstants.BIDIRECTIONAL_COLLISION_NAME_TOKENS
+            )
             this.collisionMeshes.push(child)
 
             if(this.isWalkableGroundMesh(child))

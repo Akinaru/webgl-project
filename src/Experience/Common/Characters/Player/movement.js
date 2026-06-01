@@ -641,9 +641,10 @@ export function resolveMeshCollisions()
 
                 this.worldNormal.copy(hit.face.normal).transformDirection(hit.object.matrixWorld)
                 const facingDot = this.worldNormal.dot(this.collisionDirection)
-                // Ignore backface hits (common with DoubleSide materials) so the player
-                // can exit concave/interior spaces without getting locked inside.
-                if(facingDot >= 0)
+                // Ignore backface hits (common with DoubleSide materials) except for
+                // meshes explicitly flagged as bidirectional colliders.
+                const forceBidirectionalCollision = Boolean(hit.object?.userData?.forceBidirectionalCollision)
+                if(!forceBidirectionalCollision && facingDot >= 0)
                 {
                     continue
                 }
@@ -755,4 +756,3 @@ export function interpolateAngle(current, target, interpolation)
     const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current))
     return current + (delta * interpolation)
 }
-
