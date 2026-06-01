@@ -11,6 +11,7 @@ export default class DialogueUI
         this.choiceCursorMode = false
         this.cursorVisible = false
         this.hintProgressTimer = null
+        this.activeChoiceIndex = -1
         this.virtualCursorPosition = {
             x: window.innerWidth * 0.5,
             y: window.innerHeight * 0.5
@@ -70,6 +71,15 @@ export default class DialogueUI
         {
             if(!this.dialogueManager.isRunning() || event.repeat || this.shouldIgnoreShortcut(event.target))
             {
+                return
+            }
+
+            if(this.dialogueManager.isWaitingChoice())
+            {
+                if(this.handleChoiceKeyboardNavigation(event))
+                {
+                    event.preventDefault()
+                }
                 return
             }
 
@@ -201,6 +211,7 @@ export default class DialogueUI
         if(payload.waitingChoice && payload.choices?.length > 0)
         {
             this.setChoiceCursorMode(true)
+            this.activeChoiceIndex = 0
 
             payload.choices.forEach((choice, index) =>
             {
@@ -217,11 +228,13 @@ export default class DialogueUI
                 this.choices.appendChild(button)
             })
 
-            this.hint.textContent = 'Choisis une reponse en cliquant.'
+            this.applyActiveChoiceByIndex(this.activeChoiceIndex)
+            this.hint.textContent = 'Choisis une reponse avec 1, 2, 3, 4 ou les fleches.'
             return
         }
 
         this.setChoiceCursorMode(false)
+        this.activeChoiceIndex = -1
         this.updateContinueHint()
     }
 
@@ -303,6 +316,7 @@ export default class DialogueUI
 
         if(!this.choiceCursorMode)
         {
+            this.activeChoiceIndex = -1
             this.cursorVisible = false
             this.cursor.classList.remove('is-visible')
             this.cursor.classList.remove('is-over-choice')
@@ -393,6 +407,7 @@ export default class DialogueUI
         hoveredChoices.forEach((choice) =>
         {
             choice.classList.remove('dialogue__choice--hover')
+            choice.classList.remove('dialogue__choice--active')
         })
     }
 
@@ -402,7 +417,129 @@ export default class DialogueUI
         if(activeChoice)
         {
             activeChoice.classList.add('dialogue__choice--hover')
+            activeChoice.classList.add('dialogue__choice--active')
         }
+    }
+
+    handleChoiceKeyboardNavigation(event)
+    {
+        const choiceElements = this.getChoiceElements()
+        if(choiceElements.length === 0)
+        {
+            return false
+        }
+
+        if(event.code === 'ArrowUp' || event.code === 'ArrowLeft')
+        {
+            this.moveActiveChoice(-1)
+            return true
+        }
+
+        if(event.code === 'ArrowDown' || event.code === 'ArrowRight')
+        {
+            this.moveActiveChoice(1)
+            return true
+        }
+
+        if(event.code === 'Enter' || event.code === 'Space')
+        {
+            this.confirmActiveChoice()
+            return true
+        }
+
+        const directChoiceIndex = this.getDirectChoiceIndexForEvent(event)
+        if(directChoiceIndex >= 0)
+        {
+            this.applyActiveChoiceByIndex(directChoiceIndex)
+            this.confirmActiveChoice()
+            return true
+        }
+
+        return false
+    }
+
+    getChoiceElements()
+    {
+        return Array.from(this.choices.querySelectorAll('.dialogue__choice'))
+    }
+
+    moveActiveChoice(direction)
+    {
+        const choiceElements = this.getChoiceElements()
+        if(choiceElements.length === 0)
+        {
+            return
+        }
+
+        const nextIndex = this.activeChoiceIndex < 0
+            ? 0
+            : (this.activeChoiceIndex + direction + choiceElements.length) % choiceElements.length
+
+        this.applyActiveChoiceByIndex(nextIndex)
+    }
+
+    applyActiveChoiceByIndex(index)
+    {
+        const choiceElements = this.getChoiceElements()
+        if(index < 0 || index >= choiceElements.length)
+        {
+            return
+        }
+
+        this.activeChoiceIndex = index
+        const activeChoice = choiceElements[index]
+        this.applyChoiceHoverState(activeChoice)
+        activeChoice.focus?.()
+        this.virtualCursorPosition.x = activeChoice.offsetLeft + (activeChoice.offsetWidth * 0.5)
+        this.virtualCursorPosition.y = activeChoice.offsetTop + (activeChoice.offsetHeight * 0.5)
+        this.syncCursorDom()
+    }
+
+    confirmActiveChoice()
+    {
+        const choiceElements = this.getChoiceElements()
+        if(this.activeChoiceIndex < 0 || this.activeChoiceIndex >= choiceElements.length)
+        {
+            return
+        }
+
+        const choiceId = choiceElements[this.activeChoiceIndex]?.dataset?.choiceId
+        if(choiceId)
+        {
+            this.dialogueManager.choose(choiceId)
+        }
+    }
+
+    getDirectChoiceIndexForEvent(event)
+    {
+        const directChoiceIndexByCode = {
+            Digit1: 0,
+            Digit2: 1,
+            Digit3: 2,
+            Digit4: 3,
+            Numpad1: 0,
+            Numpad2: 1,
+            Numpad3: 2,
+            Numpad4: 3
+        }
+
+        if(event.code in directChoiceIndexByCode)
+        {
+            return directChoiceIndexByCode[event.code]
+        }
+
+        const directChoiceIndexByKey = {
+            '&': 0,
+            '1': 0,
+            'é': 1,
+            '2': 1,
+            '"': 2,
+            '3': 2,
+            '\'': 3,
+            '4': 3
+        }
+
+        return directChoiceIndexByKey[event.key] ?? -1
     }
 
     destroy()

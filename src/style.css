@@ -1517,6 +1517,15 @@ body.is-recuperation-material-cursor .dialogue__cursor
     filter: brightness(1.08);
 }
 
+.dialogue__choice--active
+{
+    background: rgba(0, 136, 166, 0.48);
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    outline: 2px solid rgba(255, 255, 255, 0.58);
+    outline-offset: 2px;
+}
+
 .dialogue__choice:focus-visible
 {
     outline: 2px solid rgba(255, 255, 255, 0.58);
@@ -1581,8 +1590,8 @@ body.is-recuperation-material-cursor .dialogue__cursor
     color: rgba(231, 245, 255, 0.92);
 }
 
-body.is-dialogue-cursor,
-body.is-dialogue-cursor *
+body.is-dialogue-cursor.is-pointer-locked,
+body.is-dialogue-cursor.is-pointer-locked *
 {
     cursor: none !important;
 }

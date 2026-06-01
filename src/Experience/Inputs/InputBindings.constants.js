@@ -19,10 +19,10 @@ export const INPUT_ACTION_DEFAULT_BINDINGS = Object.freeze({
 })
 
 export const INPUT_ACTION_FALLBACK_CODES = Object.freeze({
-    [INPUT_ACTION.MOVE_FORWARD]: ['KeyZ', 'ArrowUp'],
-    [INPUT_ACTION.MOVE_LEFT]: ['KeyQ', 'ArrowLeft'],
+    [INPUT_ACTION.MOVE_FORWARD]: ['KeyZ'],
+    [INPUT_ACTION.MOVE_LEFT]: ['KeyQ'],
     [INPUT_ACTION.JUMP]: [],
-    [INPUT_ACTION.MOVE_BACKWARD]: ['ArrowDown'],
-    [INPUT_ACTION.MOVE_RIGHT]: ['ArrowRight'],
+    [INPUT_ACTION.MOVE_BACKWARD]: [],
+    [INPUT_ACTION.MOVE_RIGHT]: [],
     [INPUT_ACTION.PAUSE]: []
 })
