@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import * as SceneRecuperationTubeWaterControllerConstants from '../TubeWaterController.constants.js'
 import { setupSceneRecuperationTubeWaterControllerDebug } from '../TubeWaterController.debug.js'
+import { applyMatteWaterMaterial, stripSpecularReflectionsFromShader } from '../../../../Map/World/Shaders/Common/disableSpecularReflections.js'
 
 /**
  * Applique la palette partagée de la scène aux couleurs de flux des tuyaux et des fenêtres.
@@ -88,6 +89,7 @@ export function setupTubeMaterials()
 
         for(const material of clonedMaterials)
         {
+            applyMatteWaterMaterial(material)
             this.setupFlowShaderMaterial(material, mesh, target)
         }
     }
@@ -433,6 +435,7 @@ export function setupFlowShaderMaterial(material, mesh, tubeTarget)
     }
 
     material.userData.flowUniforms = flowUniforms
+    applyMatteWaterMaterial(material)
 
     const previousOnBeforeCompile = material.onBeforeCompile
     material.onBeforeCompile = (shader, renderer) =>
@@ -622,6 +625,7 @@ vec3 totalEmissiveRadiance = uFlowConnectedEmissiveColor * (uFlowEmissiveIntensi
         }
 
         shader.fragmentShader = flowFragmentShader
+        stripSpecularReflectionsFromShader(shader)
     }
 
     const previousProgramCacheKey = material.customProgramCacheKey?.bind(material)
