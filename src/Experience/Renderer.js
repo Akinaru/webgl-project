@@ -48,14 +48,14 @@ export default class Renderer
         this.ambientOcclusion = {
             enabled: true,
             recuperationOnly: false,
-            intensity: 0.014,
+            intensity: 0.007,
             bias: 0.35,
             scale: 1,
-            kernelRadius: 18,
+            kernelRadius: 4,
             minResolution: 0,
             blur: true,
-            blurRadius: 6,
-            blurStdDev: 3
+            blurRadius: 7,
+            blurStdDev: 2.9
         }
 
         this.setInstance()
