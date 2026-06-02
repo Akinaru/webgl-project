@@ -204,11 +204,28 @@ export default class DialogueUI
 
         this.show()
 
-        this.speaker.textContent = payload.node.speaker || 'Bloom'
-        this.text.textContent = payload.node.text || ''
+        const isWaitingChoice = payload.waitingChoice === true && payload.choices?.length > 0
+        const previousSpeaker = this.speaker.textContent || 'Bloom'
+        const previousText = this.text.textContent || ''
+
+        if(isWaitingChoice)
+        {
+            const nextSpeaker = typeof payload.node.speaker === 'string' ? payload.node.speaker.trim() : ''
+            const nextText = typeof payload.node.text === 'string' ? payload.node.text.trim() : ''
+
+            this.speaker.textContent = nextSpeaker || previousSpeaker || 'Bloom'
+            this.text.textContent = nextText || previousText
+        }
+        else
+        {
+            this.speaker.textContent = payload.node.speaker || 'Bloom'
+            this.text.textContent = payload.node.text || ''
+        }
+
+        this.root.classList.toggle('is-waiting-choice', isWaitingChoice)
         this.choices.innerHTML = ''
 
-        if(payload.waitingChoice && payload.choices?.length > 0)
+        if(isWaitingChoice)
         {
             this.setChoiceCursorMode(true)
             this.activeChoiceIndex = 0
@@ -216,11 +233,21 @@ export default class DialogueUI
             payload.choices.forEach((choice, index) =>
             {
                 const button = document.createElement('button')
+                const marker = document.createElement('div')
+                const choiceIndex = document.createElement('span')
+                const choiceText = document.createElement('span')
+
                 button.type = 'button'
                 button.className = 'dialogue__choice'
                 button.setAttribute('aria-label', `Choix ${index + 1}: ${choice.text}`)
                 button.dataset.choiceId = choice.id
-                button.innerHTML = `<span class="dialogue__choice-index">${index + 1}.</span> <span>${choice.text}</span>`
+                marker.className = 'dialogue__choice-marker'
+                marker.setAttribute('aria-hidden', 'true')
+                choiceIndex.className = 'dialogue__choice-index'
+                choiceIndex.textContent = `${index + 1}.`
+                choiceText.textContent = choice.text
+
+                button.append(marker, choiceIndex, choiceText)
                 button.addEventListener('click', () =>
                 {
                     this.dialogueManager.choose(choice.id)
@@ -260,6 +287,7 @@ export default class DialogueUI
 
         this.visible = false
         this.root.classList.remove('is-visible')
+        this.root.classList.remove('is-waiting-choice')
         document.body.classList.remove('is-dialogue-open')
         this.setChoiceCursorMode(false)
         this.stopHintProgressLoop()
@@ -296,14 +324,14 @@ export default class DialogueUI
             ? Math.max(0, Math.min(1, continueState.progress))
             : 0
 
-        this.hint.textContent = 'Cliquer sur la touche Entrer pour continuer'
+        this.hint.textContent = '"Entrer" pour continuer'
         if(continueState.locked === true)
         {
-            this.hint.textContent = 'Cliquer sur la touche Entrer pour passer au dialogue suivant'
+            this.hint.textContent = '"Entrer" pour continuer'
         }
         else
         {
-            this.hint.textContent = 'Cliquer sur la touche Entrer pour passer au dialogue suivant'
+            this.hint.textContent = '"Entrer" pour continuer'
         }
         this.hint.classList.toggle('is-locked', continueState.locked === true)
         this.hint.style.setProperty('--dialogue-hint-progress', `${progress}`)
