@@ -11,7 +11,14 @@ export const SCENE_RECYCLAGE_VARIANTS = Object.freeze({
         completionBadgeKey: 'recyclage_1',
         completionTargetScene: SceneEnum.DISTRIBUTION,
         musicStorageKey: 'scene-music.recyclage.champignons',
-        ambientSoundKeys: Object.freeze(['recyclageMusic1'])
+        ambientSoundKeys: Object.freeze(['recyclageMusic1']),
+        spawnPosition: Object.freeze({
+            x: -7.598,
+            y: 0.8,
+            z: 1.756
+        }),
+        spawnYawDeg: -450.001,
+        spawnPitchDeg: 1.387
     }),
     [SceneEnum.NANOBOTS]: Object.freeze({
         sceneKey: SceneEnum.NANOBOTS,

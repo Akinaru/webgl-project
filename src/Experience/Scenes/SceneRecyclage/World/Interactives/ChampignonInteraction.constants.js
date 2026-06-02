@@ -1,0 +1,11 @@
+export const CHAMPIGNON_NAME_PREFIX = 'champignon'
+export const CHAMPIGNON_SLOT_NAME_PREFIX = 'emplacement_champ'
+export const CHAMPIGNON_MAX_INTERACTION_DISTANCE = 4.2
+export const CHAMPIGNON_DEBUG_FOLDER_TITLE = 'Champignons'
+export const CHAMPIGNON_PHASE_PLACING = 'placing'
+export const CHAMPIGNON_PHASE_LIGHTING = 'lighting'
+export const CHAMPIGNON_PHASE_COMPLETED = 'completed'
+export const CHAMPIGNON_LIGHT_INCREMENT = 0.42
+export const CHAMPIGNON_LIGHT_DECAY_PER_SECOND = 0.13
+export const CHAMPIGNON_LIGHT_SUCCESS_THRESHOLD = 0.92
+export const CHAMPIGNON_LIGHT_SCALE_BOOST = 0.14

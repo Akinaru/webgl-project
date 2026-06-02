@@ -11,6 +11,7 @@ import SceneRecuperationCascadeTubes from '../../SceneRecuperation/World/Water/C
 import SlopeSplash from '../../SceneRecuperation/World/Water/SlopeSplash.js'
 import NanobotInspector from '../../SceneNanobots/NanobotInspector.js'
 import Borne from './Interactives/Borne.js'
+import ChampignonInteraction from './Interactives/ChampignonInteraction.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
@@ -21,6 +22,10 @@ import { sceneSources } from '../../../Source/sources.js'
 let recyclageWorldInstanceIndex = 0
 const VALIDATION_BUTTON_NAME_TOKEN = 'button_right'
 const VALIDATION_BUTTON_MAX_DISTANCE = 2.6
+const CHAMPIGNON_INTERACTION_DIALOGUE_KEY = 'recyclage_0'
+const CHAMPIGNON_INTERACTION_START_NODE = 'recyclage_003'
+const CHAMPIGNON_PLACE_OBJECTIVE_KEY = 'recyclage_place_champignons'
+const CHAMPIGNON_LIGHT_OBJECTIVE_KEY = 'recyclage_light_champignons'
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -40,6 +45,9 @@ export default class SceneRecyclageWorld
         this.hasUnlockedPrimaryBadge = false
         this.hasStartedNanobotsDialogue = false
         this.nanobotsReturnState = null
+        this.hasStartedChampignonInteraction = false
+        this.isWaitingToStartChampignonInteraction = false
+        this.isCompletingChampignonInteraction = false
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
         })
@@ -81,6 +89,15 @@ export default class SceneRecyclageWorld
             {
                 this.completeScene()
             }
+        }
+        this.onDialogueState = ({ dialogueKey = null, nodeId = null } = {}) =>
+        {
+            if(dialogueKey !== CHAMPIGNON_INTERACTION_DIALOGUE_KEY || nodeId !== CHAMPIGNON_INTERACTION_START_NODE)
+            {
+                return
+            }
+
+            this.scheduleChampignonInteractionStart()
         }
 
         if(this.resources.isReady)
@@ -148,6 +165,12 @@ export default class SceneRecyclageWorld
 
         if(this.isUnifiedNanobotsFlow)
         {
+            this.champignonInteraction = new ChampignonInteraction({
+                world: this,
+                debugParentFolder: this.nanobotsDebugFolder,
+                onPlacedAll: () => this.handleChampignonsPlacedAll(),
+                onComplete: () => this.completeChampignonInteraction()
+            })
             this.borne = new Borne({
                 world: this,
                 debugParentFolder: this.nanobotsDebugFolder,
@@ -304,6 +327,7 @@ export default class SceneRecyclageWorld
 
         this.hasStartedArrivalDialogue = true
         this.experience.dialogueManager?.on?.('end.recyclageWorld', this.onDialogueEnd)
+        this.experience.dialogueManager?.on?.('state.recyclageWorld', this.onDialogueState)
         this.inputs = this.experience.inputs
         this.onInteractDown = () =>
         {
@@ -315,6 +339,101 @@ export default class SceneRecyclageWorld
             this.borne?.setScreenAwake?.(true)
         }
         this.experience.dialogueManager?.startByKey?.(this.variantConfig.arrivalDialogueKey)
+    }
+
+    startChampignonInteraction()
+    {
+        if(this.hasStartedChampignonInteraction || !this.champignonInteraction)
+        {
+            return
+        }
+
+        this.hasStartedChampignonInteraction = true
+        this.experience.dialogueManager?.pause?.()
+        this.experience.objectiveManager?.showByKey?.(CHAMPIGNON_PLACE_OBJECTIVE_KEY, {
+            source: 'recyclageChampignons'
+        })
+        this.champignonInteraction.start()
+    }
+
+    scheduleChampignonInteractionStart()
+    {
+        if(this.hasStartedChampignonInteraction || this.isWaitingToStartChampignonInteraction)
+        {
+            return
+        }
+
+        this.isWaitingToStartChampignonInteraction = true
+        this.waitForChampignonInteractionStart()
+    }
+
+    waitForChampignonInteractionStart()
+    {
+        const dialogueManager = this.experience.dialogueManager
+        const isOnExpectedNode = dialogueManager?.state?.dialogueKey === CHAMPIGNON_INTERACTION_DIALOGUE_KEY
+            && dialogueManager?.state?.nodeId === CHAMPIGNON_INTERACTION_START_NODE
+
+        if(isOnExpectedNode && dialogueManager?.canContinueCurrentNode?.())
+        {
+            this.isWaitingToStartChampignonInteraction = false
+            this.startChampignonInteraction()
+            return
+        }
+
+        if(isOnExpectedNode !== true || dialogueManager?.isRunning?.() !== true)
+        {
+            this.isWaitingToStartChampignonInteraction = false
+            return
+        }
+
+        this.champignonStartTimeout = window.setTimeout(() =>
+        {
+            this.champignonStartTimeout = null
+            this.waitForChampignonInteractionStart()
+        }, 50)
+    }
+
+    handleChampignonsPlacedAll()
+    {
+        this.experience.objectiveManager?.completeCurrentObjective?.({ clear: false })
+        this.experience.objectiveManager?.showByKey?.(CHAMPIGNON_LIGHT_OBJECTIVE_KEY, {
+            source: 'recyclageChampignons'
+        })
+    }
+
+    completeChampignonInteraction()
+    {
+        if(this.isCompletingChampignonInteraction)
+        {
+            return
+        }
+
+        this.isCompletingChampignonInteraction = true
+        this.experience.objectiveManager?.completeCurrentObjective?.()
+        this.experience.dialogueManager?.resume?.()
+        this.waitForDialogueContinueThenAdvance()
+    }
+
+    waitForDialogueContinueThenAdvance()
+    {
+        if(!this.experience.dialogueManager?.isRunning?.())
+        {
+            this.isCompletingChampignonInteraction = false
+            return
+        }
+
+        if(this.experience.dialogueManager?.canContinueCurrentNode?.())
+        {
+            this.experience.dialogueManager?.continue?.()
+            this.isCompletingChampignonInteraction = false
+            return
+        }
+
+        this.champignonContinueTimeout = window.setTimeout(() =>
+        {
+            this.champignonContinueTimeout = null
+            this.waitForDialogueContinueThenAdvance()
+        }, 100)
     }
 
     unlockPrimaryBadge()
@@ -612,6 +731,7 @@ export default class SceneRecyclageWorld
         this.nanobotsSlopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.champignonInteraction?.update?.(delta)
         this.borne?.update?.(delta)
         this.nanobotInspector?.update?.(delta)
     }
@@ -620,12 +740,23 @@ export default class SceneRecyclageWorld
     {
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recyclageWorld')
+        this.experience.dialogueManager?.off?.('state.recyclageWorld')
         this.inputs?.off?.('sceneinteractdown.recyclageWorld')
 
         if(this.completeSceneTimeout)
         {
             window.clearTimeout(this.completeSceneTimeout)
             this.completeSceneTimeout = null
+        }
+        if(this.champignonStartTimeout)
+        {
+            window.clearTimeout(this.champignonStartTimeout)
+            this.champignonStartTimeout = null
+        }
+        if(this.champignonContinueTimeout)
+        {
+            window.clearTimeout(this.champignonContinueTimeout)
+            this.champignonContinueTimeout = null
         }
 
         if(this.player)
@@ -636,6 +767,8 @@ export default class SceneRecyclageWorld
 
         this.nanobotInspector?.destroy?.()
         this.nanobotInspector = null
+        this.champignonInteraction?.destroy?.()
+        this.champignonInteraction = null
         this.borne?.destroy?.()
         this.borne = null
 
