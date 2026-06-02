@@ -41,6 +41,7 @@ const DISTRIBUTION_HOLD_NODE_KEY = 'distribution_004'
 const DISTRIBUTION_COMPLETED_NODE_KEY = 'distribution_005'
 const DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN = 'door_exit'
 const DISTRIBUTION_BLOOM_PATH_SPEED_SCALE = 0.28
+const RESULT_PLAYER_CINEMATIC_CURSOR_HIDDEN_CLASS = 'is-result-player-cinematic-cursor-hidden'
 const DISTRIBUTION_DIALOGUE_PHASES = Object.freeze({
     COMPLETED: 'completed'
 })
@@ -234,6 +235,11 @@ export default class SceneDistributionWorld
         this.player.setMovementEnabled?.(isEnabled)
     }
 
+    setResultPlayerCursorHidden(isHidden = true)
+    {
+        document.body.classList.toggle(RESULT_PLAYER_CINEMATIC_CURSOR_HIDDEN_CLASS, Boolean(isHidden))
+    }
+
     startResultPlayerCinematic()
     {
         if(!this.player)
@@ -250,6 +256,7 @@ export default class SceneDistributionWorld
         const targetPitch = THREE.MathUtils.degToRad(SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_PITCH_DEG)
 
         this.setPlayerControlEnabled(false)
+        this.setResultPlayerCursorHidden(true)
         this.isResultPlayerControlLocked = true
         this.resultPlayerCinematicState = {
             elapsedMs: 0,
@@ -313,6 +320,7 @@ export default class SceneDistributionWorld
     {
         this.completeResultPlayerCinematic()
         this.setPlayerControlEnabled(true)
+        this.setResultPlayerCursorHidden(false)
         this.isResultPlayerControlLocked = false
         this.resultPlayerReleaseArmed = false
     }
@@ -1016,6 +1024,7 @@ export default class SceneDistributionWorld
         this.isWaitingForResultDialogueAtDoorEnd = false
         this.distributionCompletedCameraFocusState = null
         this.releaseResultPlayerControl()
+        this.setResultPlayerCursorHidden(false)
         this.valveController?.destroy?.()
         this.valveController = null
         this.tubeWaterController?.destroy?.()
