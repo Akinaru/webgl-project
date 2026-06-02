@@ -120,10 +120,30 @@ export default class SceneRecuperationWorld
             this.pendingReturnToMapAfterDialogue = false
             this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
         }
+        this.hasPendingDoorOpenAfterDialogue = false
+        this.onValidation013Shown = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RECUPERATION_VALIDATION_DIALOGUE_KEY || nodeId !== 'recuperation_013')
+            {
+                return
+            }
+            this.hasPendingDoorOpenAfterDialogue = true
+        }
+        this.onValidation1EndForDoor = ({ key, interrupted } = {}) =>
+        {
+            if(key !== RECUPERATION_VALIDATION_DIALOGUE_KEY || interrupted || !this.hasPendingDoorOpenAfterDialogue || !this.isMaterialChoiceValidated)
+            {
+                return
+            }
+            this.hasPendingDoorOpenAfterDialogue = false
+            this.door?.setOpen?.(true)
+        }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
         this.experience.dialogueManager?.on?.('state.recuperationBloomSol1', this.onDialogueStateForBloomSol1)
         this.experience.dialogueManager?.on?.('end.recuperationTubeCompletion', this.onTubeCompletionDialogueEnd)
+        this.experience.dialogueManager?.on?.('state.recuperationValidation013', this.onValidation013Shown)
+        this.experience.dialogueManager?.on?.('end.recuperationDoorOpen', this.onValidation1EndForDoor)
 
         if(this.resources.isReady)
         {
@@ -522,6 +542,7 @@ export default class SceneRecuperationWorld
         if(previousKey !== nextKey)
         {
             this.isMaterialChoiceValidated = false
+            this.hasPendingDoorOpenAfterDialogue = false
             this.resetCeilingLightRooms()
             this.stopMaterialTest()
             this.television?.setTestResult?.(null)
@@ -709,9 +730,12 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = true
         this.hasSwitchedCeilingLightRooms = false
         this.experience.badgeManager?.unlock?.('materiau')
-        this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
         this.startValidationDialogue()
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            this.door?.setOpen?.(true)
+        }
     }
 
     handleDoorOpened()
@@ -1066,6 +1090,11 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.off?.('end.recuperationMusicDuck')
         this.experience.dialogueManager?.off?.('state.recuperationBloomSol1')
         this.experience.dialogueManager?.off?.('end.recuperationTubeCompletion')
+        this.experience.dialogueManager?.off?.('state.recuperationValidation013')
+        this.experience.dialogueManager?.off?.('end.recuperationDoorOpen')
+        this.onValidation013Shown = null
+        this.onValidation1EndForDoor = null
+        this.hasPendingDoorOpenAfterDialogue = false
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)
