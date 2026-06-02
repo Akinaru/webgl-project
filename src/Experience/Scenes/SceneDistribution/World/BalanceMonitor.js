@@ -1,4 +1,7 @@
 import * as SceneDistributionFlowConstants from './Flow.constants.js'
+
+const OVER_LIMIT_EPSILON = 0.001
+
 export default class SceneDistributionBalanceMonitor
 {
     constructor({
@@ -17,6 +20,7 @@ export default class SceneDistributionBalanceMonitor
             isSolved: false,
             totalUsageUnits: 0,
             totalUsageRatio: 0,
+            totalUsagePercent: 0,
             capacityLimit: SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS,
             isOverLimit: false,
             channels: SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => ({
@@ -75,12 +79,14 @@ export default class SceneDistributionBalanceMonitor
             }
         })
 
-        const totalUsageRatio = Math.min(1.0, totalUsageUnits / SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS)
-        const isOverLimit = totalUsageUnits >= SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS - 0.001
+        const totalUsageRatio = totalUsageUnits / SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS
+        const totalUsagePercent = Math.max(0, Math.round(totalUsageRatio * 100))
+        const isOverLimit = totalUsagePercent > 100 && totalUsageUnits > SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS + OVER_LIMIT_EPSILON
 
         return {
             totalUsageUnits,
             totalUsageRatio,
+            totalUsagePercent,
             capacityLimit: SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS,
             isOverLimit,
             channels

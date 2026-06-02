@@ -41,6 +41,7 @@ const DISTRIBUTION_HOLD_NODE_KEY = 'distribution_004'
 const DISTRIBUTION_COMPLETED_NODE_KEY = 'distribution_005'
 const DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN = 'door_exit'
 const DISTRIBUTION_BLOOM_PATH_SPEED_SCALE = 0.28
+const DISTRIBUTION_VALIDATION_EXACT_PERCENT = 100
 const RESULT_PLAYER_CINEMATIC_CURSOR_HIDDEN_CLASS = 'is-result-player-cinematic-cursor-hidden'
 const DISTRIBUTION_DIALOGUE_PHASES = Object.freeze({
     COMPLETED: 'completed'
@@ -789,24 +790,7 @@ export default class SceneDistributionWorld
         })
         this.valveController?.setRotationConstraintResolver?.((valveToken, direction) =>
         {
-            // Vérification de la limite individuelle du tuyau
-            const canRotateIndividual = this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
-            if(!canRotateIndividual)
-            {
-                return false
-            }
-
-            // Si on essaie d'augmenter le débit (direction > 0)
-            if(direction > 0)
-            {
-                const state = this.balanceMonitor?.getState()
-                if(state && state.totalUsageUnits >= state.capacityLimit - 0.001)
-                {
-                    return false
-                }
-            }
-
-            return true
+            return this.tubeWaterController?.canRotateValveDirection?.(valveToken, direction) ?? true
         })
         this.lockDistributionControls()
         this.light = new MapLight({
@@ -901,7 +885,27 @@ export default class SceneDistributionWorld
 
         this.hasUnlockedDistributionControls = true
         this.valveController?.setEnabled?.(true)
-        this.validationButton?.setEnabled?.(true)
+        this.syncValidationButtonState()
+    }
+
+    isDistributionValidationExact(state = null)
+    {
+        const currentState = state ?? this.balanceMonitor?.getState?.() ?? null
+        if(!currentState)
+        {
+            return false
+        }
+
+        return (currentState.totalUsagePercent ?? Math.round((currentState.totalUsageRatio ?? 0) * 100)) === DISTRIBUTION_VALIDATION_EXACT_PERCENT
+    }
+
+    syncValidationButtonState()
+    {
+        const state = this.balanceMonitor?.getState?.() ?? null
+        const isValidationEnabled = this.hasUnlockedDistributionControls
+            && this.isDistributionValidationExact(state)
+
+        this.validationButton?.setEnabled?.(isValidationEnabled)
     }
 
     update(delta = this.experience.time.delta)
@@ -916,6 +920,7 @@ export default class SceneDistributionWorld
         this.valveController?.update?.(delta)
         this.tubeWaterController?.update?.(delta)
         this.balanceMonitor?.update?.()
+        this.syncValidationButtonState()
         this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
         this.resultDisplay?.update?.(delta)
         this.resultTrigger?.update?.(delta)
@@ -940,7 +945,7 @@ export default class SceneDistributionWorld
     handleValidation()
     {
         const state = this.balanceMonitor?.getState()
-        if(!state)
+        if(!state || !this.isDistributionValidationExact(state))
         {
             return
         }
