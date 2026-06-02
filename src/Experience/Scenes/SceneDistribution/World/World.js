@@ -25,6 +25,7 @@ const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
 const DISTRIBUTION_AMBIENT_CHANNEL = 'distributionAmbience'
 const DISTRIBUTION_DIALOGUE_KEY = 'distribution'
 const RESULT_DIALOGUE_KEY = 'resultat'
+const RESULT_DIALOGUE_BLOOM_MOVE_NODE_KEY = 'resultat_001'
 const RESULT_DIALOGUE_PLAYER_LOCK_NODE_KEY = 'resultat_002'
 const RESULT_DIALOGUE_PLAYER_RELEASE_NODE_KEYS = new Set([
     'resultat_002_inventeur',
@@ -39,7 +40,6 @@ const RESULT_DIALOGUE_PLAYER_RELEASE_NODE_KEYS = new Set([
 const DISTRIBUTION_HOLD_NODE_KEY = 'distribution_004'
 const DISTRIBUTION_COMPLETED_NODE_KEY = 'distribution_005'
 const DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN = 'door_exit'
-const DISTRIBUTION_BLOOM_DOOR_END_TOKEN = 'door_end'
 const DISTRIBUTION_BLOOM_PATH_SPEED_SCALE = 0.28
 const DISTRIBUTION_DIALOGUE_PHASES = Object.freeze({
     COMPLETED: 'completed'
@@ -62,11 +62,13 @@ export default class SceneDistributionWorld
         this.bloomHoldPreviousRadius = null
         this.bloomHoldPreviousFollowEnabled = null
         this.bloomHoldStage = 'idle'
+        this.resultBloomStage = 'idle'
         this.bloomHoldArrivalDistanceSq = SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_HOLD_ARRIVAL_DISTANCE * SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_HOLD_ARRIVAL_DISTANCE
         this.bloomPathArrivalDistanceSq = SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE * SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE
         this.bloomHoldTarget = null
         this.bloomDoorExitTarget = null
         this.bloomRoomEndTarget = null
+        this.resultBloomTarget = null
         this.resultEndPromptTimer = null
         this.isWaitingForResultDialogueAtDoorEnd = false
         this.distributionCompletedCameraFocusState = null
@@ -93,9 +95,8 @@ export default class SceneDistributionWorld
             }
 
             this.focusCameraTowardsDistributionDoorExit()
-            this.startBloomPathToRoomEndViaDoor()
         }
-        this.onCompletedDistributionDialogueEnd = ({ key } = {}) =>
+        this.onCompletedDistributionDialogueEnd = ({ key, interrupted } = {}) =>
         {
             if(key !== DISTRIBUTION_DIALOGUE_KEY)
             {
@@ -103,6 +104,10 @@ export default class SceneDistributionWorld
             }
 
             this.experience.dialogueManager?.off?.('end.distributionCompleted', this.onCompletedDistributionDialogueEnd)
+            if(interrupted !== true)
+            {
+                this.startBloomPathToRoomEnd()
+            }
             this.isWaitingForResultDialogueAtDoorEnd = true
             this.tryStartResultDialogueAtDoorEnd()
         }
@@ -110,6 +115,12 @@ export default class SceneDistributionWorld
         {
             if(dialogueKey !== RESULT_DIALOGUE_KEY)
             {
+                return
+            }
+
+            if(nodeId === RESULT_DIALOGUE_BLOOM_MOVE_NODE_KEY)
+            {
+                this.startResultBloomMove()
                 return
             }
 
@@ -294,6 +305,60 @@ export default class SceneDistributionWorld
         this.resultPlayerReleaseArmed = false
     }
 
+    startResultBloomMove()
+    {
+        const bloom = this.experience?.bloom
+        if(!bloom?.follow)
+        {
+            return
+        }
+
+        if(!this.resultBloomTarget)
+        {
+            this.resultBloomTarget = {
+                position: new THREE.Vector3()
+            }
+        }
+
+        this.resultBloomTarget.position.set(
+            SceneDistributionWorldConstants.DISTRIBUTION_RESULT_BLOOM_POSITION.x,
+            bloom.railAnchorPosition?.y ?? 0,
+            SceneDistributionWorldConstants.DISTRIBUTION_RESULT_BLOOM_POSITION.z
+        )
+
+        bloom.follow.comfortDistance = 0
+        bloom.follow.forceFacingTarget = false
+        bloom.follow.target = this.player ?? bloom.follow.target
+        bloom.follow.enabled = true
+        this.setBloomAutomatedMovementTargetResolver(() => this.resultBloomTarget?.position ?? null)
+        this.resultBloomStage = 'moving'
+    }
+
+    updateResultBloomMove()
+    {
+        if(this.resultBloomStage !== 'moving')
+        {
+            return
+        }
+
+        const bloom = this.experience?.bloom
+        const bloomModel = bloom?.model ?? bloom?.fallback ?? null
+        if(!bloom?.follow || !bloomModel || !this.resultBloomTarget?.position)
+        {
+            return
+        }
+
+        const distanceSqToTarget = bloomModel.position.distanceToSquared(this.resultBloomTarget.position)
+        if(distanceSqToTarget > this.bloomPathArrivalDistanceSq)
+        {
+            return
+        }
+
+        this.restoreBloomAutomatedMovementTargetResolver()
+        this.lockBloomInPlaceFacingPlayer()
+        this.resultBloomStage = 'held'
+    }
+
     isPlayerReadyForResultDialogue()
     {
         const playerPosition = this.player?.position
@@ -467,7 +532,7 @@ export default class SceneDistributionWorld
         this.distributionCompletedCameraFocusState = null
     }
 
-    startBloomPathToRoomEndViaDoor()
+    startBloomPathToRoomEnd()
     {
         if(this.hasRequestedBloomToRoomEnd)
         {
@@ -481,27 +546,23 @@ export default class SceneDistributionWorld
             return
         }
 
-        const doorExitCenter = this.resolveDistributionTargetCenter(DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN)
-        const doorEndCenter = this.resolveDistributionTargetCenter(DISTRIBUTION_BLOOM_DOOR_END_TOKEN)
-        if(!doorExitCenter || !doorEndCenter)
+        const bloomModel = bloom.model ?? bloom.fallback ?? null
+        if(!bloomModel)
         {
             return
         }
 
-        if(!this.bloomDoorExitTarget)
-        {
-            this.bloomDoorExitTarget = {
-                position: new THREE.Vector3()
-            }
-        }
         if(!this.bloomRoomEndTarget)
         {
             this.bloomRoomEndTarget = {
                 position: new THREE.Vector3()
             }
         }
-        this.bloomDoorExitTarget.position.copy(doorExitCenter)
-        this.bloomRoomEndTarget.position.set(doorEndCenter.x, doorEndCenter.y, doorEndCenter.z)
+        this.bloomRoomEndTarget.position.set(
+            bloomModel.position.x,
+            bloom.railAnchorPosition?.y ?? 0,
+            SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_ROOM_END_TARGET_Z
+        )
 
         if(this.bloomPathPreviousSpeed === null)
         {
@@ -523,11 +584,6 @@ export default class SceneDistributionWorld
         }
         this.setBloomAutomatedMovementTargetResolver(() =>
         {
-            if(this.bloomPathStage === 'toDoor')
-            {
-                return this.bloomDoorExitTarget?.position ?? null
-            }
-
             if(this.bloomPathStage === 'toEnd')
             {
                 return this.bloomRoomEndTarget?.position ?? null
@@ -538,13 +594,13 @@ export default class SceneDistributionWorld
 
         this.bloomHoldStage = 'done'
         bloom.clearFollowOverride?.()
-        this.bloomPathStage = 'toDoor'
+        this.bloomPathStage = 'toEnd'
         this.hasRequestedBloomToRoomEnd = true
     }
 
     updateBloomPathToRoomEndViaDoor()
     {
-        if(this.bloomPathStage !== 'toDoor' && this.bloomPathStage !== 'toEnd')
+        if(this.bloomPathStage !== 'toEnd')
         {
             return
         }
@@ -557,19 +613,8 @@ export default class SceneDistributionWorld
             return
         }
 
-        if(this.bloomPathStage === 'toDoor')
-        {
-            const distanceSqToDoor = bloomModel.position.distanceToSquared(this.bloomDoorExitTarget?.position ?? new THREE.Vector3())
-            if(distanceSqToDoor <= this.bloomPathArrivalDistanceSq)
-            {
-                bloomFollow.target = this.player ?? bloomFollow.target
-                this.bloomPathStage = 'toEnd'
-            }
-            return
-        }
-
-        const distanceSqToEnd = bloomModel.position.distanceToSquared(this.bloomRoomEndTarget?.position ?? new THREE.Vector3())
-        if(distanceSqToEnd > this.bloomPathArrivalDistanceSq)
+        const distanceSqToRoomEnd = bloomModel.position.distanceToSquared(this.bloomRoomEndTarget?.position ?? new THREE.Vector3())
+        if(distanceSqToRoomEnd > this.bloomPathArrivalDistanceSq)
         {
             return
         }
@@ -767,6 +812,7 @@ export default class SceneDistributionWorld
         this.updateDistributionCompletedCameraFocus(delta)
         this.player?.update?.(delta)
         this.updateResultPlayerCinematic(delta)
+        this.updateResultBloomMove()
         this.valveController?.update?.(delta)
         this.tubeWaterController?.update?.(delta)
         this.balanceMonitor?.update?.()
@@ -861,6 +907,7 @@ export default class SceneDistributionWorld
         this.bloomHoldPreviousRadius = null
         this.bloomHoldPreviousFollowEnabled = null
         this.bloomHoldStage = 'idle'
+        this.resultBloomStage = 'idle'
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('state.distributionBloomRoomEnd')
         this.experience.dialogueManager?.off?.('state.distributionResultPlayer')
