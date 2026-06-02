@@ -95,15 +95,15 @@ constructor({
         mirrorArmsFromAnimation: true
     }
 
-    this.rails = new BloomRailSystem({
-        scene: this.scene,
-        rails: rails.lines ?? rails.rails ?? [],
-        speed: rails.speed ?? 4.6,
-        railSwitchDistance: rails.railSwitchDistance ?? 1.05,
-        endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.6,
-        helperPointRadius: rails.helperPointRadius ?? 0.08,
-        showHelpers: rails.showHelpers ?? true
-    })
+        this.rails = new BloomRailSystem({
+            scene: this.scene,
+            rails: rails.lines ?? rails.rails ?? [],
+            speed: rails.speed ?? 4.6,
+            railSwitchDistance: rails.railSwitchDistance ?? 1.05,
+            endpointSwitchDistance: rails.endpointSwitchDistance ?? 1.6,
+            helperPointRadius: rails.helperPointRadius ?? 0.08,
+            showHelpers: rails.showHelpers ?? false
+        })
 
     this.railEditor = {
         addPointAtPlayer: () => this.addRailPointFromTarget(),
