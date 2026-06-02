@@ -56,6 +56,13 @@ constructor({
         visualScale: 0.46
     }
 
+    this.transformDebugState = {
+        positionX: 0,
+        positionY: 0,
+        positionZ: 0,
+        orientationDeg: 0
+    }
+
     this.motion = {
         center: motion.center instanceof THREE.Vector3
             ? motion.center.clone()
