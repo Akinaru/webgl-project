@@ -19,7 +19,7 @@ export default class MapFireflies
         this.getFocusPosition = typeof getFocusPosition === 'function' ? getFocusPosition : null
         this.getFog = typeof getFog === 'function' ? getFog : null
         this.settings = {
-            enabled: true,
+            enabled: false,
             count: FirefliesConstants.MAP_FIREFLIES_DEFAULT_COUNT,
             size: FirefliesConstants.MAP_FIREFLIES_DEFAULT_SIZE,
             radiusMultiplier: FirefliesConstants.MAP_FIREFLIES_RADIUS_MULTIPLIER,

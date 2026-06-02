@@ -560,6 +560,10 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Super ! Grâce à toi l’eau peut se recycler à l’infini ! Il nous reste plus qu’à la distribuer à tout le monde !",
+          "sound": {
+            "path": "sounds/dialogues/recyclage_1/recyclage_105.wav",
+            "name": "recyclage_105"
+          },
           "next": "recyclage_1_validation_end",
           "actions": []
         },

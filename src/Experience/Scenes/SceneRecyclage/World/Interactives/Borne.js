@@ -17,8 +17,9 @@ export default class Borne
         this.debugParentFolder = debugParentFolder
         this.inputs = this.experience.inputs
         this.enabled = false
-        this.screenAwake = false
+        this.screenAwake = true
         this.borneRoot = null
+        this.borneMesh = null
         this.screenMesh = null
         this.hoveredMesh = null
         this.cursorElement = null
@@ -37,11 +38,13 @@ export default class Borne
         })
         this.debugState = {
             rootFound: false,
+            borneFound: false,
             screenFound: false,
             rootName: 'introuvable',
+            borneName: 'introuvable',
             screenName: 'introuvable',
             enabled: false,
-            screenAwake: false,
+            screenAwake: true,
             forceOverlayVisible: true,
             overlayX: BorneConstants.BORNE_SCREEN_OVERLAY_DEFAULTS.x,
             overlayY: BorneConstants.BORNE_SCREEN_OVERLAY_DEFAULTS.y,
@@ -94,6 +97,24 @@ export default class Borne
         this.debugState.rootName = this.borneRoot?.name ?? 'introuvable'
 
         this.borneRoot?.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Object3D))
+            {
+                return
+            }
+
+            const normalizedName = String(child.name || '').trim().toLowerCase()
+            if(!this.borneMesh && normalizedName === BorneConstants.BORNE_MESH_NAME)
+            {
+                this.borneMesh = child
+            }
+        })
+
+        this.debugState.borneFound = Boolean(this.borneMesh)
+        this.debugState.borneName = this.borneMesh?.name ?? 'introuvable'
+
+        const screenSearchRoot = this.borneMesh ?? this.borneRoot
+        screenSearchRoot?.traverse((child) =>
         {
             if(this.screenMesh || !(child instanceof THREE.Mesh))
             {
@@ -451,14 +472,22 @@ export default class Borne
         })
 
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'rootFound', {
+            label: 'Int_dome trouve',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'borneFound', {
             label: 'Borne trouvee',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'screenFound', {
-            label: 'Cube.1 trouve',
+            label: 'Ecran trouve',
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'rootName', {
+            label: 'Nom Int_dome',
+            readonly: true
+        }, 'auto')
+        this.debug.addManualBinding(this.debugFolder, this.debugState, 'borneName', {
             label: 'Nom borne',
             readonly: true
         }, 'auto')
@@ -559,7 +588,12 @@ export default class Borne
             return
         }
 
-        this.hoveredMesh = this.centerRaycaster.intersectFirst([this.screenMesh], false) ? this.screenMesh : null
+        const hit = this.centerRaycaster.intersectFirstHit([this.screenMesh], false)
+        this.hoveredMesh = hit?.object
+            && Number.isFinite(hit.distance)
+            && hit.distance <= BorneConstants.BORNE_MAX_INTERACTION_DISTANCE
+            ? this.screenMesh
+            : null
         if(this.cursorElement instanceof HTMLElement)
         {
             this.cursorElement.classList.toggle('is-over-choice', Boolean(this.hoveredMesh))

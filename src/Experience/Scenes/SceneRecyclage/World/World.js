@@ -26,6 +26,11 @@ const CHAMPIGNON_END_DIALOGUE_KEY = 'recyclage_0_end'
 const CHAMPIGNON_PLACE_OBJECTIVE_KEY = 'recyclage_place_champignons'
 const CHAMPIGNON_LIGHT_OBJECTIVE_KEY = 'recyclage_light_champignons'
 const CHAMPIGNON_LIGHT_OBJECTIVE_TEXT = 'Allume tous les champignons en meme temps.'
+const BORNE_OBJECTIVE_KEY = 'recyclage_restart_nanobots'
+const BORNE_OBJECTIVE_TEXT = "Cliquer sur l'ecran de la borne"
+const NANOBOTS_INTRO_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey
+const NANOBOTS_VALIDATION_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey
+const NANOBOTS_DOME_TRIGGER_DISTANCE = 2.8
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -44,12 +49,15 @@ export default class SceneRecyclageWorld
         this.isNanobotsRoomActive = false
         this.hasUnlockedPrimaryBadge = false
         this.hasStartedNanobotsDialogue = false
+        this.hasEnabledBorneAfterNanobotsIntro = false
         this.nanobotsReturnState = null
         this.hasStartedChampignonInteraction = false
         this.isCompletingChampignonInteraction = false
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
         })
+        this.nanobotsDomeWorldPosition = new THREE.Vector3()
+        this.playerToDomeOffset = new THREE.Vector3()
 
         this.onDialogueEnd = ({ key } = {}) =>
         {
@@ -85,17 +93,22 @@ export default class SceneRecyclageWorld
             if(this.isUnifiedNanobotsFlow && key === CHAMPIGNON_END_DIALOGUE_KEY)
             {
                 this.unlockPrimaryBadge()
-                this.enableBorneInteraction()
+                this.borne?.setScreenAwake?.(true)
                 return
             }
 
-            if(this.isUnifiedNanobotsFlow && key === SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey)
+            if(this.isUnifiedNanobotsFlow && key === NANOBOTS_INTRO_DIALOGUE_KEY)
             {
-                this.startEmbeddedNanobotInspection()
+                this.hasEnabledBorneAfterNanobotsIntro = true
+                this.enableBorneInteraction()
+                this.experience.objectiveManager?.showByKey?.(BORNE_OBJECTIVE_KEY, {
+                    source: 'recyclageBorne',
+                    customText: BORNE_OBJECTIVE_TEXT
+                })
                 return
             }
 
-            if(this.isUnifiedNanobotsFlow && key === SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey)
+            if(this.isUnifiedNanobotsFlow && key === NANOBOTS_VALIDATION_DIALOGUE_KEY)
             {
                 this.completeScene()
             }
@@ -391,6 +404,7 @@ export default class SceneRecyclageWorld
 
         this.isCompletingChampignonInteraction = true
         this.experience.objectiveManager?.completeCurrentObjective?.()
+        this.experience.dialogueManager?.resume?.()
         this.experience.dialogueManager?.startByKey?.(CHAMPIGNON_END_DIALOGUE_KEY)
         this.isCompletingChampignonInteraction = false
     }
@@ -411,6 +425,35 @@ export default class SceneRecyclageWorld
         this.borne?.setEnabled?.(true)
     }
 
+    startNanobotsIntroDialogueIfNeeded()
+    {
+        if(
+            this.isUnifiedNanobotsFlow !== true
+            || this.hasStartedNanobotsDialogue === true
+            || this.hasEnabledBorneAfterNanobotsIntro === true
+            || this.isNanobotsRoomActive === true
+            || this.isLoadingNanobotsRoom === true
+            || this.hasUnlockedPrimaryBadge !== true
+            || !this.player
+            || !this.borne?.borneRoot
+            || this.experience.dialogueManager?.isRunning?.() === true
+        )
+        {
+            return
+        }
+
+        this.borne.borneRoot.getWorldPosition(this.nanobotsDomeWorldPosition)
+        this.playerToDomeOffset.subVectors(this.player.position, this.nanobotsDomeWorldPosition)
+        this.playerToDomeOffset.y = 0
+        if(this.playerToDomeOffset.length() > NANOBOTS_DOME_TRIGGER_DISTANCE)
+        {
+            return
+        }
+
+        this.hasStartedNanobotsDialogue = true
+        this.experience.dialogueManager?.startByKey?.(NANOBOTS_INTRO_DIALOGUE_KEY)
+    }
+
     async openEmbeddedNanobotsRoom()
     {
         if(!this.isUnifiedNanobotsFlow || this.isLoadingNanobotsRoom || this.isNanobotsRoomActive)
@@ -420,6 +463,10 @@ export default class SceneRecyclageWorld
 
         this.isLoadingNanobotsRoom = true
         this.borne?.setEnabled?.(false)
+        if(this.experience.objectiveManager?.state?.objectiveKey === BORNE_OBJECTIVE_KEY)
+        {
+            this.experience.objectiveManager.completeCurrentObjective()
+        }
         this.nanobotsReturnState = this.capturePlayerState()
 
         try
@@ -443,7 +490,7 @@ export default class SceneRecyclageWorld
             this.isLoadingNanobotsRoom = false
         }
 
-        this.experience.dialogueManager?.startByKey?.(SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey)
+        this.startEmbeddedNanobotInspection()
     }
 
     capturePlayerState()
@@ -557,13 +604,12 @@ export default class SceneRecyclageWorld
 
     startEmbeddedNanobotInspection()
     {
-        if(this.isUnifiedNanobotsFlow !== true || this.hasStartedNanobotsDialogue !== false)
+        if(this.isUnifiedNanobotsFlow !== true)
         {
             this.nanobotInspector?.open?.()
             return
         }
 
-        this.hasStartedNanobotsDialogue = true
         this.nanobotInspector?.open?.()
     }
 
@@ -684,6 +730,7 @@ export default class SceneRecyclageWorld
     update(delta = this.experience.time.delta)
     {
         this.syncAmbientSound()
+        this.startNanobotsIntroDialogueIfNeeded()
         this.cascadeTubes?.update?.(delta)
         this.slopeSplash?.update?.(delta)
         this.nanobotsCascadeTubes?.update?.(delta)

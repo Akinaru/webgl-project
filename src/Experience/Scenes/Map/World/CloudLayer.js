@@ -27,7 +27,7 @@ export default class CloudLayer
             enabled: true,
             followPlayer: true,
             followStrength: 0.804,
-            altitude: 24.8,
+            altitude: 15.5,
             size: 1386,
             windSpeed: 0.04,
             windAngle: 0.956,

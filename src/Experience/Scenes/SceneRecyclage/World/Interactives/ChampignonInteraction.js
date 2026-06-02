@@ -375,6 +375,17 @@ export default class ChampignonInteraction
         }
     }
 
+    placeAllChampignons()
+    {
+        for(const champignon of this.champignons)
+        {
+            if(champignon.placed !== true)
+            {
+                this.placeChampignon(champignon)
+            }
+        }
+    }
+
     startLightingPhase()
     {
         this.phase = ChampignonConstants.CHAMPIGNON_PHASE_LIGHTING
@@ -487,6 +498,20 @@ export default class ChampignonInteraction
         {
             this.complete()
         }
+    }
+
+    lightAllChampignons()
+    {
+        this.placeAllChampignons()
+
+        for(const champignon of this.champignons)
+        {
+            champignon.energy = 1
+            this.applyChampignonEnergy(champignon)
+        }
+
+        this.refreshLightingProgress()
+        this.checkLightingCompletion()
     }
 
     update(delta = this.experience.time.delta)
@@ -806,34 +831,16 @@ export default class ChampignonInteraction
             readonly: true
         }, 'auto')
         this.debug.addManualBinding(this.debugFolder, this.debugState, 'litAboveThreshold', {
-            label: 'Tous presques allumes',
+            label: 'Champignons allumes',
             readonly: true
         }, 'auto')
         this.debug.addButton(this.debugFolder, {
             title: 'Poser tous',
-            onClick: () =>
-            {
-                for(const champignon of this.champignons)
-                {
-                    if(champignon.placed !== true)
-                    {
-                        this.placeChampignon(champignon)
-                    }
-                }
-            }
+            onClick: () => this.placeAllChampignons()
         })
         this.debug.addButton(this.debugFolder, {
             title: 'Allumer tous',
-            onClick: () =>
-            {
-                for(const champignon of this.champignons)
-                {
-                    champignon.energy = 1
-                    this.applyChampignonEnergy(champignon)
-                }
-                this.refreshLightingProgress()
-                this.checkLightingCompletion()
-            }
+            onClick: () => this.lightAllChampignons()
         })
     }
 
