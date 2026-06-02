@@ -50,6 +50,8 @@ export default class SceneDistributionWorld
         this.bloomDoorExitTarget = null
         this.bloomRoomEndTarget = null
         this.resultEndPromptTimer = null
+        this.distributionCompletedCameraFocusState = null
+        this.hasPlayedDistributionCompletedCameraFocus = false
         this.onDistributionDialogueState = ({ dialogueKey, nodeId } = {}) =>
         {
             if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY || nodeId !== DISTRIBUTION_COMPLETED_NODE_KEY)
@@ -57,6 +59,7 @@ export default class SceneDistributionWorld
                 return
             }
 
+            this.focusCameraTowardsDistributionDoorExit()
             this.startBloomPathToRoomEndViaDoor()
         }
         this.onCompletedDistributionDialogueEnd = ({ key } = {}) =>
@@ -88,6 +91,86 @@ export default class SceneDistributionWorld
         const bounds = this.distributionModel?.getBoundsForNameTokens?.([token], { exact: true })
             ?? this.distributionModel?.getBoundsForNameTokens?.([token], { exact: false })
         return bounds?.getCenter?.(new THREE.Vector3()) ?? null
+    }
+
+    interpolateAngle(current, target, interpolation)
+    {
+        const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current))
+        return current + (delta * interpolation)
+    }
+
+    focusCameraTowardsDistributionDoorExit()
+    {
+        if(this.hasPlayedDistributionCompletedCameraFocus)
+        {
+            return
+        }
+
+        const player = this.player
+        const doorExitCenter = this.resolveDistributionTargetCenter(DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN)
+        if(!player || !doorExitCenter)
+        {
+            return
+        }
+
+        const targetDirection = new THREE.Vector3().subVectors(doorExitCenter, player.position)
+        const horizontalDistance = Math.hypot(targetDirection.x, targetDirection.z)
+        if(horizontalDistance <= 1e-6 && Math.abs(targetDirection.y) <= 1e-6)
+        {
+            return
+        }
+
+        const targetYaw = Math.atan2(-targetDirection.x, -targetDirection.z)
+        const unclampedPitch = -Math.atan2(targetDirection.y, Math.max(horizontalDistance, 1e-6))
+        const targetPitch = THREE.MathUtils.clamp(
+            unclampedPitch,
+            player.settings?.minPitch ?? unclampedPitch,
+            player.settings?.maxPitch ?? unclampedPitch
+        )
+
+        player.setLookEnabled?.(false)
+        this.distributionCompletedCameraFocusState = {
+            elapsedMs: 0,
+            startYaw: player.yaw ?? 0,
+            startPitch: player.pitch ?? 0,
+            targetYaw,
+            targetPitch
+        }
+
+        this.hasPlayedDistributionCompletedCameraFocus = true
+    }
+
+    updateDistributionCompletedCameraFocus(delta = this.experience.time.delta)
+    {
+        const focusState = this.distributionCompletedCameraFocusState
+        const player = this.player
+        if(!focusState || !player)
+        {
+            return
+        }
+
+        focusState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const transitionDuration = Math.max(1, SceneDistributionWorldConstants.DISTRIBUTION_DOOR_EXIT_CAMERA_FOCUS_TRANSITION_MS)
+        const transitionProgress = Math.min(1, focusState.elapsedMs / transitionDuration)
+        const easedProgress = 1 - Math.pow(1 - transitionProgress, 3)
+
+        const nextYaw = this.interpolateAngle(focusState.startYaw, focusState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(focusState.startPitch, focusState.targetPitch, easedProgress)
+
+        player.yaw = nextYaw
+        player.pitch = nextPitch
+        player.cameraSmoothYaw = nextYaw
+        player.cameraSmoothPitch = nextPitch
+        player.camera.rotation.set(nextPitch, nextYaw, player.cameraSmoothRoll ?? 0)
+
+        if(focusState.elapsedMs < SceneDistributionWorldConstants.DISTRIBUTION_DOOR_EXIT_CAMERA_FOCUS_DELAY_MS)
+        {
+            return
+        }
+
+        player.setLookEnabled?.(true)
+        this.distributionCompletedCameraFocusState = null
     }
 
     startBloomPathToRoomEndViaDoor()
@@ -291,6 +374,11 @@ export default class SceneDistributionWorld
                 rails: [],
                 target: this.player
             })
+            this.experience.bloom.applyDebugTransform?.({
+                positionX: SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_POSITION.x,
+                positionY: SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_POSITION.y,
+                positionZ: SceneDistributionWorldConstants.DISTRIBUTION_BLOOM_POSITION.z
+            })
         }
 
         this.resultTrigger = new SceneDistributionResultTrigger({
@@ -342,6 +430,7 @@ export default class SceneDistributionWorld
         this.syncAmbientSound()
         this.exitDoors?.update?.(delta)
         this.light?.update?.(delta)
+        this.updateDistributionCompletedCameraFocus(delta)
         this.player?.update?.(delta)
         this.valveController?.update?.(delta)
         this.tubeWaterController?.update?.(delta)
@@ -425,6 +514,8 @@ export default class SceneDistributionWorld
             window.clearTimeout(this.resultEndPromptTimer)
             this.resultEndPromptTimer = null
         }
+        this.distributionCompletedCameraFocusState = null
+        this.player?.setLookEnabled?.(true)
         this.valveController?.destroy?.()
         this.valveController = null
         this.tubeWaterController?.destroy?.()
