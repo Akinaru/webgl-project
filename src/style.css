@@ -1046,6 +1046,11 @@ body.is-recuperation-material-cursor .dialogue__cursor
     display: none;
 }
 
+.pause-menu.is-info-open .pause-menu__panel
+{
+    display: none;
+}
+
 .pause-menu.is-confirm-open .pause-menu__panel
 {
     display: none;
@@ -1191,6 +1196,119 @@ body.is-recuperation-material-cursor .dialogue__cursor
 .pause-confirm.is-visible
 {
     display: block;
+}
+
+.pause-info
+{
+    display: none;
+    width: min(88vw, 540px);
+    padding: clamp(2.3rem, 3.8vw, 3rem);
+    font-family: "Nunito", "Segoe UI", sans-serif;
+}
+
+.pause-info.is-visible
+{
+    display: block;
+}
+
+.pause-info__header
+{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1.35rem;
+}
+
+.pause-info__title
+{
+    margin: 0;
+    color: rgba(255, 255, 255, 0.96);
+    font-size: clamp(1.35rem, 2.2vw, 1.7rem);
+    font-weight: 400;
+    text-align: left;
+}
+
+.pause-info__close
+{
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.pause-info__close-icon
+{
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.pause-info__text
+{
+    margin: 0;
+    color: rgba(244, 250, 255, 0.92);
+    line-height: 1.55;
+    font-size: 1.08rem;
+    text-align: left;
+}
+
+.pause-info__content
+{
+    margin-top: 1rem;
+    padding: 1.1rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.pause-info__credits
+{
+    margin-top: 1.15rem;
+    color: rgba(244, 250, 255, 0.84);
+    font-size: 1.02rem;
+    line-height: 1.65;
+    text-align: left;
+}
+
+.pause-info__credits p
+{
+    margin: 0;
+}
+
+.pause-info__credits p + p
+{
+    margin-top: 0.85rem;
+}
+
+.pause-info__credits strong
+{
+    display: block;
+    color: rgba(255, 255, 255, 0.96);
+    font-weight: 600;
+}
+
+.pause-info__credits span
+{
+    display: block;
+}
+
+.pause-info__link
+{
+    color: rgba(207, 241, 255, 0.96);
+    text-decoration: underline;
+    text-decoration-color: rgba(207, 241, 255, 0.5);
+    text-underline-offset: 0.14em;
+}
+
+.pause-info__link:hover
+{
+    color: rgba(255, 255, 255, 0.98);
+    text-decoration-color: rgba(255, 255, 255, 0.82);
 }
 
 .pause-confirm__title

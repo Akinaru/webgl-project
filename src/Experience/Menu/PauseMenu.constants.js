@@ -2,6 +2,7 @@ export const DISPLAYED_CLASS = 'is-displayed'
 export const VISIBLE_CLASS = 'is-visible'
 export const SETTINGS_OPEN_CLASS = 'is-settings-open'
 export const CONFIRM_OPEN_CLASS = 'is-confirm-open'
+export const INFO_OPEN_CLASS = 'is-info-open'
 export const SELECTORS = Object.freeze({
     root: '#pauseMenu',
     resumeButton: '#pauseResumeButton',
@@ -13,6 +14,8 @@ export const SELECTORS = Object.freeze({
     confirmMessage: '#pauseConfirmMessage',
     confirmCancelButton: '#pauseConfirmCancelButton',
     confirmAcceptButton: '#pauseConfirmAcceptButton',
+    infoModal: '#pauseInfoModal',
+    infoCloseButton: '#pauseInfoCloseButton',
     settingsModal: '#pauseSettingsModal',
     settingsCloseButton: '#pauseSettingsCloseButton',
     audioEnabledToggle: '#pauseAudioEnabled',

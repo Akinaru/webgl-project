@@ -53,6 +53,8 @@ export default class PauseMenu extends EventEmitter
         this.confirmMessage = document.querySelector(PauseMenuConstants.SELECTORS.confirmMessage)
         this.confirmCancelButton = document.querySelector(PauseMenuConstants.SELECTORS.confirmCancelButton)
         this.confirmAcceptButton = document.querySelector(PauseMenuConstants.SELECTORS.confirmAcceptButton)
+        this.infoModal = document.querySelector(PauseMenuConstants.SELECTORS.infoModal)
+        this.infoCloseButton = document.querySelector(PauseMenuConstants.SELECTORS.infoCloseButton)
         this.settingsModal = document.querySelector(PauseMenuConstants.SELECTORS.settingsModal)
         this.settingsCloseButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsCloseButton)
         this.audioEnabledToggle = document.querySelector(PauseMenuConstants.SELECTORS.audioEnabledToggle)
@@ -78,6 +80,8 @@ export default class PauseMenu extends EventEmitter
             && this.confirmMessage
             && this.confirmCancelButton
             && this.confirmAcceptButton
+            && this.infoModal
+            && this.infoCloseButton
             && this.settingsModal
             && this.settingsCloseButton
             && this.audioEnabledToggle
@@ -153,6 +157,13 @@ export default class PauseMenu extends EventEmitter
                     return
                 }
 
+                if(this.isInfoOpen())
+                {
+                    this.closeInfo()
+                    event.preventDefault()
+                    return
+                }
+
                 this.close({
                     restorePointerLock: true,
                     source: 'keydown.escape'
@@ -216,11 +227,14 @@ export default class PauseMenu extends EventEmitter
         {
             event.preventDefault()
             this.experience?.sound?.playMenuClick?.()
-            this.close({
-                restorePointerLock: false,
-                source: 'info_button'
-            })
-            this.experience?.menu?.endMenu?.open?.()
+            this.openInfo()
+        }
+
+        this.onInfoCloseClick = (event) =>
+        {
+            event.preventDefault()
+            this.experience?.sound?.playMenuClick?.()
+            this.closeInfo({ silent: true })
         }
 
         this.onSettingsCloseClick = (event) =>
@@ -474,6 +488,7 @@ export default class PauseMenu extends EventEmitter
         this.restartAllButton.addEventListener('click', this.onRestartAllClick)
         this.settingsButton.addEventListener('click', this.onSettingsClick)
         this.infoButton.addEventListener('click', this.onInfoClick)
+        this.infoCloseButton.addEventListener('click', this.onInfoCloseClick)
         this.settingsCloseButton.addEventListener('click', this.onSettingsCloseClick)
         this.audioEnabledToggle.addEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.addEventListener('input', this.onMusicVolumeInput)
@@ -503,6 +518,7 @@ export default class PauseMenu extends EventEmitter
             this.restartAllButton,
             this.settingsButton,
             this.infoButton,
+            this.infoCloseButton,
             this.settingsCloseButton,
             this.resetAllButton,
             ...this.graphicsQualityButtons,
@@ -566,6 +582,7 @@ export default class PauseMenu extends EventEmitter
         this.root.classList.add(PauseMenuConstants.DISPLAYED_CLASS)
         this.root.classList.add(PauseMenuConstants.VISIBLE_CLASS)
         this.closeSettings({ silent: true })
+        this.closeInfo({ silent: true })
         this.closeConfirm({
             confirmed: false
         })
@@ -662,6 +679,11 @@ export default class PauseMenu extends EventEmitter
         return this.settingsModal?.classList?.contains(PauseMenuConstants.VISIBLE_CLASS) === true
     }
 
+    isInfoOpen()
+    {
+        return this.infoModal?.classList?.contains(PauseMenuConstants.VISIBLE_CLASS) === true
+    }
+
     isConfirmOpen()
     {
         return this.confirmModal?.classList?.contains(PauseMenuConstants.VISIBLE_CLASS) === true
@@ -678,6 +700,7 @@ export default class PauseMenu extends EventEmitter
         }
 
         this.closeSettings({ silent: true })
+        this.closeInfo({ silent: true })
         this.confirmMessage.textContent = String(message || '')
         this.confirmAcceptButton.textContent = String(confirmLabel || 'Confirmer')
         this.confirmModal.classList.add(PauseMenuConstants.VISIBLE_CLASS)
@@ -734,6 +757,7 @@ export default class PauseMenu extends EventEmitter
         this.closeConfirm({
             confirmed: false
         })
+        this.closeInfo({ silent: true })
         this.syncSettingsVolumeUI()
         this.syncGraphicsQualityUI()
         this.syncKeybindButtons()
@@ -757,6 +781,40 @@ export default class PauseMenu extends EventEmitter
         this.root.classList.remove(PauseMenuConstants.SETTINGS_OPEN_CLASS)
         this.cancelKeybindCapture()
         this.clearKeybindError()
+        if(!silent)
+        {
+            this.experience?.sound?.playMenuClick?.()
+        }
+    }
+
+    openInfo()
+    {
+        if(!this.hasUI || !this.isOpen())
+        {
+            return
+        }
+
+        this.closeConfirm({
+            confirmed: false
+        })
+        this.closeSettings({ silent: true })
+        this.infoModal.classList.add(PauseMenuConstants.VISIBLE_CLASS)
+        this.infoModal.setAttribute('aria-hidden', 'false')
+        this.root.classList.add(PauseMenuConstants.INFO_OPEN_CLASS)
+    }
+
+    closeInfo({
+        silent = false
+    } = {})
+    {
+        if(!this.hasUI || !this.isInfoOpen())
+        {
+            return
+        }
+
+        this.infoModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
+        this.infoModal.setAttribute('aria-hidden', 'true')
+        this.root.classList.remove(PauseMenuConstants.INFO_OPEN_CLASS)
         if(!silent)
         {
             this.experience?.sound?.playMenuClick?.()
@@ -1106,6 +1164,7 @@ export default class PauseMenu extends EventEmitter
         this.restartAllButton.removeEventListener('click', this.onRestartAllClick)
         this.settingsButton.removeEventListener('click', this.onSettingsClick)
         this.infoButton.removeEventListener('click', this.onInfoClick)
+        this.infoCloseButton.removeEventListener('click', this.onInfoCloseClick)
         this.settingsCloseButton.removeEventListener('click', this.onSettingsCloseClick)
         this.audioEnabledToggle.removeEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.removeEventListener('input', this.onMusicVolumeInput)
@@ -1128,9 +1187,12 @@ export default class PauseMenu extends EventEmitter
         this.root.setAttribute('aria-hidden', 'true')
         this.settingsModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.settingsModal.setAttribute('aria-hidden', 'true')
+        this.infoModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
+        this.infoModal.setAttribute('aria-hidden', 'true')
         this.confirmModal.classList.remove(PauseMenuConstants.VISIBLE_CLASS)
         this.confirmModal.setAttribute('aria-hidden', 'true')
         this.root.classList.remove(PauseMenuConstants.SETTINGS_OPEN_CLASS)
+        this.root.classList.remove(PauseMenuConstants.INFO_OPEN_CLASS)
         this.root.classList.remove(PauseMenuConstants.CONFIRM_OPEN_CLASS)
 
         if(this.visibilityRafId)
