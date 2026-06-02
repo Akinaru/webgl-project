@@ -59,6 +59,7 @@ export default class SceneRecyclageModel
 
             child.castShadow = true
             child.receiveShadow = true
+            this.applyVisualMaterialOverrides(child)
 
             if(!child.geometry?.boundingBox)
             {
@@ -161,6 +162,30 @@ export default class SceneRecyclageModel
                 continue
             }
 
+            material.side = THREE.DoubleSide
+            material.needsUpdate = true
+        }
+    }
+
+    applyVisualMaterialOverrides(mesh)
+    {
+        const normalizedName = String(mesh.name || '').trim().toLowerCase()
+        if(normalizedName !== SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_MESH_NAME)
+        {
+            return
+        }
+
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        for(const material of materials)
+        {
+            if(!material)
+            {
+                continue
+            }
+
+            material.transparent = true
+            material.opacity = SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_OPACITY
+            material.depthWrite = false
             material.side = THREE.DoubleSide
             material.needsUpdate = true
         }

@@ -1,5 +1,6 @@
-export const BORNE_ROOT_NAME = 'borne'
-export const BORNE_SCREEN_NAME = 'cube.1'
+export const BORNE_ROOT_NAME = 'int_dome'
+export const BORNE_MESH_NAME = 'borne'
+export const BORNE_SCREEN_NAME = 'ecran'
 export const BORNE_MAX_INTERACTION_DISTANCE = 2.4
 export const BORNE_INDICATOR_LABEL = 'Activer les nanobots'
 export const BORNE_SCREEN_ON_COLOR = '#7cecff'
