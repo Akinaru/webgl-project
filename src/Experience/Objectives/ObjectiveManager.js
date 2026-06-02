@@ -81,6 +81,25 @@ export default class ObjectiveManager extends EventEmitter
         return this.showByKey(initialObjectiveKey, context)
     }
 
+    updateCurrentContext(contextPatch = {})
+    {
+        if(!this.hasActiveObjective() || !contextPatch || typeof contextPatch !== 'object')
+        {
+            return false
+        }
+
+        this.state = {
+            ...this.state,
+            context: {
+                ...this.state.context,
+                ...contextPatch
+            }
+        }
+
+        this.emitState()
+        return true
+    }
+
     completeCurrentObjective({ clear = true } = {})
     {
         if(!this.hasActiveObjective())

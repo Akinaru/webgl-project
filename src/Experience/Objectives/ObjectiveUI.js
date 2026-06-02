@@ -59,7 +59,7 @@ export default class ObjectiveUI
         }
 
         const nextObjectiveKey = payload.objectiveKey || null
-        const nextObjectiveText = payload.objective.text || ''
+        const nextObjectiveText = payload.context?.customText || payload.objective.text || ''
 
         if(this.visible && this.currentObjectiveKey && this.currentObjectiveKey !== nextObjectiveKey)
         {

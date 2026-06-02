@@ -25,6 +25,7 @@ const VALIDATION_BUTTON_MAX_DISTANCE = 2.6
 const CHAMPIGNON_END_DIALOGUE_KEY = 'recyclage_0_end'
 const CHAMPIGNON_PLACE_OBJECTIVE_KEY = 'recyclage_place_champignons'
 const CHAMPIGNON_LIGHT_OBJECTIVE_KEY = 'recyclage_light_champignons'
+const CHAMPIGNON_LIGHT_OBJECTIVE_TEXT = 'Allume tous les champignons en meme temps.'
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -168,6 +169,7 @@ export default class SceneRecyclageWorld
                 world: this,
                 debugParentFolder: this.nanobotsDebugFolder,
                 onPlacedAll: () => this.handleChampignonsPlacedAll(),
+                onLightingProgress: ({ litCount = 0, totalCount = 0 } = {}) => this.updateChampignonLightingObjective(litCount, totalCount),
                 onComplete: () => this.completeChampignonInteraction()
             })
             this.borne = new Borne({
@@ -358,7 +360,25 @@ export default class SceneRecyclageWorld
     {
         this.experience.objectiveManager?.completeCurrentObjective?.({ clear: false })
         this.experience.objectiveManager?.showByKey?.(CHAMPIGNON_LIGHT_OBJECTIVE_KEY, {
-            source: 'recyclageChampignons'
+            source: 'recyclageChampignons',
+            customText: this.formatChampignonLightingObjectiveText(0, this.champignonInteraction?.champignons?.length ?? 0)
+        })
+    }
+
+    formatChampignonLightingObjectiveText(litCount = 0, totalCount = 0)
+    {
+        return `${CHAMPIGNON_LIGHT_OBJECTIVE_TEXT} (${litCount}/${totalCount})`
+    }
+
+    updateChampignonLightingObjective(litCount = 0, totalCount = 0)
+    {
+        if(this.experience.objectiveManager?.state?.objectiveKey !== CHAMPIGNON_LIGHT_OBJECTIVE_KEY)
+        {
+            return
+        }
+
+        this.experience.objectiveManager?.updateCurrentContext?.({
+            customText: this.formatChampignonLightingObjectiveText(litCount, totalCount)
         })
     }
 

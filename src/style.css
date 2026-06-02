@@ -1785,7 +1785,7 @@ body.is-dialogue-cursor.is-pointer-locked *
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    width: min(32vw, 360px);
+    width: min(32vw, 500px);
     min-width: 250px;
     padding: 1rem 1rem 0.95rem;
     border: none;
