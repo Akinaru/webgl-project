@@ -407,6 +407,28 @@ body.is-pointer-locked
     font-weight: 600;
 }
 
+.end-menu__credits-link
+{
+    color: rgba(207, 241, 255, 0.96);
+    text-decoration: underline;
+    text-decoration-color: rgba(207, 241, 255, 0.5);
+    text-underline-offset: 0.14em;
+    transition: color 140ms ease, text-decoration-color 140ms ease, opacity 140ms ease;
+}
+
+.end-menu__credits-link:hover
+{
+    color: rgba(255, 255, 255, 0.98);
+    text-decoration-color: rgba(255, 255, 255, 0.82);
+}
+
+.end-menu__credits-link:focus-visible
+{
+    outline: 2px solid rgba(255, 255, 255, 0.58);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
 @keyframes scene-transition-fill-flow
 {
     from
