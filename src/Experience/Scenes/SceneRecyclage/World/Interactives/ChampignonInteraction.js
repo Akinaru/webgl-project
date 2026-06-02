@@ -32,6 +32,10 @@ export default class ChampignonInteraction
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
         })
+        this.centerScreen = new THREE.Vector2(window.innerWidth * 0.5, window.innerHeight * 0.5)
+        this.cursorElement = null
+        this.createdCursorElement = false
+        this.ownsCursor = false
         this.debugState = {
             active: false,
             completed: false,
@@ -167,12 +171,27 @@ export default class ChampignonInteraction
 
     bindEvents()
     {
-        this.onInteractDown = () =>
+        this.onMouseDown = (event) =>
         {
+            if(event?.button !== 0)
+            {
+                return
+            }
+
             this.handleInteraction()
         }
+        this.onWindowBlur = () =>
+        {
+            this.releaseCursor()
+        }
+        this.onWindowResize = () =>
+        {
+            this.centerScreen.set(window.innerWidth * 0.5, window.innerHeight * 0.5)
+        }
 
-        this.inputs?.on?.('sceneinteractdown.recyclageChampignons', this.onInteractDown)
+        this.inputs?.on?.('mousedown.recyclageChampignons', this.onMouseDown)
+        this.inputs?.on?.('blur.recyclageChampignons', this.onWindowBlur)
+        window.addEventListener('resize', this.onWindowResize)
     }
 
     start()
@@ -186,6 +205,8 @@ export default class ChampignonInteraction
         this.phase = ChampignonConstants.CHAMPIGNON_PHASE_PLACING
         this.debugState.active = true
         this.debugState.phase = this.phase
+        this.experience.isChampignonInteracting = true
+        this.inputs?.exitPointerLock?.()
     }
 
     handleInteraction()
@@ -323,6 +344,9 @@ export default class ChampignonInteraction
 
     update(delta = this.experience.time.delta)
     {
+        this.ensureCursorElement()
+        this.updateCursor()
+
         if(this.isActive !== true || this.phase !== ChampignonConstants.CHAMPIGNON_PHASE_LIGHTING || this.hasCompleted)
         {
             return
@@ -368,7 +392,60 @@ export default class ChampignonInteraction
         this.debugState.active = false
         this.debugState.completed = true
         this.debugState.phase = this.phase
+        this.experience.isChampignonInteracting = false
+        this.releaseCursor()
         this.onComplete?.()
+    }
+
+    ensureCursorElement()
+    {
+        this.cursorElement = document.querySelector('.dialogue__cursor')
+        if(this.cursorElement instanceof HTMLElement)
+        {
+            return
+        }
+
+        const fallbackCursor = document.createElement('span')
+        fallbackCursor.className = 'dialogue__cursor'
+        document.body.appendChild(fallbackCursor)
+        this.cursorElement = fallbackCursor
+        this.createdCursorElement = true
+    }
+
+    updateCursor()
+    {
+        if(!(this.cursorElement instanceof HTMLElement))
+        {
+            return
+        }
+
+        if(this.isActive !== true || this.hasCompleted)
+        {
+            this.releaseCursor()
+            return
+        }
+
+        this.ownsCursor = true
+        document.body.classList.add(ChampignonConstants.CHAMPIGNON_CURSOR_OWNER_CLASS)
+        this.cursorElement.style.left = `${this.centerScreen.x}px`
+        this.cursorElement.style.top = `${this.centerScreen.y}px`
+        this.cursorElement.classList.add('is-visible')
+        this.cursorElement.classList.remove('is-over-choice')
+    }
+
+    releaseCursor()
+    {
+        if(this.ownsCursor)
+        {
+            this.ownsCursor = false
+            document.body.classList.remove(ChampignonConstants.CHAMPIGNON_CURSOR_OWNER_CLASS)
+        }
+
+        if(this.cursorElement instanceof HTMLElement)
+        {
+            this.cursorElement.classList.remove('is-visible')
+            this.cursorElement.classList.remove('is-over-choice')
+        }
     }
 
     setDebug()
@@ -440,9 +517,18 @@ export default class ChampignonInteraction
 
     destroy()
     {
-        this.inputs?.off?.('sceneinteractdown.recyclageChampignons')
+        this.inputs?.off?.('mousedown.recyclageChampignons')
+        this.inputs?.off?.('blur.recyclageChampignons')
+        window.removeEventListener('resize', this.onWindowResize)
         this.debugFolder?.dispose?.()
         this.debugFolder = null
+        this.experience.isChampignonInteracting = false
+        this.releaseCursor()
+
+        if(this.createdCursorElement && this.cursorElement instanceof HTMLElement)
+        {
+            this.cursorElement.remove()
+        }
 
         for(const champignon of this.champignons)
         {
@@ -459,5 +545,6 @@ export default class ChampignonInteraction
         this.slots = []
         this.placedChampignons.clear()
         this.slotAssignments.clear()
+        this.cursorElement = null
     }
 }

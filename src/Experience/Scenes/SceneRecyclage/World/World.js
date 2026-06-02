@@ -22,8 +22,7 @@ import { sceneSources } from '../../../Source/sources.js'
 let recyclageWorldInstanceIndex = 0
 const VALIDATION_BUTTON_NAME_TOKEN = 'button_right'
 const VALIDATION_BUTTON_MAX_DISTANCE = 2.6
-const CHAMPIGNON_INTERACTION_DIALOGUE_KEY = 'recyclage_0'
-const CHAMPIGNON_INTERACTION_START_NODE = 'recyclage_003'
+const CHAMPIGNON_END_DIALOGUE_KEY = 'recyclage_0_end'
 const CHAMPIGNON_PLACE_OBJECTIVE_KEY = 'recyclage_place_champignons'
 const CHAMPIGNON_LIGHT_OBJECTIVE_KEY = 'recyclage_light_champignons'
 export default class SceneRecyclageWorld
@@ -46,7 +45,6 @@ export default class SceneRecyclageWorld
         this.hasStartedNanobotsDialogue = false
         this.nanobotsReturnState = null
         this.hasStartedChampignonInteraction = false
-        this.isWaitingToStartChampignonInteraction = false
         this.isCompletingChampignonInteraction = false
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
@@ -58,8 +56,12 @@ export default class SceneRecyclageWorld
             {
                 if(this.isUnifiedNanobotsFlow)
                 {
-                    this.unlockPrimaryBadge()
-                    this.enableBorneInteraction()
+                    if(this.hasStartedChampignonInteraction !== true)
+                    {
+                        this.startChampignonInteraction()
+                        return
+                    }
+
                     return
                 }
 
@@ -79,6 +81,13 @@ export default class SceneRecyclageWorld
                 return
             }
 
+            if(this.isUnifiedNanobotsFlow && key === CHAMPIGNON_END_DIALOGUE_KEY)
+            {
+                this.unlockPrimaryBadge()
+                this.enableBorneInteraction()
+                return
+            }
+
             if(this.isUnifiedNanobotsFlow && key === SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey)
             {
                 this.startEmbeddedNanobotInspection()
@@ -90,16 +99,6 @@ export default class SceneRecyclageWorld
                 this.completeScene()
             }
         }
-        this.onDialogueState = ({ dialogueKey = null, nodeId = null } = {}) =>
-        {
-            if(dialogueKey !== CHAMPIGNON_INTERACTION_DIALOGUE_KEY || nodeId !== CHAMPIGNON_INTERACTION_START_NODE)
-            {
-                return
-            }
-
-            this.scheduleChampignonInteractionStart()
-        }
-
         if(this.resources.isReady)
         {
             this.setUp()
@@ -327,7 +326,6 @@ export default class SceneRecyclageWorld
 
         this.hasStartedArrivalDialogue = true
         this.experience.dialogueManager?.on?.('end.recyclageWorld', this.onDialogueEnd)
-        this.experience.dialogueManager?.on?.('state.recyclageWorld', this.onDialogueState)
         this.inputs = this.experience.inputs
         this.onInteractDown = () =>
         {
@@ -356,43 +354,6 @@ export default class SceneRecyclageWorld
         this.champignonInteraction.start()
     }
 
-    scheduleChampignonInteractionStart()
-    {
-        if(this.hasStartedChampignonInteraction || this.isWaitingToStartChampignonInteraction)
-        {
-            return
-        }
-
-        this.isWaitingToStartChampignonInteraction = true
-        this.waitForChampignonInteractionStart()
-    }
-
-    waitForChampignonInteractionStart()
-    {
-        const dialogueManager = this.experience.dialogueManager
-        const isOnExpectedNode = dialogueManager?.state?.dialogueKey === CHAMPIGNON_INTERACTION_DIALOGUE_KEY
-            && dialogueManager?.state?.nodeId === CHAMPIGNON_INTERACTION_START_NODE
-
-        if(isOnExpectedNode && dialogueManager?.canContinueCurrentNode?.())
-        {
-            this.isWaitingToStartChampignonInteraction = false
-            this.startChampignonInteraction()
-            return
-        }
-
-        if(isOnExpectedNode !== true || dialogueManager?.isRunning?.() !== true)
-        {
-            this.isWaitingToStartChampignonInteraction = false
-            return
-        }
-
-        this.champignonStartTimeout = window.setTimeout(() =>
-        {
-            this.champignonStartTimeout = null
-            this.waitForChampignonInteractionStart()
-        }, 50)
-    }
-
     handleChampignonsPlacedAll()
     {
         this.experience.objectiveManager?.completeCurrentObjective?.({ clear: false })
@@ -410,30 +371,8 @@ export default class SceneRecyclageWorld
 
         this.isCompletingChampignonInteraction = true
         this.experience.objectiveManager?.completeCurrentObjective?.()
-        this.experience.dialogueManager?.resume?.()
-        this.waitForDialogueContinueThenAdvance()
-    }
-
-    waitForDialogueContinueThenAdvance()
-    {
-        if(!this.experience.dialogueManager?.isRunning?.())
-        {
-            this.isCompletingChampignonInteraction = false
-            return
-        }
-
-        if(this.experience.dialogueManager?.canContinueCurrentNode?.())
-        {
-            this.experience.dialogueManager?.continue?.()
-            this.isCompletingChampignonInteraction = false
-            return
-        }
-
-        this.champignonContinueTimeout = window.setTimeout(() =>
-        {
-            this.champignonContinueTimeout = null
-            this.waitForDialogueContinueThenAdvance()
-        }, 100)
+        this.experience.dialogueManager?.startByKey?.(CHAMPIGNON_END_DIALOGUE_KEY)
+        this.isCompletingChampignonInteraction = false
     }
 
     unlockPrimaryBadge()
@@ -740,7 +679,6 @@ export default class SceneRecyclageWorld
     {
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recyclageWorld')
-        this.experience.dialogueManager?.off?.('state.recyclageWorld')
         this.inputs?.off?.('sceneinteractdown.recyclageWorld')
 
         if(this.completeSceneTimeout)
@@ -753,12 +691,6 @@ export default class SceneRecyclageWorld
             window.clearTimeout(this.champignonStartTimeout)
             this.champignonStartTimeout = null
         }
-        if(this.champignonContinueTimeout)
-        {
-            window.clearTimeout(this.champignonContinueTimeout)
-            this.champignonContinueTimeout = null
-        }
-
         if(this.player)
         {
             this.player.destroy?.()

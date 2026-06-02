@@ -2,6 +2,7 @@ export const CHAMPIGNON_NAME_PREFIX = 'champignon'
 export const CHAMPIGNON_SLOT_NAME_PREFIX = 'emplacement_champ'
 export const CHAMPIGNON_MAX_INTERACTION_DISTANCE = 4.2
 export const CHAMPIGNON_DEBUG_FOLDER_TITLE = 'Champignons'
+export const CHAMPIGNON_CURSOR_OWNER_CLASS = 'is-recyclage-champignon-cursor'
 export const CHAMPIGNON_PHASE_PLACING = 'placing'
 export const CHAMPIGNON_PHASE_LIGHTING = 'lighting'
 export const CHAMPIGNON_PHASE_COMPLETED = 'completed'

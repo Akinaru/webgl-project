@@ -61,6 +61,11 @@ export function setPointerLock()
             return
         }
 
+        if(this.experience?.isChampignonInteracting)
+        {
+            return
+        }
+
         if(!this.inputs?.isPointerLocked?.(this.canvas))
         {
             this.inputs?.requestPointerLock?.(this.canvas)

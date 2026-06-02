@@ -592,13 +592,28 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Ils mangent les polluants, et en retour, ils brillent. \nPlace-les aux bons endroits et n’aie pas peur de toucher et de cliquer pour les faire briller.",
-          "next": "recyclage_004",
+          "next": "recyclage_0_pause_end",
           "actions": []
         },
+        "recyclage_0_pause_end": {
+          "type": "end",
+          "actions": []
+        }
+      }
+    },
+    "recyclage_0_end": {
+      "key": "recyclage_0_end",
+      "once": false,
+      "startNode": "recyclage_004",
+      "nodes": {
         "recyclage_004": {
           "type": "line",
           "speaker": "Bloom",
           "text": "Wahou, c’est super, tu t’en es sorti comme un poisson dans l’eau ! Je suis fière de toi.",
+          "sound": {
+            "path": "sounds/dialogues/recyclage_0/recyclage_004.wav",
+            "name": "recyclage_004"
+          },
           "next": "recyclage_005",
           "actions": []
         },
@@ -606,10 +621,14 @@
           "type": "line",
           "speaker": "Bloom",
           "text": "Allons dans la seconde pièce du recyclage : le recyclage avec les nanobots !",
-          "next": "recyclage_0_end",
+          "sound": {
+            "path": "sounds/dialogues/recyclage_0/recyclage_005.wav",
+            "name": "recyclage_005"
+          },
+          "next": "recyclage_0_end_final",
           "actions": []
         },
-        "recyclage_0_end": {
+        "recyclage_0_end_final": {
           "type": "end",
           "actions": []
         }
