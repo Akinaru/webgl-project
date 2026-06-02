@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import Experience from '../../../../Experience.js'
 import CenterScreenRaycaster from '../../../../Utils/CenterScreenRaycaster.js'
 import * as ChampignonConstants from './ChampignonInteraction.constants.js'
+import * as MateriauConstants from '../../../SceneRecuperation/World/Interactives/Materiau.constants.js'
 
 const HIGHLIGHT_COLOR = new THREE.Color('#9ffb6b')
 const HIGHLIGHT_EMISSIVE = new THREE.Color('#b7ff8f')
@@ -48,6 +49,16 @@ export default class ChampignonInteraction
         this.slotInteractionRay = new THREE.Ray()
         this.slotInteractionHitPoint = new THREE.Vector3()
         this.slotInteractionSize = new THREE.Vector3()
+        this.indicatorGroup = null
+        this.indicatorLabelTexture = null
+        this.indicatorCurrentKey = null
+        this.indicatorBounds = new THREE.Box3()
+        this.indicatorCenter = new THREE.Vector3()
+        this.indicatorSize = new THREE.Vector3()
+        this.indicatorLinePoints = [
+            new THREE.Vector3(),
+            new THREE.Vector3()
+        ]
         this.debugState = {
             active: false,
             completed: false,
@@ -61,6 +72,7 @@ export default class ChampignonInteraction
         this.collectObjects()
         this.hideAllChampignons()
         this.assignChampignonsToSlots()
+        this.setSceneIndicator()
         this.bindEvents()
         this.setDebug()
     }
@@ -242,7 +254,7 @@ export default class ChampignonInteraction
             ChampignonConstants.CHAMPIGNON_POINT_LIGHT_DISTANCE
         )
         pointLight.position.set(0, 0.18, 0)
-        pointLight.visible = false
+        pointLight.visible = true
         root.add(pointLight)
 
         return {
@@ -255,6 +267,7 @@ export default class ChampignonInteraction
             outlineColor,
             surfaceTintColor,
             surfaceTexture,
+            celebrationPhaseOffset: champignonIndex * 0.7,
             energy: 0,
             placed: false,
             slot: null,
@@ -322,10 +335,10 @@ export default class ChampignonInteraction
     {
         for(const champignon of this.champignons)
         {
-            champignon.root.visible = false
+            champignon.root.visible = true
             champignon.appearProgress = 0
             champignon.animatedScale = 0
-            champignon.root.scale.set(0, 0, 0)
+            champignon.root.scale.setScalar(ChampignonConstants.CHAMPIGNON_HIDDEN_SCALE_EPSILON)
             this.applyChampignonEnergy(champignon)
         }
 
@@ -507,11 +520,10 @@ export default class ChampignonInteraction
 
     placeChampignon(champignon)
     {
-        champignon.root.visible = true
         champignon.placed = true
         champignon.appearProgress = 0
         champignon.animatedScale = 0
-        champignon.root.scale.set(0, 0, 0)
+        champignon.root.scale.setScalar(ChampignonConstants.CHAMPIGNON_HIDDEN_SCALE_EPSILON)
         this.placedChampignons.add(champignon)
         this.debugState.placed = this.placedChampignons.size
 
@@ -573,6 +585,8 @@ export default class ChampignonInteraction
         const lightScaleBoost = 1 + (energy * ChampignonConstants.CHAMPIGNON_LIGHT_SCALE_BOOST)
         const appearScale = Number.isFinite(champignon.animatedScale) ? champignon.animatedScale : 1
         champignon.root.scale.copy(champignon.baseScale).multiplyScalar(lightScaleBoost * appearScale)
+        const celebrationLightMultiplier = this.getCelebrationLightMultiplier(champignon)
+        const visualLightEnergy = THREE.MathUtils.clamp(energy * celebrationLightMultiplier, 0, 1)
 
         for(const meshEntry of champignon.meshes)
         {
@@ -605,9 +619,9 @@ export default class ChampignonInteraction
                     if(meshEntry.isLightMesh)
                     {
                         material.emissive.setRGB(0, 0, 0)
-                        material.emissive.lerp(champignon.lightColor, energy * 0.9)
-                        material.emissive.lerp(HIGHLIGHT_EMISSIVE, energy * 0.22)
-                        material.emissiveIntensity = energy * 1.8
+                        material.emissive.lerp(champignon.lightColor, visualLightEnergy * 0.9)
+                        material.emissive.lerp(HIGHLIGHT_EMISSIVE, visualLightEnergy * 0.22)
+                        material.emissiveIntensity = visualLightEnergy * 1.8
                     }
                     else if(materialState.baseEmissive)
                     {
@@ -615,17 +629,36 @@ export default class ChampignonInteraction
                         material.emissiveIntensity = materialState.baseEmissiveIntensity
                     }
                 }
-
-                material.needsUpdate = true
             }
         }
 
         if(champignon.pointLight)
         {
-            champignon.pointLight.visible = champignon.placed === true && energy > 0.01
             champignon.pointLight.color.copy(champignon.lightColor)
-            champignon.pointLight.intensity = energy * ChampignonConstants.CHAMPIGNON_POINT_LIGHT_INTENSITY
+            champignon.pointLight.intensity = champignon.placed === true
+                ? visualLightEnergy * ChampignonConstants.CHAMPIGNON_POINT_LIGHT_INTENSITY
+                : 0
         }
+    }
+
+    getCelebrationLightMultiplier(champignon)
+    {
+        if(this.hasCompleted !== true)
+        {
+            return 1
+        }
+
+        const elapsedSeconds = (this.experience.time?.elapsed ?? 0) * 0.001
+        const pulse = Math.sin(
+            (elapsedSeconds * ChampignonConstants.CHAMPIGNON_COMPLETION_TWINKLE_SPEED)
+            + champignon.celebrationPhaseOffset
+        )
+
+        return THREE.MathUtils.lerp(
+            ChampignonConstants.CHAMPIGNON_COMPLETION_TWINKLE_MIN,
+            ChampignonConstants.CHAMPIGNON_COMPLETION_TWINKLE_MAX,
+            (pulse * 0.5) + 0.5
+        )
     }
 
     refreshLightingProgress()
@@ -675,11 +708,18 @@ export default class ChampignonInteraction
         this.ensureCursorElement()
         this.updateCursor()
         this.updateSlotHover()
+        this.updateSlotIndicator()
         this.updateSlotIdleGlow()
         this.updateChampignonHover()
         this.updatePlacementAnimations(delta)
 
-        if(this.isActive !== true || this.hasCompleted)
+        if(this.hasCompleted)
+        {
+            this.updateCompletedChampignonLights()
+            return
+        }
+
+        if(this.isActive !== true)
         {
             return
         }
@@ -713,6 +753,19 @@ export default class ChampignonInteraction
         if(changed)
         {
             this.refreshLightingProgress()
+        }
+    }
+
+    updateCompletedChampignonLights()
+    {
+        for(const champignon of this.champignons)
+        {
+            if(champignon.placed !== true)
+            {
+                continue
+            }
+
+            this.applyChampignonEnergy(champignon)
         }
     }
 
@@ -818,6 +871,165 @@ export default class ChampignonInteraction
         }
 
         this.setHoveredSlot(this.getHoveredUnplacedSlot())
+    }
+
+    setSceneIndicator()
+    {
+        this.indicatorGroup = new THREE.Group()
+        this.indicatorGroup.visible = false
+        this.indicatorGroup.renderOrder = 20
+
+        this.indicatorLineGeometry = new THREE.BufferGeometry().setFromPoints(this.indicatorLinePoints)
+        this.indicatorLine = new THREE.Line(
+            this.indicatorLineGeometry,
+            new THREE.LineBasicMaterial({
+                color: MateriauConstants.INDICATOR_LINE_COLOR,
+                transparent: true,
+                opacity: 0.9,
+                depthWrite: false
+            })
+        )
+
+        this.indicatorDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.022, 12, 12),
+            new THREE.MeshBasicMaterial({
+                color: MateriauConstants.INDICATOR_RING_COLOR,
+                transparent: true,
+                opacity: 0.95,
+                depthWrite: false
+            })
+        )
+
+        this.indicatorLabelTexture = this.createIndicatorLabelTexture(ChampignonConstants.CHAMPIGNON_SLOT_INDICATOR_LABEL)
+        this.indicatorLabelSprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+                map: this.indicatorLabelTexture,
+                transparent: true,
+                depthWrite: false
+            })
+        )
+        this.indicatorLabelSprite.scale.set(0.82, 0.2, 1)
+
+        this.indicatorGroup.add(this.indicatorLine)
+        this.indicatorGroup.add(this.indicatorDot)
+        this.indicatorGroup.add(this.indicatorLabelSprite)
+        this.experience.scene.add(this.indicatorGroup)
+    }
+
+    createIndicatorLabelTexture(text)
+    {
+        const canvas = document.createElement('canvas')
+        canvas.width = MateriauConstants.INDICATOR_LABEL_CANVAS_WIDTH
+        canvas.height = MateriauConstants.INDICATOR_LABEL_CANVAS_HEIGHT
+        const context = canvas.getContext('2d')
+        if(!context)
+        {
+            return null
+        }
+
+        const width = canvas.width
+        const height = canvas.height
+        const radius = MateriauConstants.INDICATOR_LABEL_RADIUS
+
+        const backgroundGradient = context.createLinearGradient(0, 0, 0, height)
+        backgroundGradient.addColorStop(0, MateriauConstants.INDICATOR_LABEL_BACKGROUND_TOP)
+        backgroundGradient.addColorStop(0.24, MateriauConstants.INDICATOR_LABEL_BACKGROUND_MIDDLE)
+        backgroundGradient.addColorStop(1, MateriauConstants.INDICATOR_LABEL_BACKGROUND_BOTTOM)
+
+        context.fillStyle = backgroundGradient
+        context.shadowColor = MateriauConstants.INDICATOR_LABEL_SHADOW_COLOR
+        context.shadowBlur = 18
+        context.shadowOffsetY = 8
+        this.drawRoundedRect(context, 18, 18, width - 36, height - 36, radius)
+        context.fill()
+
+        const highlightGradient = context.createLinearGradient(0, 22, 0, height * 0.7)
+        highlightGradient.addColorStop(0, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_TOP)
+        highlightGradient.addColorStop(0.32, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_MIDDLE)
+        highlightGradient.addColorStop(1, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_BOTTOM)
+        context.fillStyle = highlightGradient
+        this.drawRoundedRect(context, 18, 18, width - 36, height - 36, radius)
+        context.fill()
+
+        context.shadowColor = 'transparent'
+        context.strokeStyle = MateriauConstants.INDICATOR_LABEL_BORDER_COLOR
+        context.lineWidth = 3
+        this.drawRoundedRect(context, 18, 18, width - 36, height - 36, radius)
+        context.stroke()
+
+        context.fillStyle = MateriauConstants.INDICATOR_LABEL_TEXT_COLOR
+        context.font = MateriauConstants.INDICATOR_LABEL_FONT
+        context.textAlign = 'center'
+        context.textBaseline = 'middle'
+        context.shadowColor = MateriauConstants.INDICATOR_LABEL_TEXT_SHADOW_COLOR
+        context.shadowBlur = 10
+        context.shadowOffsetY = 2
+        context.fillText(String(text || ''), width * 0.5, height * 0.53)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.needsUpdate = true
+        return texture
+    }
+
+    drawRoundedRect(context, x, y, width, height, radius)
+    {
+        context.beginPath()
+        context.moveTo(x + radius, y)
+        context.lineTo(x + width - radius, y)
+        context.quadraticCurveTo(x + width, y, x + width, y + radius)
+        context.lineTo(x + width, y + height - radius)
+        context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+        context.lineTo(x + radius, y + height)
+        context.quadraticCurveTo(x, y + height, x, y + height - radius)
+        context.lineTo(x, y + radius)
+        context.quadraticCurveTo(x, y, x + radius, y)
+        context.closePath()
+    }
+
+    updateSlotIndicator()
+    {
+        if(!this.indicatorGroup)
+        {
+            return
+        }
+
+        const slotEntry = this.hoveredSlot
+        if(!slotEntry || slotEntry.assignedChampignon?.placed === true)
+        {
+            this.indicatorGroup.visible = false
+            this.indicatorCurrentKey = null
+            return
+        }
+
+        if(this.indicatorCurrentKey !== ChampignonConstants.CHAMPIGNON_SLOT_INDICATOR_LABEL)
+        {
+            this.indicatorCurrentKey = ChampignonConstants.CHAMPIGNON_SLOT_INDICATOR_LABEL
+            const nextTexture = this.createIndicatorLabelTexture(ChampignonConstants.CHAMPIGNON_SLOT_INDICATOR_LABEL)
+            this.indicatorLabelSprite.material.map?.dispose?.()
+            this.indicatorLabelSprite.material.map = nextTexture
+            this.indicatorLabelSprite.material.needsUpdate = true
+        }
+
+        this.indicatorBounds.setFromObject(slotEntry.mesh)
+        if(this.indicatorBounds.isEmpty())
+        {
+            this.indicatorGroup.visible = false
+            return
+        }
+
+        this.indicatorBounds.getCenter(this.indicatorCenter)
+        this.indicatorBounds.getSize(this.indicatorSize)
+        const anchorY = this.indicatorBounds.max.y + 0.04
+        const labelY = anchorY + Math.max(0.2, this.indicatorSize.y * 0.28) + 0.08
+
+        this.indicatorLinePoints[0].set(this.indicatorCenter.x, anchorY, this.indicatorCenter.z)
+        this.indicatorLinePoints[1].set(this.indicatorCenter.x, labelY - 0.05, this.indicatorCenter.z)
+        this.indicatorLineGeometry.setFromPoints(this.indicatorLinePoints)
+
+        this.indicatorDot.position.copy(this.indicatorLinePoints[0])
+        this.indicatorLabelSprite.position.set(this.indicatorCenter.x, labelY, this.indicatorCenter.z)
+        this.indicatorGroup.visible = true
     }
 
     setHoveredSlot(slotEntry)
@@ -1084,10 +1296,22 @@ export default class ChampignonInteraction
             champignon.surfaceTexture?.dispose?.()
         }
 
+        if(this.indicatorGroup)
+        {
+            this.experience.scene.remove(this.indicatorGroup)
+            this.indicatorLineGeometry?.dispose?.()
+            this.indicatorLine?.material?.dispose?.()
+            this.indicatorDot?.geometry?.dispose?.()
+            this.indicatorDot?.material?.dispose?.()
+            this.indicatorLabelSprite?.material?.map?.dispose?.()
+            this.indicatorLabelSprite?.material?.dispose?.()
+        }
+
         this.champignons = []
         this.slots = []
         this.placedChampignons.clear()
         this.slotAssignments.clear()
         this.cursorElement = null
+        this.indicatorGroup = null
     }
 }
