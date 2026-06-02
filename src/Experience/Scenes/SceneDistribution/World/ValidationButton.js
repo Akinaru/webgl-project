@@ -6,6 +6,9 @@ const VALIDATION_BUTTON_LIGHT_COLOR = '#ff5a5a'
 const VALIDATION_BUTTON_LIGHT_INTENSITY = 0.85
 const VALIDATION_BUTTON_LIGHT_DISTANCE = 2.1
 const VALIDATION_BUTTON_LIGHT_HEIGHT_OFFSET = 0.12
+const VALIDATION_BUTTON_DISABLED_COLOR = '#6f7c85'
+const VALIDATION_BUTTON_DISABLED_EMISSIVE = '#2d343a'
+const VALIDATION_BUTTON_DISABLED_LIGHT_INTENSITY = 0.18
 
 export default class ValidationButton
 {
@@ -27,6 +30,8 @@ export default class ValidationButton
             : []
         this.activeButtonMesh = this.buttonMeshes[0] ?? null
         this.activeButtonBaseY = this.activeButtonMesh?.position?.y ?? 0
+        this.buttonMaterialDefaults = new WeakMap()
+        this.buttonLightDefaults = null
 
         this.position = position
         this.group = null
@@ -42,6 +47,8 @@ export default class ValidationButton
         }
         this.setEvents()
         this.setDebug(debugParentFolder)
+        this.captureDefaultVisualState()
+        this.refreshVisualState()
     }
 
     setPedestal()
@@ -130,6 +137,7 @@ export default class ValidationButton
     setEnabled(isEnabled = true)
     {
         this.isEnabled = Boolean(isEnabled)
+        this.refreshVisualState()
     }
 
     pressButton()
@@ -150,6 +158,88 @@ export default class ValidationButton
             }
             this.onValidate?.()
         }, 150)
+    }
+
+    refreshVisualState()
+    {
+        const buttonMeshes = [
+            ...this.buttonMeshes,
+            this.buttonMesh
+        ].filter((mesh) => mesh instanceof THREE.Mesh)
+
+        for(const mesh of buttonMeshes)
+        {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            for(const material of materials)
+            {
+                if(!material)
+                {
+                    continue
+                }
+
+                if(material.color)
+                {
+                    const defaults = this.buttonMaterialDefaults.get(material) ?? null
+                    const defaultColor = defaults?.color ?? '#ff3333'
+                    material.color.set(this.isEnabled ? defaultColor : VALIDATION_BUTTON_DISABLED_COLOR)
+                }
+
+                if(material.emissive)
+                {
+                    const defaults = this.buttonMaterialDefaults.get(material) ?? null
+                    const defaultEmissive = defaults?.emissive ?? '#aa0000'
+                    const defaultEmissiveIntensity = defaults?.emissiveIntensity ?? 0.5
+                    material.emissive.set(this.isEnabled ? defaultEmissive : VALIDATION_BUTTON_DISABLED_EMISSIVE)
+                    material.emissiveIntensity = this.isEnabled ? defaultEmissiveIntensity : 0.12
+                }
+
+                material.needsUpdate = true
+            }
+        }
+
+        if(this.buttonLight)
+        {
+            const defaultLightColor = this.buttonLightDefaults?.color ?? VALIDATION_BUTTON_LIGHT_COLOR
+            const defaultLightIntensity = this.buttonLightDefaults?.intensity ?? VALIDATION_BUTTON_LIGHT_INTENSITY
+            this.buttonLight.color.set(this.isEnabled ? defaultLightColor : VALIDATION_BUTTON_DISABLED_COLOR)
+            this.buttonLight.intensity = this.isEnabled
+                ? defaultLightIntensity
+                : VALIDATION_BUTTON_DISABLED_LIGHT_INTENSITY
+        }
+    }
+
+    captureDefaultVisualState()
+    {
+        const buttonMeshes = [
+            ...this.buttonMeshes,
+            this.buttonMesh
+        ].filter((mesh) => mesh instanceof THREE.Mesh)
+
+        for(const mesh of buttonMeshes)
+        {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            for(const material of materials)
+            {
+                if(!material || this.buttonMaterialDefaults.has(material))
+                {
+                    continue
+                }
+
+                this.buttonMaterialDefaults.set(material, {
+                    color: material.color?.getHexString?.() ? `#${material.color.getHexString()}` : '#ff3333',
+                    emissive: material.emissive?.getHexString?.() ? `#${material.emissive.getHexString()}` : '#aa0000',
+                    emissiveIntensity: typeof material.emissiveIntensity === 'number' ? material.emissiveIntensity : 0.5
+                })
+            }
+        }
+
+        if(this.buttonLight && !this.buttonLightDefaults)
+        {
+            this.buttonLightDefaults = {
+                color: `#${this.buttonLight.color.getHexString()}`,
+                intensity: this.buttonLight.intensity
+            }
+        }
     }
 
     setDebug(parent)

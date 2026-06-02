@@ -1,6 +1,5 @@
 import * as THREE from 'three'
 import Experience from '../../../Experience.js'
-import * as SceneDistributionFlowConstants from './Flow.constants.js'
 import * as SceneDistributionGaugeDisplayConstants from './GaugeDisplay.constants.js'
 
 export default class SceneDistributionGaugeDisplay
@@ -21,6 +20,7 @@ export default class SceneDistributionGaugeDisplay
         }
         this.state = {
             isSolved: false,
+            totalUsagePercent: 0,
             channels: []
         }
         this.screenEntries = []
@@ -190,6 +190,7 @@ export default class SceneDistributionGaugeDisplay
         this.state = {
             isSolved: Boolean(nextState.isSolved),
             totalUsageRatio: Number(nextState.totalUsageRatio) || 0,
+            totalUsagePercent: Number(nextState.totalUsagePercent) || Math.max(0, Math.round((Number(nextState.totalUsageRatio) || 0) * 100)),
             isOverLimit: Boolean(nextState.isOverLimit),
             channels: (nextState.channels || []).map((channel) => ({
                 token: channel.token,
@@ -213,179 +214,212 @@ export default class SceneDistributionGaugeDisplay
         context.fillStyle = SceneDistributionGaugeDisplayConstants.BACKGROUND_COLOR
         context.fillRect(0, 0, SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH, SceneDistributionGaugeDisplayConstants.CANVAS_HEIGHT)
 
-        context.fillStyle = SceneDistributionGaugeDisplayConstants.TITLE_COLOR
-        context.font = '700 44px sans-serif'
-        context.fillText('Réseau de distribution', 84, 85)
-
-        context.fillStyle = SceneDistributionGaugeDisplayConstants.SUBTITLE_COLOR
-        context.font = '500 20px sans-serif'
-        context.fillText('Gérez les ressources stratégiques sans saturer le réseau.', 84, 120)
-
-        this.renderGauges()
+        this.renderPanel()
+        this.renderHeader()
         this.renderResourceLimit()
+        this.renderGauges()
 
         this.texture.needsUpdate = true
     }
 
+    renderPanel()
+    {
+        const { context } = this
+        const panelX = 60
+        const panelY = 34
+        const panelWidth = 904
+        const panelHeight = 444
+        const gradient = context.createLinearGradient(panelX, panelY, panelX, panelY + panelHeight)
+        gradient.addColorStop(0, SceneDistributionGaugeDisplayConstants.PANEL_TOP_COLOR)
+        gradient.addColorStop(0.24, SceneDistributionGaugeDisplayConstants.PANEL_MID_COLOR)
+        gradient.addColorStop(1, SceneDistributionGaugeDisplayConstants.PANEL_BOTTOM_COLOR)
+
+        context.fillStyle = gradient
+        this.roundRect(context, panelX, panelY, panelWidth, panelHeight, 28)
+        context.fill()
+
+        context.strokeStyle = SceneDistributionGaugeDisplayConstants.PANEL_BORDER_COLOR
+        context.lineWidth = 2
+        this.roundRect(context, panelX, panelY, panelWidth, panelHeight, 28)
+        context.stroke()
+
+        context.strokeStyle = SceneDistributionGaugeDisplayConstants.PANEL_INNER_GLOW_COLOR
+        context.lineWidth = 1
+        this.roundRect(context, panelX + 10, panelY + 10, panelWidth - 20, panelHeight - 20, 22)
+        context.stroke()
+    }
+
+    renderHeader()
+    {
+        const { context } = this
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.TITLE_COLOR
+        context.font = '700 40px "Nunito", "Segoe UI", sans-serif'
+        context.textAlign = 'center'
+        context.fillText('Réseau de distribution', SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH * 0.5, 96)
+        context.textAlign = 'start'
+    }
+
     renderGauges()
     {
-        const gaugeX = 260
-        const gaugeWidth = 580
-        const gaugeHeight = 26
-        const topY = 170
-        const rowGap = 80
+        const channels = this.state.channels.slice(0, 3)
+        const gaugeWidth = 82
+        const gaugeHeight = 182
+        const gaugeY = 210
+        const gaugeGap = 96
+        const totalWidth = channels.length * gaugeWidth + Math.max(0, channels.length - 1) * gaugeGap
+        const startX = (SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH - totalWidth) * 0.5
 
-        for(let index = 0; index < this.state.channels.length; index++)
+        for(let index = 0; index < channels.length; index++)
         {
-            const channel = this.state.channels[index]
-            const y = topY + index * rowGap
-            const fillWidth = gaugeWidth * THREE.MathUtils.clamp(channel.normalizedFill, 0, 1)
-            
-            const isFilled = channel.currentLevel.id > 0
-            const fillColor = this.state.isOverLimit 
-                ? '#ff8c00' // Orange si limite atteinte
-                : (isFilled ? SceneDistributionGaugeDisplayConstants.FILL_COLOR : '#334455')
-
-            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.LABEL_COLOR
-            this.context.font = '700 24px sans-serif'
-            this.context.textAlign = 'start'
-            this.context.fillText(channel.label, 84, y + 21)
-
-            // Track
-            this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
-            this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TRACK_BORDER_COLOR
-            this.context.lineWidth = 2
-            this.roundRect(this.context, gaugeX, y, gaugeWidth, gaugeHeight, 13)
-            this.context.fill()
-            this.context.stroke()
-
-            // Markers
-            this.renderLevelMarkers(gaugeX, y, gaugeWidth, gaugeHeight)
-
-            // Fill
-            this.context.fillStyle = fillColor
-            this.roundRect(
-                this.context,
-                gaugeX + 3,
-                y + 3,
-                Math.max(12, fillWidth - 6),
-                gaugeHeight - 6,
-                10
-            )
-            this.context.fill()
-
-            // Status Badge
-            this.renderStatusChip({
-                x: 860,
-                y: y - 8,
-                text: channel.currentLevel.label,
-                levelId: channel.currentLevel.id
+            const channel = channels[index]
+            const x = startX + index * (gaugeWidth + gaugeGap)
+            this.renderVerticalGauge({
+                x,
+                y: gaugeY,
+                width: gaugeWidth,
+                height: gaugeHeight,
+                label: SceneDistributionGaugeDisplayConstants.DISPLAY_LABELS[channel.token] ?? channel.label,
+                normalizedFill: channel.normalizedFill
             })
         }
     }
 
-    renderLevelMarkers(x, y, width, height)
-    {
-        // On affiche les paliers MIN(2), STABLE(3), OPT(4)
-        const markers = [
-            { pos: 0.45, label: 'MIN' },
-            { pos: 0.65, label: 'STABLE' },
-            { pos: 0.85, label: 'OPT' }
-        ]
-
-        this.context.lineWidth = 1
-        this.context.font = 'bold 9px sans-serif'
-        this.context.textAlign = 'center'
-
-        for(const marker of markers)
-        {
-            const markerX = x + width * marker.pos
-            this.context.strokeStyle = 'rgba(255, 255, 255, 0.15)'
-            this.context.beginPath()
-            this.context.moveTo(markerX, y)
-            this.context.lineTo(markerX, y + height)
-            this.context.stroke()
-
-            this.context.fillStyle = 'rgba(255, 255, 255, 0.3)'
-            this.context.fillText(marker.label, markerX, y - 6)
-        }
-    }
-
-    renderStatusChip({
+    renderVerticalGauge({
         x = 0,
         y = 0,
-        text = '',
-        levelId = 0
+        width = 0,
+        height = 0,
+        label = '',
+        normalizedFill = 0
     } = {})
     {
-        const width = 125
-        const height = 42
-        
-        let bgColor = SceneDistributionGaugeDisplayConstants.CHIP_BG_COLOR
-        let textColor = SceneDistributionGaugeDisplayConstants.CHIP_TEXT_COLOR
+        const { context } = this
+        const clampedFill = THREE.MathUtils.clamp(normalizedFill, 0, 1)
+        const fillHeight = height * clampedFill
+        const fillY = y + height - fillHeight
+        const segmentHeight = height / 4
 
-        if(levelId === 1) bgColor = '#442222' // Critique
-        if(levelId === 2) bgColor = '#1d3b53' // Minimum
-        if(levelId === 3) bgColor = '#1d5d46' // Stable
-        if(levelId >= 4)  bgColor = '#5d4b1d' // Optimal/Max
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
+        this.topRoundedRect(context, x, y, width, height, 20)
+        context.fill()
 
-        this.context.fillStyle = bgColor
-        this.roundRect(this.context, x, y, width, height, 14)
-        this.context.fill()
+        context.strokeStyle = SceneDistributionGaugeDisplayConstants.TRACK_BORDER_COLOR
+        context.lineWidth = 2
+        this.topRoundedRect(context, x, y, width, height, 20)
+        context.stroke()
+        this.renderInnerShadow({
+            drawShape: () => this.topRoundedRect(context, x, y, width, height, 20)
+        })
 
-        this.context.fillStyle = textColor
-        this.context.font = '700 18px sans-serif'
-        this.context.textAlign = 'center'
-        this.context.fillText(text.toUpperCase(), x + width * 0.5, y + 28)
-        this.context.textAlign = 'start'
+        if(fillHeight > 0)
+        {
+            context.save()
+            this.topRoundedRect(context, x, y, width, height, 20)
+            context.clip()
+            context.fillStyle = this.resolveFillColor()
+            context.fillRect(x, fillY, width, fillHeight)
+
+            const shineGradient = context.createLinearGradient(x, fillY, x + width, fillY)
+            shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0)')
+            shineGradient.addColorStop(0.5, SceneDistributionGaugeDisplayConstants.BAR_SHINE_COLOR)
+            shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
+            context.fillStyle = shineGradient
+            context.fillRect(x, fillY, width, Math.min(28, fillHeight))
+            context.restore()
+        }
+
+        for(let index = 1; index < 4; index++)
+        {
+            const lineY = y + segmentHeight * index
+            context.strokeStyle = SceneDistributionGaugeDisplayConstants.DIVIDER_COLOR
+            context.lineWidth = 2
+            context.beginPath()
+            context.moveTo(x + 14, lineY)
+            context.lineTo(x + width - 14, lineY)
+            context.stroke()
+        }
+
+        const labelBoxY = y + height
+        const labelBoxHeight = 48
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
+        this.roundRect(context, x - 16, labelBoxY, width + 32, labelBoxHeight, 16)
+        context.fill()
+
+        context.strokeStyle = SceneDistributionGaugeDisplayConstants.PANEL_BORDER_COLOR
+        context.lineWidth = 2
+        this.roundRect(context, x - 16, labelBoxY, width + 32, labelBoxHeight, 16)
+        context.stroke()
+        this.renderInnerShadow({
+            drawShape: () => this.roundRect(context, x - 16, labelBoxY, width + 32, labelBoxHeight, 16)
+        })
+
+        context.fillStyle = SceneDistributionGaugeDisplayConstants.LABEL_COLOR
+        context.font = '700 20px "Nunito", "Segoe UI", sans-serif'
+        context.textAlign = 'center'
+        context.fillText(label, x + width * 0.5, labelBoxY + 31)
+        context.textAlign = 'start'
     }
 
     renderResourceLimit()
     {
-        const x = 84
-        const y = 420
-        const width = 860
-        const height = 12
-        
-        // Strict clamp à 100%
-        const displayPercent = Math.min(100, Math.round(this.state.totalUsageRatio * 100))
-        const barWidth = width * (displayPercent / 100)
-        
-        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.BACKGROUND_COLOR
-        this.context.fillRect(x - 10, y - 40, width + 20, 110)
+        const x = 164
+        const y = 148
+        const width = 696
+        const height = 28
+        const displayPercent = Math.max(0, this.state.totalUsagePercent ?? Math.round(this.state.totalUsageRatio * 100))
+        const barWidth = width * THREE.MathUtils.clamp(this.state.totalUsageRatio, 0, 1)
 
-        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.SUBTITLE_COLOR
-        this.context.font = '700 18px sans-serif'
-        this.context.fillText(`CAPACITÉ RÉSEAU : ${displayPercent}%`, x, y - 12)
+        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.SECTION_LABEL_COLOR
+        this.context.font = '700 22px "Nunito", "Segoe UI", sans-serif'
+        this.context.textAlign = 'center'
+        this.context.fillText('Eau distribuée', SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH * 0.5, y - 16)
 
-        // Track bar
-        this.context.fillStyle = '#0a1a2a'
-        this.roundRect(this.context, x, y, width, height, 6)
+        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.TRACK_COLOR
+        this.roundRect(this.context, x, y, width, height, 14)
         this.context.fill()
 
-        // Progress bar
-        const barColor = this.state.isOverLimit ? '#ff3b3b' : (this.state.isSolved ? '#4fd58a' : '#51b4ff')
-        this.context.fillStyle = barColor
-        this.roundRect(this.context, x, y, barWidth, height, 6)
-        this.context.fill()
+        this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.TRACK_BORDER_COLOR
+        this.context.lineWidth = 2
+        this.roundRect(this.context, x, y, width, height, 14)
+        this.context.stroke()
+        this.renderInnerShadow({
+            drawShape: () => this.roundRect(this.context, x, y, width, height, 14)
+        })
 
-        let message = 'Alimentez chaque zone pour stabiliser.'
-        let messageColor = '#7ba7c4'
+        if(barWidth > 0)
+        {
+            this.context.fillStyle = this.resolveFillColor()
+            this.roundRect(this.context, x + 3, y + 3, Math.max(0, barWidth - 6), height - 6, 11)
+            this.context.fill()
+        }
+
+        this.context.fillStyle = SceneDistributionGaugeDisplayConstants.PERCENT_TEXT_COLOR
+        this.context.font = '700 22px "Nunito", "Segoe UI", sans-serif'
+        this.context.fillText(`${displayPercent}%`, SceneDistributionGaugeDisplayConstants.CANVAS_WIDTH * 0.5, y + 20)
+        this.context.textAlign = 'start'
+    }
+
+    resolveFillColor()
+    {
+        const displayPercent = Math.max(0, this.state.totalUsagePercent ?? Math.round((this.state.totalUsageRatio ?? 0) * 100))
+        const isExactlyFull = displayPercent === 100
 
         if(this.state.isOverLimit)
         {
-            message = 'RÉSEAU SATURÉ : LIBÉREZ DE LA CAPACITÉ'
-            messageColor = '#ff5c5c'
-        }
-        else if(this.state.isSolved)
-        {
-            message = 'RÉSEAU STABILISÉ. UTILISEZ LE BOUTON ROUGE.'
-            messageColor = '#4fd58a'
+            return SceneDistributionGaugeDisplayConstants.FILL_OVERLIMIT_COLOR
         }
 
-        this.context.fillStyle = messageColor
-        this.context.font = 'bold 20px sans-serif'
-        this.context.fillText(message, x, y + 40)
+        if(isExactlyFull)
+        {
+            return SceneDistributionGaugeDisplayConstants.FILL_SOLVED_COLOR
+        }
+
+        if(this.state.isSolved)
+        {
+            return SceneDistributionGaugeDisplayConstants.FILL_SOLVED_COLOR
+        }
+
+        return SceneDistributionGaugeDisplayConstants.FILL_COLOR
     }
 
     roundRect(context, x, y, width, height, radius)
@@ -400,6 +434,38 @@ export default class SceneDistributionGaugeDisplay
         context.arcTo(x, y + safeHeight, x, y, clampedRadius)
         context.arcTo(x, y, x + safeWidth, y, clampedRadius)
         context.closePath()
+    }
+
+    topRoundedRect(context, x, y, width, height, radius)
+    {
+        const safeWidth = Math.max(0, width)
+        const safeHeight = Math.max(0, height)
+        const clampedRadius = Math.min(radius, safeWidth * 0.5, safeHeight)
+
+        context.beginPath()
+        context.moveTo(x, y + safeHeight)
+        context.lineTo(x, y + clampedRadius)
+        context.quadraticCurveTo(x, y, x + clampedRadius, y)
+        context.lineTo(x + safeWidth - clampedRadius, y)
+        context.quadraticCurveTo(x + safeWidth, y, x + safeWidth, y + clampedRadius)
+        context.lineTo(x + safeWidth, y + safeHeight)
+        context.closePath()
+    }
+    renderInnerShadow({ drawShape } = {})
+    {
+        if(typeof drawShape !== 'function')
+        {
+            return
+        }
+
+        this.context.save()
+        drawShape()
+        this.context.clip()
+        this.context.strokeStyle = SceneDistributionGaugeDisplayConstants.INNER_SHADOW_COLOR
+        this.context.lineWidth = 6
+        drawShape()
+        this.context.stroke()
+        this.context.restore()
     }
 
     setDebug()

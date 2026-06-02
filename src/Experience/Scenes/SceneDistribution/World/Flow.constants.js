@@ -50,6 +50,12 @@ export const DISTRIBUTION_ZONES = {
     }
 }
 
+export const DISTRIBUTION_CHANNEL_LABELS = Object.freeze(
+    Object.fromEntries(
+        DISTRIBUTION_CHANNEL_ORDER.map((token) => [token, DISTRIBUTION_ZONES[token]?.label ?? token])
+    )
+)
+
 /**
  * La somme cumulée des fillState (0 à 1) des 3 lignes qui correspond à 100% de charge.
  * Avec 1.4, une ligne à 100% prend 71% de la capacité totale (1/1.4).

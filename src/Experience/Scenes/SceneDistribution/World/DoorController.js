@@ -48,6 +48,17 @@ export default class SceneDistributionDoorController
     setOpen(isOpen)
     {
         this.isOpen = Boolean(isOpen)
+
+        if(!this.isOpen)
+        {
+            for(const door of this.doors)
+            {
+                if(door.object)
+                {
+                    door.object.visible = true
+                }
+            }
+        }
     }
 
     getOpenY(door)
@@ -76,6 +87,11 @@ export default class SceneDistributionDoorController
                 deltaSeconds
             )
             door.object.position.y = door.currentY
+
+            const hasReachedOpenPosition = this.isOpen
+                && Math.abs(door.currentY - targetY) <= SceneDistributionDoorControllerConstants.OPEN_VISIBILITY_EPSILON
+
+            door.object.visible = !hasReachedOpenPosition
         }
     }
 
