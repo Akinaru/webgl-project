@@ -961,6 +961,58 @@ export function setDebug()
         this.applyVisualScale()
     })
 
+    this.transformDebugState = {
+        positionX: this.model?.position?.x ?? this.fallback?.position?.x ?? 0,
+        positionY: this.model?.position?.y ?? this.fallback?.position?.y ?? 0,
+        positionZ: this.model?.position?.z ?? this.fallback?.position?.z ?? 0,
+        orientationDeg: THREE.MathUtils.radToDeg(this.model?.rotation?.y ?? this.fallback?.rotation?.y ?? 0)
+    }
+
+    this.transformDebugFolder = this.debug.addFolder('Transform Bloom', {
+        parent: this.debugFolder,
+        expanded: false
+    })
+
+    this.debug.addBinding(this.transformDebugFolder, this.transformDebugState, 'positionX', {
+        label: 'position x',
+        min: -100,
+        max: 100,
+        step: 0.001
+    }).on('change', ({ value }) =>
+    {
+        this.applyDebugTransform({ positionX: value })
+    })
+
+    this.debug.addBinding(this.transformDebugFolder, this.transformDebugState, 'positionY', {
+        label: 'position y',
+        min: -100,
+        max: 100,
+        step: 0.001
+    }).on('change', ({ value }) =>
+    {
+        this.applyDebugTransform({ positionY: value })
+    })
+
+    this.debug.addBinding(this.transformDebugFolder, this.transformDebugState, 'positionZ', {
+        label: 'position z',
+        min: -100,
+        max: 100,
+        step: 0.001
+    }).on('change', ({ value }) =>
+    {
+        this.applyDebugTransform({ positionZ: value })
+    })
+
+    this.debug.addBinding(this.transformDebugFolder, this.transformDebugState, 'orientationDeg', {
+        label: 'orientation',
+        min: -720,
+        max: 720,
+        step: 0.001
+    }).on('change', ({ value }) =>
+    {
+        this.applyDebugTransform({ orientationDeg: value })
+    })
+
     this.debug.addBinding(this.debugFolder, this.tuning, 'facingOffsetRadians', {
         label: 'Decalage d orientation',
         min: -Math.PI,
@@ -1220,4 +1272,53 @@ export function setDebug()
     this.debug.addBinding(this.railsFolder, this.railEditor, 'exportLinesToConsole', {
         label: 'Exporter en JSON'
     })
+}
+
+export function applyDebugTransform({
+    positionX = this.transformDebugState?.positionX,
+    positionY = this.transformDebugState?.positionY,
+    positionZ = this.transformDebugState?.positionZ,
+    orientationDeg = this.transformDebugState?.orientationDeg
+} = {})
+{
+    const targetObject = this.model ?? this.fallback
+    if(!targetObject)
+    {
+        return
+    }
+
+    if(Number.isFinite(positionX))
+    {
+        targetObject.position.x = positionX
+        this.railAnchorPosition.x = positionX
+        this.previousAnchorPosition.x = positionX
+        this.motion.center.x = positionX
+        this.transformDebugState.positionX = positionX
+    }
+
+    if(Number.isFinite(positionY))
+    {
+        targetObject.position.y = positionY
+        this.railAnchorPosition.y = positionY - (this.baseY ?? 0)
+        this.previousAnchorPosition.y = this.railAnchorPosition.y
+        this.motion.center.y = this.railAnchorPosition.y
+        this.transformDebugState.positionY = positionY
+    }
+
+    if(Number.isFinite(positionZ))
+    {
+        targetObject.position.z = positionZ
+        this.railAnchorPosition.z = positionZ
+        this.previousAnchorPosition.z = positionZ
+        this.motion.center.z = positionZ
+        this.transformDebugState.positionZ = positionZ
+    }
+
+    if(Number.isFinite(orientationDeg))
+    {
+        const orientationRadians = THREE.MathUtils.degToRad(orientationDeg)
+        targetObject.rotation.y = orientationRadians
+        this.baseYaw = orientationRadians + (this.tuning?.facingOffsetRadians ?? 0)
+        this.transformDebugState.orientationDeg = orientationDeg
+    }
 }

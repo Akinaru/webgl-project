@@ -1981,6 +1981,31 @@ body.is-recuperation-material-cursor .dialogue__cursor
     color: rgba(231, 245, 255, 0.92);
 }
 
+.result-end-prompt
+{
+    position: fixed;
+    inset: auto 0 4.2rem 0;
+    z-index: 30;
+    display: grid;
+    justify-items: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 180ms ease;
+}
+
+.result-end-prompt.is-visible
+{
+    opacity: 1;
+}
+
+.result-end-prompt__hint
+{
+    position: static;
+    margin-top: 0;
+    width: min(31rem, calc(100vw - 3rem));
+    text-align: center;
+}
+
 body.is-dialogue-cursor.is-pointer-locked,
 body.is-dialogue-cursor.is-pointer-locked *
 {

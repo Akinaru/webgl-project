@@ -70,6 +70,11 @@ export default class SceneDistributionWalls
 
     patchMesh(mesh, { isRoom1 = false } = {})
     {
+        if(isRoom1)
+        {
+            mesh.userData.forceBidirectionalCollision = true
+        }
+
         const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
         const slabsTexture = this.slabsTexture
 
