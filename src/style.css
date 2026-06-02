@@ -72,6 +72,18 @@ body.is-pointer-locked
     cursor: none;
 }
 
+body.is-ui-hidden .dialogue,
+body.is-ui-hidden .dialogue__cursor,
+body.is-ui-hidden .objective,
+body.is-ui-hidden .activity-badges,
+body.is-ui-hidden .result-end-prompt,
+body.is-ui-hidden .tutorial-overlay,
+body.is-ui-hidden .nanobot-crosshair,
+body.is-ui-hidden .nanobot-inspector
+{
+    display: none !important;
+}
+
 .boot
 {
     position: fixed;

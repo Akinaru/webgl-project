@@ -2,6 +2,22 @@ import Experience from './Experience/Experience.js'
 import { isMobileOrTouchDevice } from './Experience/Utils/Sizes.js'
 
 let experienceInstance = null
+const HIDE_UI_BODY_CLASS = 'is-ui-hidden'
+
+function readBooleanUrlParam(paramName)
+{
+    const rawValue = new URLSearchParams(window.location.search).get(paramName)
+    if(typeof rawValue !== 'string')
+    {
+        return false
+    }
+
+    const normalizedValue = rawValue.trim().toLowerCase()
+    return normalizedValue === 'true' || normalizedValue === '1'
+}
+
+const shouldHideUi = readBooleanUrlParam('hideui')
+document.body.classList.toggle(HIDE_UI_BODY_CLASS, shouldHideUi)
 
 function showDesktopRecommendationScreen()
 {
@@ -49,7 +65,9 @@ function startExperience()
         throw new Error('Canvas ".webgl" introuvable dans index.html')
     }
 
-    experienceInstance = new Experience(canvas)
+    experienceInstance = new Experience(canvas, {
+        hideUi: shouldHideUi
+    })
 }
 
 function applyDeviceGate()
