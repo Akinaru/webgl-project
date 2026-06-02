@@ -37,5 +37,5 @@ export function destroy()
     this.rails?.destroy?.()
     this.armNodes = []
     this.armAnimationPairs = []
+    this.faceMeshes = []
 }
-

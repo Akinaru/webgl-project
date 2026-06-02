@@ -23,9 +23,13 @@ constructor({
     this.debug = this.experience.debug
 
     this.resource = this.resources.items.bloomModel
-    this.bloomColorTexture = this.resources.items.bloomColorTexture ?? null
+    this.bloomFaceColorTextures = Array.from({ length: BloomConstants.BLOOM_FACE_FRAME_COUNT }, (_, index) =>
+        this.resources.items[`bloomFaceColorTexture${index + 1}`] ?? null
+    )
+    this.bloomTransmissionTextures = Array.from({ length: BloomConstants.BLOOM_FACE_FRAME_COUNT }, (_, index) =>
+        this.resources.items[`bloomFaceTransmissionTexture${index + 1}`] ?? null
+    )
     this.bloomColorTexture2 = this.resources.items.bloomColorTexture2 ?? null
-    this.bloomTransmissionTexture = this.resources.items.bloomTransmissionTexture ?? null
     this.bloomTransmissionTexture2 = this.resources.items.bloomTransmissionTexture2 ?? null
     this.bloomReflectionEnvTexture = this.resources.items.bloomReflectionEnvTexture ?? null
 
@@ -132,6 +136,11 @@ constructor({
     this.armAnimationPairs = []
     this.tmpArmDeltaQuaternion = new THREE.Quaternion()
     this.tmpArmInverseBaseQuaternion = new THREE.Quaternion()
+    this.faceMeshes = []
+    this.faceAnimation = {
+        frameIndex: 0,
+        elapsedMs: 0
+    }
 
     if(this.resource?.scene)
     {

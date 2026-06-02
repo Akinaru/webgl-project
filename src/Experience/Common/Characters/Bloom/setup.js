@@ -11,6 +11,7 @@ export function setModel()
 {
     this.model = SkeletonUtils.clone(this.resource.scene)
     this.model.name = '__bloomRoot'
+    this.faceMeshes = []
     this.setupAnimation()
 
     const bounds = new THREE.Box3().setFromObject(this.model)
@@ -47,6 +48,10 @@ export function setModel()
         }
 
         this.applyBloomColorTexture(child)
+        if(this.isBloomFaceMesh(child))
+        {
+            this.faceMeshes.push(child)
+        }
     })
 
     this.scene.add(this.model)
@@ -250,8 +255,16 @@ export function isBloomTargetMesh(mesh)
     })
     const meshName = String(mesh.name || '').toLowerCase()
     const isArmTarget = meshName === 'bras' || meshName === 'bras 1'
-    const isTargetMesh = meshName === 'bloom-face' || meshName.includes('bloom-face')
+    const isTargetMesh = meshName === BloomConstants.BLOOM_FACE_MESH_NAME_TOKEN || meshName.includes(BloomConstants.BLOOM_FACE_MESH_NAME_TOKEN)
     return isTargetMesh || hasMat2Material || isArmTarget
+}
+
+export function isBloomFaceMesh(mesh)
+{
+    const meshName = String(mesh?.name || '').trim().toLowerCase()
+    return meshName === BloomConstants.BLOOM_FACE_MESH_NAME_TOKEN
+        || meshName.includes(BloomConstants.BLOOM_FACE_MESH_NAME_TOKEN)
+        || meshName === BloomConstants.BLOOM_BODY_MESH_NAME_TOKEN
 }
 
 
@@ -260,7 +273,7 @@ export function isBloomTargetMesh(mesh)
  */
 export function applyBloomColorTexture(mesh)
 {
-    if(!this.bloomColorTexture && !this.bloomTransmissionTexture)
+    if(!this.getColorTextureForMesh(mesh) && !this.getTransmissionTextureForMesh(mesh))
     {
         return
     }
@@ -269,28 +282,11 @@ export function applyBloomColorTexture(mesh)
     this.ensureMeshNormals(mesh)
     const hasUv = Boolean(mesh?.geometry?.getAttribute?.('uv'))
 
-    if(this.bloomColorTexture)
-    {
-        this.bloomColorTexture.flipY = false
-        this.bloomColorTexture.colorSpace = THREE.SRGBColorSpace
-        this.bloomColorTexture.needsUpdate = true
-    }
-
     if(this.bloomColorTexture2)
     {
         this.bloomColorTexture2.flipY = false
         this.bloomColorTexture2.colorSpace = THREE.SRGBColorSpace
         this.bloomColorTexture2.needsUpdate = true
-    }
-
-    if(this.bloomTransmissionTexture)
-    {
-        this.bloomTransmissionTexture.flipY = false
-        if('NoColorSpace' in THREE)
-        {
-            this.bloomTransmissionTexture.colorSpace = THREE.NoColorSpace
-        }
-        this.bloomTransmissionTexture.needsUpdate = true
     }
 
     if(this.bloomTransmissionTexture2)
@@ -320,6 +316,23 @@ export function applyBloomColorTexture(mesh)
 
     const transmissionTexture = this.getTransmissionTextureForMesh(mesh)
     const colorTexture = this.getColorTextureForMesh(mesh)
+    const isFaceMesh = this.isBloomFaceMesh(mesh)
+    if(colorTexture)
+    {
+        colorTexture.flipY = false
+        colorTexture.colorSpace = THREE.SRGBColorSpace
+        colorTexture.needsUpdate = true
+    }
+
+    if(transmissionTexture)
+    {
+        transmissionTexture.flipY = false
+        if('NoColorSpace' in THREE)
+        {
+            transmissionTexture.colorSpace = THREE.NoColorSpace
+        }
+        transmissionTexture.needsUpdate = true
+    }
 
     const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
     const nextMaterials = []
@@ -358,7 +371,20 @@ export function applyBloomColorTexture(mesh)
             material.emissiveIntensity = 1
         }
 
-        if(transmissionTexture && hasUv)
+        if(isFaceMesh && transmissionTexture && hasUv)
+        {
+            material.transmission = 0
+            material.transmissionMap = null
+            material.thickness = 0
+            material.ior = this.tuning.ior
+            material.alphaMap = transmissionTexture
+            material.alphaTest = 0.02
+            material.transparent = true
+            material.opacity = this.tuning.opacity
+            material.side = THREE.FrontSide
+            material.depthWrite = true
+        }
+        else if(transmissionTexture && hasUv)
         {
             material.transmission = this.tuning.transmission
             material.transmissionMap = transmissionTexture
@@ -379,9 +405,14 @@ export function applyBloomColorTexture(mesh)
             material.transparent = false
             material.opacity = 1
             material.side = THREE.FrontSide
+            material.depthWrite = true
         }
 
-        if(transmissionTexture && hasUv)
+        if(isFaceMesh)
+        {
+            material.specularIntensityMap = null
+        }
+        else if(transmissionTexture && hasUv)
         {
             material.specularIntensityMap = transmissionTexture
             material.specularIntensity = this.tuning.specularIntensity
@@ -403,7 +434,7 @@ export function applyBloomColorTexture(mesh)
             material.envMap = null
             material.envMapIntensity = 0
         }
-        this.applyBloomReflectionMaskToMaterial(material, transmissionTexture, hasUv)
+        this.applyBloomReflectionMaskToMaterial(material, isFaceMesh ? null : transmissionTexture, hasUv)
 
         material.needsUpdate = true
         nextMaterials.push(material)
@@ -486,7 +517,12 @@ export function getTransmissionTextureForMesh(mesh)
         return this.bloomTransmissionTexture2
     }
 
-    return this.bloomTransmissionTexture
+    if(this.isBloomFaceMesh(mesh))
+    {
+        return this.bloomTransmissionTextures?.[this.faceAnimation?.frameIndex ?? 0] ?? null
+    }
+
+    return null
 }
 
 
@@ -501,12 +537,97 @@ export function getColorTextureForMesh(mesh)
         return this.bloomColorTexture2
     }
 
-    if(meshName === 'bloom' && this.bloomColorTexture)
+    if(this.isBloomFaceMesh(mesh))
     {
-        return this.bloomColorTexture
+        return this.bloomFaceColorTextures?.[this.faceAnimation?.frameIndex ?? 0] ?? null
     }
 
     return null
+}
+
+export function setFaceAnimationFrame(nextFrameIndex = 0)
+{
+    const clampedFrameIndex = THREE.MathUtils.clamp(
+        Number.isFinite(nextFrameIndex) ? nextFrameIndex : 0,
+        0,
+        Math.max(0, BloomConstants.BLOOM_FACE_FRAME_COUNT - 1)
+    )
+
+    if(this.faceAnimation.frameIndex === clampedFrameIndex)
+    {
+        return
+    }
+
+    this.faceAnimation.frameIndex = clampedFrameIndex
+    this.refreshBloomFaceTextures()
+}
+
+export function refreshBloomFaceTextures()
+{
+    if(!Array.isArray(this.faceMeshes) || this.faceMeshes.length === 0)
+    {
+        return
+    }
+
+    for(const mesh of this.faceMeshes)
+    {
+        if(!mesh?.isMesh)
+        {
+            continue
+        }
+
+        const transmissionTexture = this.getTransmissionTextureForMesh(mesh)
+        const colorTexture = this.getColorTextureForMesh(mesh)
+        const hasUv = Boolean(mesh?.geometry?.getAttribute?.('uv'))
+        const isFaceMesh = this.isBloomFaceMesh(mesh)
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+
+        if(colorTexture)
+        {
+            colorTexture.flipY = false
+            colorTexture.colorSpace = THREE.SRGBColorSpace
+            colorTexture.needsUpdate = true
+        }
+
+        if(transmissionTexture)
+        {
+            transmissionTexture.flipY = false
+            if('NoColorSpace' in THREE)
+            {
+                transmissionTexture.colorSpace = THREE.NoColorSpace
+            }
+            transmissionTexture.needsUpdate = true
+        }
+
+        for(const material of materials)
+        {
+            if(!(material instanceof THREE.MeshPhysicalMaterial))
+            {
+                continue
+            }
+
+            material.map = colorTexture
+            if(isFaceMesh)
+            {
+                material.transmission = 0
+                material.transmissionMap = null
+                material.alphaMap = transmissionTexture
+                material.alphaTest = 0.02
+                material.transparent = true
+                material.side = THREE.FrontSide
+                material.depthWrite = true
+                material.specularIntensityMap = null
+                this.applyBloomReflectionMaskToMaterial(material, null, hasUv)
+            }
+            else
+            {
+                material.transmissionMap = transmissionTexture
+                material.specularIntensityMap = transmissionTexture
+                this.applyBloomReflectionMaskToMaterial(material, transmissionTexture, hasUv)
+            }
+            material.needsUpdate = true
+        }
+    }
 }
 
 

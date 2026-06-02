@@ -9,6 +9,7 @@ import * as BloomConstants from '../Bloom.constants.js'
 export function update()
 {
     const deltaSeconds = Math.min(this.time.delta, 50) * 0.001
+    this.updateFaceAnimation()
 
     if(this.animation.mixer && this.animation.play)
     {
@@ -31,6 +32,29 @@ export function update()
         this.fallback.rotation.x += this.time.delta * 0.0004
         this.fallback.rotation.y += this.time.delta * 0.0007
     }
+}
+
+export function updateFaceAnimation()
+{
+    const sound = this.experience?.sound
+    const isDialoguePlaying = sound?.isChannelPlaying?.('dialogue') === true
+
+    if(isDialoguePlaying !== true)
+    {
+        this.faceAnimation.elapsedMs = 0
+        this.setFaceAnimationFrame(0)
+        return
+    }
+
+    this.faceAnimation.elapsedMs += this.time.delta
+    if(this.faceAnimation.elapsedMs < BloomConstants.BLOOM_FACE_ANIMATION_FRAME_MS)
+    {
+        return
+    }
+
+    this.faceAnimation.elapsedMs = 0
+    const nextFrameIndex = (this.faceAnimation.frameIndex + 1) % BloomConstants.BLOOM_FACE_FRAME_COUNT
+    this.setFaceAnimationFrame(nextFrameIndex)
 }
 
 
