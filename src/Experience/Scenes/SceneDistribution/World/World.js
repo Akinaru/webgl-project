@@ -25,6 +25,17 @@ const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
 const DISTRIBUTION_AMBIENT_CHANNEL = 'distributionAmbience'
 const DISTRIBUTION_DIALOGUE_KEY = 'distribution'
 const RESULT_DIALOGUE_KEY = 'resultat'
+const RESULT_DIALOGUE_PLAYER_LOCK_NODE_KEY = 'resultat_002'
+const RESULT_DIALOGUE_PLAYER_RELEASE_NODE_KEYS = new Set([
+    'resultat_002_inventeur',
+    'resultat_002_travailleur',
+    'resultat_002_botaniste',
+    'resultat_002_meneur',
+    'resultat_003',
+    'resultat_004',
+    'resultat_005',
+    'resultat_006'
+])
 const DISTRIBUTION_HOLD_NODE_KEY = 'distribution_004'
 const DISTRIBUTION_COMPLETED_NODE_KEY = 'distribution_005'
 const DISTRIBUTION_BLOOM_DOOR_EXIT_TOKEN = 'door_exit'
@@ -60,6 +71,9 @@ export default class SceneDistributionWorld
         this.isWaitingForResultDialogueAtDoorEnd = false
         this.distributionCompletedCameraFocusState = null
         this.hasPlayedDistributionCompletedCameraFocus = false
+        this.resultPlayerCinematicState = null
+        this.isResultPlayerControlLocked = false
+        this.resultPlayerReleaseArmed = false
         this.onDistributionDialogueState = ({ dialogueKey, nodeId } = {}) =>
         {
             if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY)
@@ -92,7 +106,29 @@ export default class SceneDistributionWorld
             this.isWaitingForResultDialogueAtDoorEnd = true
             this.tryStartResultDialogueAtDoorEnd()
         }
+        this.onResultDialogueState = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RESULT_DIALOGUE_KEY)
+            {
+                return
+            }
+
+            if(nodeId === RESULT_DIALOGUE_PLAYER_LOCK_NODE_KEY)
+            {
+                this.startResultPlayerCinematic()
+                this.resultPlayerReleaseArmed = true
+                return
+            }
+
+            if(!this.resultPlayerReleaseArmed || !RESULT_DIALOGUE_PLAYER_RELEASE_NODE_KEYS.has(nodeId))
+            {
+                return
+            }
+
+            this.completeResultPlayerCinematic()
+        }
         this.experience.dialogueManager?.on?.('state.distributionBloomRoomEnd', this.onDistributionDialogueState)
+        this.experience.dialogueManager?.on?.('state.distributionResultPlayer', this.onResultDialogueState)
 
         if(this.resources.isReady)
         {
@@ -162,6 +198,100 @@ export default class SceneDistributionWorld
         bloomFollow.forceFacingTarget = true
         bloomFollow.enabled = true
         bloomFollow.getTargetPosition = () => bloomModel.position
+    }
+
+    setPlayerControlEnabled(isEnabled = true)
+    {
+        if(!this.player)
+        {
+            return
+        }
+
+        this.player.setLookEnabled?.(isEnabled)
+        this.player.setMovementEnabled?.(isEnabled)
+    }
+
+    startResultPlayerCinematic()
+    {
+        if(!this.player)
+        {
+            return
+        }
+
+        const targetPosition = new THREE.Vector3(
+            SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_POSITION.x,
+            SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_POSITION.y,
+            SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_POSITION.z
+        )
+        const targetYaw = THREE.MathUtils.degToRad(SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_YAW_DEG)
+        const targetPitch = THREE.MathUtils.degToRad(SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_PITCH_DEG)
+
+        this.setPlayerControlEnabled(false)
+        this.isResultPlayerControlLocked = true
+        this.resultPlayerCinematicState = {
+            elapsedMs: 0,
+            durationMs: Math.max(1, SceneDistributionWorldConstants.DISTRIBUTION_RESULT_PLAYER_CINEMATIC_TRANSITION_MS),
+            startPosition: this.player.position.clone(),
+            startYaw: this.player.yaw ?? 0,
+            startPitch: this.player.pitch ?? 0,
+            targetPosition,
+            targetYaw,
+            targetPitch
+        }
+    }
+
+    completeResultPlayerCinematic()
+    {
+        const cinematicState = this.resultPlayerCinematicState
+        if(!cinematicState || !this.player)
+        {
+            return
+        }
+
+        this.player.teleportTo?.({
+            position: cinematicState.targetPosition,
+            yaw: cinematicState.targetYaw,
+            pitch: cinematicState.targetPitch
+        })
+        this.resultPlayerCinematicState = null
+    }
+
+    updateResultPlayerCinematic(delta = this.experience.time.delta)
+    {
+        const cinematicState = this.resultPlayerCinematicState
+        if(!cinematicState || !this.player)
+        {
+            return
+        }
+
+        cinematicState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const progress = Math.min(1, cinematicState.elapsedMs / cinematicState.durationMs)
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+        const nextPosition = cinematicState.startPosition.clone().lerp(cinematicState.targetPosition, easedProgress)
+        const nextYaw = this.interpolateAngle(cinematicState.startYaw, cinematicState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(cinematicState.startPitch, cinematicState.targetPitch, easedProgress)
+
+        this.player.teleportTo?.({
+            position: nextPosition,
+            yaw: nextYaw,
+            pitch: nextPitch
+        })
+
+        if(progress < 1)
+        {
+            return
+        }
+
+        this.resultPlayerCinematicState = null
+    }
+
+    releaseResultPlayerControl()
+    {
+        this.completeResultPlayerCinematic()
+        this.setPlayerControlEnabled(true)
+        this.isResultPlayerControlLocked = false
+        this.resultPlayerReleaseArmed = false
     }
 
     isPlayerReadyForResultDialogue()
@@ -599,8 +729,16 @@ export default class SceneDistributionWorld
     {
         this.onResultDialogueEnd = ({ key, interrupted } = {}) =>
         {
-            if(key !== RESULT_DIALOGUE_KEY || interrupted === true)
+            if(key !== RESULT_DIALOGUE_KEY)
             {
+                return
+            }
+
+            this.releaseResultPlayerControl()
+
+            if(interrupted === true)
+            {
+                this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
                 return
             }
 
@@ -628,6 +766,7 @@ export default class SceneDistributionWorld
         this.light?.update?.(delta)
         this.updateDistributionCompletedCameraFocus(delta)
         this.player?.update?.(delta)
+        this.updateResultPlayerCinematic(delta)
         this.valveController?.update?.(delta)
         this.tubeWaterController?.update?.(delta)
         this.balanceMonitor?.update?.()
@@ -724,6 +863,7 @@ export default class SceneDistributionWorld
         this.bloomHoldStage = 'idle'
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('state.distributionBloomRoomEnd')
+        this.experience.dialogueManager?.off?.('state.distributionResultPlayer')
         this.experience.dialogueManager?.off?.('end.distributionCompleted')
         this.experience.dialogueManager?.off?.('end.distributionResult')
         if(this.resultEndPromptTimer !== null)
@@ -733,7 +873,7 @@ export default class SceneDistributionWorld
         }
         this.isWaitingForResultDialogueAtDoorEnd = false
         this.distributionCompletedCameraFocusState = null
-        this.player?.setLookEnabled?.(true)
+        this.releaseResultPlayerControl()
         this.valveController?.destroy?.()
         this.valveController = null
         this.tubeWaterController?.destroy?.()
