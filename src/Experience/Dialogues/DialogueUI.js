@@ -12,6 +12,7 @@ export default class DialogueUI
         this.cursorVisible = false
         this.hintProgressTimer = null
         this.activeChoiceIndex = -1
+        this.hoveredChoiceId = null
         this.virtualCursorPosition = {
             x: window.innerWidth * 0.5,
             y: window.innerHeight * 0.5
@@ -164,6 +165,7 @@ export default class DialogueUI
             const choiceId = hoveredChoice.dataset.choiceId
             if(choiceId)
             {
+                this.playChoiceConfirmSound()
                 this.dialogueManager.choose(choiceId)
             }
         }
@@ -229,6 +231,7 @@ export default class DialogueUI
         {
             this.setChoiceCursorMode(true)
             this.activeChoiceIndex = 0
+            this.hoveredChoiceId = null
 
             payload.choices.forEach((choice, index) =>
             {
@@ -250,12 +253,13 @@ export default class DialogueUI
                 button.append(marker, choiceIndex, choiceText)
                 button.addEventListener('click', () =>
                 {
+                    this.playChoiceConfirmSound()
                     this.dialogueManager.choose(choice.id)
                 })
                 this.choices.appendChild(button)
             })
 
-            this.applyActiveChoiceByIndex(this.activeChoiceIndex)
+            this.applyActiveChoiceByIndex(this.activeChoiceIndex, { playSound: false })
             this.hint.textContent = 'Choisis une reponse avec 1, 2, 3, 4 ou les fleches.'
             return
         }
@@ -345,6 +349,7 @@ export default class DialogueUI
         if(!this.choiceCursorMode)
         {
             this.activeChoiceIndex = -1
+            this.hoveredChoiceId = null
             this.cursorVisible = false
             this.cursor.classList.remove('is-visible')
             this.cursor.classList.remove('is-over-choice')
@@ -439,13 +444,22 @@ export default class DialogueUI
         })
     }
 
-    applyChoiceHoverState(activeChoice)
+    applyChoiceHoverState(activeChoice, { playSound = true } = {})
     {
+        const nextChoiceId = activeChoice?.dataset?.choiceId ?? null
+        const shouldPlaySound = playSound && nextChoiceId && nextChoiceId !== this.hoveredChoiceId
+
         this.clearChoiceHoverState()
         if(activeChoice)
         {
             activeChoice.classList.add('dialogue__choice--hover')
             activeChoice.classList.add('dialogue__choice--active')
+        }
+
+        this.hoveredChoiceId = nextChoiceId
+        if(shouldPlaySound)
+        {
+            this.playChoiceChangeSound()
         }
     }
 
@@ -506,7 +520,7 @@ export default class DialogueUI
         this.applyActiveChoiceByIndex(nextIndex)
     }
 
-    applyActiveChoiceByIndex(index)
+    applyActiveChoiceByIndex(index, { playSound = true } = {})
     {
         const choiceElements = this.getChoiceElements()
         if(index < 0 || index >= choiceElements.length)
@@ -516,7 +530,7 @@ export default class DialogueUI
 
         this.activeChoiceIndex = index
         const activeChoice = choiceElements[index]
-        this.applyChoiceHoverState(activeChoice)
+        this.applyChoiceHoverState(activeChoice, { playSound })
         activeChoice.focus?.()
         this.virtualCursorPosition.x = activeChoice.offsetLeft + (activeChoice.offsetWidth * 0.5)
         this.virtualCursorPosition.y = activeChoice.offsetTop + (activeChoice.offsetHeight * 0.5)
@@ -534,8 +548,23 @@ export default class DialogueUI
         const choiceId = choiceElements[this.activeChoiceIndex]?.dataset?.choiceId
         if(choiceId)
         {
+            this.playChoiceConfirmSound()
             this.dialogueManager.choose(choiceId)
         }
+    }
+
+    playChoiceChangeSound()
+    {
+        const soundManager = this.experience?.sound ?? null
+        soundManager?.unlock?.()
+        soundManager?.playMenuHover?.()
+    }
+
+    playChoiceConfirmSound()
+    {
+        const soundManager = this.experience?.sound ?? null
+        soundManager?.unlock?.()
+        soundManager?.playMenuClick?.()
     }
 
     getDirectChoiceIndexForEvent(event)
