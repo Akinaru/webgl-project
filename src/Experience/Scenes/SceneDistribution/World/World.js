@@ -12,10 +12,13 @@ import SceneDistributionBalanceMonitor from './BalanceMonitor.js'
 import SceneDistributionDoorController from './DoorController.js'
 import SceneDistributionResultTrigger from './ResultTrigger.js'
 import SceneDistributionResultDisplay from './ResultDisplay.js'
+import SceneDistributionResultEndPrompt from './ResultEndPrompt.js'
 import SceneDistributionScoring from './DistributionScoring.js'
 import SceneDistributionWalls from './Walls/Walls.js'
 import ValidationButton from './ValidationButton.js'
 import { setupSceneDistributionWorldDebug } from './World.debug.js'
+import * as SceneDistributionResultEndPromptConstants from './ResultEndPrompt.constants.js'
+import * as SceneDistributionWorldConstants from './World.constants.js'
 
 let distributionWorldInstanceIndex = 0
 const DISTRIBUTION_AMBIENT_SOUND_KEY = 'distributionMusicResult'
@@ -46,6 +49,7 @@ export default class SceneDistributionWorld
         this.bloomPathArrivalDistanceSq = DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE * DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE
         this.bloomDoorExitTarget = null
         this.bloomRoomEndTarget = null
+        this.resultEndPromptTimer = null
         this.onDistributionDialogueState = ({ dialogueKey, nodeId } = {}) =>
         {
             if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY || nodeId !== DISTRIBUTION_COMPLETED_NODE_KEY)
@@ -208,8 +212,9 @@ export default class SceneDistributionWorld
             useMeshCollisionRaycast: true,
             collisionMeshes: this.distributionModel.getCollisionMeshes?.() ?? [],
             groundMeshes: this.distributionModel.getGroundMeshes?.() ?? [],
-            spawnPosition: this.distributionModel.getSpawnPosition?.(),
-            spawnYaw: 0
+            spawnPosition: SceneDistributionWorldConstants.DISTRIBUTION_SPAWN_POSITION,
+            spawnYaw: THREE.MathUtils.degToRad(SceneDistributionWorldConstants.DISTRIBUTION_SPAWN_YAW_DEG),
+            spawnPitch: THREE.MathUtils.degToRad(SceneDistributionWorldConstants.DISTRIBUTION_SPAWN_PITCH_DEG)
         })
         this.valveController = new SceneDistributionValveController({
             experience: this.experience,
@@ -237,6 +242,12 @@ export default class SceneDistributionWorld
         this.resultDisplay = new SceneDistributionResultDisplay({
             distributionModel: this.distributionModel,
             debugParentFolder: this.debugFolder
+        })
+        this.resultEndPrompt = new SceneDistributionResultEndPrompt({
+            onFinish: () =>
+            {
+                this.experience.menu?.endMenu?.open?.()
+            }
         })
         this.scoring = new SceneDistributionScoring()
         this.validationButton = new ValidationButton({
@@ -302,16 +313,17 @@ export default class SceneDistributionWorld
 
     startResultDialogue()
     {
-        this.onResultDialogueEnd = ({ key } = {}) =>
+        this.onResultDialogueEnd = ({ key, interrupted } = {}) =>
         {
-            if(key !== RESULT_DIALOGUE_KEY)
+            if(key !== RESULT_DIALOGUE_KEY || interrupted === true)
             {
                 return
             }
 
-            setTimeout(() => {
-                this.experience.menu?.endMenu?.open?.()
-            }, 3500)
+            this.resultEndPromptTimer = window.setTimeout(() => {
+                this.resultEndPromptTimer = null
+                this.resultEndPrompt?.show?.()
+            }, SceneDistributionResultEndPromptConstants.RESULT_END_PROMPT_FINISH_DELAY_MS)
             
             this.experience.dialogueManager?.off?.('end.distributionResult', this.onResultDialogueEnd)
         }
@@ -408,6 +420,11 @@ export default class SceneDistributionWorld
         this.experience.dialogueManager?.off?.('state.distributionBloomRoomEnd')
         this.experience.dialogueManager?.off?.('end.distributionCompleted')
         this.experience.dialogueManager?.off?.('end.distributionResult')
+        if(this.resultEndPromptTimer !== null)
+        {
+            window.clearTimeout(this.resultEndPromptTimer)
+            this.resultEndPromptTimer = null
+        }
         this.valveController?.destroy?.()
         this.valveController = null
         this.tubeWaterController?.destroy?.()
@@ -418,6 +435,8 @@ export default class SceneDistributionWorld
         this.gaugeDisplay = null
         this.resultDisplay?.destroy?.()
         this.resultDisplay = null
+        this.resultEndPrompt?.destroy?.()
+        this.resultEndPrompt = null
         this.resultTrigger?.destroy?.()
         this.resultTrigger = null
         this.validationButton?.destroy?.()
