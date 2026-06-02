@@ -682,21 +682,52 @@ export default class Materiau
     createIndicatorLabelTexture(text)
     {
         const canvas = document.createElement('canvas')
-        canvas.width = 512
-        canvas.height = 128
+        canvas.width = MateriauConstants.INDICATOR_LABEL_CANVAS_WIDTH
+        canvas.height = MateriauConstants.INDICATOR_LABEL_CANVAS_HEIGHT
         const context = canvas.getContext('2d')
         context.clearRect(0, 0, canvas.width, canvas.height)
-        context.fillStyle = MateriauConstants.INDICATOR_LABEL_BACKGROUND
-        context.strokeStyle = 'rgba(135, 219, 255, 0.62)'
-        context.lineWidth = 4
-        this.drawRoundedRect(context, 10, 18, 492, 92, 32)
+
+        const panelX = 10
+        const panelY = 20
+        const panelWidth = canvas.width - (panelX * 2)
+        const panelHeight = canvas.height - (panelY * 2)
+        const panelRadius = MateriauConstants.INDICATOR_LABEL_RADIUS
+
+        const backgroundGradient = context.createLinearGradient(0, panelY, 0, panelY + panelHeight)
+        backgroundGradient.addColorStop(0, MateriauConstants.INDICATOR_LABEL_BACKGROUND_TOP)
+        backgroundGradient.addColorStop(0.24, MateriauConstants.INDICATOR_LABEL_BACKGROUND_MIDDLE)
+        backgroundGradient.addColorStop(1, MateriauConstants.INDICATOR_LABEL_BACKGROUND_BOTTOM)
+
+        context.save()
+        context.shadowColor = MateriauConstants.INDICATOR_LABEL_SHADOW_COLOR
+        context.shadowBlur = 26
+        context.shadowOffsetY = 10
+        context.fillStyle = backgroundGradient
+        this.drawRoundedRect(context, panelX, panelY, panelWidth, panelHeight, panelRadius)
         context.fill()
+        context.restore()
+
+        const highlightGradient = context.createLinearGradient(0, panelY, 0, panelY + (panelHeight * 0.62))
+        highlightGradient.addColorStop(0, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_TOP)
+        highlightGradient.addColorStop(0.32, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_MIDDLE)
+        highlightGradient.addColorStop(1, MateriauConstants.INDICATOR_LABEL_HIGHLIGHT_BOTTOM)
+        context.fillStyle = highlightGradient
+        this.drawRoundedRect(context, panelX, panelY, panelWidth, panelHeight * 0.78, panelRadius)
+        context.fill()
+
+        context.strokeStyle = MateriauConstants.INDICATOR_LABEL_BORDER_COLOR
+        context.lineWidth = 3
+        this.drawRoundedRect(context, panelX, panelY, panelWidth, panelHeight, panelRadius)
         context.stroke()
+
         context.fillStyle = MateriauConstants.INDICATOR_LABEL_TEXT_COLOR
-        context.font = '600 40px "Helvetica Neue", Arial, sans-serif'
+        context.font = MateriauConstants.INDICATOR_LABEL_FONT
         context.textAlign = 'center'
         context.textBaseline = 'middle'
-        context.fillText(String(text || ''), 256, 66)
+        context.shadowColor = MateriauConstants.INDICATOR_LABEL_TEXT_SHADOW_COLOR
+        context.shadowBlur = 12
+        context.shadowOffsetY = 2
+        context.fillText(String(text || ''), canvas.width * 0.5, canvas.height * 0.5)
 
         const texture = new THREE.CanvasTexture(canvas)
         texture.colorSpace = THREE.SRGBColorSpace
