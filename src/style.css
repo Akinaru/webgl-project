@@ -2055,6 +2055,11 @@ body.is-dialogue-cursor.is-pointer-locked *
     border-color: rgba(28, 103, 154, 0.98);
 }
 
+body.is-result-player-cinematic-cursor-hidden .dialogue__cursor
+{
+    opacity: 0 !important;
+}
+
 .objective
 {
     position: fixed;
