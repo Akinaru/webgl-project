@@ -195,6 +195,7 @@ export default class SceneDistributionValveController
         this.camera = this.experience?.camera?.instance
         this.debug = this.experience?.debug
         this.debugParentFolder = debugParentFolder
+        this.isEnabled = true
         this.settings = {
             turnSpeedMultiplier: 1,
             gestureRotationGain: SceneDistributionValveControllerConstants.GESTURE_ROTATION_GAIN,
@@ -238,6 +239,24 @@ export default class SceneDistributionValveController
     setRotationConstraintResolver(resolver)
     {
         this.canRotateValveDirection = typeof resolver === 'function' ? resolver : null
+    }
+
+    setEnabled(isEnabled = true)
+    {
+        this.isEnabled = Boolean(isEnabled)
+        if(this.isEnabled)
+        {
+            return
+        }
+
+        this.hoveredValve = null
+        this.hoveredHitPointWorld = null
+        this.activeValve = null
+        this.activeHitPointWorld = null
+        this.stopValveTurningSound()
+        this.setPlayerLookEnabled(true)
+        document.body.classList.remove(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
+        this.setCursorHover(false)
     }
 
     setValves(valveMeshes = [])
@@ -392,6 +411,11 @@ export default class SceneDistributionValveController
 
         this.onMouseMove = (event) =>
         {
+            if(this.isEnabled !== true)
+            {
+                return
+            }
+
             if(!this.activeValve)
             {
                 return
@@ -408,6 +432,11 @@ export default class SceneDistributionValveController
 
         this.onInteractDown = () =>
         {
+            if(this.isEnabled !== true)
+            {
+                return
+            }
+
             if(!this.hoveredValve)
             {
                 return
@@ -458,6 +487,13 @@ export default class SceneDistributionValveController
     update()
     {
         this.ensureCursorElement()
+        if(this.isEnabled !== true)
+        {
+            this.hoveredValve = null
+            this.hoveredHitPointWorld = null
+            this.setCursorHover(false)
+            return
+        }
         this.updateHoveredValveAtCenter()
         this.updateCursorAtCenter()
     }

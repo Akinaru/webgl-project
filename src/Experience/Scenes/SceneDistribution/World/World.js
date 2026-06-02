@@ -76,6 +76,16 @@ export default class SceneDistributionWorld
         this.resultPlayerCinematicState = null
         this.isResultPlayerControlLocked = false
         this.resultPlayerReleaseArmed = false
+        this.hasUnlockedDistributionControls = false
+        this.onDistributionDialogueNodeComplete = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY || nodeId !== DISTRIBUTION_HOLD_NODE_KEY)
+            {
+                return
+            }
+
+            this.unlockDistributionControls()
+        }
         this.onDistributionDialogueState = ({ dialogueKey, nodeId } = {}) =>
         {
             if(dialogueKey !== DISTRIBUTION_DIALOGUE_KEY)
@@ -140,6 +150,7 @@ export default class SceneDistributionWorld
             this.completeResultPlayerCinematic()
         }
         this.experience.dialogueManager?.on?.('state.distributionBloomRoomEnd', this.onDistributionDialogueState)
+        this.experience.dialogueManager?.on?.('nodecomplete.distributionControls', this.onDistributionDialogueNodeComplete)
         this.experience.dialogueManager?.on?.('state.distributionResultPlayer', this.onResultDialogueState)
 
         if(this.resources.isReady)
@@ -789,6 +800,7 @@ export default class SceneDistributionWorld
 
             return true
         })
+        this.lockDistributionControls()
         this.light = new MapLight({
             environment: this.environment,
             getFocusPosition: () => this.player?.position ?? null,
@@ -863,6 +875,25 @@ export default class SceneDistributionWorld
     setDebug()
     {
         setupSceneDistributionWorldDebug.call(this)
+    }
+
+    lockDistributionControls()
+    {
+        this.hasUnlockedDistributionControls = false
+        this.valveController?.setEnabled?.(false)
+        this.validationButton?.setEnabled?.(false)
+    }
+
+    unlockDistributionControls()
+    {
+        if(this.hasUnlockedDistributionControls)
+        {
+            return
+        }
+
+        this.hasUnlockedDistributionControls = true
+        this.valveController?.setEnabled?.(true)
+        this.validationButton?.setEnabled?.(true)
     }
 
     update(delta = this.experience.time.delta)
@@ -973,6 +1004,7 @@ export default class SceneDistributionWorld
         this.resultBloomStage = 'idle'
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('state.distributionBloomRoomEnd')
+        this.experience.dialogueManager?.off?.('nodecomplete.distributionControls')
         this.experience.dialogueManager?.off?.('state.distributionResultPlayer')
         this.experience.dialogueManager?.off?.('end.distributionCompleted')
         this.experience.dialogueManager?.off?.('end.distributionResult')

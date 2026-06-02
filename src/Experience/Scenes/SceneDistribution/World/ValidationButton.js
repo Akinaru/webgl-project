@@ -21,6 +21,7 @@ export default class ValidationButton
         this.debug = this.experience.debug
         this.inputs = this.experience.inputs
         this.onValidate = onValidate
+        this.isEnabled = true
         this.buttonMeshes = Array.isArray(buttonMeshes)
             ? buttonMeshes.filter((mesh) => mesh instanceof THREE.Mesh)
             : []
@@ -101,6 +102,11 @@ export default class ValidationButton
     {
         this.onMouseDown = () =>
         {
+            if(this.isEnabled !== true)
+            {
+                return
+            }
+
             const meshes = this.buttonMeshes.length > 0
                 ? this.buttonMeshes
                 : [this.buttonMesh].filter(Boolean)
@@ -119,6 +125,11 @@ export default class ValidationButton
         }
 
         this.inputs?.on('sceneinteractdown.distributionValidation', this.onMouseDown)
+    }
+
+    setEnabled(isEnabled = true)
+    {
+        this.isEnabled = Boolean(isEnabled)
     }
 
     pressButton()

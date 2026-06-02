@@ -250,10 +250,12 @@ export default class DialogueManager extends EventEmitter
         const next = this.state.node?.next
         if(next)
         {
+            this.emitNodeCompleted()
             this.goToNode(next)
             return
         }
 
+        this.emitNodeCompleted()
         this.endCurrentDialogue()
     }
 
@@ -270,10 +272,12 @@ export default class DialogueManager extends EventEmitter
         const next = this.state.node?.next
         if(next)
         {
+            this.emitNodeCompleted()
             this.goToNode(next)
             return
         }
 
+        this.emitNodeCompleted()
         this.endCurrentDialogue()
     }
 
@@ -369,6 +373,20 @@ export default class DialogueManager extends EventEmitter
         this.refreshContinueGateState()
         this.trigger('state', [{
             ...this.state
+        }])
+    }
+
+    emitNodeCompleted()
+    {
+        if(!this.isRunning() || !this.state?.nodeId)
+        {
+            return
+        }
+
+        this.trigger('nodecomplete', [{
+            dialogueKey: this.state.dialogueKey,
+            nodeId: this.state.nodeId,
+            node: this.state.node
         }])
     }
 
