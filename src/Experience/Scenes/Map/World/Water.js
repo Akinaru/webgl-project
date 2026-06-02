@@ -32,9 +32,9 @@ export default class Water
             showPlan: true
         }
 
-        this.couleurSable = new THREE.Color('#f8d487')
-        this.couleurBleuSurface = new THREE.Color('#1dd6eb')
-        this.couleurBleuFond = new THREE.Color('#0b515f')
+        this.couleurSable = new THREE.Color('#e5cd9a')
+        this.couleurBleuSurface = new THREE.Color('#21daef')
+        this.couleurBleuFond = new THREE.Color('#085b6c')
         this.backgroundColor = new THREE.Color('#1dd6eb')
         this.couleurMousse = new THREE.Color('#ffffff')
         this.applyWaterline()

@@ -48,13 +48,13 @@ export default class Renderer
         this.ambientOcclusion = {
             enabled: true,
             recuperationOnly: false,
-            intensity: 0.005,
-            bias: 0.35,
+            intensity: 0,
+            bias: 0.283,
             scale: 1,
-            kernelRadius: 3,
-            minResolution: 0,
+            kernelRadius: 1,
+            minResolution: 0.1957,
             blur: true,
-            blurRadius: 5,
+            blurRadius: 6,
             blurStdDev: 2.4
         }
 
@@ -124,10 +124,10 @@ export default class Renderer
                 smoothWidth: 0.03
             },
             blur: {
-                start: 0.12,
-                end: 0.7,
+                start: 0.304,
+                end: 0.6089999999999999,
                 repeats: 2,
-                amount: 0.32
+                amount: 0.17400000000000002
             }
         }
 
