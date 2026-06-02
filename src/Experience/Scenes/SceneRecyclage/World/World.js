@@ -169,8 +169,11 @@ export default class SceneRecyclageWorld
             getFocusPosition: () => this.player?.position ?? null,
             debugParentFolder: this.debugFolder
         })
-        this.applyUnderwaterPreset()
-        this.applyNanobotsRecuperationSunPreset()
+        this.applyChampignonLightPreset()
+        if(this.variantConfig?.sceneKey === SceneEnum.NANOBOTS)
+        {
+            this.applyNanobotsLightPreset()
+        }
         this.ceilingLights = new SceneRecyclageCeilingLights({
             recyclageModel: this.recyclageModel,
             debugParentFolder: this.debugFolder
@@ -469,49 +472,13 @@ export default class SceneRecyclageWorld
         })?.on?.('change', applyLight)
     }
 
-    applyUnderwaterPreset()
+    applyLightPreset(preset)
     {
-        if(!this.light || !this.environment)
+        if(!this.light || !preset)
         {
             return
         }
 
-        const lightPreset = SceneRecyclageWorldConstants.RECYCLAGE_UNDERWATER_LIGHT_PRESET
-        Object.assign(this.light.state, lightPreset.state)
-        this.light.ambientColor.set(lightPreset.colors.ambient)
-        this.light.skyColor.set(lightPreset.colors.sky)
-        this.light.groundColor.set(lightPreset.colors.ground)
-        this.light.sunColor.set(lightPreset.colors.sun)
-        this.light.applyLightColorsAndIntensity()
-        this.light.sunLight.visible = this.light.state.sunIntensity > 0
-        if(this.light.sunVisual)
-        {
-            this.light.sunVisual.visible = this.light.state.sunIntensity > 0
-        }
-        this.light.updateCoordinates()
-        this.light.updateFocusPosition()
-        this.light.sunLight.position.setFromSpherical(this.light.spherical).add(this.light.focusPosition)
-        this.light.sunTarget.position.copy(this.light.focusPosition)
-        this.light.updateSunVisual()
-        this.light.updateShadow()
-
-        const envPreset = SceneRecyclageWorldConstants.RECYCLAGE_UNDERWATER_ENV
-        this.environment.backgroundColor.set(envPreset.backgroundColor)
-        this.environment.fogColor.set(envPreset.fogColor)
-        this.environment.state.fogMode = envPreset.fogMode
-        this.environment.state.fogNear = envPreset.fogNear
-        this.environment.state.fogFar = envPreset.fogFar
-        this.environment.setFog()
-    }
-
-    applyNanobotsRecuperationSunPreset()
-    {
-        if(this.variantConfig?.sceneKey !== SceneEnum.NANOBOTS || !this.light)
-        {
-            return
-        }
-
-        const preset = SceneRecyclageWorldConstants.NANOBOTS_RECUPERATION_SUN_PRESET
         Object.assign(this.light.state, preset.state)
         this.light.ambientColor.set(preset.colors.ambient)
         this.light.skyColor.set(preset.colors.sky)
@@ -529,6 +496,42 @@ export default class SceneRecyclageWorld
         this.light.sunTarget.position.copy(this.light.focusPosition)
         this.light.updateSunVisual()
         this.light.updateShadow()
+    }
+
+    applyChampignonLightPreset()
+    {
+        if(!this.light || !this.environment)
+        {
+            return
+        }
+
+        this.applyLightPreset(SceneRecyclageWorldConstants.RECYCLAGE_CHAMPIGNON_LIGHT_PRESET)
+
+        const envPreset = SceneRecyclageWorldConstants.RECYCLAGE_UNDERWATER_ENV
+        this.environment.backgroundColor.set(envPreset.backgroundColor)
+        this.environment.fogColor.set(envPreset.fogColor)
+        this.environment.state.fogMode = envPreset.fogMode
+        this.environment.state.fogNear = envPreset.fogNear
+        this.environment.state.fogFar = envPreset.fogFar
+        this.environment.setFog()
+    }
+
+    applyNanobotsLightPreset()
+    {
+        if(!this.light || !this.environment)
+        {
+            return
+        }
+
+        this.applyLightPreset(SceneRecyclageWorldConstants.RECYCLAGE_NANOBOTS_LIGHT_PRESET)
+
+        const envPreset = SceneRecyclageWorldConstants.RECYCLAGE_NANOBOTS_ENV
+        this.environment.backgroundColor.set(envPreset.backgroundColor)
+        this.environment.fogColor.set(envPreset.fogColor)
+        this.environment.state.fogMode = envPreset.fogMode
+        this.environment.state.fogNear = envPreset.fogNear
+        this.environment.state.fogFar = envPreset.fogFar
+        this.environment.setFog()
     }
 
     startArrivalDialogue()
@@ -780,6 +783,7 @@ export default class SceneRecyclageWorld
         this.isNanobotsRoomActive = true
         this.recyclageModel?.setVisible?.(false)
         this.nanobotsModel?.setVisible?.(true)
+        this.applyNanobotsLightPreset()
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.nanobotsModel?.getBoundaryRadius?.() ?? 48,
@@ -828,6 +832,7 @@ export default class SceneRecyclageWorld
         this.isNanobotsRoomActive = false
         this.nanobotsModel?.setVisible?.(false)
         this.recyclageModel?.setVisible?.(true)
+        this.applyChampignonLightPreset()
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.recyclageModel?.getBoundaryRadius?.() ?? 48,
