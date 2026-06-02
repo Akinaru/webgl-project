@@ -48,7 +48,7 @@ export function updateVelocity(deltaSeconds)
     const isSprinting = this.inputs.isPressed('ShiftLeft', 'ShiftRight')
     const speedMultiplier = Math.max(0, this.settings.speedMultiplier ?? 1)
     const currentSpeed = (isSprinting ? this.settings.sprintSpeed : this.settings.walkSpeed) * speedMultiplier
-    const movementEnabled = this.isPointerLocked
+    const movementEnabled = this.isPointerLocked && this.isMovementEnabled !== false
 
     this.forwardDirection.set(0, 0, -1).applyAxisAngle(PlayerConstants.UP_AXIS, this.yaw)
     this.rightDirection.set(1, 0, 0).applyAxisAngle(PlayerConstants.UP_AXIS, this.yaw)

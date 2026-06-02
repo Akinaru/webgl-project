@@ -102,6 +102,22 @@ export function setLookEnabled(isEnabled = true)
 }
 
 /**
+ * Active ou désactive le déplacement du joueur.
+ */
+export function setMovementEnabled(isEnabled = true)
+{
+    this.isMovementEnabled = Boolean(isEnabled)
+    if(this.isMovementEnabled)
+    {
+        return
+    }
+
+    this.moveDirection.set(0, 0, 0)
+    this.velocity.x = 0
+    this.velocity.z = 0
+}
+
+/**
  * Met à jour les contraintes/runtime collision du joueur sans recréer l'instance.
  */
 export function setRuntimeEnvironment({

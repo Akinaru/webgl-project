@@ -3,8 +3,10 @@ import Experience from '../../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { wallShaderChunks } from '../../../SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
+const ROOM_END_2_EXACT_NAME = 'room_end_2'
 const isRoom1MeshName = (name) => name.startsWith('room1')
-const isWallMeshName = (name) => isRoom1MeshName(name)
+const isRoomEnd2MeshName = (name) => name === ROOM_END_2_EXACT_NAME
+const isWallMeshName = (name) => isRoom1MeshName(name) || isRoomEnd2MeshName(name)
 
 const DEFAULTS = {
     wallScale:        0.45,

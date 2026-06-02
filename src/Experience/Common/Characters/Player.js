@@ -111,6 +111,7 @@ constructor({
     this.isOnGround = true
     this.isPointerLocked = false
     this.isLookEnabled = true
+    this.isMovementEnabled = true
     this.currentGroundObject = null
 
     this.setCamera()
