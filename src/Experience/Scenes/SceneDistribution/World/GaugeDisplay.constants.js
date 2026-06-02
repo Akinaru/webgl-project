@@ -1,9 +1,9 @@
 export const CANVAS_WIDTH = 1024
 export const CANVAS_HEIGHT = 512
-export const BACKGROUND_COLOR = '#05080d'
-export const PANEL_TOP_COLOR = 'rgba(56, 96, 108, 0.72)'
-export const PANEL_MID_COLOR = 'rgba(28, 86, 101, 0.68)'
-export const PANEL_BOTTOM_COLOR = 'rgba(0, 116, 141, 0.54)'
+export const BACKGROUND_COLOR = 'rgba(0, 116, 141, 0.5)'
+export const PANEL_TOP_COLOR = 'rgba(0, 116, 141, 0.5)'
+export const PANEL_MID_COLOR = 'rgba(0, 116, 141, 0.5)'
+export const PANEL_BOTTOM_COLOR = 'rgba(0, 116, 141, 0.5)'
 export const PANEL_BORDER_COLOR = 'rgba(255, 255, 255, 0.34)'
 export const PANEL_INNER_GLOW_COLOR = 'rgba(255, 255, 255, 0.12)'
 export const TITLE_COLOR = '#ffffff'
