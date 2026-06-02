@@ -26,6 +26,7 @@ export default class SceneDistributionModel
         this.vanneMeshes = []
         this.roomEndWindowMaterials = []
         this.backgroundMaterials = []
+        this.backgroundMeshes = []
         this.visualSettings = {
             roomEndWindowColor: SceneDistributionModelConstants.ROOM_END_WINDOW_COLOR,
             roomEndWindowOpacity: SceneDistributionModelConstants.ROOM_END_WINDOW_OPACITY,
@@ -41,13 +42,36 @@ export default class SceneDistributionModel
             backgroundColor: SceneDistributionModelConstants.BACKGROUND_DEFAULT_COLOR,
             backgroundOpacity: SceneDistributionModelConstants.BACKGROUND_DEFAULT_OPACITY,
             backgroundDepthWrite: SceneDistributionModelConstants.BACKGROUND_DEFAULT_DEPTH_WRITE,
-            backgroundSide: SceneDistributionModelConstants.BACKGROUND_DEFAULT_SIDE
+            backgroundSide: SceneDistributionModelConstants.BACKGROUND_DEFAULT_SIDE,
+            backgroundScale: SceneDistributionModelConstants.BACKGROUND_SCALE_MULTIPLIER,
+            backgroundVisible: true,
+            backgroundTextureEnabled: SceneDistributionModelConstants.BACKGROUND_TEXTURE_ENABLED,
+            backgroundTextureOffsetX: SceneDistributionModelConstants.BACKGROUND_TEXTURE_OFFSET_X,
+            backgroundTextureOffsetY: SceneDistributionModelConstants.BACKGROUND_TEXTURE_OFFSET_Y,
+            backgroundTextureRepeatX: SceneDistributionModelConstants.BACKGROUND_TEXTURE_REPEAT_X,
+            backgroundTextureRepeatY: SceneDistributionModelConstants.BACKGROUND_TEXTURE_REPEAT_Y,
+            backgroundTextureRotation: SceneDistributionModelConstants.BACKGROUND_TEXTURE_ROTATION,
+            backgroundTextureCenterX: SceneDistributionModelConstants.BACKGROUND_TEXTURE_CENTER_X,
+            backgroundTextureCenterY: SceneDistributionModelConstants.BACKGROUND_TEXTURE_CENTER_Y
         }
 
         if(this.backgroundOverrideTexture)
         {
             this.backgroundOverrideTexture.flipY = true
             this.backgroundOverrideTexture.needsUpdate = true
+            this.backgroundOverrideTexture.center.set(
+                this.visualSettings.backgroundTextureCenterX,
+                this.visualSettings.backgroundTextureCenterY
+            )
+            this.backgroundOverrideTexture.offset.set(
+                this.visualSettings.backgroundTextureOffsetX,
+                this.visualSettings.backgroundTextureOffsetY
+            )
+            this.backgroundOverrideTexture.repeat.set(
+                this.visualSettings.backgroundTextureRepeatX,
+                this.visualSettings.backgroundTextureRepeatY
+            )
+            this.backgroundOverrideTexture.rotation = this.visualSettings.backgroundTextureRotation
         }
 
         if(this.resource?.scene)
@@ -76,6 +100,7 @@ export default class SceneDistributionModel
         this.groundMeshes = []
         this.vanneMeshes = []
         this.tubeWaterMeshes = []
+        this.backgroundMeshes = []
 
         this.model.traverse((child) =>
         {
@@ -243,7 +268,23 @@ export default class SceneDistributionModel
 
         if(isBackground)
         {
-            mesh.scale.multiplyScalar(SceneDistributionModelConstants.BACKGROUND_SCALE_MULTIPLIER)
+            if(!mesh.userData.distributionBackgroundBaseScale)
+            {
+                mesh.userData.distributionBackgroundBaseScale = {
+                    x: mesh.scale.x,
+                    y: mesh.scale.y,
+                    z: mesh.scale.z
+                }
+            }
+
+            const { x, y, z } = mesh.userData.distributionBackgroundBaseScale
+            mesh.scale.set(
+                x * this.visualSettings.backgroundScale,
+                y * this.visualSettings.backgroundScale,
+                z * this.visualSettings.backgroundScale
+            )
+            mesh.visible = this.visualSettings.backgroundVisible
+            this.backgroundMeshes.push(mesh)
         }
 
         const materials = Array.isArray(mesh.material)
@@ -453,6 +494,7 @@ export default class SceneDistributionModel
         const root = this.model ?? this.fallback
         this.roomEndWindowMaterials = []
         this.backgroundMaterials = []
+        this.backgroundMeshes = []
         this.debugStats.roomEndMeshCount = 0
 
         root?.traverse?.((child) =>
@@ -465,6 +507,11 @@ export default class SceneDistributionModel
             if(SceneDistributionModelConstants.ROOM_END_WINDOW_OVERRIDE_ENABLED === true && this.hasExactNameInHierarchy(child, ROOM_END_WINDOW_EXACT_NAMES))
             {
                 this.debugStats.roomEndMeshCount++
+            }
+
+            if(child.userData?.distributionBackgroundBaseScale)
+            {
+                this.backgroundMeshes.push(child)
             }
 
             const materials = Array.isArray(child.material)
@@ -514,6 +561,41 @@ export default class SceneDistributionModel
             material.needsUpdate = true
         }
 
+        if(this.backgroundOverrideTexture)
+        {
+            this.backgroundOverrideTexture.center.set(
+                this.visualSettings.backgroundTextureCenterX,
+                this.visualSettings.backgroundTextureCenterY
+            )
+            this.backgroundOverrideTexture.offset.set(
+                this.visualSettings.backgroundTextureOffsetX,
+                this.visualSettings.backgroundTextureOffsetY
+            )
+            this.backgroundOverrideTexture.repeat.set(
+                this.visualSettings.backgroundTextureRepeatX,
+                this.visualSettings.backgroundTextureRepeatY
+            )
+            this.backgroundOverrideTexture.rotation = this.visualSettings.backgroundTextureRotation
+            this.backgroundOverrideTexture.needsUpdate = true
+        }
+
+        for(const mesh of this.backgroundMeshes)
+        {
+            if(!mesh?.userData?.distributionBackgroundBaseScale)
+            {
+                continue
+            }
+
+            const { x, y, z } = mesh.userData.distributionBackgroundBaseScale
+            mesh.scale.set(
+                x * this.visualSettings.backgroundScale,
+                y * this.visualSettings.backgroundScale,
+                z * this.visualSettings.backgroundScale
+            )
+            mesh.visible = this.visualSettings.backgroundVisible
+            mesh.updateMatrixWorld?.(true)
+        }
+
         const backgroundSide = this.resolveBackgroundSide(this.visualSettings.backgroundSide)
         for(const material of this.backgroundMaterials)
         {
@@ -528,6 +610,9 @@ export default class SceneDistributionModel
             material.depthWrite = this.visualSettings.backgroundDepthWrite
             material.depthTest = true
             material.side = backgroundSide
+            material.map = this.visualSettings.backgroundTextureEnabled
+                ? (this.backgroundOverrideTexture ?? material.map ?? null)
+                : null
             material.needsUpdate = true
         }
     }
@@ -544,26 +629,45 @@ export default class SceneDistributionModel
             expanded: false
         })
 
-        this.debug.addBinding(this.debugFolder, this.debugStats, 'roomEndMeshCount', { label: 'room_end1 meshes', readonly: true })
-        this.debug.addBinding(this.debugFolder, this.debugStats, 'roomEndMaterialCount', { label: 'room_end1 materials', readonly: true })
-        this.debug.addBinding(this.debugFolder, this.debugStats, 'backgroundMaterialCount', { label: 'background materials', readonly: true })
+        const statsFolder = this.debug.addFolder('Stats', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        const windowFolder = this.debug.addFolder('Vitre room_end1', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        const backgroundFolder = this.debug.addFolder('Background', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+        const backgroundTextureFolder = this.debug.addFolder('Background texture', {
+            parent: backgroundFolder,
+            expanded: false
+        })
 
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowColor', { label: 'room_end1 couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowOpacity', { label: 'room_end1 opacite (visuel)', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowTransmission', { label: 'room_end1 transmission', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowRoughness', { label: 'room_end1 flou', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowMetalness', { label: 'room_end1 metal', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowIor', { label: 'room_end1 ior', min: 1, max: 2.4, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowThickness', { label: 'room_end1 epaisseur', min: 0, max: 1, step: 0.005 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowEnvIntensity', { label: 'room_end1 reflection', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowAttenuationDistance', { label: 'room_end1 attenuation dist', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowAttenuationColor', { label: 'room_end1 attenuation color', view: 'color' }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'roomEndWindowDepthWrite', { label: 'room_end1 depthWrite' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(statsFolder, this.debugStats, 'roomEndMeshCount', { label: 'room_end1 meshes', readonly: true })
+        this.debug.addBinding(statsFolder, this.debugStats, 'roomEndMaterialCount', { label: 'room_end1 materials', readonly: true })
+        this.debug.addBinding(statsFolder, this.debugStats, 'backgroundMaterialCount', { label: 'background materials', readonly: true })
 
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundColor', { label: 'background couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundOpacity', { label: 'background opacite', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundDepthWrite', { label: 'background depthWrite' }).on('change', () => this.applyVisualSettings())
-        this.debug.addBinding(this.debugFolder, this.visualSettings, 'backgroundSide', {
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowColor', { label: 'couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowOpacity', { label: 'opacite visuelle', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowTransmission', { label: 'transmission', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowRoughness', { label: 'flou', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowMetalness', { label: 'metal', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowIor', { label: 'ior', min: 1, max: 2.4, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowThickness', { label: 'epaisseur', min: 0, max: 1, step: 0.005 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowEnvIntensity', { label: 'reflection', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowAttenuationDistance', { label: 'attenuation dist', min: 0, max: 3, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowAttenuationColor', { label: 'attenuation color', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(windowFolder, this.visualSettings, 'roomEndWindowDepthWrite', { label: 'depthWrite' }).on('change', () => this.applyVisualSettings())
+
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundVisible', { label: 'visible' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundScale', { label: 'scale', min: 0.1, max: 12, step: 0.05 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundColor', { label: 'couleur', view: 'color' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundOpacity', { label: 'opacite', min: 0, max: 1, step: 0.01 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundDepthWrite', { label: 'depthWrite' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundFolder, this.visualSettings, 'backgroundSide', {
             label: 'background side',
             options: {
                 Back: 'back',
@@ -571,6 +675,14 @@ export default class SceneDistributionModel
                 Double: 'double'
             }
         }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureEnabled', { label: 'texture active' }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureOffsetX', { label: 'offset x', min: -1, max: 1, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureOffsetY', { label: 'offset y', min: -1, max: 1, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureRepeatX', { label: 'repeat x', min: -4, max: 4, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureRepeatY', { label: 'repeat y', min: -4, max: 4, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureRotation', { label: 'rotation', min: -3.1416, max: 3.1416, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureCenterX', { label: 'center x', min: 0, max: 1, step: 0.001 }).on('change', () => this.applyVisualSettings())
+        this.debug.addBinding(backgroundTextureFolder, this.visualSettings, 'backgroundTextureCenterY', { label: 'center y', min: 0, max: 1, step: 0.001 }).on('change', () => this.applyVisualSettings())
 
         this.applyVisualSettings()
     }
