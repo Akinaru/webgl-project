@@ -37,7 +37,7 @@ export const MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET = 0.14
 export const MATERIAL_DEFINITIONS = Object.freeze([
     {
         key: 'materiau0',
-        label: 'Carapace de Scarabe',
+        label: 'Carapace de scarabée',
         description: 'Materiau organique',
         accentColor: '#7a4a21'
     },
@@ -49,7 +49,7 @@ export const MATERIAL_DEFINITIONS = Object.freeze([
     },
     {
         key: 'materiau2',
-        label: 'Vegetation',
+        label: 'Végétation',
         description: 'Materiau vivant',
         accentColor: '#4f9f57'
     }
