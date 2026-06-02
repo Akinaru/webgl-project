@@ -406,6 +406,7 @@ export default class SceneRecuperationWorld
             isInteractionLocked: () => this.isMaterialTestRunning,
             onSelectionChange: (selection) => this.handleMaterialSelection(selection)
         })
+        this.materiau.setDebug({ parentFolder: this.lightDebugFolder })
 
         this.television.setSelection(null)
         this.setRoom2Trigger()
