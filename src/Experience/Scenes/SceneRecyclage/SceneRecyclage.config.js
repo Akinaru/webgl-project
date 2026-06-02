@@ -32,11 +32,11 @@ export const SCENE_RECYCLAGE_VARIANTS = Object.freeze({
         musicStorageKey: 'scene-music.recyclage.nanobots',
         ambientSoundKeys: Object.freeze(['recyclageMusic2']),
         spawnPosition: Object.freeze({
-            x: 2.191,
+            x: 0.380,
             y: 0.8,
-            z: 0.028
+            z: -0.037
         }),
-        spawnYawDeg: -272.396,
-        spawnPitchDeg: 1.548
+        spawnYawDeg: -268.614,
+        spawnPitchDeg: -1.225
     })
 })

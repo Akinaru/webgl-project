@@ -90,7 +90,6 @@ export default class Menu
             isEnabled: () => this.hasResolved && !this.isDestroyed,
             canAutoOpen: () => !this.endMenu?.isOpen?.()
                 && !this.experience?.isNanobotInspecting
-                && !this.experience?.isChampignonInteracting
         })
 
         this.endMenu = new EndMenu(this.experience)

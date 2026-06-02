@@ -588,7 +588,12 @@ export default class Borne
             return
         }
 
-        this.hoveredMesh = this.centerRaycaster.intersectFirst([this.screenMesh], false) ? this.screenMesh : null
+        const hit = this.centerRaycaster.intersectFirstHit([this.screenMesh], false)
+        this.hoveredMesh = hit?.object
+            && Number.isFinite(hit.distance)
+            && hit.distance <= BorneConstants.BORNE_MAX_INTERACTION_DISTANCE
+            ? this.screenMesh
+            : null
         if(this.cursorElement instanceof HTMLElement)
         {
             this.cursorElement.classList.toggle('is-over-choice', Boolean(this.hoveredMesh))
