@@ -18,3 +18,5 @@ export const MAP_AMBIENT_CHANNEL = 'music'
 export const MAP_AMBIENT_SOUND_KEY = 'mapMusicIntro'
 export const MAP_INTRO_DIALOGUE_KEY = 'intro'
 export const MAP_INTRO_MUSIC_DUCK_SCALE = 0.35
+export const MAP_INTRO_CAMERA_FOCUS_TRANSITION_MS = 800
+export const MAP_INTRO_CAMERA_FOCUS_TARGET_Y_OFFSET = 1.2

@@ -86,6 +86,7 @@ export default class MapWorld
         this.bushTriggerCooldownMs = 0
         this.hasBoundBloomContext = false
         this.hasTriggeredIntroTeleport = false
+        this.introCameraFocusState = null
         this.onDialogueStart = ({ key } = {}) =>
         {
             if(key !== MapWorldConstants.MAP_INTRO_DIALOGUE_KEY)
@@ -94,6 +95,7 @@ export default class MapWorld
             }
 
             this.experience.sound?.setMusicRuntimeVolumeScale?.(MapWorldConstants.MAP_INTRO_MUSIC_DUCK_SCALE)
+            this.startIntroCameraFocus()
         }
         this.onDialogueEnd = ({ key, interrupted = false } = {}) =>
         {
@@ -333,6 +335,7 @@ export default class MapWorld
         this.waterfalls?.update?.(delta)
         this.bushes?.update?.(delta)
         this.fireflies?.update?.(delta)
+        this.updateIntroCameraFocus(delta)
         this.player?.update(delta)
         this.collisionDebug?.update?.()
         this.updateWaterEntrySound()
@@ -809,6 +812,100 @@ export default class MapWorld
         this.experience.sceneManager?.switchTo?.(SceneEnum.RECUPERATION)
     }
 
+    interpolateAngle(current, target, t)
+    {
+        let delta = target - current
+        while(delta > Math.PI)
+        {
+            delta -= Math.PI * 2
+        }
+        while(delta < -Math.PI)
+        {
+            delta += Math.PI * 2
+        }
+        return current + (delta * t)
+    }
+
+    startIntroCameraFocus()
+    {
+        if(!this.player)
+        {
+            return
+        }
+
+        const targetZone = Array.isArray(this.teleportZones)
+            ? this.teleportZones.find((zone) => zone?.id === 'recuperation')
+            : null
+        if(!targetZone)
+        {
+            return
+        }
+
+        const targetPosition = new THREE.Vector3(
+            targetZone.x,
+            (targetZone.y ?? 0) + MapWorldConstants.MAP_INTRO_CAMERA_FOCUS_TARGET_Y_OFFSET,
+            targetZone.z
+        )
+        const dir = new THREE.Vector3().subVectors(targetPosition, this.player.position)
+        const horizontalDist = Math.hypot(dir.x, dir.z)
+
+        if(horizontalDist <= 1e-6 && Math.abs(dir.y) <= 1e-6)
+        {
+            return
+        }
+
+        const targetYaw = Math.atan2(-dir.x, -dir.z)
+        const unclampedPitch = -Math.atan2(dir.y, Math.max(horizontalDist, 1e-6))
+        const targetPitch = THREE.MathUtils.clamp(
+            unclampedPitch,
+            this.player.settings?.minPitch ?? unclampedPitch,
+            this.player.settings?.maxPitch ?? unclampedPitch
+        )
+
+        this.player.setLookEnabled?.(false)
+        this.player.setMovementEnabled?.(false)
+        this.introCameraFocusState = {
+            elapsedMs: 0,
+            startYaw: this.player.yaw ?? 0,
+            startPitch: this.player.pitch ?? 0,
+            targetYaw,
+            targetPitch
+        }
+    }
+
+    updateIntroCameraFocus(delta = this.experience.time.delta)
+    {
+        const focusState = this.introCameraFocusState
+        if(!focusState || !this.player)
+        {
+            return
+        }
+
+        focusState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const duration = MapWorldConstants.MAP_INTRO_CAMERA_FOCUS_TRANSITION_MS
+        const progress = Math.min(1, focusState.elapsedMs / duration)
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+
+        const nextYaw = this.interpolateAngle(focusState.startYaw, focusState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(focusState.startPitch, focusState.targetPitch, easedProgress)
+
+        this.player.yaw = nextYaw
+        this.player.pitch = nextPitch
+        this.player.cameraSmoothYaw = nextYaw
+        this.player.cameraSmoothPitch = nextPitch
+        this.player.camera?.rotation?.set?.(nextPitch, nextYaw, this.player.cameraSmoothRoll ?? 0)
+
+        if(progress < 1)
+        {
+            return
+        }
+
+        this.player.setLookEnabled?.(true)
+        this.player.setMovementEnabled?.(true)
+        this.introCameraFocusState = null
+    }
+
     refreshTeleportAvailability()
     {
         const introCompleted = this.experience.dialogueManager?.hasFlag?.(INTRO_DIALOGUE_COMPLETED_FLAG) === true
@@ -897,9 +994,12 @@ export default class MapWorld
         this.activeFootstepLoop = null
         this.activeFootstepPlaybackRate = 1
         this.wasPlayerBottomUnderWater = false
+        this.introCameraFocusState = null
 
         if(this.player)
         {
+            this.player.setLookEnabled?.(true)
+            this.player.setMovementEnabled?.(true)
             this.player.destroy()
             this.player = null
         }
