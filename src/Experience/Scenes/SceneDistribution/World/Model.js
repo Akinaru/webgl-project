@@ -15,6 +15,7 @@ export default class SceneDistributionModel
         this.resources = this.experience.resources
         this.resource = this.resources.items.distributionModel
         this.backgroundOverrideTexture = this.resources.items.distributionBackgroundResultTexture ?? null
+        this.wallSlabsTexture = this.resources.items.recuperationWallSlabsTexture ?? null
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
         this.debugFolder = null
@@ -111,6 +112,7 @@ export default class SceneDistributionModel
 
             child.castShadow = true
             child.receiveShadow = true
+            this.applyWallSlabsTexture(child)
             this.applyTransparentMaterialRules(child)
 
             if(!child.geometry?.boundingBox)
@@ -368,6 +370,37 @@ export default class SceneDistributionModel
         {
             mesh.castShadow = false
             mesh.receiveShadow = false
+        }
+    }
+
+    applyWallSlabsTexture(mesh)
+    {
+        if(!(mesh instanceof THREE.Mesh)
+            || !this.wallSlabsTexture
+            || !this.hasNameInHierarchy(mesh, SceneDistributionModelConstants.WALL_SLABS_TEXTURE_NAME_TOKENS))
+        {
+            return
+        }
+
+        const materials = Array.isArray(mesh.material)
+            ? mesh.material
+            : [mesh.material]
+
+        for(const material of materials)
+        {
+            if(!material || !('map' in material))
+            {
+                continue
+            }
+
+            const texture = this.wallSlabsTexture.clone()
+            texture.colorSpace = THREE.SRGBColorSpace
+            texture.wrapS = THREE.RepeatWrapping
+            texture.wrapT = THREE.RepeatWrapping
+            texture.needsUpdate = true
+
+            material.map = texture
+            material.needsUpdate = true
         }
     }
 

@@ -7,6 +7,10 @@ export const NON_COLLIDABLE_NAME_TOKENS = [
     'background'
 ]
 
+export const WALL_SLABS_TEXTURE_NAME_TOKENS = [
+    'cube'
+]
+
 export const COLLIDABLE_OVERRIDE_NAME_TOKENS = [
     'cube',
     'citerne',
