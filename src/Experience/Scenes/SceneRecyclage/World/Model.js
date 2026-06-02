@@ -193,6 +193,23 @@ export default class SceneRecyclageModel
         if(normalizedName === SceneRecyclageModelConstants.VITRE_MESH_NAME)
         {
             this.applyGlassMaterial(mesh)
+            return
+        }
+
+        if(SceneRecyclageModelConstants.POLYGONE_MATERIAL_MESH_NAMES.includes(normalizedName))
+        {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            for(const material of materials)
+            {
+                if(!material)
+                {
+                    continue
+                }
+
+                material.roughness = SceneRecyclageModelConstants.POLYGONE_MATERIAL_ROUGHNESS
+                material.metalness = SceneRecyclageModelConstants.POLYGONE_MATERIAL_METALNESS
+                material.needsUpdate = true
+            }
         }
     }
 

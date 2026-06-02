@@ -25,6 +25,9 @@ export const NANO_BOTS_TRANSPARENT_MESH_NAME = 'vitre_dome_transparente'
 export const NANO_BOTS_TRANSPARENT_OPACITY = 0.14
 
 export const VITRE_MESH_NAME = 'vitre'
+export const POLYGONE_MATERIAL_MESH_NAMES = Object.freeze(['porte_ext', 'base_dome'])
+export const POLYGONE_MATERIAL_ROUGHNESS = 0.2050000032177195
+export const POLYGONE_MATERIAL_METALNESS = 0
 export const VITRE_COLOR = '#b8dff5'
 export const VITRE_OPACITY = 0.14
 export const VITRE_ROUGHNESS = 0.03
