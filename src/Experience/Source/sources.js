@@ -28,11 +28,13 @@ export const sceneSources = {
     ],
     [SceneEnum.RECYCLAGE]: [
         ...modelSources.filter(s => s.name === 'recyclageModel'),
-        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture')
+        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture'
+            || s.name === 'recyclageGlassPatternTexture')
     ],
     [SceneEnum.NANOBOTS]: [
         ...modelSources.filter(s => s.name === 'nanobotsModel'),
-        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture')
+        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture'
+            || s.name === 'recyclageGlassPatternTexture')
     ],
     [SceneEnum.DISTRIBUTION]: [
         ...modelSources.filter(s => s.name === 'distributionModel'),

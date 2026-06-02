@@ -141,7 +141,8 @@ export default class SceneRecyclageWorld
         this.setWaterDebugFolders()
         this.environment = new MapEnvironment()
         this.recyclageModel = new SceneRecyclageModel({
-            resourceKey: this.variantConfig.modelResourceKey
+            resourceKey: this.variantConfig.modelResourceKey,
+            debugParentFolder: this.debugFolder
         })
         this.findRecyclageDoor()
         this.walls = new SceneRecyclageWalls({
@@ -739,7 +740,8 @@ export default class SceneRecyclageWorld
             resourceKey: SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].modelResourceKey,
             position: offset,
             visible: false,
-            clearExistingRoots: false
+            clearExistingRoots: false,
+            debugParentFolder: this.debugFolder
         })
         this.nanobotsWalls = new SceneRecyclageWalls({
             recyclageModel: this.nanobotsModel,

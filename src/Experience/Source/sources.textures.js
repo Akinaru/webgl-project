@@ -58,5 +58,10 @@ export default [
         name: 'recuperationWallSlabsTexture',
         type: 'texture',
         path: 'textures/wall/slabs.png'
+    },
+    {
+        name: 'recyclageGlassPatternTexture',
+        type: 'texture',
+        path: 'textures/glass/glass_text.jpg'
     }
 ]
