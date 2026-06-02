@@ -34,9 +34,9 @@ export const RECYCLAGE_UNDERWATER_LIGHT_PRESET = Object.freeze({
         theta: 0.5,
         phiAmplitude: 0.581,
         thetaAmplitude: 1.161,
-        ambientIntensity: 0.96,
-        hemiIntensity: 0.17,
-        sunIntensity: 1.08,
+        ambientIntensity: 1.08,
+        hemiIntensity: 0.28,
+        sunIntensity: 1.24,
         castShadow: true,
         shadowAmplitude: 28,
         shadowNear: 9.9,
@@ -47,16 +47,16 @@ export const RECYCLAGE_UNDERWATER_LIGHT_PRESET = Object.freeze({
         shadowMapSize: 1024
     }),
     colors: Object.freeze({
-        ambient: '#d0dbe4',
-        sky: '#26a1e1',
-        ground: '#1463a4',
-        sun: '#2a97ca'
+        ambient: '#e3ebf2',
+        sky: '#53c0ef',
+        ground: '#2b79b2',
+        sun: '#76cbe8'
     })
 })
 
 export const RECYCLAGE_UNDERWATER_ENV = Object.freeze({
-    backgroundColor: '#073962',
-    fogColor: '#073962',
+    backgroundColor: '#14507a',
+    fogColor: '#14507a',
     fogMode: 'linear',
     fogNear: 18,
     fogFar: 92
