@@ -75,12 +75,23 @@
     </div>
     <div class="pause-menu" id="pauseMenu" aria-hidden="true">
       <div class="pause-menu__panel menu-panel" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
-        <h2 class="pause-menu__title menu-title" id="pauseMenuTitle">Menu principal</h2>
-        <div class="pause-menu__actions menu-actions">
+        <div class="pause-menu__header">
+          <h2 class="pause-menu__title menu-title" id="pauseMenuTitle">Menu principal</h2>
+          <div class="pause-menu__header-actions">
+            <button class="pause-menu__icon-button" id="pauseSettingsButton" type="button" aria-label="Ouvrir les paramètres">
+              <img class="pause-menu__icon" src="/icons/setting.png" alt="" aria-hidden="true" />
+            </button>
+            <button class="pause-menu__icon-button" id="pauseInfoButton" type="button" aria-label="Ouvrir les informations">
+              <img class="pause-menu__icon" src="/icons/info.png" alt="" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+        <div class="pause-menu__actions">
           <button class="pause-menu__button menu-button" id="pauseResumeButton" type="button">Reprendre l'expérience</button>
-          <button class="pause-menu__button pause-menu__button--warning menu-button menu-button--secondary" id="pauseRestartSceneButton" type="button">Recommencer cette scène</button>
-          <button class="pause-menu__button pause-menu__button--warning menu-button menu-button--secondary" id="pauseRestartAllButton" type="button">Tout recommencer</button>
-          <button class="pause-menu__button pause-menu__button--secondary menu-button menu-button--secondary" id="pauseSettingsButton" type="button">Paramètres</button>
+          <div class="pause-menu__danger-actions">
+            <button class="pause-menu__button pause-menu__button--warning menu-button menu-button--secondary" id="pauseRestartSceneButton" type="button">Recommencer cette scène</button>
+            <button class="pause-menu__button pause-menu__button--warning menu-button menu-button--secondary" id="pauseRestartAllButton" type="button">Tout recommencer</button>
+          </div>
         </div>
       </div>
       <div class="pause-confirm menu-panel" id="pauseConfirmModal" role="dialog" aria-modal="true" aria-labelledby="pauseConfirmTitle" aria-hidden="true">

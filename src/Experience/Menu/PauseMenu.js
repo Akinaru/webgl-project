@@ -48,6 +48,7 @@ export default class PauseMenu extends EventEmitter
         this.restartSceneButton = document.querySelector(PauseMenuConstants.SELECTORS.restartSceneButton)
         this.restartAllButton = document.querySelector(PauseMenuConstants.SELECTORS.restartAllButton)
         this.settingsButton = document.querySelector(PauseMenuConstants.SELECTORS.settingsButton)
+        this.infoButton = document.querySelector(PauseMenuConstants.SELECTORS.infoButton)
         this.confirmModal = document.querySelector(PauseMenuConstants.SELECTORS.confirmModal)
         this.confirmMessage = document.querySelector(PauseMenuConstants.SELECTORS.confirmMessage)
         this.confirmCancelButton = document.querySelector(PauseMenuConstants.SELECTORS.confirmCancelButton)
@@ -72,6 +73,7 @@ export default class PauseMenu extends EventEmitter
             && this.restartSceneButton
             && this.restartAllButton
             && this.settingsButton
+            && this.infoButton
             && this.confirmModal
             && this.confirmMessage
             && this.confirmCancelButton
@@ -208,6 +210,17 @@ export default class PauseMenu extends EventEmitter
             event.preventDefault()
             this.experience?.sound?.playMenuClick?.()
             this.openSettings()
+        }
+
+        this.onInfoClick = (event) =>
+        {
+            event.preventDefault()
+            this.experience?.sound?.playMenuClick?.()
+            this.close({
+                restorePointerLock: false,
+                source: 'info_button'
+            })
+            this.experience?.menu?.endMenu?.open?.()
         }
 
         this.onSettingsCloseClick = (event) =>
@@ -460,6 +473,7 @@ export default class PauseMenu extends EventEmitter
         this.restartSceneButton.addEventListener('click', this.onRestartSceneClick)
         this.restartAllButton.addEventListener('click', this.onRestartAllClick)
         this.settingsButton.addEventListener('click', this.onSettingsClick)
+        this.infoButton.addEventListener('click', this.onInfoClick)
         this.settingsCloseButton.addEventListener('click', this.onSettingsCloseClick)
         this.audioEnabledToggle.addEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.addEventListener('input', this.onMusicVolumeInput)
@@ -488,6 +502,7 @@ export default class PauseMenu extends EventEmitter
             this.restartSceneButton,
             this.restartAllButton,
             this.settingsButton,
+            this.infoButton,
             this.settingsCloseButton,
             this.resetAllButton,
             ...this.graphicsQualityButtons,
@@ -1090,6 +1105,7 @@ export default class PauseMenu extends EventEmitter
         this.restartSceneButton.removeEventListener('click', this.onRestartSceneClick)
         this.restartAllButton.removeEventListener('click', this.onRestartAllClick)
         this.settingsButton.removeEventListener('click', this.onSettingsClick)
+        this.infoButton.removeEventListener('click', this.onInfoClick)
         this.settingsCloseButton.removeEventListener('click', this.onSettingsCloseClick)
         this.audioEnabledToggle.removeEventListener('change', this.onAudioEnabledToggleChange)
         this.musicVolumeSlider.removeEventListener('input', this.onMusicVolumeInput)

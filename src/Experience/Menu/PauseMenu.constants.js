@@ -8,6 +8,7 @@ export const SELECTORS = Object.freeze({
     restartSceneButton: '#pauseRestartSceneButton',
     restartAllButton: '#pauseRestartAllButton',
     settingsButton: '#pauseSettingsButton',
+    infoButton: '#pauseInfoButton',
     confirmModal: '#pauseConfirmModal',
     confirmMessage: '#pauseConfirmMessage',
     confirmCancelButton: '#pauseConfirmCancelButton',
