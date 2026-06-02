@@ -270,5 +270,50 @@
     "playbackRate": 1,
     "channel": "ui",
     "audioType": "sfx"
+  },
+  "bonus001": {
+    "label": "Bonus 001",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/bonus/bonus_001.wav",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
+  },
+  "bonus002": {
+    "label": "Bonus 002",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/bonus/bonus_002.wav",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
+  },
+  "bonus003": {
+    "label": "Bonus 003",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/bonus/bonus_003.wav",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
+  },
+  "bonus004": {
+    "label": "Bonus 004",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/bonus/bonus_004.wav",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
+  },
+  "bonus005": {
+    "label": "Bonus 005",
+    "resourceKey": "",
+    "fallbackPath": "sounds/dialogues/bonus/bonus_005.wav",
+    "volume": 1,
+    "playbackRate": 1,
+    "channel": "dialogue",
+    "audioType": "sfx"
   }
 }

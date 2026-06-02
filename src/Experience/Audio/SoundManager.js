@@ -35,6 +35,7 @@ export default class SoundManager
         this.sfxVolume      = AUDIO_VOLUME_DEFAULTS[AUDIO_TYPE.SFX]
         this.dialogueVolume = AUDIO_VOLUME_DEFAULTS.dialogue
         this.musicRuntimeVolumeScale = 1
+        this.lastSoundPlayedAtMs = 0
 
         this.AudioContextClass = window.AudioContext || window.webkitAudioContext || null
         this.bushSoundUrls = getBushSoundUrls()
@@ -1375,12 +1376,19 @@ export default class SoundManager
 
     markSoundPlayed(soundName)
     {
+        this.lastSoundPlayedAtMs = performance.now()
+
         if(!this.debugState)
         {
             return
         }
 
         this.debugState.lastPlayed = String(soundName || 'unknown')
+    }
+
+    getLastSoundPlayedAtMs()
+    {
+        return this.lastSoundPlayedAtMs
     }
 
     getActiveVoicesDebugLabel()

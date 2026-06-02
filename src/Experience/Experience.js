@@ -19,6 +19,7 @@ import BadgeManager from './Badges/BadgeManager.js'
 import Menu from './Menu/Menu.js'
 import InputManager from './Inputs/InputManager.js'
 import SoundManager from './Audio/SoundManager.js'
+import BonusAudioManager from './Audio/BonusAudioManager.js'
 import Tutoriel from './Utils/Tutoriel.js'
 import Bloom from './Common/Characters/Bloom.js'
 
@@ -95,6 +96,7 @@ export default class Experience
         })
         this.sound = new SoundManager(this)
         this.sound.init?.()
+        this.bonusAudio = new BonusAudioManager()
         this.camera = new Camera()
         this.renderer = new Renderer()
         this.sceneManager = new SceneManager()
@@ -184,6 +186,7 @@ export default class Experience
         this.tutoriel?.update(this.time.delta)
         this.bloom?.update()
         this.sound?.update?.(this.time.delta)
+        this.bonusAudio?.update?.(this.time.delta)
         this.camera.update()
         this.renderer.update()
         this.debug.update()
@@ -207,6 +210,7 @@ export default class Experience
         this.bloom?.destroy?.()
         this.bloom = null
         this.menu?.destroy?.()
+        this.bonusAudio?.destroy?.()
         this.sound?.destroy?.()
         this.debugTutorialFolder?.dispose?.()
         this.debugTutorialFolder = null

@@ -312,17 +312,20 @@ export default class DialogueManager extends EventEmitter
         this.choose(this.state.choices[index].id)
     }
 
-    skip()
+    skip({ startNextQueued = true } = {})
     {
         if(!this.isRunning() || this.isPaused)
         {
             return
         }
 
-        this.endCurrentDialogue(this.state.node, { interrupted: true })
+        this.endCurrentDialogue(this.state.node, {
+            interrupted: true,
+            startNextQueued
+        })
     }
 
-    endCurrentDialogue(node = this.state.node, { interrupted = false } = {})
+    endCurrentDialogue(node = this.state.node, { interrupted = false, startNextQueued = true } = {})
     {
         if(!this.isRunning())
         {
@@ -336,7 +339,7 @@ export default class DialogueManager extends EventEmitter
             this.actionExecutor.executeMany(node.actions, this.createActionContext())
         }
 
-        if(this.state.dialogue?.once)
+        if(this.state.dialogue?.once && interrupted !== true)
         {
             this.setFlag(`dialogue.once.${this.state.dialogueKey}`, true)
         }
@@ -354,7 +357,10 @@ export default class DialogueManager extends EventEmitter
             interrupted: interrupted === true
         }])
         this.emitState()
-        this.startNextQueuedDialogue()
+        if(startNextQueued !== false)
+        {
+            this.startNextQueuedDialogue()
+        }
     }
 
     startNextQueuedDialogue()
