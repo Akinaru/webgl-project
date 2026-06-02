@@ -8,8 +8,7 @@ function createSceneState()
     return {
         hasPlayedTooFarDuringDialogue: false,
         hasPlayedTooFarWithoutDialogue: false,
-        hasPlayedActivityReminder: false,
-        activityAvailableSinceMs: null
+        hasPlayedActivityReminder: false
     }
 }
 
@@ -136,6 +135,7 @@ export default class BonusAudioManager
             this.pendingDialogueRestart = {
                 sceneKey,
                 dialogueKey,
+                nodeId: this.dialogueManager?.state?.nodeId ?? null,
                 context: {
                     ...(this.dialogueManager?.state?.context ?? {})
                 }
@@ -158,6 +158,12 @@ export default class BonusAudioManager
                         return
                     }
 
+                    if(typeof restartPayload.nodeId === 'string' && restartPayload.nodeId.trim() !== '')
+                    {
+                        this.dialogueManager?.startByKeyAtNode?.(restartPayload.dialogueKey, restartPayload.nodeId, restartPayload.context)
+                        return
+                    }
+
                     this.dialogueManager?.startByKey?.(restartPayload.dialogueKey, restartPayload.context)
                 }
             })
@@ -167,6 +173,12 @@ export default class BonusAudioManager
                 this.pendingDialogueRestart = null
                 if(restartPayload && this.sceneManager?.currentKey === sceneKey && this.dialogueManager?.isRunning?.() !== true)
                 {
+                    if(typeof restartPayload.nodeId === 'string' && restartPayload.nodeId.trim() !== '')
+                    {
+                        this.dialogueManager?.startByKeyAtNode?.(restartPayload.dialogueKey, restartPayload.nodeId, restartPayload.context)
+                        return true
+                    }
+
                     this.dialogueManager?.startByKey?.(restartPayload.dialogueKey, restartPayload.context)
                 }
             }
@@ -187,27 +199,20 @@ export default class BonusAudioManager
 
     tryPlayActivityReminder(sceneKey = null, now = performance.now())
     {
-        if(!sceneKey)
+        if(sceneKey !== SceneEnum.RECUPERATION)
         {
             return false
         }
 
         const sceneState = this.getSceneState(sceneKey)
-        const isAvailable = this.isSceneActivityAvailable(sceneKey)
-        if(!isAvailable)
-        {
-            sceneState.activityAvailableSinceMs = null
-            return false
-        }
-
         if(sceneState.hasPlayedActivityReminder)
         {
             return false
         }
 
-        if(sceneState.activityAvailableSinceMs === null)
+        const activityAvailableSinceMs = this.getRecuperationActivityReminderStartMs()
+        if(activityAvailableSinceMs === null)
         {
-            sceneState.activityAvailableSinceMs = now
             return false
         }
 
@@ -216,7 +221,7 @@ export default class BonusAudioManager
             return false
         }
 
-        if(now - sceneState.activityAvailableSinceMs < BonusAudioConstants.BONUS_ACTIVITY_REMINDER_DELAY_MS)
+        if(now - activityAvailableSinceMs < BonusAudioConstants.BONUS_ACTIVITY_REMINDER_DELAY_MS)
         {
             return false
         }
@@ -226,35 +231,21 @@ export default class BonusAudioManager
         return true
     }
 
-    isSceneActivityAvailable(sceneKey = null)
+    getRecuperationActivityReminderStartMs()
     {
         const world = this.getCurrentWorld()
-        if(!world)
+        if(this.sceneManager?.currentKey !== SceneEnum.RECUPERATION || !world)
         {
-            return false
+            return null
         }
 
-        if(sceneKey === SceneEnum.RECUPERATION)
+        const completedAtMs = world.tubeRoom015CompletedAtMs
+        if(!Number.isFinite(completedAtMs))
         {
-            return world.hasStartedRecuperationDialogue === true
-                && Boolean(world.tubeWaterController)
-                && world.isReturningToMap !== true
+            return null
         }
 
-        if(sceneKey === SceneEnum.RECYCLAGE)
-        {
-            return world.hasStartedChampignonInteraction === true
-                && world.champignonInteraction?.isActive === true
-                && world.champignonInteraction?.hasCompleted !== true
-        }
-
-        if(sceneKey === SceneEnum.DISTRIBUTION)
-        {
-            return world.hasUnlockedDistributionControls === true
-                && world.hasValidatedDistribution !== true
-        }
-
-        return false
+        return completedAtMs
     }
 
     tryPlayIdleReminder(sceneKey = null, now = performance.now())

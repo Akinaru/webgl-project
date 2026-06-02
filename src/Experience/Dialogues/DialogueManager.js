@@ -90,6 +90,18 @@ export default class DialogueManager extends EventEmitter
 
     startByKey(dialogueKey, context = {})
     {
+        return this.startDialogue(dialogueKey, context)
+    }
+
+    startByKeyAtNode(dialogueKey, nodeId, context = {})
+    {
+        return this.startDialogue(dialogueKey, context, {
+            startNodeId: nodeId
+        })
+    }
+
+    startDialogue(dialogueKey, context = {}, { startNodeId = null } = {})
+    {
         if(typeof dialogueKey !== 'string' || dialogueKey.trim() === '')
         {
             return false
@@ -134,7 +146,7 @@ export default class DialogueManager extends EventEmitter
         this.experience?.sound?.unlock?.()
         this.experience?.sound?.playDialogue?.(dialogue.sound)
 
-        this.goToNode(dialogue.startNode)
+        this.goToNode(startNodeId || dialogue.startNode)
         return true
     }
 

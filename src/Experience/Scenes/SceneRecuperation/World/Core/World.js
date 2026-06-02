@@ -27,6 +27,7 @@ let recuperationWorldInstanceIndex = 0
 const RECUPERATION_ARRIVAL_DIALOGUE_KEY = 'recuperation_0'
 const RECUPERATION_VALIDATION_DIALOGUE_KEY = 'recuperation_1'
 const RECUPERATION_TUBE_ROOM_DIALOGUE_KEY = 'recuperation_2'
+const RECUPERATION_TUBE_ROOM_FLOW_AUDIO_NODE_ID = 'recuperation_015'
 const RECUPERATION_TEST_WATER_SOUND = 'recuperationTestWaterFalling'
 const RECUPERATION_TEST_WATER_CHANNEL = 'recuperationTestWater'
 const RECUPERATION_DIALOGUE_PHASES = Object.freeze({
@@ -131,15 +132,25 @@ export default class SceneRecuperationWorld
             this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
         }
         this.hasTubeFlowPendingAfter015 = false
+        this.tubeRoom015CompletedAtMs = null
         this.testCameraFocusState = null
         this.doorCameraFocusState = null
         this.onTubeRoom015Shown = ({ dialogueKey, nodeId } = {}) =>
         {
-            if(dialogueKey !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || nodeId !== 'recuperation_015')
+            if(dialogueKey !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || nodeId !== RECUPERATION_TUBE_ROOM_FLOW_AUDIO_NODE_ID)
             {
                 return
             }
             this.hasTubeFlowPendingAfter015 = true
+        }
+        this.onTubeRoom015Completed = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || nodeId !== RECUPERATION_TUBE_ROOM_FLOW_AUDIO_NODE_ID)
+            {
+                return
+            }
+
+            this.tubeRoom015CompletedAtMs = performance.now()
         }
         this.onTubeRoom2EndForFlow = ({ key } = {}) =>
         {
@@ -177,6 +188,7 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.on?.('state.recuperationValidation013', this.onValidation013Shown)
         this.experience.dialogueManager?.on?.('end.recuperationDoorOpen', this.onValidation1EndForDoor)
         this.experience.dialogueManager?.on?.('state.recuperationTubeFlow015', this.onTubeRoom015Shown)
+        this.experience.dialogueManager?.on?.('nodecomplete.recuperationTubeFlow015', this.onTubeRoom015Completed)
         this.experience.dialogueManager?.on?.('end.recuperationTubeFlowStart', this.onTubeRoom2EndForFlow)
 
         if(this.resources.isReady)
@@ -1302,12 +1314,15 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.off?.('state.recuperationValidation013')
         this.experience.dialogueManager?.off?.('end.recuperationDoorOpen')
         this.experience.dialogueManager?.off?.('state.recuperationTubeFlow015')
+        this.experience.dialogueManager?.off?.('nodecomplete.recuperationTubeFlow015')
         this.experience.dialogueManager?.off?.('end.recuperationTubeFlowStart')
         this.onValidation013Shown = null
         this.onValidation1EndForDoor = null
         this.onTubeRoom015Shown = null
+        this.onTubeRoom015Completed = null
         this.onTubeRoom2EndForFlow = null
         this.hasTubeFlowPendingAfter015 = false
+        this.tubeRoom015CompletedAtMs = null
         this.releaseTestCameraFocus()
         if(this.doorCameraFocusState)
         {
