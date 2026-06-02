@@ -33,6 +33,7 @@ const BORNE_OBJECTIVE_TEXT = "Cliquer sur l'ecran de la borne"
 const NANOBOTS_INTRO_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey
 const NANOBOTS_VALIDATION_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey
 const NANOBOTS_DOME_TRIGGER_DISTANCE = 2.8
+const NANOBOTS_SCENE_FOV = 40
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -173,6 +174,7 @@ export default class SceneRecyclageWorld
         if(this.variantConfig?.sceneKey === SceneEnum.NANOBOTS)
         {
             this.applyNanobotsLightPreset()
+            this.experience.camera?.setFov?.(NANOBOTS_SCENE_FOV)
         }
         this.ceilingLights = new SceneRecyclageCeilingLights({
             recyclageModel: this.recyclageModel,
@@ -784,6 +786,7 @@ export default class SceneRecyclageWorld
         this.recyclageModel?.setVisible?.(false)
         this.nanobotsModel?.setVisible?.(true)
         this.applyNanobotsLightPreset()
+        this.experience.camera?.setFov?.(NANOBOTS_SCENE_FOV)
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.nanobotsModel?.getBoundaryRadius?.() ?? 48,
@@ -833,6 +836,7 @@ export default class SceneRecyclageWorld
         this.nanobotsModel?.setVisible?.(false)
         this.recyclageModel?.setVisible?.(true)
         this.applyChampignonLightPreset()
+        this.experience.camera?.resetFov?.()
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.recyclageModel?.getBoundaryRadius?.() ?? 48,

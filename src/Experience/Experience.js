@@ -408,6 +408,8 @@ export default class Experience
             return
         }
 
+        this.camera?.resetFov?.()
+
         const checkpoint = this.sceneStartSnapshots.get(currentSceneKey)
         if(checkpoint)
         {
@@ -452,6 +454,7 @@ export default class Experience
 
     restartFromBeginning()
     {
+        this.camera?.resetFov?.()
         this.dialogueManager?.resetRuntimeProgress?.()
         this.metierManager?.resetAll?.()
         this.actionTracker?.reset?.()

@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import Experience from './Experience.js'
 import EventEnum from './Enum/EventEnum.js'
 
+const DEFAULT_CAMERA_FOV = 70
+
 export default class Camera
 {
     constructor()
@@ -21,7 +23,30 @@ export default class Camera
 
     setInstance()
     {
-        this.instance = new THREE.PerspectiveCamera(70, this.sizes.width / this.sizes.height, 0.1, 150)
+        this.defaultFov = DEFAULT_CAMERA_FOV
+        this.instance = new THREE.PerspectiveCamera(this.defaultFov, this.sizes.width / this.sizes.height, 0.1, 150)
+    }
+
+    resetFov()
+    {
+        if(!this.instance)
+        {
+            return
+        }
+
+        this.instance.fov = this.defaultFov
+        this.instance.updateProjectionMatrix()
+    }
+
+    setFov(value)
+    {
+        if(!this.instance || !Number.isFinite(value))
+        {
+            return
+        }
+
+        this.instance.fov = value
+        this.instance.updateProjectionMatrix()
     }
 
     setDebug()
