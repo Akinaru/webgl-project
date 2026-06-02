@@ -591,7 +591,7 @@ export function randomizeInitialRotations()
             return
         }
 
-        const randomQuarterTurns = Math.floor(Math.random() * 4)
+        const randomQuarterTurns = Math.random() < 0.25 ? 1 : 0
         const isSource = Boolean(sourceTarget && sourceTarget.uuid === target.uuid)
         const shouldStartAligned = this.startAlignedTubeUuids.has(target.uuid)
         if(!isSource && !shouldStartAligned && randomQuarterTurns > 0)

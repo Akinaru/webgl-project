@@ -105,42 +105,6 @@ export function isContinuityPairConnected(pair)
  */
 export function applyJoinTargetState(joinTarget, isConnected)
 {
-    const colorLerp = isConnected ? 1 : 0
-
-    joinTarget.traverse((child) =>
-    {
-        if(!(child instanceof THREE.Mesh))
-        {
-            return
-        }
-
-        const materials = Array.isArray(child.material) ? child.material : [child.material]
-        for(const material of materials)
-        {
-            if(!material)
-            {
-                continue
-            }
-
-            if(material.color)
-            {
-                const baseColor = material.userData?.joinBaseColor ?? material.color
-                this.colorMix.lerpColors(baseColor, this.tubeConnectedColor, colorLerp)
-                material.color.copy(this.colorMix)
-            }
-
-            if(material.emissive)
-            {
-                const baseEmissive = material.userData?.joinBaseEmissive ?? this.emissiveOffColor
-                const baseIntensity = material.userData?.joinBaseEmissiveIntensity ?? 1
-                this.emissiveMix.lerpColors(baseEmissive, this.tubeConnectedEmissiveColor, colorLerp)
-                material.emissive.copy(this.emissiveMix)
-                material.emissiveIntensity = THREE.MathUtils.lerp(baseIntensity, Math.max(baseIntensity, 0.35), colorLerp)
-            }
-
-            material.needsUpdate = true
-        }
-    })
 }
 
 
@@ -310,19 +274,6 @@ export function applyTubeFlowColors()
                 if(usesFlowShader)
                 {
                     continue
-                }
-
-                if(material.color)
-                {
-                    this.colorMix.lerpColors(this.disconnectedColor, this.tubeConnectedColor, flowProgress)
-                    material.color.copy(this.colorMix)
-                }
-
-                if(material.emissive)
-                {
-                    this.emissiveMix.lerpColors(this.emissiveOffColor, this.tubeConnectedEmissiveColor, flowProgress)
-                    material.emissive.copy(this.emissiveMix)
-                    material.emissiveIntensity = 0.68 * flowProgress
                 }
 
                 material.needsUpdate = true
