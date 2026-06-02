@@ -35,6 +35,7 @@ const NANOBOTS_INTRO_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS]
 const NANOBOTS_VALIDATION_DIALOGUE_KEY = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey
 const NANOBOTS_DOME_TRIGGER_DISTANCE = 2.8
 const NANOBOTS_SCENE_FOV = 40
+const RECYCLAGE_BLOOM_PLAN_HEIGHT_OFFSET = 0.08
 export default class SceneRecyclageWorld
 {
     constructor(variantConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.RECYCLAGE])
@@ -195,7 +196,7 @@ export default class SceneRecyclageWorld
         {
             this.experience.bloom.setSceneContext({
                 scene: this.experience.scene,
-                groundMeshes: this.recyclageModel.getGroundMeshes?.() ?? [],
+                groundMeshes: this.getBloomGroundMeshesForModel(this.recyclageModel),
                 rails: [],
                 target: this.player
             })
@@ -807,6 +808,57 @@ export default class SceneRecyclageWorld
         })
     }
 
+    getBloomGroundMeshesForModel(model)
+    {
+        if(!model)
+        {
+            return []
+        }
+
+        if(this.variantConfig?.sceneKey === SceneEnum.RECYCLAGE && model === this.recyclageModel)
+        {
+            const planMesh = model.getBloomGroundPlane?.()
+            if(planMesh)
+            {
+                return [planMesh]
+            }
+        }
+
+        return model.getGroundMeshes?.() ?? []
+    }
+
+    syncBloomHeightToRecyclagePlan()
+    {
+        if(this.variantConfig?.sceneKey !== SceneEnum.RECYCLAGE || this.isNanobotsRoomActive === true)
+        {
+            return
+        }
+
+        const bloom = this.experience?.bloom
+        const bloomModel = bloom?.model
+        const bloomGroundPlane = this.recyclageModel?.getBloomGroundPlane?.()
+        if(!bloom || !bloomModel || !bloomGroundPlane)
+        {
+            return
+        }
+
+        bloomGroundPlane.updateMatrixWorld?.(true)
+        const planWorldPosition = new THREE.Vector3()
+        bloomGroundPlane.getWorldPosition(planWorldPosition)
+
+        const targetAnchorY = planWorldPosition.y + RECYCLAGE_BLOOM_PLAN_HEIGHT_OFFSET - (bloom.motion?.heightOffset ?? 0)
+        if(bloom.railAnchorPosition)
+        {
+            bloom.railAnchorPosition.y = targetAnchorY
+        }
+        if(bloom.previousAnchorPosition)
+        {
+            bloom.previousAnchorPosition.y = targetAnchorY
+        }
+
+        bloomModel.position.y = targetAnchorY + (bloom.baseY ?? 0)
+    }
+
     activateEmbeddedNanobotsRoom()
     {
         const nanobotsConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS]
@@ -836,7 +888,7 @@ export default class SceneRecyclageWorld
         {
             this.experience.bloom.setSceneContext({
                 scene: this.experience.scene,
-                groundMeshes: this.nanobotsModel?.getGroundMeshes?.() ?? [],
+                groundMeshes: this.getBloomGroundMeshesForModel(this.nanobotsModel),
                 rails: [],
                 target: this.player
             })
@@ -887,7 +939,7 @@ export default class SceneRecyclageWorld
         {
             this.experience.bloom.setSceneContext({
                 scene: this.experience.scene,
-                groundMeshes: this.recyclageModel?.getGroundMeshes?.() ?? [],
+                groundMeshes: this.getBloomGroundMeshesForModel(this.recyclageModel),
                 rails: [],
                 target: this.player
             })
@@ -985,6 +1037,7 @@ export default class SceneRecyclageWorld
         this.player?.update?.(delta)
         this.updateRecyclageDoor(delta)
         this.underwaterParticles?.update?.(delta)
+        this.syncBloomHeightToRecyclagePlan()
         this.nanobotSwarm?.update?.(delta)
         this.champignonInteraction?.update?.(delta)
         this.borne?.update?.(delta)
