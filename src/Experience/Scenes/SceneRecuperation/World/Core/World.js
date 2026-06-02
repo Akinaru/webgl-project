@@ -130,6 +130,26 @@ export default class SceneRecuperationWorld
             this.pendingReturnToMapAfterDialogue = false
             this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
         }
+        this.hasTubeFlowPendingAfter015 = false
+        this.testCameraFocusState = null
+        this.doorCameraFocusState = null
+        this.onTubeRoom015Shown = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || nodeId !== 'recuperation_015')
+            {
+                return
+            }
+            this.hasTubeFlowPendingAfter015 = true
+        }
+        this.onTubeRoom2EndForFlow = ({ key } = {}) =>
+        {
+            if(key !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || !this.hasTubeFlowPendingAfter015)
+            {
+                return
+            }
+            this.hasTubeFlowPendingAfter015 = false
+            this.tubeWaterController?.startFlowAnimation?.()
+        }
         this.hasPendingDoorOpenAfterDialogue = false
         this.onValidation013Shown = ({ dialogueKey, nodeId } = {}) =>
         {
@@ -147,6 +167,7 @@ export default class SceneRecuperationWorld
             }
             this.hasPendingDoorOpenAfterDialogue = false
             this.door?.setOpen?.(true)
+            this.startDoorCameraFocus()
         }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
@@ -155,6 +176,8 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.on?.('end.recuperationTubeCompletion', this.onTubeCompletionDialogueEnd)
         this.experience.dialogueManager?.on?.('state.recuperationValidation013', this.onValidation013Shown)
         this.experience.dialogueManager?.on?.('end.recuperationDoorOpen', this.onValidation1EndForDoor)
+        this.experience.dialogueManager?.on?.('state.recuperationTubeFlow015', this.onTubeRoom015Shown)
+        this.experience.dialogueManager?.on?.('end.recuperationTubeFlowStart', this.onTubeRoom2EndForFlow)
 
         if(this.resources.isReady)
         {
@@ -498,6 +521,8 @@ export default class SceneRecuperationWorld
         this.collisionDebug?.update?.()
         this.materiau?.update(delta)
         this.updateMaterialTesting(delta)
+        this.updateTestCameraFocus(delta)
+        this.updateDoorCameraFocus(delta)
         this.updateBloomSol1TemporaryMove()
         this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
@@ -583,6 +608,168 @@ export default class SceneRecuperationWorld
         return this.isMaterialTestRunning === true || this.isMaterialSelectionDialogueLockActive === true
     }
 
+    interpolateAngle(current, target, t)
+    {
+        const delta = Math.atan2(Math.sin(target - current), Math.cos(target - current))
+        return current + (delta * t)
+    }
+
+    startTestCameraFocus()
+    {
+        if(!this.player || this.testCameraFocusState)
+        {
+            return
+        }
+
+        const bounds = this.recuperationModel?.getBoundsForNameTokens?.(
+            [SceneRecuperationWorldConstants.RECUPERATION_TEST_CAMERA_FOCUS_TARGET_TOKEN],
+            { exact: true }
+        )
+        if(!bounds)
+        {
+            return
+        }
+
+        const targetCenter = bounds.getCenter(new THREE.Vector3())
+        const dir = new THREE.Vector3().subVectors(targetCenter, this.player.position)
+        const horizontalDist = Math.hypot(dir.x, dir.z)
+
+        if(horizontalDist <= 1e-6 && Math.abs(dir.y) <= 1e-6)
+        {
+            return
+        }
+
+        const targetYaw = Math.atan2(-dir.x, -dir.z)
+        const unclampedPitch = -Math.atan2(dir.y, Math.max(horizontalDist, 1e-6))
+        const targetPitch = THREE.MathUtils.clamp(
+            unclampedPitch,
+            this.player.settings?.minPitch ?? unclampedPitch,
+            this.player.settings?.maxPitch ?? unclampedPitch
+        )
+
+        this.player.setLookEnabled?.(false)
+        this.player.setMovementEnabled?.(false)
+        this.testCameraFocusState = {
+            elapsedMs: 0,
+            animationDone: false,
+            startYaw: this.player.yaw ?? 0,
+            startPitch: this.player.pitch ?? 0,
+            targetYaw,
+            targetPitch
+        }
+    }
+
+    updateTestCameraFocus(delta = this.experience.time.delta)
+    {
+        const focusState = this.testCameraFocusState
+        if(!focusState || focusState.animationDone || !this.player)
+        {
+            return
+        }
+
+        focusState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const duration = SceneRecuperationWorldConstants.RECUPERATION_TEST_CAMERA_FOCUS_TRANSITION_MS
+        const progress = Math.min(1, focusState.elapsedMs / duration)
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+
+        const nextYaw = this.interpolateAngle(focusState.startYaw, focusState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(focusState.startPitch, focusState.targetPitch, easedProgress)
+
+        this.player.yaw = nextYaw
+        this.player.pitch = nextPitch
+        this.player.cameraSmoothYaw = nextYaw
+        this.player.cameraSmoothPitch = nextPitch
+        this.player.camera?.rotation?.set?.(nextPitch, nextYaw, this.player.cameraSmoothRoll ?? 0)
+
+        if(progress >= 1)
+        {
+            focusState.animationDone = true
+        }
+    }
+
+    releaseTestCameraFocus()
+    {
+        if(!this.testCameraFocusState)
+        {
+            return
+        }
+
+        this.player?.setLookEnabled?.(true)
+        this.player?.setMovementEnabled?.(true)
+        this.testCameraFocusState = null
+    }
+
+    startDoorCameraFocus()
+    {
+        if(!this.player || !this.door?.object)
+        {
+            return
+        }
+
+        const doorPosition = new THREE.Vector3()
+        this.door.object.getWorldPosition(doorPosition)
+
+        const dir = new THREE.Vector3().subVectors(doorPosition, this.player.position)
+        const horizontalDist = Math.hypot(dir.x, dir.z)
+
+        if(horizontalDist <= 1e-6 && Math.abs(dir.y) <= 1e-6)
+        {
+            return
+        }
+
+        const targetYaw = Math.atan2(-dir.x, -dir.z)
+        const unclampedPitch = -Math.atan2(dir.y, Math.max(horizontalDist, 1e-6))
+        const targetPitch = THREE.MathUtils.clamp(
+            unclampedPitch,
+            this.player.settings?.minPitch ?? unclampedPitch,
+            this.player.settings?.maxPitch ?? unclampedPitch
+        )
+
+        this.player.setLookEnabled?.(false)
+        this.player.setMovementEnabled?.(false)
+        this.doorCameraFocusState = {
+            elapsedMs: 0,
+            startYaw: this.player.yaw ?? 0,
+            startPitch: this.player.pitch ?? 0,
+            targetYaw,
+            targetPitch
+        }
+    }
+
+    updateDoorCameraFocus(delta = this.experience.time.delta)
+    {
+        const focusState = this.doorCameraFocusState
+        if(!focusState || !this.player)
+        {
+            return
+        }
+
+        focusState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const duration = SceneRecuperationWorldConstants.RECUPERATION_DOOR_CAMERA_FOCUS_TRANSITION_MS
+        const progress = Math.min(1, focusState.elapsedMs / duration)
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+
+        const nextYaw = this.interpolateAngle(focusState.startYaw, focusState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(focusState.startPitch, focusState.targetPitch, easedProgress)
+
+        this.player.yaw = nextYaw
+        this.player.pitch = nextPitch
+        this.player.cameraSmoothYaw = nextYaw
+        this.player.cameraSmoothPitch = nextPitch
+        this.player.camera?.rotation?.set?.(nextPitch, nextYaw, this.player.cameraSmoothRoll ?? 0)
+
+        if(progress < 1)
+        {
+            return
+        }
+
+        this.player.setLookEnabled?.(true)
+        this.player.setMovementEnabled?.(true)
+        this.doorCameraFocusState = null
+    }
+
     startMaterialTest()
     {
         if(!this.currentMaterialSelection || this.isRecuperationActionLocked())
@@ -598,6 +785,7 @@ export default class SceneRecuperationWorld
         this.television?.setTestingState?.(true)
         this.showerParticles?.start?.(this.testDurationSeconds)
         this.experience.sound?.play?.(RECUPERATION_TEST_WATER_SOUND, { volume: 1 })
+        this.startTestCameraFocus()
     }
 
     stopMaterialTest()
@@ -607,6 +795,7 @@ export default class SceneRecuperationWorld
         this.showerParticles?.stop?.()
         this.experience.sound?.stopChannel?.(RECUPERATION_TEST_WATER_CHANNEL)
         this.television?.setTestingState?.(false)
+        this.releaseTestCameraFocus()
     }
 
     updateMaterialTesting(deltaMs = this.experience.time.delta)
@@ -626,6 +815,7 @@ export default class SceneRecuperationWorld
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
         this.experience.sound?.stopChannel?.(RECUPERATION_TEST_WATER_CHANNEL)
+        this.releaseTestCameraFocus()
         const result = this.buildMaterialTestResult(this.currentMaterialSelection)
         this.scoring?.markMaterialTest?.(this.currentMaterialSelection?.key ?? null)
         this.television?.setTestResult?.(result)
@@ -832,9 +1022,10 @@ export default class SceneRecuperationWorld
     handleRoom2Enter()
     {
         this.scoring?.markTubePuzzleStart?.()
-        this.tubeWaterController?.startFlowAnimation?.()
+
         if(this.experience?.isAutoFlowEnabled?.() === false)
         {
+            this.tubeWaterController?.startFlowAnimation?.()
             return
         }
 
@@ -869,11 +1060,10 @@ export default class SceneRecuperationWorld
         this.scoring?.finalize?.()
         this.experience.sound?.play?.(SceneRecuperationWorldConstants.RECUPERATION_FINAL_TUBE_COMPLETE_SOUND_KEY)
         this.isReturningToMap = true
-        this.returnToRecyclageTimeoutId = window.setTimeout(() =>
-        {
-            this.returnToRecyclageTimeoutId = null
-            this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
-        }, SceneRecuperationWorldConstants.AUTO_SWITCH_TO_RECYCLAGE_DELAY_MS)
+        this.pendingReturnToMapAfterDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.COMPLETED
+        })
     }
 
     setWallCrossTeleport()
@@ -1111,8 +1301,20 @@ export default class SceneRecuperationWorld
         this.experience.dialogueManager?.off?.('end.recuperationTubeCompletion')
         this.experience.dialogueManager?.off?.('state.recuperationValidation013')
         this.experience.dialogueManager?.off?.('end.recuperationDoorOpen')
+        this.experience.dialogueManager?.off?.('state.recuperationTubeFlow015')
+        this.experience.dialogueManager?.off?.('end.recuperationTubeFlowStart')
         this.onValidation013Shown = null
         this.onValidation1EndForDoor = null
+        this.onTubeRoom015Shown = null
+        this.onTubeRoom2EndForFlow = null
+        this.hasTubeFlowPendingAfter015 = false
+        this.releaseTestCameraFocus()
+        if(this.doorCameraFocusState)
+        {
+            this.player?.setLookEnabled?.(true)
+            this.player?.setMovementEnabled?.(true)
+            this.doorCameraFocusState = null
+        }
         this.onSelectionDialogueEnd = null
         this.hasPendingDoorOpenAfterDialogue = false
         this.resources.off(this.readyEventName)

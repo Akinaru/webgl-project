@@ -1250,8 +1250,12 @@ export function setDebug()
         step: 0.05
     })
 
+    this.rails.settings.showHelpers = false
+    this.rails.setHelpersVisible(false)
+
     this.debug.addBinding(this.railsFolder, this.rails.settings, 'showHelpers', {
-        label: 'Afficher les rails'
+        label: 'Afficher les rails',
+        export: false
     }).on('change', ({ value }) =>
     {
         this.rails.setHelpersVisible(value)

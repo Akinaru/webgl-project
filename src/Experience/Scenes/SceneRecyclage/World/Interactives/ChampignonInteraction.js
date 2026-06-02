@@ -7,6 +7,9 @@ const HIGHLIGHT_COLOR = new THREE.Color('#9ffb6b')
 const HIGHLIGHT_EMISSIVE = new THREE.Color('#b7ff8f')
 const SLOT_HOVER_COLOR = new THREE.Color(ChampignonConstants.CHAMPIGNON_SLOT_HOVER_COLOR)
 const SLOT_HOVER_EMISSIVE = new THREE.Color(ChampignonConstants.CHAMPIGNON_SLOT_HOVER_EMISSIVE)
+const SLOT_IDLE_GLOW_COLOR = new THREE.Color(ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_COLOR)
+const SLOT_IDLE_GLOW_EMISSIVE = new THREE.Color(ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_EMISSIVE)
+const WHITE_COLOR = new THREE.Color('#ffffff')
 
 export default class ChampignonInteraction
 {
@@ -83,7 +86,7 @@ export default class ChampignonInteraction
 
             if(child instanceof THREE.Mesh && normalizedName.startsWith(ChampignonConstants.CHAMPIGNON_SLOT_NAME_PREFIX))
             {
-                this.slots.push(this.createSlotEntry(child))
+                this.slots.push(this.createSlotEntry(child, this.slots.length))
             }
         })
 
@@ -91,7 +94,7 @@ export default class ChampignonInteraction
         this.debugState.slotsFound = this.slots.length
     }
 
-    createSlotEntry(mesh)
+    createSlotEntry(mesh, slotIndex = 0)
     {
         const interactionBounds = new THREE.Box3().setFromObject(mesh)
         if(!interactionBounds.isEmpty())
@@ -134,12 +137,23 @@ export default class ChampignonInteraction
             materials,
             interactionBounds,
             assignedChampignon: null,
-            isHovered: false
+            isHovered: false,
+            pulseStrength: 0,
+            pulsePhaseOffset: slotIndex * ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_PHASE_OFFSET
         }
     }
 
     createChampignonEntry(root)
     {
+        const champignonIndex = this.champignons.length
+        const lightColor = new THREE.Color(
+            ChampignonConstants.CHAMPIGNON_LIGHT_COLOR_PALETTE[
+                champignonIndex % ChampignonConstants.CHAMPIGNON_LIGHT_COLOR_PALETTE.length
+            ]
+        )
+        const surfaceTintColor = lightColor.clone().lerp(WHITE_COLOR, 0.2)
+        const outlineColor = lightColor.clone().lerp(WHITE_COLOR, 0.35)
+        const surfaceTexture = this.createChampignonSurfaceTexture(surfaceTintColor)
         const meshes = []
         const lightMeshes = []
         const outlineSpecs = []
@@ -159,6 +173,7 @@ export default class ChampignonInteraction
                 return {
                     instance: clone,
                     baseColor: clone.color?.clone?.() ?? null,
+                    baseMap: clone.map ?? null,
                     baseEmissive: clone.emissive?.clone?.() ?? null,
                     baseEmissiveIntensity: Number.isFinite(clone.emissiveIntensity) ? clone.emissiveIntensity : 0
                 }
@@ -181,6 +196,16 @@ export default class ChampignonInteraction
             {
                 lightMeshes.push(child)
             }
+            else
+            {
+                for(const materialState of materials)
+                {
+                    if(materialState.instance)
+                    {
+                        materialState.instance.map = surfaceTexture
+                    }
+                }
+            }
 
             outlineSpecs.push({
                 geometry: child.geometry,
@@ -196,7 +221,7 @@ export default class ChampignonInteraction
         for(const outlineSpec of outlineSpecs)
         {
             const outlineMaterial = new THREE.MeshBasicMaterial({
-                color: ChampignonConstants.CHAMPIGNON_OUTLINE_COLOR,
+                color: outlineColor,
                 side: THREE.BackSide,
                 transparent: true,
                 opacity: ChampignonConstants.CHAMPIGNON_OUTLINE_OPACITY,
@@ -212,7 +237,7 @@ export default class ChampignonInteraction
         root.add(outlineGroup)
 
         const pointLight = new THREE.PointLight(
-            ChampignonConstants.CHAMPIGNON_POINT_LIGHT_COLOR,
+            lightColor,
             0,
             ChampignonConstants.CHAMPIGNON_POINT_LIGHT_DISTANCE
         )
@@ -226,6 +251,10 @@ export default class ChampignonInteraction
             lightMeshes: lightMeshes.length > 0 ? lightMeshes : meshes.map(({ mesh }) => mesh),
             outlineGroup,
             pointLight,
+            lightColor,
+            outlineColor,
+            surfaceTintColor,
+            surfaceTexture,
             energy: 0,
             placed: false,
             slot: null,
@@ -233,6 +262,60 @@ export default class ChampignonInteraction
             appearProgress: 0,
             animatedScale: 0
         }
+    }
+
+    createChampignonSurfaceTexture(surfaceColor)
+    {
+        const textureSize = ChampignonConstants.CHAMPIGNON_TEXTURE_SIZE
+        const canvas = document.createElement('canvas')
+        canvas.width = textureSize
+        canvas.height = textureSize
+
+        const context = canvas.getContext('2d')
+        if(!context)
+        {
+            return null
+        }
+
+        const baseHex = `#${surfaceColor.getHexString()}`
+        const highlightHex = `#${surfaceColor.clone().lerp(WHITE_COLOR, 0.32).getHexString()}`
+        const shadowHex = `#${surfaceColor.clone().multiplyScalar(0.68).getHexString()}`
+
+        context.fillStyle = baseHex
+        context.fillRect(0, 0, textureSize, textureSize)
+
+        const gradient = context.createLinearGradient(0, 0, 0, textureSize)
+        gradient.addColorStop(0, highlightHex)
+        gradient.addColorStop(0.45, 'rgba(255, 255, 255, 0.08)')
+        gradient.addColorStop(1, shadowHex)
+        context.fillStyle = gradient
+        context.fillRect(0, 0, textureSize, textureSize)
+
+        context.fillStyle = 'rgba(255, 255, 255, 0.18)'
+        for(let index = 0; index < 8; index++)
+        {
+            const radius = 8 + ((index % 3) * 4)
+            const x = 14 + ((index * 17) % 96)
+            const y = 18 + ((index * 23) % 88)
+            context.beginPath()
+            context.arc(x, y, radius, 0, Math.PI * 2)
+            context.fill()
+        }
+
+        context.fillStyle = 'rgba(0, 0, 0, 0.14)'
+        for(let index = 0; index < 6; index++)
+        {
+            const stripeY = 12 + (index * 18)
+            context.fillRect(0, stripeY, textureSize, 4)
+        }
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.repeat.set(1.25, 1.25)
+        texture.needsUpdate = true
+        return texture
     }
 
     hideAllChampignons()
@@ -501,11 +584,19 @@ export default class ChampignonInteraction
                     if(meshEntry.isLightMesh)
                     {
                         material.color.copy(materialState.baseColor).multiplyScalar(0.28 + (energy * 0.72))
-                        material.color.lerp(HIGHLIGHT_COLOR, energy * 0.45)
+                        material.color.lerp(champignon.lightColor, energy * 0.4)
+                        material.color.lerp(HIGHLIGHT_COLOR, energy * 0.18)
                     }
                     else
                     {
                         material.color.copy(materialState.baseColor)
+                        material.color.lerp(
+                            champignon.surfaceTintColor,
+                            ChampignonConstants.CHAMPIGNON_SURFACE_TINT_STRENGTH
+                        )
+                        material.color.multiplyScalar(
+                            1 - (energy * ChampignonConstants.CHAMPIGNON_SURFACE_SHADE_STRENGTH)
+                        )
                     }
                 }
 
@@ -514,7 +605,8 @@ export default class ChampignonInteraction
                     if(meshEntry.isLightMesh)
                     {
                         material.emissive.setRGB(0, 0, 0)
-                        material.emissive.lerp(HIGHLIGHT_EMISSIVE, energy)
+                        material.emissive.lerp(champignon.lightColor, energy * 0.9)
+                        material.emissive.lerp(HIGHLIGHT_EMISSIVE, energy * 0.22)
                         material.emissiveIntensity = energy * 1.8
                     }
                     else if(materialState.baseEmissive)
@@ -531,6 +623,7 @@ export default class ChampignonInteraction
         if(champignon.pointLight)
         {
             champignon.pointLight.visible = champignon.placed === true && energy > 0.01
+            champignon.pointLight.color.copy(champignon.lightColor)
             champignon.pointLight.intensity = energy * ChampignonConstants.CHAMPIGNON_POINT_LIGHT_INTENSITY
         }
     }
@@ -582,6 +675,7 @@ export default class ChampignonInteraction
         this.ensureCursorElement()
         this.updateCursor()
         this.updateSlotHover()
+        this.updateSlotIdleGlow()
         this.updateChampignonHover()
         this.updatePlacementAnimations(delta)
 
@@ -695,6 +789,13 @@ export default class ChampignonInteraction
 
         if(this.hoveredChampignon)
         {
+            this.hoveredChampignon.outlineGroup.traverse((child) =>
+            {
+                if(child.material?.color)
+                {
+                    child.material.color.copy(this.hoveredChampignon.outlineColor)
+                }
+            })
             this.hoveredChampignon.outlineGroup.visible = true
         }
     }
@@ -742,6 +843,44 @@ export default class ChampignonInteraction
     applySlotHover(slotEntry, isHovered)
     {
         slotEntry.isHovered = isHovered
+        this.applySlotVisualState(slotEntry)
+    }
+
+    updateSlotIdleGlow()
+    {
+        const shouldPulse = this.phase === ChampignonConstants.CHAMPIGNON_PHASE_PLACING
+            && this.isActive === true
+            && this.hasCompleted !== true
+        const elapsedSeconds = (this.experience.time.elapsed || 0) * 0.001
+
+        for(const slotEntry of this.slots)
+        {
+            const assignedChampignon = slotEntry.assignedChampignon ?? this.slotAssignments.get(slotEntry.mesh)
+            const isAvailable = assignedChampignon?.placed !== true
+            const nextPulseStrength = shouldPulse && isAvailable
+                ? (Math.sin(
+                    (elapsedSeconds * ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_SPEED)
+                    + slotEntry.pulsePhaseOffset
+                ) * 0.5) + 0.5
+                : 0
+
+            if(Math.abs(nextPulseStrength - slotEntry.pulseStrength) < 1e-3)
+            {
+                continue
+            }
+
+            slotEntry.pulseStrength = nextPulseStrength
+            this.applySlotVisualState(slotEntry)
+        }
+    }
+
+    applySlotVisualState(slotEntry)
+    {
+        const idleGlowIntensity = THREE.MathUtils.lerp(
+            ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_MIN_INTENSITY,
+            ChampignonConstants.CHAMPIGNON_SLOT_IDLE_GLOW_MAX_INTENSITY,
+            slotEntry.pulseStrength
+        )
 
         for(const materialState of slotEntry.materials)
         {
@@ -750,7 +889,8 @@ export default class ChampignonInteraction
             if(material.color && materialState.baseColor)
             {
                 material.color.copy(materialState.baseColor)
-                if(isHovered)
+                material.color.lerp(SLOT_IDLE_GLOW_COLOR, 0.08 + (slotEntry.pulseStrength * 0.12))
+                if(slotEntry.isHovered)
                 {
                     material.color.lerp(SLOT_HOVER_COLOR, 0.55)
                 }
@@ -759,12 +899,17 @@ export default class ChampignonInteraction
             if(material.emissive && materialState.baseEmissive)
             {
                 material.emissive.copy(materialState.baseEmissive)
-                material.emissiveIntensity = materialState.baseEmissiveIntensity
-                if(isHovered)
+                material.emissive.lerp(SLOT_IDLE_GLOW_EMISSIVE, 0.25 + (slotEntry.pulseStrength * 0.35))
+                material.emissiveIntensity = Math.max(
+                    materialState.baseEmissiveIntensity,
+                    idleGlowIntensity
+                )
+                if(slotEntry.isHovered)
                 {
                     material.emissive.lerp(SLOT_HOVER_EMISSIVE, 0.85)
                     material.emissiveIntensity = Math.max(
                         materialState.baseEmissiveIntensity,
+                        material.emissiveIntensity,
                         ChampignonConstants.CHAMPIGNON_SLOT_HOVER_EMISSIVE_INTENSITY
                     )
                 }
@@ -936,6 +1081,7 @@ export default class ChampignonInteraction
             {
                 child.material?.dispose?.()
             })
+            champignon.surfaceTexture?.dispose?.()
         }
 
         this.champignons = []

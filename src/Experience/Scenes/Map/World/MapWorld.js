@@ -205,7 +205,8 @@ export default class MapWorld
             collisionMeshes: this.mapModel.getGroundMeshes?.() ?? [],
             groundMeshes: this.mapModel.getGroundMeshes?.() ?? [],
             spawnPosition: MapWorldConstants.MAP_SPAWN_POSITION,
-            spawnYaw: MapWorldConstants.MAP_SPAWN_YAW
+            spawnYaw: MapWorldConstants.MAP_SPAWN_YAW,
+            spawnPitch: MapWorldConstants.MAP_SPAWN_PITCH
         })
         await this.waitForNextFrame()
         if(this.isDestroyed)

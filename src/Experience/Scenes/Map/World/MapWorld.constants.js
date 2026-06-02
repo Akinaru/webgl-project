@@ -1,5 +1,6 @@
-export const MAP_SPAWN_POSITION = Object.freeze({ x: -2.2, y: 7, z: 0.9 })
-export const MAP_SPAWN_YAW = Math.PI
+export const MAP_SPAWN_POSITION = Object.freeze({ x: 2.780, y: 2.661, z: -2.554 })
+export const MAP_SPAWN_YAW = 177.731 * (Math.PI / 180)
+export const MAP_SPAWN_PITCH = -0.756 * (Math.PI / 180)
 export const WATER_ENTRY_EPSILON = 0.02
 export const PLAYER_HEAD_TOP_OFFSET = 0.04
 export const SHALLOW_WATER_MOVE_SPEED_THRESHOLD = 0.08

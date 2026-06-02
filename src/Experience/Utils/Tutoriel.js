@@ -63,17 +63,8 @@ export default class Tutoriel extends EventEmitter
                 progress: 0,
                 targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.MOVE_RIGHT
             },
-            {
-                id: TutorielConstants.TUTORIAL_STEP_IDS.PAUSE_MENU,
-                title: 'Pause',
-                instruction: 'Appuyez sur Echap pour ouvrir le menu pause',
-                action: InputBindingsConstants.INPUT_ACTION.PAUSE,
-                validate: () => false,
-                progress: 0,
-                targetProgress: TutorielConstants.TUTORIAL_TARGET_PROGRESS.PAUSE_MENU
-            }
         ]
-        
+
         this.setUI()
 
         this.onMouseMove = (event) =>
@@ -89,44 +80,6 @@ export default class Tutoriel extends EventEmitter
             }
         }
         this.inputs.on('mousemove', this.onMouseMove)
-        this.onKeyDown = (event) =>
-        {
-            if(this.status !== TutorielConstants.TUTORIAL_STATUS.ACTIVE)
-            {
-                return
-            }
-
-            const step = this.steps[this.currentStepIndex]
-            if(!step || step.id !== TutorielConstants.TUTORIAL_STEP_IDS.PAUSE_MENU || this.isStepTransitioning)
-            {
-                return
-            }
-
-            const pauseCodes = this.inputs?.getActionCodes?.(InputBindingsConstants.INPUT_ACTION.PAUSE) ?? ['Escape']
-            if(!pauseCodes.includes(event?.code))
-            {
-                return
-            }
-
-            step.progress = step.targetProgress
-            this.updateProgressBar(step)
-            window.requestAnimationFrame(() =>
-            {
-                if(this.status !== TutorielConstants.TUTORIAL_STATUS.ACTIVE || this.isStepTransitioning)
-                {
-                    return
-                }
-
-                const currentStep = this.steps[this.currentStepIndex]
-                if(!currentStep || currentStep.id !== TutorielConstants.TUTORIAL_STEP_IDS.PAUSE_MENU)
-                {
-                    return
-                }
-
-                this.nextStep()
-            })
-        }
-        this.inputs.on('keydown.tutorialPauseStep', this.onKeyDown)
         this.resolveKeyboardLayoutMap()
     }
     
@@ -315,7 +268,6 @@ export default class Tutoriel extends EventEmitter
         this.clearFinishTimeout()
         this.clearStepTransitionTimeout()
         this.inputs.off('mousemove', this.onMouseMove)
-        this.inputs.off('keydown.tutorialPauseStep')
         this.container?.remove()
         this.off('start')
         this.off('finished')

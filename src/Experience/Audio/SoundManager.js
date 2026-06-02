@@ -42,6 +42,7 @@ export default class SoundManager
 
     init()
     {
+        this.setupMediaSessionHandlers()
         this.restoreVolumePreferences()
         // audioEnabled peut ne pas encore etre set par Menu au moment de init(),
         // on se rabat sur la preference stockee en localStorage.
@@ -871,6 +872,20 @@ export default class SoundManager
 
         voice.pause?.()
         voice.isPaused = true
+    }
+
+    setupMediaSessionHandlers()
+    {
+        if(!('mediaSession' in navigator))
+        {
+            return
+        }
+
+        const noop = () => {}
+
+        try { navigator.mediaSession.setActionHandler('pause', noop) } catch(e) {}
+        try { navigator.mediaSession.setActionHandler('play', noop) } catch(e) {}
+        try { navigator.mediaSession.setActionHandler('stop', noop) } catch(e) {}
     }
 
     pauseForMenu()
