@@ -58,6 +58,18 @@ export default class Materiau
             new THREE.Vector3()
         ]
 
+        this.lightSettings = {
+            intensity: MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY,
+            selectedMultiplier: MateriauConstants.MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER,
+            distance: MateriauConstants.MATERIAL_BUTTON_LIGHT_DISTANCE,
+            heightOffset: MateriauConstants.MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET
+        }
+        this.lightColorByKey = {}
+        for(const definition of MateriauConstants.MATERIAL_DEFINITIONS)
+        {
+            this.lightColorByKey[definition.key] = new THREE.Color(definition.accentColor)
+        }
+
         this.setWhiteTexture()
         this.setDefinitionTextures()
         this.setMaterialStates()
@@ -532,16 +544,17 @@ export default class Materiau
             return
         }
 
+        const color = this.lightColorByKey[definition.key] ?? new THREE.Color(definition.accentColor)
         const light = new THREE.PointLight(
-            definition.accentColor,
-            MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY,
-            MateriauConstants.MATERIAL_BUTTON_LIGHT_DISTANCE
+            color,
+            this.lightSettings.intensity,
+            this.lightSettings.distance
         )
-        light.position.set(0, MateriauConstants.MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET, 0)
+        light.position.set(0, this.lightSettings.heightOffset, 0)
         light.castShadow = false
         light.intensity = isSelected
-            ? MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY * MateriauConstants.MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER
-            : MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY
+            ? this.lightSettings.intensity * this.lightSettings.selectedMultiplier
+            : this.lightSettings.intensity
         mesh.add(light)
         this.materialButtonLights.set(mesh.uuid, light)
     }
@@ -555,8 +568,95 @@ export default class Materiau
         }
 
         light.intensity = isSelected
-            ? MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY * MateriauConstants.MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER
-            : MateriauConstants.MATERIAL_BUTTON_LIGHT_INTENSITY
+            ? this.lightSettings.intensity * this.lightSettings.selectedMultiplier
+            : this.lightSettings.intensity
+    }
+
+    applyLightSettings()
+    {
+        for(const [uuid, light] of this.materialButtonLights.entries())
+        {
+            if(!(light instanceof THREE.PointLight))
+            {
+                continue
+            }
+
+            const state = this.materialStates.get(uuid)
+            const key = state?.key
+            const isSelected = key === this.selectedMaterialKey
+            const color = this.lightColorByKey?.[key]
+            if(color)
+            {
+                light.color.copy(color)
+            }
+
+            light.intensity = isSelected
+                ? this.lightSettings.intensity * this.lightSettings.selectedMultiplier
+                : this.lightSettings.intensity
+            light.distance = this.lightSettings.distance
+            light.position.y = this.lightSettings.heightOffset
+        }
+    }
+
+    setDebug({ parentFolder = null } = {})
+    {
+        if(!this.experience?.debug?.isDebugEnabled || !parentFolder)
+        {
+            return
+        }
+
+        const debug = this.experience.debug
+        const applySettings = () => this.applyLightSettings()
+
+        this.debugLightsFolder = debug.addFolder('Lumieres materiaux', {
+            parent: parentFolder,
+            expanded: false
+        })
+
+        debug.addBinding(this.debugLightsFolder, this.lightSettings, 'intensity', {
+            label: 'Intensite',
+            min: 0,
+            max: 5,
+            step: 0.01
+        })?.on?.('change', applySettings)
+
+        debug.addBinding(this.debugLightsFolder, this.lightSettings, 'selectedMultiplier', {
+            label: 'Multiplicateur selection',
+            min: 0,
+            max: 3,
+            step: 0.01
+        })?.on?.('change', applySettings)
+
+        debug.addBinding(this.debugLightsFolder, this.lightSettings, 'distance', {
+            label: 'Distance',
+            min: 0,
+            max: 10,
+            step: 0.01
+        })?.on?.('change', applySettings)
+
+        debug.addBinding(this.debugLightsFolder, this.lightSettings, 'heightOffset', {
+            label: 'Hauteur offset',
+            min: -2,
+            max: 2,
+            step: 0.01
+        })?.on?.('change', applySettings)
+
+        for(const definition of MateriauConstants.MATERIAL_DEFINITIONS)
+        {
+            if(!this.lightColorByKey[definition.key])
+            {
+                continue
+            }
+
+            const materialFolder = debug.addFolder(definition.label, {
+                parent: this.debugLightsFolder,
+                expanded: false
+            })
+
+            debug.addThreeColorBinding(materialFolder, this.lightColorByKey, definition.key, {
+                label: 'Couleur lumiere'
+            })?.on?.('change', applySettings)
+        }
     }
 
     clearMaterialButtonLights()
@@ -1035,6 +1135,8 @@ export default class Materiau
             }
         }
 
+        this.debugLightsFolder?.dispose?.()
+        this.debugLightsFolder = null
         this.clearMaterialButtonLights()
         this.materialStates.clear()
         for(const texture of this.definitionTextures.values())

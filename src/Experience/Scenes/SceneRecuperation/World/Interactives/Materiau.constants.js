@@ -29,10 +29,10 @@ export const INDICATOR_LABEL_SHADOW_COLOR = 'rgba(0, 0, 0, 0.28)'
 export const INDICATOR_LABEL_TEXT_COLOR = '#f2fbff'
 export const INDICATOR_LABEL_TEXT_SHADOW_COLOR = 'rgba(7, 26, 41, 0.18)'
 export const INDICATOR_LABEL_FONT = '700 38px "Nunito", "Segoe UI", sans-serif'
-export const MATERIAL_BUTTON_LIGHT_INTENSITY = 0.62
+export const MATERIAL_BUTTON_LIGHT_INTENSITY = 0.52
 export const MATERIAL_BUTTON_LIGHT_SELECTED_MULTIPLIER = 1.28
-export const MATERIAL_BUTTON_LIGHT_DISTANCE = 1.5
-export const MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET = 0.14
+export const MATERIAL_BUTTON_LIGHT_DISTANCE = 0
+export const MATERIAL_BUTTON_LIGHT_HEIGHT_OFFSET = 0.19
 
 export const MATERIAL_DEFINITIONS = Object.freeze([
     {
@@ -45,7 +45,7 @@ export const MATERIAL_DEFINITIONS = Object.freeze([
         key: 'materiau1',
         label: 'Verre',
         description: 'Materiau translucide',
-        accentColor: '#7ec6df'
+        accentColor: '#00abe7'
     },
     {
         key: 'materiau2',

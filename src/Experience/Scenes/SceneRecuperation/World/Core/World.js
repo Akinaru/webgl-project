@@ -59,11 +59,11 @@ export default class SceneRecuperationWorld
         this.materialTestElapsed = 0
         this.currentMaterialSelection = null
         this.isMaterialChoiceValidated = false
+        this.isMaterialSelectionDialogueLockActive = false
         this.hasStartedRecuperationDialogue = false
         this.hasStartedArrivalDialogue = false
         this.hasStartedValidationDialogue = false
         this.activeRecuperationDialogueCount = 0
-        this.selectionDialoguePlayedByMaterialKey = new Set()
         this.hasPlayedFirstTestResultDialogue = false
         this.onDialogueStart = ({ key } = {}) =>
         {
@@ -87,6 +87,16 @@ export default class SceneRecuperationWorld
             {
                 this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
             }
+        }
+        this.onSelectionDialogueEnd = ({ key } = {}) =>
+        {
+            if(key !== RECUPERATION_VALIDATION_DIALOGUE_KEY || this.isMaterialSelectionDialogueLockActive !== true)
+            {
+                return
+            }
+
+            this.isMaterialSelectionDialogueLockActive = false
+            this.television?.syncButtons?.()
         }
         this.pendingReturnToMapAfterDialogue = false
         this.hasSwitchedCeilingLightRooms = false
@@ -120,10 +130,31 @@ export default class SceneRecuperationWorld
             this.pendingReturnToMapAfterDialogue = false
             this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
         }
+        this.hasPendingDoorOpenAfterDialogue = false
+        this.onValidation013Shown = ({ dialogueKey, nodeId } = {}) =>
+        {
+            if(dialogueKey !== RECUPERATION_VALIDATION_DIALOGUE_KEY || nodeId !== 'recuperation_013')
+            {
+                return
+            }
+            this.hasPendingDoorOpenAfterDialogue = true
+        }
+        this.onValidation1EndForDoor = ({ key, interrupted } = {}) =>
+        {
+            if(key !== RECUPERATION_VALIDATION_DIALOGUE_KEY || interrupted || !this.hasPendingDoorOpenAfterDialogue || !this.isMaterialChoiceValidated)
+            {
+                return
+            }
+            this.hasPendingDoorOpenAfterDialogue = false
+            this.door?.setOpen?.(true)
+        }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
+        this.experience.dialogueManager?.on?.('end.recuperationSelectionLock', this.onSelectionDialogueEnd)
         this.experience.dialogueManager?.on?.('state.recuperationBloomSol1', this.onDialogueStateForBloomSol1)
         this.experience.dialogueManager?.on?.('end.recuperationTubeCompletion', this.onTubeCompletionDialogueEnd)
+        this.experience.dialogueManager?.on?.('state.recuperationValidation013', this.onValidation013Shown)
+        this.experience.dialogueManager?.on?.('end.recuperationDoorOpen', this.onValidation1EndForDoor)
 
         if(this.resources.isReady)
         {
@@ -333,6 +364,7 @@ export default class SceneRecuperationWorld
         this.television = new Television({
             recuperationModel: this.recuperationModel,
             debugParentFolder: this.debugFolder,
+            isInteractionLocked: () => this.isRecuperationActionLocked(),
             onTestRequest: () => this.startMaterialTest(),
             onValidateRequest: () => this.validateMaterialChoice()
         })
@@ -403,9 +435,10 @@ export default class SceneRecuperationWorld
             isExternalHoverActive: () =>
                 (this.tubeWaterController?.isHoveringTube?.() ?? false) ||
                 (this.television?.isHoveringInteractive?.() ?? false),
-            isInteractionLocked: () => this.isMaterialTestRunning,
+            isInteractionLocked: () => this.isRecuperationActionLocked(),
             onSelectionChange: (selection) => this.handleMaterialSelection(selection)
         })
+        this.materiau.setDebug({ parentFolder: this.lightDebugFolder })
 
         this.television.setSelection(null)
         this.setRoom2Trigger()
@@ -521,6 +554,7 @@ export default class SceneRecuperationWorld
         if(previousKey !== nextKey)
         {
             this.isMaterialChoiceValidated = false
+            this.hasPendingDoorOpenAfterDialogue = false
             this.resetCeilingLightRooms()
             this.stopMaterialTest()
             this.television?.setTestResult?.(null)
@@ -544,9 +578,14 @@ export default class SceneRecuperationWorld
         this.setExitTeleportActive(false)
     }
 
+    isRecuperationActionLocked()
+    {
+        return this.isMaterialTestRunning === true || this.isMaterialSelectionDialogueLockActive === true
+    }
+
     startMaterialTest()
     {
-        if(!this.currentMaterialSelection || this.isMaterialTestRunning)
+        if(!this.currentMaterialSelection || this.isRecuperationActionLocked())
         {
             return
         }
@@ -600,12 +639,13 @@ export default class SceneRecuperationWorld
     startSelectionDialogueOncePerMaterial(materialKey)
     {
         const normalizedMaterialKey = String(materialKey || '').trim().toLowerCase()
-        if(normalizedMaterialKey === '' || this.selectionDialoguePlayedByMaterialKey.has(normalizedMaterialKey))
+        if(normalizedMaterialKey === '')
         {
             return
         }
 
-        this.selectionDialoguePlayedByMaterialKey.add(normalizedMaterialKey)
+        this.isMaterialSelectionDialogueLockActive = true
+        this.television?.syncButtons?.()
         this.experience.dialogueManager?.startByKey?.(RECUPERATION_VALIDATION_DIALOGUE_KEY, {
             phase: RECUPERATION_DIALOGUE_PHASES.SELECTION,
             materialKey: normalizedMaterialKey
@@ -700,7 +740,7 @@ export default class SceneRecuperationWorld
 
     validateMaterialChoice()
     {
-        if(!this.currentMaterialSelection || this.isMaterialTestRunning)
+        if(!this.currentMaterialSelection || this.isRecuperationActionLocked())
         {
             return
         }
@@ -708,9 +748,12 @@ export default class SceneRecuperationWorld
         this.isMaterialChoiceValidated = true
         this.hasSwitchedCeilingLightRooms = false
         this.experience.badgeManager?.unlock?.('materiau')
-        this.door?.setOpen?.(true)
         this.television?.setValidated?.(true)
         this.startValidationDialogue()
+        if(this.experience?.isAutoFlowEnabled?.() === false)
+        {
+            this.door?.setOpen?.(true)
+        }
     }
 
     handleDoorOpened()
@@ -1063,8 +1106,15 @@ export default class SceneRecuperationWorld
         this.experience.sound?.setMusicRuntimeVolumeScale?.(1)
         this.experience.dialogueManager?.off?.('start.recuperationMusicDuck')
         this.experience.dialogueManager?.off?.('end.recuperationMusicDuck')
+        this.experience.dialogueManager?.off?.('end.recuperationSelectionLock')
         this.experience.dialogueManager?.off?.('state.recuperationBloomSol1')
         this.experience.dialogueManager?.off?.('end.recuperationTubeCompletion')
+        this.experience.dialogueManager?.off?.('state.recuperationValidation013')
+        this.experience.dialogueManager?.off?.('end.recuperationDoorOpen')
+        this.onValidation013Shown = null
+        this.onValidation1EndForDoor = null
+        this.onSelectionDialogueEnd = null
+        this.hasPendingDoorOpenAfterDialogue = false
         this.resources.off(this.readyEventName)
         this.experience.dialogueManager?.off?.('end.recuperationButtonsUnlock')
         this.experience.sound?.stopChannel?.(SceneRecuperationWorldConstants.RECUPERATION_AMBIENT_CHANNEL)
@@ -1200,10 +1250,10 @@ export default class SceneRecuperationWorld
         this.isMaterialTestRunning = false
         this.materialTestElapsed = 0
         this.isMaterialChoiceValidated = false
+        this.isMaterialSelectionDialogueLockActive = false
         this.isExitTeleportActive = false
         this.isReturningToMap = false
         this.returnToRecyclageTimeoutId = null
-        this.selectionDialoguePlayedByMaterialKey?.clear?.()
         this.hasPlayedFirstTestResultDialogue = false
         this.debugFolder?.dispose?.()
         this.debugFolder = null
