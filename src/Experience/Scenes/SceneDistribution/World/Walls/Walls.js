@@ -3,7 +3,8 @@ import Experience from '../../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../../Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { wallShaderChunks } from '../../../SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
-const isWallMeshName = (name) => name.startsWith('room1')
+const isRoom1MeshName = (name) => name.startsWith('room1')
+const isWallMeshName = (name) => isRoom1MeshName(name)
 
 const DEFAULTS = {
     wallScale:        0.45,
@@ -12,7 +13,9 @@ const DEFAULTS = {
     noiseTransition:  0.36,   // largeur du fondu entre zone dalle / zone nue
     slabMin:          0.38,   // multiplicateur couleur sur les joints
     slabMax:          1.20,   // multiplicateur couleur sur les faces de dalle
-    color: new THREE.Color(1, 1, 1)
+    color: new THREE.Color(1, 1, 1),
+    visibleSide:      'front',
+    room1VisibleSide: 'back'
 }
 
 export default class SceneDistributionWalls
@@ -27,6 +30,8 @@ export default class SceneDistributionWalls
         this.uniformRefs = []
 
         this.wallColor = DEFAULTS.color.clone()
+        this.visibleSide = DEFAULTS.visibleSide
+        this.room1VisibleSide = DEFAULTS.room1VisibleSide
 
         this.slabsTexture = this.resources.items.recuperationWallSlabsTexture ?? null
         if(this.slabsTexture)
@@ -56,14 +61,14 @@ export default class SceneDistributionWalls
             if(!isWallMeshName(name)) return
 
             this.ensureWallGeometryNormals(child)
-            this.patchMesh(child)
+            this.patchMesh(child, { isRoom1: isRoom1MeshName(name) })
             count++
         })
 
         console.log(`[Walls] ${count} mesh(es) patchés (Distribution)`)
     }
 
-    patchMesh(mesh)
+    patchMesh(mesh, { isRoom1 = false } = {})
     {
         const src = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
         const slabsTexture = this.slabsTexture
@@ -82,9 +87,10 @@ export default class SceneDistributionWalls
         const mat = new THREE.MeshStandardMaterial({
             roughness: src?.roughness ?? 1.0,
             metalness: src?.metalness ?? 0.0,
-            side:      THREE.DoubleSide
+            side:      this.resolveMaterialSide(isRoom1 ? this.room1VisibleSide : this.visibleSide)
         })
         mat.color.copy(this.wallColor)
+        mat.userData.isDistributionRoom1Wall = isRoom1
         mat.customProgramCacheKey = () => `wall-slab-distrib-${mat.uuid}`
         mat.onBeforeCompile = (shader) =>
         {
@@ -104,6 +110,21 @@ export default class SceneDistributionWalls
         mesh.geometry.attributes.normal.needsUpdate = true
     }
 
+    resolveMaterialSide(sideToken)
+    {
+        if(sideToken === 'front')
+        {
+            return THREE.FrontSide
+        }
+
+        if(sideToken === 'double')
+        {
+            return THREE.DoubleSide
+        }
+
+        return THREE.BackSide
+    }
+
     setDebug(parentFolder)
     {
         if(!this.debug?.isDebugEnabled || !parentFolder) return
@@ -113,6 +134,46 @@ export default class SceneDistributionWalls
         // --- Teinte ---
         const colorBinding = this.debug.addColorBinding(this.debugFolder, this, 'wallColor', { label: 'Teinte' })
         colorBinding?.on?.('change', (e) => { for(const mat of this.materials) mat.color.set(e.value) })
+        this.debug.addBinding(this.debugFolder, this, 'visibleSide', {
+            label: 'Face visible',
+            options: {
+                Interieur: 'front',
+                Exterieur: 'back',
+                Double: 'double'
+            }
+        })?.on?.('change', (e) =>
+        {
+            const side = this.resolveMaterialSide(e.value)
+            for(const mat of this.materials)
+            {
+                if(mat.userData.isDistributionRoom1Wall)
+                {
+                    continue
+                }
+                mat.side = side
+                mat.needsUpdate = true
+            }
+        })
+        this.debug.addBinding(this.debugFolder, this, 'room1VisibleSide', {
+            label: 'Face visible room1',
+            options: {
+                Interieur: 'back',
+                Exterieur: 'front',
+                Double: 'double'
+            }
+        })?.on?.('change', (e) =>
+        {
+            const side = this.resolveMaterialSide(e.value)
+            for(const mat of this.materials)
+            {
+                if(!mat.userData.isDistributionRoom1Wall)
+                {
+                    continue
+                }
+                mat.side = side
+                mat.needsUpdate = true
+            }
+        })
 
         // --- Texture ---
         this.addUniformBinding('Densité dalles',     'uWallScale',          DEFAULTS.wallScale,       0.01,  3.0,  0.005)

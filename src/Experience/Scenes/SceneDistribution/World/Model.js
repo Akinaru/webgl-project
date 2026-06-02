@@ -255,7 +255,7 @@ export default class SceneDistributionModel
     {
         const meshName = (mesh.name || '').toLowerCase()
         const isBackground = SceneDistributionModelConstants.BACKGROUND_OVERRIDE_ENABLED === true
-            && meshName.includes('background')
+            && SceneDistributionModelConstants.BACKGROUND_NAME_TOKENS.some((token) => meshName.includes(token))
         const isRoomEndWindow = SceneDistributionModelConstants.ROOM_END_WINDOW_OVERRIDE_ENABLED === true
             && this.hasExactNameInHierarchy(mesh, ROOM_END_WINDOW_EXACT_NAMES)
         const isTransparentTarget = SceneDistributionModelConstants.TRANSPARENT_EXACT_NAMES.has(meshName)
