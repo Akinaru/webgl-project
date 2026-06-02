@@ -42,6 +42,9 @@ export default class ChampignonInteraction
         this.ownsCursor = false
         this.hoveredSlot = null
         this.hoveredChampignon = null
+        this.slotInteractionRay = new THREE.Ray()
+        this.slotInteractionHitPoint = new THREE.Vector3()
+        this.slotInteractionSize = new THREE.Vector3()
         this.debugState = {
             active: false,
             completed: false,
@@ -90,6 +93,24 @@ export default class ChampignonInteraction
 
     createSlotEntry(mesh)
     {
+        const interactionBounds = new THREE.Box3().setFromObject(mesh)
+        if(!interactionBounds.isEmpty())
+        {
+            interactionBounds.getSize(this.slotInteractionSize)
+            interactionBounds.expandByVector(new THREE.Vector3(
+                ChampignonConstants.CHAMPIGNON_SLOT_INTERACTION_PADDING_XZ,
+                0,
+                ChampignonConstants.CHAMPIGNON_SLOT_INTERACTION_PADDING_XZ
+            ))
+
+            const missingHeight = Math.max(0, ChampignonConstants.CHAMPIGNON_SLOT_INTERACTION_MIN_HEIGHT - this.slotInteractionSize.y)
+            if(missingHeight > 0)
+            {
+                interactionBounds.min.y -= missingHeight * 0.5
+                interactionBounds.max.y += missingHeight * 0.5
+            }
+        }
+
         const sourceMaterials = Array.isArray(mesh.material)
             ? mesh.material
             : [mesh.material]
@@ -111,6 +132,8 @@ export default class ChampignonInteraction
         return {
             mesh,
             materials,
+            interactionBounds,
+            assignedChampignon: null,
             isHovered: false
         }
     }
@@ -254,10 +277,51 @@ export default class ChampignonInteraction
             if(bestChampignon)
             {
                 bestChampignon.slot = slot.mesh
+                slot.assignedChampignon = bestChampignon
                 this.slotAssignments.set(slot.mesh, bestChampignon)
                 availableChampignons.splice(availableChampignons.indexOf(bestChampignon), 1)
             }
         }
+    }
+
+    getHoveredUnplacedSlot()
+    {
+        const interactionRay = this.centerRaycaster.getRay(this.slotInteractionRay)
+        if(!interactionRay)
+        {
+            return null
+        }
+
+        let closestSlot = null
+        let closestDistance = Infinity
+
+        for(const slot of this.slots)
+        {
+            if(slot?.assignedChampignon?.placed === true || !(slot?.interactionBounds instanceof THREE.Box3))
+            {
+                continue
+            }
+
+            const hitPoint = interactionRay.intersectBox(slot.interactionBounds, this.slotInteractionHitPoint)
+            if(!hitPoint)
+            {
+                continue
+            }
+
+            const distance = interactionRay.origin.distanceTo(hitPoint)
+            if(!Number.isFinite(distance) || distance > ChampignonConstants.CHAMPIGNON_MAX_INTERACTION_DISTANCE)
+            {
+                continue
+            }
+
+            if(distance < closestDistance)
+            {
+                closestDistance = distance
+                closestSlot = slot
+            }
+        }
+
+        return closestSlot
     }
 
     bindEvents()
@@ -342,14 +406,13 @@ export default class ChampignonInteraction
 
     handlePlacingInteraction()
     {
-        const targetMeshes = this.slots.map((slot) => slot.mesh)
-        const hit = this.centerRaycaster.intersectFirstHit(targetMeshes, false)
-        if(!hit?.object || !Number.isFinite(hit.distance) || hit.distance > ChampignonConstants.CHAMPIGNON_MAX_INTERACTION_DISTANCE)
+        const hoveredSlot = this.getHoveredUnplacedSlot()
+        if(!hoveredSlot)
         {
             return false
         }
 
-        const champignon = this.slotAssignments.get(hit.object)
+        const champignon = hoveredSlot.assignedChampignon ?? this.slotAssignments.get(hoveredSlot.mesh)
         if(!champignon || champignon.placed === true)
         {
             return false
@@ -647,15 +710,13 @@ export default class ChampignonInteraction
         const targetMeshes = this.slots
             .map((slot) => slot.mesh)
             .filter((mesh) => this.slotAssignments.get(mesh)?.placed !== true)
-        const hit = this.centerRaycaster.intersectFirstHit(targetMeshes, false)
-        if(!hit?.object || !Number.isFinite(hit.distance) || hit.distance > ChampignonConstants.CHAMPIGNON_MAX_INTERACTION_DISTANCE)
+        if(targetMeshes.length === 0)
         {
             this.setHoveredSlot(null)
             return
         }
 
-        const slotEntry = this.slots.find((slot) => slot.mesh === hit.object) ?? null
-        this.setHoveredSlot(slotEntry)
+        this.setHoveredSlot(this.getHoveredUnplacedSlot())
     }
 
     setHoveredSlot(slotEntry)

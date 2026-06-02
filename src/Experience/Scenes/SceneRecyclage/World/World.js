@@ -12,10 +12,12 @@ import SlopeSplash from '../../SceneRecuperation/World/Water/SlopeSplash.js'
 import NanobotInspector from '../../SceneNanobots/NanobotInspector.js'
 import Borne from './Interactives/Borne.js'
 import ChampignonInteraction from './Interactives/ChampignonInteraction.js'
+import SceneRecyclageCeilingLights from './Interactives/CeilingLights.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
 import { SCENE_RECYCLAGE_VARIANTS } from '../SceneRecyclage.config.js'
+import UnderwaterParticles from './UnderwaterParticles.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 import { sceneSources } from '../../../Source/sources.js'
 
@@ -164,7 +166,16 @@ export default class SceneRecyclageWorld
             getFocusPosition: () => this.player?.position ?? null,
             debugParentFolder: this.debugFolder
         })
+        this.applyUnderwaterPreset()
         this.applyNanobotsRecuperationSunPreset()
+        this.ceilingLights = new SceneRecyclageCeilingLights({
+            recyclageModel: this.recyclageModel,
+            debugParentFolder: this.debugFolder
+        })
+        this.underwaterParticles = new UnderwaterParticles({
+            debugParentFolder: this.debugFolder
+        })
+        this.setUnderwaterDebug()
 
         if(this.experience.bloom)
         {
@@ -298,6 +309,144 @@ export default class SceneRecyclageWorld
             offsets[meshName.toLowerCase()] = Math.PI
             return offsets
         }, {})
+    }
+
+    setUnderwaterDebug()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || !this.debugFolder)
+        {
+            return
+        }
+
+        const debug = this.experience.debug
+
+        const underwaterFolder = debug.addFolder('🌊 Sous-marin', {
+            parent: this.debugFolder,
+            expanded: false
+        })
+
+        // Environnement (fond + brouillard)
+        const envFolder = debug.addFolder('Environnement', {
+            parent: underwaterFolder,
+            expanded: false
+        })
+
+        debug.addColorBinding(envFolder, this.environment, 'backgroundColor', {
+            label: 'Couleur fond'
+        })?.on?.('change', () =>
+        {
+            this.environment.scene.background = this.environment.backgroundColor
+        })
+
+        debug.addColorBinding(envFolder, this.environment, 'fogColor', {
+            label: 'Couleur brouillard'
+        })?.on?.('change', () =>
+        {
+            this.environment.applyFog()
+        })
+
+        debug.addBinding(envFolder, this.environment.state, 'fogNear', {
+            label: 'Brouillard debut',
+            min: 0,
+            max: 50,
+            step: 0.5
+        })?.on?.('change', () =>
+        {
+            this.environment.applyFog()
+        })
+
+        debug.addBinding(envFolder, this.environment.state, 'fogFar', {
+            label: 'Brouillard fin',
+            min: 1,
+            max: 100,
+            step: 0.5
+        })?.on?.('change', () =>
+        {
+            this.environment.applyFog()
+        })
+
+        // Lumières
+        const lightFolder = debug.addFolder('Lumieres', {
+            parent: underwaterFolder,
+            expanded: false
+        })
+
+        const applyLight = () =>
+        {
+            this.light?.applyLightColorsAndIntensity?.()
+        }
+
+        debug.addBinding(lightFolder, this.light.state, 'ambientIntensity', {
+            label: 'Intensite ambiante',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })?.on?.('change', applyLight)
+
+        debug.addBinding(lightFolder, this.light.state, 'hemiIntensity', {
+            label: 'Intensite hemispherique',
+            min: 0,
+            max: 2,
+            step: 0.01
+        })?.on?.('change', applyLight)
+
+        debug.addBinding(lightFolder, this.light.state, 'sunIntensity', {
+            label: 'Intensite soleil',
+            min: 0,
+            max: 3,
+            step: 0.01
+        })?.on?.('change', applyLight)
+
+        debug.addColorBinding(lightFolder, this.light, 'ambientColor', {
+            label: 'Couleur ambiante'
+        })?.on?.('change', applyLight)
+
+        debug.addColorBinding(lightFolder, this.light, 'skyColor', {
+            label: 'Couleur ciel'
+        })?.on?.('change', applyLight)
+
+        debug.addColorBinding(lightFolder, this.light, 'groundColor', {
+            label: 'Couleur sol'
+        })?.on?.('change', applyLight)
+
+        debug.addColorBinding(lightFolder, this.light, 'sunColor', {
+            label: 'Couleur soleil'
+        })?.on?.('change', applyLight)
+    }
+
+    applyUnderwaterPreset()
+    {
+        if(!this.light || !this.environment)
+        {
+            return
+        }
+
+        const lightPreset = SceneRecyclageWorldConstants.RECYCLAGE_UNDERWATER_LIGHT_PRESET
+        Object.assign(this.light.state, lightPreset.state)
+        this.light.ambientColor.set(lightPreset.colors.ambient)
+        this.light.skyColor.set(lightPreset.colors.sky)
+        this.light.groundColor.set(lightPreset.colors.ground)
+        this.light.sunColor.set(lightPreset.colors.sun)
+        this.light.applyLightColorsAndIntensity()
+        this.light.sunLight.visible = this.light.state.sunIntensity > 0
+        if(this.light.sunVisual)
+        {
+            this.light.sunVisual.visible = this.light.state.sunIntensity > 0
+        }
+        this.light.updateCoordinates()
+        this.light.updateFocusPosition()
+        this.light.sunLight.position.setFromSpherical(this.light.spherical).add(this.light.focusPosition)
+        this.light.sunTarget.position.copy(this.light.focusPosition)
+        this.light.updateSunVisual()
+        this.light.updateShadow()
+
+        const envPreset = SceneRecyclageWorldConstants.RECYCLAGE_UNDERWATER_ENV
+        this.environment.backgroundColor.set(envPreset.backgroundColor)
+        this.environment.fogColor.set(envPreset.fogColor)
+        this.environment.state.fogMode = envPreset.fogMode
+        this.environment.state.fogNear = envPreset.fogNear
+        this.environment.state.fogFar = envPreset.fogFar
+        this.environment.setFog()
     }
 
     applyNanobotsRecuperationSunPreset()
@@ -737,6 +886,7 @@ export default class SceneRecyclageWorld
         this.nanobotsSlopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.underwaterParticles?.update?.(delta)
         this.champignonInteraction?.update?.(delta)
         this.borne?.update?.(delta)
         this.nanobotInspector?.update?.(delta)
@@ -764,6 +914,10 @@ export default class SceneRecyclageWorld
             this.player = null
         }
 
+        this.underwaterParticles?.destroy?.()
+        this.underwaterParticles = null
+        this.ceilingLights?.destroy?.()
+        this.ceilingLights = null
         this.nanobotInspector?.destroy?.()
         this.nanobotInspector = null
         this.champignonInteraction?.destroy?.()

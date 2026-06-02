@@ -14,6 +14,24 @@ export default class CenterScreenRaycaster
         return Boolean(this.getCamera())
     }
 
+    getRay(target = null)
+    {
+        const camera = this.getCamera()
+        if(!camera)
+        {
+            return null
+        }
+
+        this.raycaster.setFromCamera(this.centerNdc, camera)
+        if(target)
+        {
+            target.copy(this.raycaster.ray)
+            return target
+        }
+
+        return this.raycaster.ray.clone()
+    }
+
     intersectFirst(objects, recursive = false)
     {
         return this.intersectFirstHit(objects, recursive)?.object ?? null

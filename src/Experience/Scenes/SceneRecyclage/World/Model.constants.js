@@ -23,3 +23,12 @@ export const CONSOLE_NAME_TOKENS = [
 
 export const NANO_BOTS_TRANSPARENT_MESH_NAME = 'vitre_dome_transparente'
 export const NANO_BOTS_TRANSPARENT_OPACITY = 0.14
+
+export const VITRE_MESH_NAME = 'vitre'
+export const VITRE_COLOR = '#b8dff5'
+export const VITRE_OPACITY = 0.14
+export const VITRE_ROUGHNESS = 0.03
+export const VITRE_TRANSMISSION = 0.92
+export const VITRE_THICKNESS = 0.4
+export const VITRE_IOR = 1.5
+export const VITRE_REFLECTIVITY = 0.5

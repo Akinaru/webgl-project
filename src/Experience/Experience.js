@@ -35,10 +35,29 @@ const POST_TUTORIAL_OBJECTIVE_KEY = 'intro_follow_bloom'
 const INTRO_DIALOGUE_END_EVENT = 'end.experienceIntroObjective'
 const TUTORIAL_START_DELAY_MS = 8000
 const TUTORIAL_READY_POLL_INTERVAL_MS = 100
+const HIDE_UI_URL_PARAM = 'hideui'
+const HIDE_UI_BODY_CLASS = 'is-ui-hidden'
+
+function readBooleanUrlParam(paramName)
+{
+    if(typeof window === 'undefined')
+    {
+        return false
+    }
+
+    const rawValue = new URLSearchParams(window.location.search).get(paramName)
+    if(typeof rawValue !== 'string')
+    {
+        return false
+    }
+
+    const normalizedValue = rawValue.trim().toLowerCase()
+    return normalizedValue === 'true' || normalizedValue === '1'
+}
 
 export default class Experience
 {
-    constructor(canvas)
+    constructor(canvas, options = {})
     {
         if(instance)
         {
@@ -54,6 +73,10 @@ export default class Experience
         window.experience = this
 
         this.canvas = canvas
+        this.runtimeFlags = {
+            hideUi: options?.hideUi === true || readBooleanUrlParam(HIDE_UI_URL_PARAM)
+        }
+        this.syncUiVisibilityClass()
         this.inputs = new InputManager({ canvas: this.canvas })
 
         this.debug = new Debug({ inputs: this.inputs })
@@ -198,6 +221,7 @@ export default class Experience
         this.time.destroy()
 
         this.renderer.instance.dispose()
+        document.body.classList.remove(HIDE_UI_BODY_CLASS)
         instance = null
         if(window.experience === this)
         {
@@ -213,6 +237,16 @@ export default class Experience
     isAutoFlowEnabled()
     {
         return this.debugAutomationState?.[DEBUG_AUTOMATION_ENABLED_KEY] !== false
+    }
+
+    isUiHidden()
+    {
+        return this.runtimeFlags?.hideUi === true
+    }
+
+    syncUiVisibilityClass()
+    {
+        document.body.classList.toggle(HIDE_UI_BODY_CLASS, this.isUiHidden())
     }
 
     shouldBypassTutorialForDebug()

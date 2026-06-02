@@ -3,8 +3,9 @@ import Experience from '../../../../Experience.js'
 import { applyStandardMaterialPatch } from '../../../../Scenes/Map/World/Shaders/Common/applyStandardMaterialPatch.js'
 import { wallShaderChunks } from '../../../../Scenes/SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
-const isWallMeshName = (name) => name === 'cube' || name.startsWith('cube.')
 const BORNE_NAME = 'borne'
+
+const isWallMeshName = (name) => name === 'cube' || name.startsWith('cube.')
 
 const DEFAULTS = {
     wallScale: 0.45,
