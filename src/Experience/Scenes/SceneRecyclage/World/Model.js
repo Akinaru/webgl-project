@@ -173,20 +173,7 @@ export default class SceneRecyclageModel
 
         if(normalizedName === SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_MESH_NAME)
         {
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-            for(const material of materials)
-            {
-                if(!material)
-                {
-                    continue
-                }
-
-                material.transparent = true
-                material.opacity = SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_OPACITY
-                material.depthWrite = false
-                material.side = THREE.DoubleSide
-                material.needsUpdate = true
-            }
+            this.applyGlassMaterial(mesh)
             return
         }
 
