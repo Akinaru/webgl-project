@@ -49,7 +49,7 @@
     "label": "Water splash",
     "resourceKey": "waterSplashSound",
     "fallbackPath": "sounds/effects/water/water-splash.mp3",
-    "volume": 1,
+    "volume": 0.1,
     "playbackRate": 1,
     "channel": "sfx",
     "audioType": "sfx"
@@ -67,7 +67,7 @@
     "label": "Water under",
     "resourceKey": "waterUnderSound",
     "fallbackPath": "sounds/effects/water/water-under.mp3",
-    "volume": 0.5,
+    "volume": 0.4,
     "playbackRate": 1,
     "loop": true,
     "fadeInMs": 180,

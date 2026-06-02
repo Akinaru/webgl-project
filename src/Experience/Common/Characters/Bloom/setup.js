@@ -887,6 +887,7 @@ export function setSceneContext({ scene = null, groundMeshes = null, collisionMe
     if(rails)
     {
         this.rails?.setRails?.(rails)
+        this.rails?.setHelpersVisible?.(false)
     }
 
     if(target)
