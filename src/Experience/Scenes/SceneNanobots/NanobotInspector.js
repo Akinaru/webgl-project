@@ -301,13 +301,12 @@ export default class NanobotInspector
             if(this.pivotGroup)
             {
                 this.pivotAzimuth += deltaX * NanobotInspectorConstants.DRAG_SENSITIVITY
-                this.pivotElevation += deltaY * NanobotInspectorConstants.DRAG_SENSITIVITY
+                this.pivotElevation -= deltaY * NanobotInspectorConstants.DRAG_SENSITIVITY
                 this.pivotElevation = THREE.MathUtils.clamp(
                     this.pivotElevation,
                     -NanobotInspectorConstants.ELEVATION_CLAMP,
                     NanobotInspectorConstants.ELEVATION_CLAMP
                 )
-
                 const euler = new THREE.Euler(this.pivotElevation, this.pivotAzimuth, 0, 'YXZ')
                 this.pivotGroup.setRotationFromEuler(euler)
             }

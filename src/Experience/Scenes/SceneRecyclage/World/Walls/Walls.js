@@ -28,7 +28,9 @@ const DEFAULTS = {
     slabMin: 0.38,
     slabMax: 1.20,
     noiseDriftSpeed: 0.248,
-    color: new THREE.Color('#d3d5eb')
+    color: new THREE.Color('#d3d5eb'),
+    roughness: 0,
+    metalness: 0
 }
 
 export default class SceneRecyclageWalls
@@ -145,8 +147,8 @@ export default class SceneRecyclageWalls
         this.uniformRefs.push(uniforms)
 
         const material = new THREE.MeshStandardMaterial({
-            roughness: sourceMaterial?.roughness ?? 1,
-            metalness: sourceMaterial?.metalness ?? 0,
+            roughness: DEFAULTS.roughness,
+            metalness: DEFAULTS.metalness,
             side: materialSide
         })
         material.color.copy(this.wallColor)
