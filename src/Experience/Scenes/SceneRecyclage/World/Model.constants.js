@@ -21,6 +21,10 @@ export const CONSOLE_NAME_TOKENS = [
     'borne'
 ]
 
+export const BLOOM_GROUND_PLANE_NAME_TOKENS = [
+    'plan'
+]
+
 export const NANOBOT_NAME_TOKENS = [
     'nanobot'
 ]

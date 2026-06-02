@@ -28,6 +28,7 @@ export default class SceneRecyclageModel
         this.glassPatternTexture = this.createGlassPatternTexture()
         this.glassPatternOverlayMaterials = []
         this.nanobotObject = null
+        this.bloomGroundPlane = null
         this.nanobotRuntimeMaterials = []
         this.nanobotMaterialRoles = {
             shell: [],
@@ -86,6 +87,7 @@ export default class SceneRecyclageModel
         this.collisionBoxes = []
         this.groundMeshes = []
         this.consoleObject = null
+        this.bloomGroundPlane = null
 
         this.model.traverse((child) =>
         {
@@ -106,6 +108,11 @@ export default class SceneRecyclageModel
             if(!this.consoleObject)
             {
                 this.consoleObject = this.findAncestorByTokens(child, SceneRecyclageModelConstants.CONSOLE_NAME_TOKENS) ?? null
+            }
+
+            if(!this.bloomGroundPlane)
+            {
+                this.bloomGroundPlane = this.findAncestorByTokens(child, SceneRecyclageModelConstants.BLOOM_GROUND_PLANE_NAME_TOKENS) ?? null
             }
 
             if(!this.nanobotObject)
@@ -158,6 +165,7 @@ export default class SceneRecyclageModel
         this.collisionBoxes = [new THREE.Box3().setFromObject(this.fallback)]
         this.groundMeshes = [this.fallback]
         this.consoleObject = null
+        this.bloomGroundPlane = null
         this.nanobotObject = null
         this.computeBoundsDataFrom(this.fallback)
     }
@@ -708,6 +716,11 @@ export default class SceneRecyclageModel
         return this.consoleObject ?? null
     }
 
+    getBloomGroundPlane()
+    {
+        return this.bloomGroundPlane ?? null
+    }
+
     getNanobotObject()
     {
         return this.nanobotObject ?? null
@@ -774,6 +787,7 @@ export default class SceneRecyclageModel
         this.glassPatternTexture?.dispose?.()
         this.glassPatternTexture = null
         this.consoleObject = null
+        this.bloomGroundPlane = null
         this.nanobotObject = null
         this.spawnPosition = null
         this.worldBounds = null
