@@ -170,24 +170,57 @@ export default class SceneRecyclageModel
     applyVisualMaterialOverrides(mesh)
     {
         const normalizedName = String(mesh.name || '').trim().toLowerCase()
-        if(normalizedName !== SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_MESH_NAME)
+
+        if(normalizedName === SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_MESH_NAME)
         {
+            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+            for(const material of materials)
+            {
+                if(!material)
+                {
+                    continue
+                }
+
+                material.transparent = true
+                material.opacity = SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_OPACITY
+                material.depthWrite = false
+                material.side = THREE.DoubleSide
+                material.needsUpdate = true
+            }
             return
         }
 
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-        for(const material of materials)
+        if(normalizedName === SceneRecyclageModelConstants.VITRE_MESH_NAME)
         {
-            if(!material)
-            {
-                continue
-            }
+            this.applyGlassMaterial(mesh)
+        }
+    }
 
-            material.transparent = true
-            material.opacity = SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_OPACITY
-            material.depthWrite = false
-            material.side = THREE.DoubleSide
-            material.needsUpdate = true
+    applyGlassMaterial(mesh)
+    {
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: SceneRecyclageModelConstants.VITRE_COLOR,
+            transparent: true,
+            opacity: SceneRecyclageModelConstants.VITRE_OPACITY,
+            roughness: SceneRecyclageModelConstants.VITRE_ROUGHNESS,
+            metalness: 0,
+            transmission: SceneRecyclageModelConstants.VITRE_TRANSMISSION,
+            thickness: SceneRecyclageModelConstants.VITRE_THICKNESS,
+            ior: SceneRecyclageModelConstants.VITRE_IOR,
+            reflectivity: SceneRecyclageModelConstants.VITRE_REFLECTIVITY,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            envMapIntensity: 1
+        })
+
+        const previousMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        mesh.material = glassMaterial
+        mesh.castShadow = false
+        mesh.renderOrder = 1
+
+        for(const mat of previousMaterials)
+        {
+            mat?.dispose?.()
         }
     }
 
