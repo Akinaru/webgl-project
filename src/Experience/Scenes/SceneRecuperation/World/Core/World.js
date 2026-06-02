@@ -1060,11 +1060,10 @@ export default class SceneRecuperationWorld
         this.scoring?.finalize?.()
         this.experience.sound?.play?.(SceneRecuperationWorldConstants.RECUPERATION_FINAL_TUBE_COMPLETE_SOUND_KEY)
         this.isReturningToMap = true
-        this.returnToRecyclageTimeoutId = window.setTimeout(() =>
-        {
-            this.returnToRecyclageTimeoutId = null
-            this.experience.sceneManager?.switchTo?.(SceneEnum.RECYCLAGE)
-        }, SceneRecuperationWorldConstants.AUTO_SWITCH_TO_RECYCLAGE_DELAY_MS)
+        this.pendingReturnToMapAfterDialogue = true
+        this.experience.dialogueManager?.startByKey?.(RECUPERATION_TUBE_ROOM_DIALOGUE_KEY, {
+            phase: RECUPERATION_DIALOGUE_PHASES.COMPLETED
+        })
     }
 
     setWallCrossTeleport()
