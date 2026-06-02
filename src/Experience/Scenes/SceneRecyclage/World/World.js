@@ -18,6 +18,7 @@ import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
 import { SCENE_RECYCLAGE_VARIANTS } from '../SceneRecyclage.config.js'
 import UnderwaterParticles from './UnderwaterParticles.js'
+import NanobotSwarm from './NanobotSwarm.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
 import { sceneSources } from '../../../Source/sources.js'
 
@@ -180,6 +181,11 @@ export default class SceneRecyclageWorld
             recyclageModel: this.recyclageModel,
             debugParentFolder: this.debugFolder
         })
+        if(this.variantConfig?.sceneKey === SceneEnum.NANOBOTS)
+        {
+            this.createNanobotSwarm(this.recyclageModel)
+            this.nanobotSwarm?.setVisible?.(true)
+        }
         this.underwaterParticles = new UnderwaterParticles({
             debugParentFolder: this.debugFolder
         })
@@ -777,6 +783,28 @@ export default class SceneRecyclageWorld
             completionDialogueKey: SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey,
             onInspectionExit: () => this.handleEmbeddedNanobotInspectionExit()
         })
+        this.createNanobotSwarm(this.nanobotsModel)
+        this.nanobotSwarm?.setVisible?.(false)
+    }
+
+    createNanobotSwarm(model)
+    {
+        if(this.nanobotSwarm || !model)
+        {
+            return
+        }
+
+        const sourceObject = model.getNanobotObject?.()
+        if(!sourceObject)
+        {
+            return
+        }
+
+        this.nanobotSwarm = new NanobotSwarm({
+            sourceObject,
+            getFocusPosition: () => this.player?.position ?? null,
+            debugParentFolder: this.nanobotsDebugFolder ?? this.debugFolder
+        })
     }
 
     activateEmbeddedNanobotsRoom()
@@ -787,6 +815,7 @@ export default class SceneRecyclageWorld
         this.nanobotsModel?.setVisible?.(true)
         this.applyNanobotsLightPreset()
         this.experience.camera?.setFov?.(NANOBOTS_SCENE_FOV)
+        this.nanobotSwarm?.setVisible?.(true)
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.nanobotsModel?.getBoundaryRadius?.() ?? 48,
@@ -837,6 +866,7 @@ export default class SceneRecyclageWorld
         this.recyclageModel?.setVisible?.(true)
         this.applyChampignonLightPreset()
         this.experience.camera?.resetFov?.()
+        this.nanobotSwarm?.setVisible?.(false)
 
         this.player?.setRuntimeEnvironment?.({
             boundaryRadius: this.recyclageModel?.getBoundaryRadius?.() ?? 48,
@@ -955,6 +985,7 @@ export default class SceneRecyclageWorld
         this.player?.update?.(delta)
         this.updateRecyclageDoor(delta)
         this.underwaterParticles?.update?.(delta)
+        this.nanobotSwarm?.update?.(delta)
         this.champignonInteraction?.update?.(delta)
         this.borne?.update?.(delta)
         this.nanobotInspector?.update?.(delta)
@@ -984,6 +1015,8 @@ export default class SceneRecyclageWorld
 
         this.underwaterParticles?.destroy?.()
         this.underwaterParticles = null
+        this.nanobotSwarm?.destroy?.()
+        this.nanobotSwarm = null
         this.ceilingLights?.destroy?.()
         this.ceilingLights = null
         this.recyclageDoorObject = null

@@ -27,6 +27,28 @@ export default class SceneRecyclageModel
         this.glassMaterials = []
         this.glassPatternTexture = this.createGlassPatternTexture()
         this.glassPatternOverlayMaterials = []
+        this.nanobotObject = null
+        this.nanobotRuntimeMaterials = []
+        this.nanobotMaterialRoles = {
+            shell: [],
+            core: [],
+            armature: [],
+            accent: []
+        }
+        this.nanobotVisualSettings = {
+            shellColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_SHELL_COLOR),
+            shellEmissiveColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_SHELL_EMISSIVE_COLOR),
+            shellEmissiveIntensity: SceneRecyclageModelConstants.NANOBOT_SHELL_EMISSIVE_INTENSITY,
+            coreColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_CORE_COLOR),
+            coreEmissiveColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_CORE_EMISSIVE_COLOR),
+            coreEmissiveIntensity: SceneRecyclageModelConstants.NANOBOT_CORE_EMISSIVE_INTENSITY,
+            armatureColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_ARMATURE_COLOR),
+            armatureEmissiveColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_ARMATURE_EMISSIVE_COLOR),
+            armatureEmissiveIntensity: SceneRecyclageModelConstants.NANOBOT_ARMATURE_EMISSIVE_INTENSITY,
+            accentColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_ACCENT_COLOR),
+            accentEmissiveColor: new THREE.Color(SceneRecyclageModelConstants.NANOBOT_ACCENT_EMISSIVE_COLOR),
+            accentEmissiveIntensity: SceneRecyclageModelConstants.NANOBOT_ACCENT_EMISSIVE_INTENSITY
+        }
         this.glassUvSettings = {
             repeatX: SceneRecyclageModelConstants.VITRE_PATTERN_REPEAT_X,
             repeatY: SceneRecyclageModelConstants.VITRE_PATTERN_REPEAT_Y,
@@ -86,6 +108,11 @@ export default class SceneRecyclageModel
                 this.consoleObject = this.findAncestorByTokens(child, SceneRecyclageModelConstants.CONSOLE_NAME_TOKENS) ?? null
             }
 
+            if(!this.nanobotObject)
+            {
+                this.nanobotObject = this.findAncestorByTokens(child, SceneRecyclageModelConstants.NANOBOT_NAME_TOKENS) ?? null
+            }
+
             if(!child.geometry?.boundingBox || !this.shouldUseForCollision(child))
             {
                 return
@@ -98,6 +125,9 @@ export default class SceneRecyclageModel
                 this.groundMeshes.push(child)
             }
         })
+
+        this.applyNanobotVisualBoost(this.nanobotObject)
+        this.setNanobotDebug()
 
         this.scene.add(this.model)
         this.model.updateMatrixWorld(true)
@@ -128,6 +158,7 @@ export default class SceneRecyclageModel
         this.collisionBoxes = [new THREE.Box3().setFromObject(this.fallback)]
         this.groundMeshes = [this.fallback]
         this.consoleObject = null
+        this.nanobotObject = null
         this.computeBoundsDataFrom(this.fallback)
     }
 
@@ -213,6 +244,138 @@ export default class SceneRecyclageModel
                 material.needsUpdate = true
             }
         }
+    }
+
+    applyNanobotVisualBoost(rootObject)
+    {
+        if(!(rootObject instanceof THREE.Object3D))
+        {
+            return
+        }
+
+        rootObject.traverse((child) =>
+        {
+            if(!(child instanceof THREE.Mesh))
+            {
+                return
+            }
+
+            const role = this.resolveNanobotMaterialRole(child)
+            const sourceMaterials = Array.isArray(child.material) ? child.material : [child.material]
+            const runtimeMaterials = sourceMaterials.map((material) =>
+            {
+                const runtimeMaterial = material?.clone?.() ?? material
+                this.applyNanobotRoleToMaterial(runtimeMaterial, role)
+                this.nanobotRuntimeMaterials.push(runtimeMaterial)
+                this.nanobotMaterialRoles[role]?.push(runtimeMaterial)
+                return runtimeMaterial
+            })
+
+            child.material = Array.isArray(child.material) ? runtimeMaterials : runtimeMaterials[0]
+        })
+    }
+
+    resolveNanobotMaterialRole(mesh)
+    {
+        const normalizedMeshName = String(mesh?.name || '').trim().toLowerCase()
+        const normalizedMaterialName = Array.isArray(mesh?.material)
+            ? String(mesh.material[0]?.name || '').trim().toLowerCase()
+            : String(mesh?.material?.name || '').trim().toLowerCase()
+
+        if(this.matchesNanobotToken(normalizedMeshName, SceneRecyclageModelConstants.NANOBOT_CORE_NAME_TOKENS))
+        {
+            return 'core'
+        }
+
+        if(this.matchesNanobotToken(normalizedMeshName, SceneRecyclageModelConstants.NANOBOT_SHELL_NAME_TOKENS))
+        {
+            return 'shell'
+        }
+
+        if(this.matchesNanobotToken(normalizedMeshName, SceneRecyclageModelConstants.NANOBOT_ARMATURE_NAME_TOKENS))
+        {
+            return 'armature'
+        }
+
+        if(this.matchesNanobotToken(normalizedMeshName, SceneRecyclageModelConstants.NANOBOT_ACCENT_NAME_TOKENS)
+            || this.matchesNanobotToken(normalizedMaterialName, SceneRecyclageModelConstants.NANOBOT_ACCENT_NAME_TOKENS))
+        {
+            return 'accent'
+        }
+
+        if(normalizedMaterialName.includes('blue'))
+        {
+            return 'accent'
+        }
+
+        return 'armature'
+    }
+
+    matchesNanobotToken(value, tokens = [])
+    {
+        return tokens.some((token) => value.includes(token))
+    }
+
+    applyNanobotRoleToMaterial(material, role)
+    {
+        if(!material)
+        {
+            return
+        }
+
+        let color = this.nanobotVisualSettings.armatureColor
+        let emissiveColor = this.nanobotVisualSettings.armatureEmissiveColor
+        let emissiveIntensity = this.nanobotVisualSettings.armatureEmissiveIntensity
+        let roughness = SceneRecyclageModelConstants.NANOBOT_ARMATURE_ROUGHNESS
+        let metalness = SceneRecyclageModelConstants.NANOBOT_ARMATURE_METALNESS
+
+        if(role === 'shell')
+        {
+            color = this.nanobotVisualSettings.shellColor
+            emissiveColor = this.nanobotVisualSettings.shellEmissiveColor
+            emissiveIntensity = this.nanobotVisualSettings.shellEmissiveIntensity
+            roughness = SceneRecyclageModelConstants.NANOBOT_SHELL_ROUGHNESS
+            metalness = SceneRecyclageModelConstants.NANOBOT_SHELL_METALNESS
+        }
+        else if(role === 'core')
+        {
+            color = this.nanobotVisualSettings.coreColor
+            emissiveColor = this.nanobotVisualSettings.coreEmissiveColor
+            emissiveIntensity = this.nanobotVisualSettings.coreEmissiveIntensity
+            roughness = SceneRecyclageModelConstants.NANOBOT_CORE_ROUGHNESS
+            metalness = SceneRecyclageModelConstants.NANOBOT_CORE_METALNESS
+        }
+        else if(role === 'accent')
+        {
+            color = this.nanobotVisualSettings.accentColor
+            emissiveColor = this.nanobotVisualSettings.accentEmissiveColor
+            emissiveIntensity = this.nanobotVisualSettings.accentEmissiveIntensity
+            roughness = SceneRecyclageModelConstants.NANOBOT_ACCENT_ROUGHNESS
+            metalness = SceneRecyclageModelConstants.NANOBOT_ACCENT_METALNESS
+        }
+
+        if(material.color?.copy)
+        {
+            material.color.copy(color)
+        }
+
+        if(material.emissive?.copy)
+        {
+            material.emissive.copy(emissiveColor)
+            material.emissiveIntensity = emissiveIntensity
+        }
+
+        if('roughness' in material)
+        {
+            material.roughness = roughness
+        }
+
+        if('metalness' in material)
+        {
+            material.metalness = metalness
+        }
+
+        material.needsUpdate = true
     }
 
     applyGlassMaterial(mesh)
@@ -359,6 +522,60 @@ export default class SceneRecyclageModel
         })
     }
 
+    setNanobotDebug()
+    {
+        if(!this.debug?.isDebugEnabled || !this.debugParentFolder || !this.nanobotObject)
+        {
+            return
+        }
+
+        this.nanobotDebugFolder?.dispose?.()
+        this.nanobotDebugFolder = this.debug.addFolder(SceneRecyclageModelConstants.NANOBOT_DEBUG_FOLDER_TITLE, {
+            parent: this.debugParentFolder,
+            expanded: false
+        })
+
+        this.addNanobotColorBinding('Coque couleur', 'shellColor', 'shell')
+        this.addNanobotBinding('Coque glow', 'shellEmissiveIntensity', 'shell', 0, 3, 0.01)
+        this.addNanobotColorBinding('Coeur couleur', 'coreColor', 'core')
+        this.addNanobotBinding('Coeur glow', 'coreEmissiveIntensity', 'core', 0, 4, 0.01)
+        this.addNanobotColorBinding('Structure couleur', 'armatureColor', 'armature')
+        this.addNanobotBinding('Structure glow', 'armatureEmissiveIntensity', 'armature', 0, 2, 0.01)
+        this.addNanobotColorBinding('Accent couleur', 'accentColor', 'accent')
+        this.addNanobotBinding('Accent glow', 'accentEmissiveIntensity', 'accent', 0, 3, 0.01)
+    }
+
+    addNanobotColorBinding(label, key, role)
+    {
+        this.debug.addThreeColorBinding(this.nanobotDebugFolder, this.nanobotVisualSettings, key, {
+            label
+        })?.on?.('change', () =>
+        {
+            this.refreshNanobotRole(role)
+        })
+    }
+
+    addNanobotBinding(label, key, role, min, max, step)
+    {
+        this.debug.addBinding(this.nanobotDebugFolder, this.nanobotVisualSettings, key, {
+            label,
+            min,
+            max,
+            step
+        })?.on?.('change', () =>
+        {
+            this.refreshNanobotRole(role)
+        })
+    }
+
+    refreshNanobotRole(role)
+    {
+        for(const material of this.nanobotMaterialRoles[role] ?? [])
+        {
+            this.applyNanobotRoleToMaterial(material, role)
+        }
+    }
+
     computeBoundsDataFrom(object3D)
     {
         this.worldBounds = new THREE.Box3().setFromObject(object3D)
@@ -491,6 +708,11 @@ export default class SceneRecyclageModel
         return this.consoleObject ?? null
     }
 
+    getNanobotObject()
+    {
+        return this.nanobotObject ?? null
+    }
+
     setVisible(isVisible = true)
     {
         if(this.model)
@@ -508,6 +730,8 @@ export default class SceneRecyclageModel
     {
         this.debugFolder?.dispose?.()
         this.debugFolder = null
+        this.nanobotDebugFolder?.dispose?.()
+        this.nanobotDebugFolder = null
 
         if(this.model)
         {
@@ -536,9 +760,21 @@ export default class SceneRecyclageModel
             material?.dispose?.()
         }
         this.glassPatternOverlayMaterials = []
+        for(const material of this.nanobotRuntimeMaterials)
+        {
+            material?.dispose?.()
+        }
+        this.nanobotRuntimeMaterials = []
+        this.nanobotMaterialRoles = {
+            shell: [],
+            core: [],
+            armature: [],
+            accent: []
+        }
         this.glassPatternTexture?.dispose?.()
         this.glassPatternTexture = null
         this.consoleObject = null
+        this.nanobotObject = null
         this.spawnPosition = null
         this.worldBounds = null
         this.boundaryBox = null
