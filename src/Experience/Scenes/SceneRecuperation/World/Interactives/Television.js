@@ -7,6 +7,7 @@ export default class Television
     constructor({
         recuperationModel = null,
         debugParentFolder = null,
+        isInteractionLocked = null,
         onTestRequest = null,
         onValidateRequest = null
     } = {})
@@ -16,6 +17,10 @@ export default class Television
         this.resources = this.experience.resources
         this.recuperationModel = recuperationModel
         this.debugParentFolder = debugParentFolder
+        this.dialogueManager = this.experience.dialogueManager
+        this.isInteractionLocked = typeof isInteractionLocked === 'function'
+            ? isInteractionLocked
+            : null
         this.onTestRequest = typeof onTestRequest === 'function' ? onTestRequest : null
         this.onValidateRequest = typeof onValidateRequest === 'function' ? onValidateRequest : null
         this.inputs = this.experience.inputs
@@ -533,7 +538,12 @@ export default class Television
 
     isInteractionActive()
     {
-        return true
+        return !this.isButtonsInteractionLocked()
+    }
+
+    isButtonsInteractionLocked()
+    {
+        return Boolean(this.dialogueManager?.isRunning?.()) || Boolean(this.isInteractionLocked?.())
     }
 
     getInteractiveButtonObjects()
@@ -628,7 +638,7 @@ export default class Television
     {
         const hasSelection = Boolean(this.selectedMaterial)
         const isTesting = this.screenMode === 'testing'
-        const canUseButtons = this.areButtonsUnlocked
+        const canUseButtons = this.areButtonsUnlocked && !this.isButtonsInteractionLocked()
 
         const testState = this.buttonStates.get('test')
         if(testState)
@@ -916,9 +926,10 @@ export default class Television
                 }
             }
 
+            const areButtonsAvailable = this.areButtonsUnlocked && !this.isButtonsInteractionLocked()
             const targetLockedOffset = this.areButtonsUnlocked ? 0 : TelevisionConstants.BUTTON_LOCKED_OFFSET_Y
             state.lockedOffsetY = THREE.MathUtils.damp(state.lockedOffsetY, targetLockedOffset, 10, deltaSeconds)
-            const targetLift = this.areButtonsUnlocked && state.isEnabled ? TelevisionConstants.BUTTON_ENABLED_LIFT : 0
+            const targetLift = areButtonsAvailable && state.isEnabled ? TelevisionConstants.BUTTON_ENABLED_LIFT : 0
             state.enabledLift = THREE.MathUtils.damp(state.enabledLift, targetLift, 10, deltaSeconds)
             state.object.position.y = state.baseY + state.lockedOffsetY + state.enabledLift + state.pressOffsetY
 
@@ -939,7 +950,7 @@ export default class Television
                 if(material.emissive)
                 {
                     material.emissive.set(hasTexture ? '#ffffff' : displayColor)
-                    material.emissiveIntensity = state.isEnabled && this.areButtonsUnlocked
+                    material.emissiveIntensity = state.isEnabled && areButtonsAvailable
                         ? (isHovered ? 0.52 : 0.26)
                         : 0.04
                 }
