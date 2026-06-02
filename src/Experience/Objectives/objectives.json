@@ -27,6 +27,14 @@
       "key": "recyclage_clean_nanobots",
       "text": "Nettoie les nanobots pour qu'ils puissent purifier l'eau correctement."
     },
+    "recyclage_place_champignons": {
+      "key": "recyclage_place_champignons",
+      "text": "Pose tous les champignons sur les socles."
+    },
+    "recyclage_light_champignons": {
+      "key": "recyclage_light_champignons",
+      "text": "Allume tous les champignons en meme temps."
+    },
     "recyclage_restart_nanobots": {
       "key": "recyclage_restart_nanobots",
       "text": "Relance les nanobots une fois le nettoyage termine."
