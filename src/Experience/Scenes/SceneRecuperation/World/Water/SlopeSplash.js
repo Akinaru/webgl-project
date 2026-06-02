@@ -4,14 +4,16 @@ import * as C from './SlopeSplash.constants.js'
 
 export default class SlopeSplash
 {
-    constructor({ debugParentFolder = null } = {})
+    constructor({ debugParentFolder = null, emitters = null } = {})
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.debug = this.experience.debug
         this.debugParentFolder = debugParentFolder
 
-        this.emitters = C.DEFAULT_EMITTERS.map((e) => ({ ...e }))
+        this.emitters = Array.isArray(emitters) && emitters.length > 0
+            ? emitters.map((emitter) => ({ ...emitter }))
+            : C.DEFAULT_EMITTERS.map((emitter) => ({ ...emitter }))
         this.showLines = false
 
         // Tunables exposés au debug
@@ -193,8 +195,11 @@ export default class SlopeSplash
             this.settings.scaleXZ * 1.3,
             Math.random()
         )
-        particle.baseXZScale = scaleXZ
-        particle.baseYScale  = scaleXZ * C.PARTICLE_SCALE_Y_RATIO
+        const emitterScaleMultiplier = Number.isFinite(emitter?.scaleMultiplier) ? emitter.scaleMultiplier : 1
+        const effectiveScaleXZ = scaleXZ * emitterScaleMultiplier
+
+        particle.baseXZScale = effectiveScaleXZ
+        particle.baseYScale  = effectiveScaleXZ * C.PARTICLE_SCALE_Y_RATIO
 
         particle.position.copy(this.randomOnSegment(emitter))
 

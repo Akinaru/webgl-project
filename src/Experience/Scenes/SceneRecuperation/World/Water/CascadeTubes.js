@@ -7,7 +7,7 @@ import { cascadeTubeShaderChunks } from '../Shaders/CascadeTubes/cascadeTubeShad
 import { cascadeSlopeShaderChunks } from '../Shaders/CascadeSlope/cascadeSlopeShaderChunks.js'
 export default class SceneRecuperationCascadeTubes
 {
-    constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null } = {})
+    constructor({ recuperationModel = null, debugTubeFolder = null, debugSlopeFolder = null, sharedWaterColors = null, slopeFlowAngleOffsetByGroupName = null, slopeFlowAngleOffsetByMeshName = null } = {})
     {
         this.experience = new Experience()
         this.debug = this.experience.debug
@@ -15,6 +15,8 @@ export default class SceneRecuperationCascadeTubes
         this.debugTubeFolder = debugTubeFolder
         this.debugSlopeFolder = debugSlopeFolder
         this.sharedWaterColors = sharedWaterColors
+        this.slopeFlowAngleOffsetByGroupName = slopeFlowAngleOffsetByGroupName || {}
+        this.slopeFlowAngleOffsetByMeshName = slopeFlowAngleOffsetByMeshName || {}
         this.runtimeMaterials = []
         this.overlayMeshes = []
         this.localTime = 0
@@ -309,12 +311,58 @@ export default class SceneRecuperationCascadeTubes
             return 0
         }
 
+        const meshOffset = this.getSlopeFlowAngleOffsetForMeshName(mesh)
+        if(Number.isFinite(meshOffset))
+        {
+            return meshOffset
+        }
+
+        const groupOffset = this.getSlopeFlowAngleOffsetForGroup(mesh)
+        if(Number.isFinite(groupOffset))
+        {
+            return groupOffset
+        }
+
         const normalizedName = String(mesh?.name || '')
             .toLowerCase()
             .trim()
             .replace(/[\s_]+/g, '_')
 
         return SceneRecuperationCascadeTubesConstants.SLOPE_FLOW_ANGLE_OFFSET_BY_MESH_NAME[normalizedName] ?? 0
+    }
+
+    getSlopeFlowAngleOffsetForGroup(mesh)
+    {
+        let current = mesh
+        while(current)
+        {
+            const normalizedName = String(current.name || '')
+                .toLowerCase()
+                .trim()
+
+            if(Object.prototype.hasOwnProperty.call(this.slopeFlowAngleOffsetByGroupName, normalizedName))
+            {
+                return this.slopeFlowAngleOffsetByGroupName[normalizedName]
+            }
+
+            current = current.parent
+        }
+
+        return null
+    }
+
+    getSlopeFlowAngleOffsetForMeshName(mesh)
+    {
+        const normalizedName = String(mesh?.name || '')
+            .toLowerCase()
+            .trim()
+
+        if(Object.prototype.hasOwnProperty.call(this.slopeFlowAngleOffsetByMeshName, normalizedName))
+        {
+            return this.slopeFlowAngleOffsetByMeshName[normalizedName]
+        }
+
+        return null
     }
 
     createPatternOffset(mesh, variant = 'base')

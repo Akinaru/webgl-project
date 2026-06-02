@@ -27,10 +27,12 @@ export const sceneSources = {
         ...textureSources.filter(s => s.name.startsWith('recuperation'))
     ],
     [SceneEnum.RECYCLAGE]: [
-        ...modelSources.filter(s => s.name === 'recyclageModel')
+        ...modelSources.filter(s => s.name === 'recyclageModel'),
+        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture')
     ],
     [SceneEnum.NANOBOTS]: [
-        ...modelSources.filter(s => s.name === 'nanobotsModel')
+        ...modelSources.filter(s => s.name === 'nanobotsModel'),
+        ...textureSources.filter(s => s.name === 'recuperationWallSlabsTexture')
     ],
     [SceneEnum.DISTRIBUTION]: [
         ...modelSources.filter(s => s.name === 'distributionModel'),

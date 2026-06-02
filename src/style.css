@@ -2472,3 +2472,134 @@ body.is-device-blocked > :not(.device-warning)
         opacity: 0;
     }
 }
+
+/* Nanobot Inspector */
+.nanobot-crosshair
+{
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.18);
+    pointer-events: none;
+    z-index: 30;
+    opacity: 0;
+    transition: opacity 150ms ease;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.55), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+}
+
+body.is-pointer-locked .nanobot-crosshair
+{
+    opacity: 1;
+}
+
+body.is-nanobot-inspecting .nanobot-crosshair
+{
+    opacity: 0 !important;
+}
+
+.nanobot-inspector
+{
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px) scale(0.98);
+    z-index: 35;
+    opacity: 0;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.55rem;
+    transition: opacity 250ms ease, transform 250ms ease;
+}
+
+.nanobot-inspector.is-visible
+{
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.nanobot-inspector__phase
+{
+    padding: 0.48rem 0.95rem;
+    border-radius: 999px;
+    background: rgba(20, 55, 68, 0.82);
+    color: rgba(232, 248, 255, 0.98);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    box-shadow: 0 12px 28px rgba(3, 12, 16, 0.22);
+}
+
+.nanobot-inspector__status
+{
+    max-width: min(460px, calc(100vw - 2rem));
+    padding: 0.95rem 1.2rem;
+    border-radius: 18px;
+    background: rgba(8, 24, 31, 0.74);
+    color: rgba(241, 249, 255, 0.96);
+    text-align: center;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    box-shadow: 0 18px 36px rgba(1, 9, 13, 0.28);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.nanobot-inspector__close
+{
+    border: none;
+    border-radius: 24px;
+    background: var(--glass-button-background);
+    color: #f6fbff;
+    padding: 0.88rem 2.6rem;
+    font: inherit;
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.2;
+    cursor: pointer;
+    box-shadow: var(--glass-button-shadow);
+    backdrop-filter: var(--glass-blur-soft);
+    -webkit-backdrop-filter: var(--glass-blur-soft);
+    transition: transform 140ms ease, filter 140ms ease;
+    user-select: none;
+}
+
+.nanobot-inspector__close:hover
+{
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.nanobot-inspector__close:active
+{
+    transform: translateY(0);
+    filter: brightness(0.95);
+}
+
+body.is-nanobot-inspecting .objective,
+body.is-nanobot-inspecting .activity-badges,
+body.is-nanobot-inspecting .dialogue,
+body.is-nanobot-inspecting .tutorial-overlay
+{
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 250ms ease !important;
+}
+
+body.is-nanobot-inspecting canvas
+{
+    cursor: grab;
+}
+
+body.is-nanobot-inspecting canvas:active
+{
+    cursor: grabbing;
+}
