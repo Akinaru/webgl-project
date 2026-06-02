@@ -1,4 +1,7 @@
 export const RECYCLAGE_AMBIENT_CHANNEL = 'music'
+export const RECYCLAGE_DOOR_NAME = 'porte'
+export const RECYCLAGE_DOOR_OPEN_OFFSET = -2.0
+export const RECYCLAGE_DOOR_ANIMATION_SPEED = 5.5
 export const RECYCLAGE_DISTRIBUTION_SWITCH_DELAY_MS = 1200
 export const NANOBOTS_EMBEDDED_MODEL_OFFSET = Object.freeze({
     x: 0,

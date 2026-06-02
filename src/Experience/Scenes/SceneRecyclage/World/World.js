@@ -96,6 +96,7 @@ export default class SceneRecyclageWorld
             {
                 this.unlockPrimaryBadge()
                 this.borne?.setScreenAwake?.(true)
+                this.openRecyclageDoor()
                 return
             }
 
@@ -142,6 +143,7 @@ export default class SceneRecyclageWorld
         this.recyclageModel = new SceneRecyclageModel({
             resourceKey: this.variantConfig.modelResourceKey
         })
+        this.findRecyclageDoor()
         this.walls = new SceneRecyclageWalls({
             recyclageModel: this.recyclageModel,
             debugParentFolder: this.debugFolder
@@ -309,6 +311,58 @@ export default class SceneRecyclageWorld
             offsets[meshName.toLowerCase()] = Math.PI
             return offsets
         }, {})
+    }
+
+    findRecyclageDoor()
+    {
+        this.recyclageDoorObject = null
+        this.recyclageDoorInitialY = null
+        this.recyclageDoorCurrentY = null
+        this.recyclageDoorIsOpen = false
+
+        this.recyclageModel?.model?.traverse((child) =>
+        {
+            if(this.recyclageDoorObject)
+            {
+                return
+            }
+
+            const name = String(child.name || '').trim().toLowerCase()
+            if(name === SceneRecyclageWorldConstants.RECYCLAGE_DOOR_NAME)
+            {
+                this.recyclageDoorObject = child
+                this.recyclageDoorInitialY = child.position.y
+                this.recyclageDoorCurrentY = child.position.y
+            }
+        })
+    }
+
+    openRecyclageDoor()
+    {
+        if(!this.recyclageDoorObject || this.recyclageDoorIsOpen)
+        {
+            return
+        }
+
+        this.recyclageDoorIsOpen = true
+        this.recyclageDoorTargetY = this.recyclageDoorInitialY + SceneRecyclageWorldConstants.RECYCLAGE_DOOR_OPEN_OFFSET
+    }
+
+    updateRecyclageDoor(deltaMs = 16.67)
+    {
+        if(!this.recyclageDoorObject || !this.recyclageDoorIsOpen || this.recyclageDoorTargetY === undefined)
+        {
+            return
+        }
+
+        const deltaSeconds = Math.max(0.001, Math.min(0.05, (deltaMs || 16.67) * 0.001))
+        this.recyclageDoorCurrentY = THREE.MathUtils.damp(
+            this.recyclageDoorCurrentY,
+            this.recyclageDoorTargetY,
+            SceneRecyclageWorldConstants.RECYCLAGE_DOOR_ANIMATION_SPEED,
+            deltaSeconds
+        )
+        this.recyclageDoorObject.position.y = this.recyclageDoorCurrentY
     }
 
     setUnderwaterDebug()
@@ -886,6 +940,7 @@ export default class SceneRecyclageWorld
         this.nanobotsSlopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.updateRecyclageDoor(delta)
         this.underwaterParticles?.update?.(delta)
         this.champignonInteraction?.update?.(delta)
         this.borne?.update?.(delta)
@@ -918,6 +973,11 @@ export default class SceneRecyclageWorld
         this.underwaterParticles = null
         this.ceilingLights?.destroy?.()
         this.ceilingLights = null
+        this.recyclageDoorObject = null
+        this.recyclageDoorIsOpen = false
+        this.recyclageDoorCurrentY = null
+        this.recyclageDoorInitialY = null
+        this.recyclageDoorTargetY = undefined
         this.nanobotInspector?.destroy?.()
         this.nanobotInspector = null
         this.champignonInteraction?.destroy?.()
