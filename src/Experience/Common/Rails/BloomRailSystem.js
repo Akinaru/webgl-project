@@ -587,6 +587,26 @@ export default class BloomRailSystem
     {
         this.settings.showHelpers = Boolean(visible)
         this.helperGroup.visible = this.settings.showHelpers
+
+        if(!this.scene)
+        {
+            return
+        }
+
+        const isAttachedToScene = this.helperGroup.parent === this.scene
+        if(this.settings.showHelpers)
+        {
+            if(!isAttachedToScene)
+            {
+                this.scene.add(this.helperGroup)
+            }
+            return
+        }
+
+        if(isAttachedToScene)
+        {
+            this.scene.remove(this.helperGroup)
+        }
     }
 
     /**
@@ -601,7 +621,7 @@ export default class BloomRailSystem
 
         this.scene = newScene
 
-        if(this.scene)
+        if(this.scene && this.settings.showHelpers)
         {
             this.scene.add(this.helperGroup)
         }

@@ -961,12 +961,10 @@ export function setDebug()
         this.applyVisualScale()
     })
 
-    this.transformDebugState = {
-        positionX: this.model?.position?.x ?? this.fallback?.position?.x ?? 0,
-        positionY: this.model?.position?.y ?? this.fallback?.position?.y ?? 0,
-        positionZ: this.model?.position?.z ?? this.fallback?.position?.z ?? 0,
-        orientationDeg: THREE.MathUtils.radToDeg(this.model?.rotation?.y ?? this.fallback?.rotation?.y ?? 0)
-    }
+    this.transformDebugState.positionX = this.model?.position?.x ?? this.fallback?.position?.x ?? 0
+    this.transformDebugState.positionY = this.model?.position?.y ?? this.fallback?.position?.y ?? 0
+    this.transformDebugState.positionZ = this.model?.position?.z ?? this.fallback?.position?.z ?? 0
+    this.transformDebugState.orientationDeg = THREE.MathUtils.radToDeg(this.model?.rotation?.y ?? this.fallback?.rotation?.y ?? 0)
 
     this.transformDebugFolder = this.debug.addFolder('Transform Bloom', {
         parent: this.debugFolder,
@@ -1297,7 +1295,7 @@ export function applyDebugTransform({
         this.railAnchorPosition.x = positionX
         this.previousAnchorPosition.x = positionX
         this.motion.center.x = positionX
-        this.transformDebugState.positionX = positionX
+        if(this.transformDebugState) this.transformDebugState.positionX = positionX
     }
 
     if(Number.isFinite(positionY))
@@ -1306,7 +1304,7 @@ export function applyDebugTransform({
         this.railAnchorPosition.y = positionY - (this.baseY ?? 0)
         this.previousAnchorPosition.y = this.railAnchorPosition.y
         this.motion.center.y = this.railAnchorPosition.y
-        this.transformDebugState.positionY = positionY
+        if(this.transformDebugState) this.transformDebugState.positionY = positionY
     }
 
     if(Number.isFinite(positionZ))
@@ -1315,7 +1313,7 @@ export function applyDebugTransform({
         this.railAnchorPosition.z = positionZ
         this.previousAnchorPosition.z = positionZ
         this.motion.center.z = positionZ
-        this.transformDebugState.positionZ = positionZ
+        if(this.transformDebugState) this.transformDebugState.positionZ = positionZ
     }
 
     if(Number.isFinite(orientationDeg))
@@ -1323,6 +1321,6 @@ export function applyDebugTransform({
         const orientationRadians = THREE.MathUtils.degToRad(orientationDeg)
         targetObject.rotation.y = orientationRadians
         this.baseYaw = orientationRadians + (this.tuning?.facingOffsetRadians ?? 0)
-        this.transformDebugState.orientationDeg = orientationDeg
+        if(this.transformDebugState) this.transformDebugState.orientationDeg = orientationDeg
     }
 }

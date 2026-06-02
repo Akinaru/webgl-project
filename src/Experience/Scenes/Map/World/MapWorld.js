@@ -9,6 +9,7 @@ import MapModel from './MapModel.js'
 import MapCollisionDebug from './MapCollision.debug.js'
 import Water from './Water.js'
 import MapWaterfalls from './MapWaterfalls.js'
+import MapFountain from './MapFountain.js'
 import Bushes from './Bushes.js'
 import CloudLayer from './CloudLayer.js'
 import MapFireflies from './Fireflies.js'
@@ -197,6 +198,16 @@ export default class MapWorld
             return
         }
 
+        this.fountain = new MapFountain({
+            mapModel: this.mapModel,
+            debugParentFolder: this.water?.debugFolder ?? null
+        })
+        await this.waitForNextFrame()
+        if(this.isDestroyed)
+        {
+            return
+        }
+
         const mapBoundary = this.mapModel.getMapBoundary?.({ inset: 0.1 }) ?? null
         this.player = new Player({
             groundHeight: 0,
@@ -333,6 +344,7 @@ export default class MapWorld
         this.clouds?.update?.(delta)
         this.water?.update?.(delta)
         this.waterfalls?.update?.(delta)
+        this.fountain?.update?.(delta)
         this.bushes?.update?.(delta)
         this.fireflies?.update?.(delta)
         this.updateIntroCameraFocus(delta)
@@ -1026,6 +1038,12 @@ export default class MapWorld
         {
             this.waterfalls.destroy?.()
             this.waterfalls = null
+        }
+
+        if(this.fountain)
+        {
+            this.fountain.destroy?.()
+            this.fountain = null
         }
 
         if(this.visibilityDebug)

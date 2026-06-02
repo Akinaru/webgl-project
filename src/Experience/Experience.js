@@ -122,7 +122,7 @@ export default class Experience
                     speed: 3.8,
                     railSwitchDistance: 0.9,
                     endpointSwitchDistance: 1.6,
-                    showHelpers: true
+                    showHelpers: false
                 }
             })
         })
