@@ -306,6 +306,11 @@ export default class Experience
             return
         }
 
+        if(this.sceneManager?.currentKey !== SceneEnum.MAP)
+        {
+            return
+        }
+
         this.dialogueManager?.off?.(INTRO_DIALOGUE_END_EVENT)
         this.dialogueManager?.on?.(INTRO_DIALOGUE_END_EVENT, this.onIntroDialogueEnd)
         this.dialogueManager?.startByKey?.(configuredDialogueKey)
