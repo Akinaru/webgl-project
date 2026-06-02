@@ -714,6 +714,34 @@ export default class SceneDistributionModel
         return this.collisionMeshes ?? []
     }
 
+    getCollisionMeshesExcludingNameTokens(tokens = [])
+    {
+        const collisionMeshes = this.getCollisionMeshes()
+        if(!Array.isArray(tokens) || tokens.length === 0)
+        {
+            return collisionMeshes
+        }
+
+        const normalizedTokens = tokens
+            .map((token) => String(token || '').toLowerCase().trim())
+            .filter(Boolean)
+        if(normalizedTokens.length === 0)
+        {
+            return collisionMeshes
+        }
+
+        return collisionMeshes.filter((mesh) =>
+        {
+            const nodeName = String(mesh?.name || '').toLowerCase().trim()
+            if(nodeName === '')
+            {
+                return true
+            }
+
+            return !normalizedTokens.some((token) => nodeName.includes(token))
+        })
+    }
+
     getGroundMeshes()
     {
         return this.groundMeshes?.length > 0

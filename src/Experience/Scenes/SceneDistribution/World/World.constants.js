@@ -11,5 +11,17 @@ export const DISTRIBUTION_BLOOM_POSITION = Object.freeze({
     y: 0,
     z: 4.348
 })
+export const DISTRIBUTION_BLOOM_HOLD_POSITION = Object.freeze({
+    x: 0.7,
+    z: 1
+})
+export const DISTRIBUTION_BLOOM_EXCLUDED_COLLISION_NAME_TOKENS = Object.freeze([
+    'cube',
+    'door_exit',
+    'door_end'
+])
+export const DISTRIBUTION_BLOOM_PATH_ARRIVAL_DISTANCE = 0.15
+export const DISTRIBUTION_BLOOM_HOLD_ARRIVAL_DISTANCE = 0.12
 export const DISTRIBUTION_DOOR_EXIT_CAMERA_FOCUS_DELAY_MS = 3000
 export const DISTRIBUTION_DOOR_EXIT_CAMERA_FOCUS_TRANSITION_MS = 1800
+export const DISTRIBUTION_RESULT_PLAYER_MIN_Z = 8.0

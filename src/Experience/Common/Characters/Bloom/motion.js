@@ -71,7 +71,7 @@ export function updateDirectFollowMotion(deltaSeconds, bobOffset)
     const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
 
     // On définit une distance de confort autour du joueur
-    const comfortDistance = 1.8
+    const comfortDistance = Math.max(0, this.follow?.comfortDistance ?? 1.8)
     const targetPos = this.followTargetPosition.clone()
     
     // Direction vers la cible
@@ -102,6 +102,11 @@ export function updateDirectFollowMotion(deltaSeconds, bobOffset)
     this.model.position.y = this.railAnchorPosition.y + this.baseY + bobOffset
 
     this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
+    if(this.follow?.forceFacingTarget === true)
+    {
+        this.updateFacingTowardsPlayer(deltaSeconds)
+        return
+    }
     if(this.movementDelta.lengthSq() > minFacingMovementStepSq)
     {
         this.updateFacingFromDirection(this.movementDirection, deltaSeconds)
@@ -143,6 +148,11 @@ export function updateRailMotion(deltaSeconds, bobOffset)
 
     this.updateLocomotionState(this.previousAnchorPosition, this.railAnchorPosition, deltaSeconds)
     const minFacingMovementStepSq = BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP * BloomConstants.BLOOM_MOVEMENT_FACING_MIN_STEP
+    if(this.follow?.forceFacingTarget === true)
+    {
+        this.updateFacingTowardsPlayer(deltaSeconds)
+        return
+    }
     const isMovingOnRail = didMove && this.movementDelta.lengthSq() > minFacingMovementStepSq
     if(isMovingOnRail)
     {

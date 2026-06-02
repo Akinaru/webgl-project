@@ -73,6 +73,8 @@ constructor({
         target: follow.target ?? null,
         getTargetPosition: typeof follow.getTargetPosition === 'function' ? follow.getTargetPosition : null,
         enabled: Boolean(follow.target || follow.getTargetPosition),
+        forceFacingTarget: Boolean(follow.forceFacingTarget),
+        comfortDistance: follow.comfortDistance ?? 1.8,
         groundMeshes: Array.isArray(follow.groundMeshes) ? follow.groundMeshes : [],
         collisionMeshes: Array.isArray(follow.collisionMeshes) ? follow.collisionMeshes : [],
         groundMaxSnapUp: follow.groundMaxSnapUp ?? 0.65
