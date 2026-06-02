@@ -4,12 +4,22 @@ import * as SceneRecyclageModelConstants from './Model.constants.js'
 
 export default class SceneRecyclageModel
 {
-    constructor({ resourceKey = 'recyclageModel' } = {})
+    constructor({
+        resourceKey = 'recyclageModel',
+        position = null,
+        visible = true,
+        clearExistingRoots = true
+    } = {})
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
         this.resourceKey = resourceKey
+        this.rootPosition = position instanceof THREE.Vector3
+            ? position.clone()
+            : new THREE.Vector3(position?.x ?? 0, position?.y ?? 0, position?.z ?? 0)
+        this.initialVisible = visible !== false
+        this.clearExistingRoots = clearExistingRoots !== false
         this.resource = this.resources.items[this.resourceKey]
 
         if(this.resource?.scene)
@@ -23,13 +33,17 @@ export default class SceneRecyclageModel
 
     setModel()
     {
-        this.removeStaleRoots()
+        if(this.clearExistingRoots)
+        {
+            this.removeStaleRoots()
+        }
 
         this.model = this.resource.scene.clone(true)
         this.model.name = '__recyclageModelRoot'
         this.model.userData.isRecyclageModelRoot = true
-        this.model.position.set(0, 0, 0)
+        this.model.position.copy(this.rootPosition)
         this.model.scale.set(1, 1, 1)
+        this.model.visible = this.initialVisible
 
         this.collisionMeshes = []
         this.collisionBoxes = []
@@ -85,10 +99,12 @@ export default class SceneRecyclageModel
                 metalness: 0.05
             })
         )
-        this.fallback.position.y = 0.75
+        this.fallback.position.copy(this.rootPosition)
+        this.fallback.position.y += 0.75
         this.fallback.castShadow = true
         this.fallback.receiveShadow = true
         this.fallback.userData.isRecyclageModelRoot = true
+        this.fallback.visible = this.initialVisible
         this.scene.add(this.fallback)
         this.fallback.updateMatrixWorld(true)
 
@@ -280,6 +296,19 @@ export default class SceneRecyclageModel
     getConsoleObject()
     {
         return this.consoleObject ?? null
+    }
+
+    setVisible(isVisible = true)
+    {
+        if(this.model)
+        {
+            this.model.visible = isVisible === true
+        }
+
+        if(this.fallback)
+        {
+            this.fallback.visible = isVisible === true
+        }
     }
 
     destroy()

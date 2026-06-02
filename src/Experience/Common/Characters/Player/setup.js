@@ -101,6 +101,75 @@ export function setLookEnabled(isEnabled = true)
     this.isLookEnabled = Boolean(isEnabled)
 }
 
+/**
+ * Met à jour les contraintes/runtime collision du joueur sans recréer l'instance.
+ */
+export function setRuntimeEnvironment({
+    boundaryRadius = this.boundaryRadius,
+    boundaryBox = this.boundaryBox,
+    collisionBoxes = this.collisionBoxes,
+    collisionMeshes = this.collisionMeshes,
+    groundMeshes = this.groundMeshes,
+    useBoxCollisionResolution = this.useBoxCollisionResolution,
+    useMeshCollisionRaycast = this.useMeshCollisionRaycast
+} = {})
+{
+    this.boundaryRadius = Number.isFinite(boundaryRadius) ? boundaryRadius : this.boundaryRadius
+    this.boundaryBox = this.normalizeBoundaryBox(boundaryBox)
+    this.collisionBoxes = Array.isArray(collisionBoxes) ? collisionBoxes : []
+    this.collisionMeshes = Array.isArray(collisionMeshes) ? collisionMeshes : []
+    this.groundMeshes = Array.isArray(groundMeshes) && groundMeshes.length > 0
+        ? groundMeshes
+        : this.collisionMeshes
+    this.ceilingMeshes = this.collisionMeshes.length > 0
+        ? this.collisionMeshes
+        : this.groundMeshes
+    this.useBoxCollisionResolution = Boolean(useBoxCollisionResolution)
+    this.useMeshCollisionRaycast = Boolean(useMeshCollisionRaycast)
+    this.currentGroundObject = null
+    this.collisionOctreePayloads = []
+    this.collisionOctreeVersion = {
+        length: -1,
+        first: null,
+        mid: null,
+        last: null
+    }
+}
+
+/**
+ * Téléporte le joueur en synchronisant aussi la caméra lissée.
+ */
+export function teleportTo({
+    position = null,
+    yaw = this.yaw,
+    pitch = this.pitch
+} = {})
+{
+    if(position instanceof THREE.Vector3)
+    {
+        this.position.copy(position)
+    }
+    else if(position && typeof position === 'object')
+    {
+        this.position.set(
+            position.x ?? this.position.x,
+            position.y ?? this.position.y,
+            position.z ?? this.position.z
+        )
+    }
+
+    this.previousPosition.copy(this.position)
+    this.velocity.set(0, 0, 0)
+    this.yaw = Number.isFinite(yaw) ? yaw : this.yaw
+    this.pitch = Number.isFinite(pitch) ? pitch : this.pitch
+    this.camera.position.copy(this.position)
+    this.camera.rotation.set(this.pitch, this.yaw, 0)
+    this.cameraSmoothPosition.copy(this.position)
+    this.cameraSmoothYaw = this.yaw
+    this.cameraSmoothPitch = this.pitch
+    this.cameraSmoothRoll = 0
+}
+
 
 /**
  * Expose les réglages debug du joueur.

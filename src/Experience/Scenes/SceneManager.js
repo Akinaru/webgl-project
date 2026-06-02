@@ -23,6 +23,7 @@ export default class SceneManager
         this.currentScene = null
         this.isTransitioning = false
         this.pendingSwitchKey = null
+        this.transitionVariantClass = null
 
         this.register(SceneEnum.MAP, () => new MapScene())
         this.register(SceneEnum.RECUPERATION, () => new SceneRecuperationScene())
@@ -265,6 +266,54 @@ export default class SceneManager
         this.transitionElement.classList.remove('is-visible')
         await this.wait(120)
         this.updateTransitionProgress(0)
+        this.setTransitionVariantClass(null)
+    }
+
+    setTransitionVariantClass(variant = null)
+    {
+        if(!this.transitionElement)
+        {
+            return
+        }
+
+        if(this.transitionVariantClass)
+        {
+            this.transitionElement.classList.remove(this.transitionVariantClass)
+            this.transitionVariantClass = null
+        }
+
+        if(typeof variant !== 'string' || variant.trim() === '')
+        {
+            return
+        }
+
+        this.transitionVariantClass = `scene-transition--${variant.trim()}`
+        this.transitionElement.classList.add(this.transitionVariantClass)
+    }
+
+    async runTaskTransition({
+        label = 'Chargement en cours',
+        phrase = '',
+        variant = null,
+        task = null
+    } = {})
+    {
+        if(typeof task !== 'function')
+        {
+            return
+        }
+
+        this.setTransitionVariantClass(variant)
+        await this.showTransitionOverlay()
+        this.updateTransitionProgress(6, { label, phrase })
+        await task({
+            setProgress: (progress, options = {}) => this.updateTransitionProgress(progress, {
+                label,
+                phrase,
+                ...options
+            })
+        })
+        await this.completeTransitionOverlay()
     }
 
     updateTransitionProgress(progress = 0, { label = null, phrase = null } = {})

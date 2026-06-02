@@ -9,7 +9,7 @@ export const SCENE_RECYCLAGE_VARIANTS = Object.freeze({
         arrivalDialogueKey: 'recyclage_0',
         validationDialogueKey: null,
         completionBadgeKey: 'recyclage_1',
-        completionTargetScene: SceneEnum.NANOBOTS,
+        completionTargetScene: SceneEnum.DISTRIBUTION,
         musicStorageKey: 'scene-music.recyclage.champignons',
         ambientSoundKeys: Object.freeze(['recyclageMusic1'])
     }),

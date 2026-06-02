@@ -4,6 +4,7 @@ import { applyStandardMaterialPatch } from '../../../../Scenes/Map/World/Shaders
 import { wallShaderChunks } from '../../../../Scenes/SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
 const isWallMeshName = (name) => name === 'cube' || name.startsWith('cube.')
+const BORNE_NAME = 'borne'
 
 const DEFAULTS = {
     wallScale: 0.45,
@@ -57,7 +58,7 @@ export default class SceneRecyclageWalls
             }
 
             const name = String(child.name || '').trim().toLowerCase()
-            if(!isWallMeshName(name))
+            if(!isWallMeshName(name) || this.hasAncestorNamed(child, BORNE_NAME))
             {
                 return
             }
@@ -70,9 +71,26 @@ export default class SceneRecyclageWalls
         console.log(`[SceneRecyclageWalls] ${count} mesh(es) patchés`)
     }
 
+    hasAncestorNamed(object, targetName)
+    {
+        let current = object
+        while(current)
+        {
+            const name = String(current.name || '').trim().toLowerCase()
+            if(name === targetName)
+            {
+                return true
+            }
+            current = current.parent
+        }
+
+        return false
+    }
+
     patchMesh(mesh)
     {
         const sourceMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+        const materialSide = this.resolveMaterialSide(sourceMaterial)
         const uniforms = {
             uWallSlabs: { value: this.slabsTexture },
             uWallScale: { value: DEFAULTS.wallScale },
@@ -87,9 +105,10 @@ export default class SceneRecyclageWalls
         const material = new THREE.MeshStandardMaterial({
             roughness: sourceMaterial?.roughness ?? 1,
             metalness: sourceMaterial?.metalness ?? 0,
-            side: sourceMaterial?.side ?? THREE.DoubleSide
+            side: materialSide
         })
         material.color.copy(this.wallColor)
+        material.shadowSide = materialSide
         material.customProgramCacheKey = () => `wall-slab-recyclage-${material.uuid}`
         material.onBeforeCompile = (shader) =>
         {
@@ -99,6 +118,22 @@ export default class SceneRecyclageWalls
 
         this.materials.push(material)
         mesh.material = material
+    }
+
+    resolveMaterialSide(sourceMaterial)
+    {
+        const normalizedSide = sourceMaterial?.side
+        if(normalizedSide === THREE.BackSide || normalizedSide === THREE.FrontSide || normalizedSide === THREE.DoubleSide)
+        {
+            if(normalizedSide === THREE.DoubleSide)
+            {
+                return THREE.BackSide
+            }
+
+            return normalizedSide
+        }
+
+        return THREE.BackSide
     }
 
     ensureWallGeometryNormals(mesh)
