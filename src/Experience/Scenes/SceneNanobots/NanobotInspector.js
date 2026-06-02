@@ -3,38 +3,17 @@ import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js'
 import Experience from '../../Experience.js'
 import CenterScreenRaycaster from '../../Utils/CenterScreenRaycaster.js'
 import * as MateriauConstants from '../SceneRecuperation/World/Interactives/Materiau.constants.js'
-
-const NANOBOT_NAME_TOKEN = 'nanobot'
-const ZOOM_DISTANCE_FACTOR = 2.0
-const ZOOM_DISTANCE_MIN = 0.6
-const CAMERA_ELEVATION_OFFSET = 0.24
-const INSPECTION_TARGET_Y_OFFSET = 0.16
-const INSPECTION_SCALE_FACTOR = 2
-const ANIMATION_DURATION = 0.65
-const DRAG_SENSITIVITY = 0.007
-const ELEVATION_CLAMP = Math.PI * 0.45
-const INDICATOR_LABEL = 'Voir le Nanobot'
-const INSPECTION_FOV = 30
-const STAIN_MIN_COUNT = 4
-const STAIN_MAX_COUNT = 8
-const STAIN_MIN_RADIUS = 0.045
-const STAIN_MAX_RADIUS = 0.085
-const STAIN_SURFACE_PADDING = 0.04
-const STAIN_MIN_SPACING = 0.18
-const STAIN_RAY_DISTANCE_MULTIPLIER = 2.4
-const STAIN_PROJECTOR_DEPTH = 0.12
-const DEFAULT_CLOSE_LABEL = 'Valider et fermer'
-const DEFAULT_COMPLETION_DIALOGUE_KEY = 'recyclage_1_validation'
+import * as NanobotInspectorConstants from './NanobotInspector.constants.js'
 
 export default class NanobotInspector
 {
     constructor({
         world,
         model = null,
-        closeLabel = DEFAULT_CLOSE_LABEL,
+        closeLabel = NanobotInspectorConstants.DEFAULT_CLOSE_LABEL,
         interactionGate = null,
         onInspectionExit = null,
-        completionDialogueKey = DEFAULT_COMPLETION_DIALOGUE_KEY
+        completionDialogueKey = NanobotInspectorConstants.DEFAULT_COMPLETION_DIALOGUE_KEY
     })
     {
         this.experience = new Experience()
@@ -44,10 +23,12 @@ export default class NanobotInspector
         this.inputs = this.experience.inputs
         this.closeLabel = typeof closeLabel === 'string' && closeLabel.trim() !== ''
             ? closeLabel
-            : DEFAULT_CLOSE_LABEL
+            : NanobotInspectorConstants.DEFAULT_CLOSE_LABEL
         this.interactionGate = typeof interactionGate === 'function' ? interactionGate : null
         this.onInspectionExit = typeof onInspectionExit === 'function' ? onInspectionExit : null
-        this.completionDialogueKey = typeof completionDialogueKey === 'string' ? completionDialogueKey : null
+        this.completionDialogueKey = typeof completionDialogueKey === 'string'
+            ? completionDialogueKey
+            : NanobotInspectorConstants.DEFAULT_COMPLETION_DIALOGUE_KEY
 
         this.isInspecting = false
         this.isInteractionEnabled = false
@@ -71,6 +52,8 @@ export default class NanobotInspector
         this.pivotElevation = 0
         this.cleanableStains = []
         this.remainingStainCount = 0
+        this.smokeParticles = []
+        this.smokeTexture = this.createSmokeTexture()
 
         // Fixed inspection camera
         this.inspectionCenter = new THREE.Vector3()
@@ -142,7 +125,7 @@ export default class NanobotInspector
         {
             if(this.nanobotObject) return
             const name = (child.name || '').toLowerCase()
-            if(name.includes(NANOBOT_NAME_TOKEN))
+            if(name.includes(NanobotInspectorConstants.NANOBOT_NAME_TOKEN))
             {
                 this.nanobotObject = child
             }
@@ -204,7 +187,7 @@ export default class NanobotInspector
             })
         )
 
-        this.indicatorLabelTexture = this.createIndicatorLabelTexture(INDICATOR_LABEL)
+        this.indicatorLabelTexture = this.createIndicatorLabelTexture(NanobotInspectorConstants.INDICATOR_LABEL)
         this.indicatorLabelSprite = new THREE.Sprite(
             new THREE.SpriteMaterial({
                 map: this.indicatorLabelTexture,
@@ -317,8 +300,13 @@ export default class NanobotInspector
 
             if(this.pivotGroup)
             {
-                this.pivotAzimuth += deltaX * DRAG_SENSITIVITY
-                this.pivotElevation += deltaY * DRAG_SENSITIVITY
+                this.pivotAzimuth += deltaX * NanobotInspectorConstants.DRAG_SENSITIVITY
+                this.pivotElevation += deltaY * NanobotInspectorConstants.DRAG_SENSITIVITY
+                this.pivotElevation = THREE.MathUtils.clamp(
+                    this.pivotElevation,
+                    -NanobotInspectorConstants.ELEVATION_CLAMP,
+                    NanobotInspectorConstants.ELEVATION_CLAMP
+                )
 
                 const euler = new THREE.Euler(this.pivotElevation, this.pivotAzimuth, 0, 'YXZ')
                 this.pivotGroup.setRotationFromEuler(euler)
@@ -350,10 +338,13 @@ export default class NanobotInspector
         const box = new THREE.Box3().setFromObject(this.nanobotObject)
         box.getCenter(this.inspectionCenter)
         this.inspectTargetCenter.copy(this.inspectionCenter)
-        this.inspectTargetCenter.y += INSPECTION_TARGET_Y_OFFSET
+        this.inspectTargetCenter.y += NanobotInspectorConstants.INSPECTION_TARGET_Y_OFFSET
         const size = box.getSize(new THREE.Vector3())
         const radius = size.length() * 0.5
-        this.inspectionDistance = Math.max(radius * ZOOM_DISTANCE_FACTOR, ZOOM_DISTANCE_MIN)
+        this.inspectionDistance = Math.max(
+            radius * NanobotInspectorConstants.ZOOM_DISTANCE_FACTOR,
+            NanobotInspectorConstants.ZOOM_DISTANCE_MIN
+        )
 
         this.pivotGroup = new THREE.Group()
         this.pivotGroup.position.copy(this.inspectTargetCenter)
@@ -375,7 +366,7 @@ export default class NanobotInspector
 
         this.nanobotObject.position.copy(worldPos).sub(this.inspectionCenter)
         this.nanobotObject.quaternion.copy(worldQuat)
-        this.nanobotObject.scale.copy(worldScale).multiplyScalar(INSPECTION_SCALE_FACTOR)
+        this.nanobotObject.scale.copy(worldScale).multiplyScalar(NanobotInspectorConstants.INSPECTION_SCALE_FACTOR)
 
         this.pivotAzimuth = 0
         this.pivotElevation = 0
@@ -424,7 +415,10 @@ export default class NanobotInspector
 
         this.indicatorBounds.getSize(this.stainSize)
         this.indicatorBounds.getCenter(this.stainSurfaceCenter)
-        const stainCount = THREE.MathUtils.randInt(STAIN_MIN_COUNT, STAIN_MAX_COUNT)
+        const stainCount = THREE.MathUtils.randInt(
+            NanobotInspectorConstants.STAIN_MIN_COUNT,
+            NanobotInspectorConstants.STAIN_MAX_COUNT
+        )
         const createdPositions = []
 
         for(let index = 0; index < stainCount; index++)
@@ -459,18 +453,28 @@ export default class NanobotInspector
         {
             this.stainGroup.parent?.remove?.(this.stainGroup)
         }
+
+        for(const smokeParticle of this.smokeParticles)
+        {
+            smokeParticle.sprite.parent?.remove?.(smokeParticle.sprite)
+            smokeParticle.sprite.material?.dispose?.()
+        }
+        this.smokeParticles = []
     }
 
     createStainDecal(existingPositions = [])
     {
-        const radius = THREE.MathUtils.randFloat(STAIN_MIN_RADIUS, STAIN_MAX_RADIUS)
+        const radius = THREE.MathUtils.randFloat(
+            NanobotInspectorConstants.STAIN_MIN_RADIUS,
+            NanobotInspectorConstants.STAIN_MAX_RADIUS
+        )
         const projection = this.findStainProjection(existingPositions, radius)
         if(!projection)
         {
             return null
         }
 
-        this.stainProjectionSize.set(radius * 2, radius * 2, STAIN_PROJECTOR_DEPTH)
+        this.stainProjectionSize.set(radius * 2, radius * 2, NanobotInspectorConstants.STAIN_PROJECTOR_DEPTH)
         this.stainTargetPoint.copy(projection.point).addScaledVector(projection.normal, 0.0015)
         this.stainUpVector.set(0, 1, 0)
         if(Math.abs(projection.normal.dot(this.stainUpVector)) > 0.92)
@@ -506,6 +510,13 @@ export default class NanobotInspector
         const stainMesh = new THREE.Mesh(geometry, material)
         stainMesh.userData.isNanobotStain = true
         stainMesh.userData.stainPoint = projection.point.clone()
+        stainMesh.userData.stainNormal = projection.normal.clone()
+        stainMesh.userData.initialRadius = radius
+        stainMesh.userData.remainingHits = THREE.MathUtils.randInt(
+            NanobotInspectorConstants.STAIN_MIN_HITS,
+            NanobotInspectorConstants.STAIN_MAX_HITS
+        )
+        stainMesh.userData.totalHits = stainMesh.userData.remainingHits
         stainMesh.renderOrder = 24
         this.stainGroup.add(stainMesh)
         return stainMesh
@@ -521,20 +532,37 @@ export default class NanobotInspector
         const centerY = 64
 
         context.clearRect(0, 0, canvas.width, canvas.height)
-        for(let index = 0; index < 9; index++)
+        for(let index = 0; index < 14; index++)
         {
-            const angle = (index / 9) * Math.PI * 2
-            const distance = 10 + Math.random() * 24
-            const radius = 14 + Math.random() * 18
-            const x = centerX + Math.cos(angle) * distance + THREE.MathUtils.randFloatSpread(10)
-            const y = centerY + Math.sin(angle) * distance + THREE.MathUtils.randFloatSpread(10)
+            const angle = (index / 14) * Math.PI * 2
+            const distance = 4 + Math.random() * 28
+            const radius = 10 + Math.random() * 16
+            const stretchX = 0.75 + Math.random() * 0.65
+            const stretchY = 0.7 + Math.random() * 0.7
+            const x = centerX + Math.cos(angle) * distance + THREE.MathUtils.randFloatSpread(14)
+            const y = centerY + Math.sin(angle) * distance + THREE.MathUtils.randFloatSpread(14)
             const gradient = context.createRadialGradient(x, y, radius * 0.12, x, y, radius)
-            gradient.addColorStop(0, 'rgba(32, 53, 60, 0.94)')
-            gradient.addColorStop(0.45, 'rgba(84, 115, 122, 0.82)')
-            gradient.addColorStop(1, 'rgba(84, 115, 122, 0)')
+            gradient.addColorStop(0, 'rgba(29, 42, 45, 0.98)')
+            gradient.addColorStop(0.32, 'rgba(65, 88, 92, 0.9)')
+            gradient.addColorStop(0.78, 'rgba(99, 128, 133, 0.42)')
+            gradient.addColorStop(1, 'rgba(99, 128, 133, 0)')
             context.fillStyle = gradient
             context.beginPath()
-            context.arc(x, y, radius, 0, Math.PI * 2)
+            context.ellipse(x, y, radius * stretchX, radius * stretchY, Math.random() * Math.PI, 0, Math.PI * 2)
+            context.fill()
+        }
+
+        for(let index = 0; index < 18; index++)
+        {
+            context.fillStyle = `rgba(22, 30, 32, ${0.08 + (Math.random() * 0.12)})`
+            context.beginPath()
+            context.arc(
+                centerX + THREE.MathUtils.randFloatSpread(54),
+                centerY + THREE.MathUtils.randFloatSpread(54),
+                2 + Math.random() * 6,
+                0,
+                Math.PI * 2
+            )
             context.fill()
         }
 
@@ -544,12 +572,34 @@ export default class NanobotInspector
         return texture
     }
 
-    findStainProjection(existingPositions = [], radius = STAIN_MIN_RADIUS)
+    createSmokeTexture()
     {
-        const radiusX = Math.max(this.stainSize.x * 0.5 - STAIN_SURFACE_PADDING, radius)
-        const radiusY = Math.max(this.stainSize.y * 0.5 - STAIN_SURFACE_PADDING, radius)
-        const radiusZ = Math.max(this.stainSize.z * 0.5 - STAIN_SURFACE_PADDING, radius)
-        const boundsRadius = Math.max(radiusX, radiusY, radiusZ) * STAIN_RAY_DISTANCE_MULTIPLIER
+        const canvas = document.createElement('canvas')
+        canvas.width = 96
+        canvas.height = 96
+        const context = canvas.getContext('2d')
+        const gradient = context.createRadialGradient(48, 48, 4, 48, 48, 44)
+        gradient.addColorStop(0, 'rgba(235, 245, 248, 0.9)')
+        gradient.addColorStop(0.35, 'rgba(185, 198, 204, 0.6)')
+        gradient.addColorStop(0.7, 'rgba(126, 138, 144, 0.22)')
+        gradient.addColorStop(1, 'rgba(126, 138, 144, 0)')
+        context.fillStyle = gradient
+        context.beginPath()
+        context.arc(48, 48, 44, 0, Math.PI * 2)
+        context.fill()
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.needsUpdate = true
+        return texture
+    }
+
+    findStainProjection(existingPositions = [], radius = NanobotInspectorConstants.STAIN_MIN_RADIUS)
+    {
+        const radiusX = Math.max(this.stainSize.x * 0.5 - NanobotInspectorConstants.STAIN_SURFACE_PADDING, radius)
+        const radiusY = Math.max(this.stainSize.y * 0.5 - NanobotInspectorConstants.STAIN_SURFACE_PADDING, radius)
+        const radiusZ = Math.max(this.stainSize.z * 0.5 - NanobotInspectorConstants.STAIN_SURFACE_PADDING, radius)
+        const boundsRadius = Math.max(radiusX, radiusY, radiusZ) * NanobotInspectorConstants.STAIN_RAY_DISTANCE_MULTIPLIER
         const maxAttempts = 24
 
         for(let attempt = 0; attempt < maxAttempts; attempt++)
@@ -577,7 +627,7 @@ export default class NanobotInspector
                 continue
             }
 
-            const isTooClose = existingPositions.some((position) => position.distanceTo(hit.point) < STAIN_MIN_SPACING)
+            const isTooClose = existingPositions.some((position) => position.distanceTo(hit.point) < NanobotInspectorConstants.STAIN_MIN_SPACING)
             if(isTooClose)
             {
                 continue
@@ -611,7 +661,7 @@ export default class NanobotInspector
         this.fixedCameraPos
             .copy(this.inspectTargetCenter)
             .addScaledVector(flatDir, this.inspectionDistance)
-            .add(new THREE.Vector3(0, CAMERA_ELEVATION_OFFSET, 0))
+            .add(new THREE.Vector3(0, NanobotInspectorConstants.CAMERA_ELEVATION_OFFSET, 0))
 
         const m = new THREE.Matrix4()
         m.lookAt(this.fixedCameraPos, this.inspectTargetCenter, THREE.Object3D.DEFAULT_UP)
@@ -632,7 +682,7 @@ export default class NanobotInspector
         this.cameraEndPos.copy(this.fixedCameraPos)
         this.cameraEndQuat.copy(this.fixedCameraQuat)
         this.cameraStartFov = this.camera.fov
-        this.cameraEndFov = INSPECTION_FOV
+        this.cameraEndFov = NanobotInspectorConstants.INSPECTION_FOV
 
         // Flag BEFORE exitPointerLock so PauseMenu's canAutoOpen sees it
         this.experience.isNanobotInspecting = true
@@ -695,7 +745,7 @@ export default class NanobotInspector
         this.isInspecting = true
         this.camera.position.copy(this.fixedCameraPos)
         this.camera.quaternion.copy(this.fixedCameraQuat)
-        this.camera.fov = INSPECTION_FOV
+        this.camera.fov = NanobotInspectorConstants.INSPECTION_FOV
         this.camera.updateProjectionMatrix()
         this.releaseCursor()
         this.hideIndicator()
@@ -805,12 +855,121 @@ export default class NanobotInspector
             return
         }
 
+        const remainingHits = Math.max(0, (stainMesh.userData.remainingHits ?? 1) - 1)
+        stainMesh.userData.remainingHits = remainingHits
+
+        if(remainingHits > 0)
+        {
+            const totalHits = Math.max(1, stainMesh.userData.totalHits ?? remainingHits)
+            const progress = 1 - (remainingHits / totalHits)
+            const scaleRatio = THREE.MathUtils.lerp(
+                1,
+                NanobotInspectorConstants.STAIN_MIN_SCALE_RATIO,
+                Math.pow(progress, NanobotInspectorConstants.STAIN_CLICK_SHRINK_EASE)
+            )
+            stainMesh.scale.setScalar(scaleRatio)
+            if(stainMesh.material)
+            {
+                stainMesh.material.opacity = THREE.MathUtils.lerp(
+                    1,
+                    NanobotInspectorConstants.STAIN_MIN_OPACITY,
+                    progress
+                )
+                stainMesh.material.needsUpdate = true
+            }
+            return
+        }
+
+        this.spawnSmokeBurst(stainMesh)
         this.cleanableStains.splice(stainIndex, 1)
         this.remainingStainCount = this.cleanableStains.length
         stainMesh.parent?.remove?.(stainMesh)
         stainMesh.geometry?.dispose?.()
         stainMesh.material?.map?.dispose?.()
         stainMesh.material?.dispose?.()
+    }
+
+    spawnSmokeBurst(stainMesh)
+    {
+        if(!this.pivotGroup || !this.smokeTexture)
+        {
+            return
+        }
+
+        const stainPointWorld = stainMesh.userData.stainPoint instanceof THREE.Vector3
+            ? stainMesh.userData.stainPoint.clone()
+            : new THREE.Vector3()
+        const stainNormalWorld = stainMesh.userData.stainNormal instanceof THREE.Vector3
+            ? stainMesh.userData.stainNormal.clone().normalize()
+            : new THREE.Vector3(0, 1, 0)
+        const spawnPosition = this.pivotGroup.worldToLocal(
+            stainPointWorld.clone().addScaledVector(stainNormalWorld, 0.02)
+        )
+
+        for(let index = 0; index < NanobotInspectorConstants.SMOKE_PARTICLE_COUNT; index++)
+        {
+            const material = new THREE.SpriteMaterial({
+                map: this.smokeTexture,
+                transparent: true,
+                opacity: 0.82,
+                depthWrite: false
+            })
+            const sprite = new THREE.Sprite(material)
+            const size = THREE.MathUtils.randFloat(
+                NanobotInspectorConstants.SMOKE_PARTICLE_SIZE_MIN,
+                NanobotInspectorConstants.SMOKE_PARTICLE_SIZE_MAX
+            )
+            sprite.position.copy(spawnPosition)
+            sprite.scale.set(size, size, 1)
+            this.pivotGroup.add(sprite)
+
+            const velocity = stainNormalWorld.clone().multiplyScalar(
+                THREE.MathUtils.randFloat(
+                    NanobotInspectorConstants.SMOKE_PARTICLE_SPEED_MIN,
+                    NanobotInspectorConstants.SMOKE_PARTICLE_SPEED_MAX
+                )
+            )
+            velocity.x += THREE.MathUtils.randFloatSpread(NanobotInspectorConstants.SMOKE_PARTICLE_DRIFT)
+            velocity.y += Math.abs(THREE.MathUtils.randFloatSpread(NanobotInspectorConstants.SMOKE_PARTICLE_DRIFT)) + 0.03
+            velocity.z += THREE.MathUtils.randFloatSpread(NanobotInspectorConstants.SMOKE_PARTICLE_DRIFT)
+
+            this.smokeParticles.push({
+                sprite,
+                velocity,
+                lifetime: NanobotInspectorConstants.SMOKE_PARTICLE_LIFETIME,
+                age: 0,
+                startScale: size
+            })
+        }
+    }
+
+    updateSmokeParticles(deltaSeconds)
+    {
+        if(this.smokeParticles.length === 0)
+        {
+            return
+        }
+
+        const aliveParticles = []
+        for(const smokeParticle of this.smokeParticles)
+        {
+            smokeParticle.age += deltaSeconds
+            const progress = smokeParticle.age / smokeParticle.lifetime
+            if(progress >= 1)
+            {
+                smokeParticle.sprite.parent?.remove?.(smokeParticle.sprite)
+                smokeParticle.sprite.material?.dispose?.()
+                continue
+            }
+
+            smokeParticle.sprite.position.addScaledVector(smokeParticle.velocity, deltaSeconds)
+            const scale = smokeParticle.startScale * (1 + (progress * 1.45))
+            smokeParticle.sprite.scale.set(scale, scale, 1)
+            smokeParticle.sprite.material.opacity = (1 - progress) * 0.82
+            aliveParticles.push(smokeParticle)
+        }
+
+        this.smokeParticles = aliveParticles
     }
 
     updateHoverState()
@@ -893,7 +1052,7 @@ export default class NanobotInspector
 
         if(this.isAnimating)
         {
-            this.animationProgress += deltaSeconds / ANIMATION_DURATION
+            this.animationProgress += deltaSeconds / NanobotInspectorConstants.ANIMATION_DURATION
             this.animationProgress = Math.min(this.animationProgress, 1)
 
             const t = this.easeInOutCubic(this.animationProgress)
@@ -924,6 +1083,8 @@ export default class NanobotInspector
             this.camera.position.copy(this.fixedCameraPos)
             this.camera.quaternion.copy(this.fixedCameraQuat)
         }
+
+        this.updateSmokeParticles(deltaSeconds)
     }
 
     destroy()
@@ -968,6 +1129,8 @@ export default class NanobotInspector
         {
             this.cursorElement.remove()
         }
+
+        this.smokeTexture?.dispose?.()
 
         if((this.isInspecting || this.isAnimating) && this.world?.player)
         {
