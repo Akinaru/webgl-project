@@ -335,6 +335,7 @@ export default class SceneDistributionWorld
         this.tubeWaterController?.update?.(delta)
         this.balanceMonitor?.update?.()
         this.gaugeDisplay?.setState?.(this.balanceMonitor?.getState?.() ?? null)
+        this.resultDisplay?.update?.(delta)
         this.resultTrigger?.update?.(delta)
         this.updateBloomPathToRoomEndViaDoor()
     }

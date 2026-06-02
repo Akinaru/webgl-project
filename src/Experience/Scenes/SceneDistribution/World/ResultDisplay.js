@@ -17,8 +17,10 @@ export default class SceneDistributionResultDisplay
         this.debugParentFolder = debugParentFolder
         this.loader = new THREE.TextureLoader()
         this.textureByMetier = new Map()
+        this.textTextureByMetier = new Map()
         this.screenEntries = []
         this.activeMetier = null
+        this.casinoState = null
         this.settings = {
             emissiveIntensity: SceneDistributionResultConstants.RESULT_SCREEN_EMISSIVE_INTENSITY
         }
@@ -54,9 +56,12 @@ export default class SceneDistributionResultDisplay
             entry.material = Array.isArray(entry.material) ? runtimeMaterials : runtimeMaterials[0]
             this.screenEntries.push({
                 mesh: entry,
-                materials: runtimeMaterials
+                materials: runtimeMaterials,
+                order: this.resolveScreenOrder(entry)
             })
         }
+
+        this.screenEntries.sort((leftEntry, rightEntry) => leftEntry.order - rightEntry.order)
     }
 
     isResultScreenMesh(mesh)
@@ -96,14 +101,108 @@ export default class SceneDistributionResultDisplay
         }
 
         this.activeMetier = metierId
-        const texture = this.getTextureForMetier(metierId)
+        const finalTextures = this.getFinalTexturesForMetier(metierId)
+        if(!finalTextures)
+        {
+            return
+        }
+
+        this.casinoState = {
+            metierId,
+            elapsedMs: 0,
+            frameElapsedMs: SceneDistributionResultConstants.RESULT_CASINO_FRAME_DURATION_MS,
+            previousTextureIndex: -1,
+            finalTextures
+        }
+
+        this.advanceCasinoFrame()
+    }
+
+    update(delta = this.experience.time.delta)
+    {
+        if(!this.casinoState)
+        {
+            return
+        }
+
+        const deltaMs = Number.isFinite(delta) ? delta : 0
+        this.casinoState.elapsedMs += deltaMs
+        this.casinoState.frameElapsedMs += deltaMs
+
+        while(this.casinoState && this.casinoState.frameElapsedMs >= SceneDistributionResultConstants.RESULT_CASINO_FRAME_DURATION_MS)
+        {
+            this.casinoState.frameElapsedMs -= SceneDistributionResultConstants.RESULT_CASINO_FRAME_DURATION_MS
+            this.advanceCasinoFrame()
+        }
+
+        if(this.casinoState && this.casinoState.elapsedMs >= SceneDistributionResultConstants.RESULT_CASINO_DURATION_MS)
+        {
+            const { finalTextures, metierId } = this.casinoState
+            this.casinoState = null
+            this.activeMetier = metierId
+            this.applyTexturesToScreens(finalTextures)
+        }
+    }
+
+    advanceCasinoFrame()
+    {
+        if(!this.casinoState)
+        {
+            return
+        }
+
+        const availableMetiers = Object.values(MetierEnum)
+        if(availableMetiers.length === 0)
+        {
+            return
+        }
+
+        let nextTextureIndex = this.casinoState.previousTextureIndex
+        if(availableMetiers.length === 1)
+        {
+            nextTextureIndex = 0
+        }
+        else
+        {
+            while(nextTextureIndex === this.casinoState.previousTextureIndex)
+            {
+                nextTextureIndex = Math.floor(Math.random() * availableMetiers.length)
+            }
+        }
+
+        this.casinoState.previousTextureIndex = nextTextureIndex
+        const texture = this.getTextureForMetier(availableMetiers[nextTextureIndex])
         if(!texture)
         {
             return
         }
 
-        for(const entry of this.screenEntries)
+        this.applyTexturesToScreens(this.screenEntries.map(() => texture))
+    }
+
+    getFinalTexturesForMetier(metierId)
+    {
+        const roleTexture = this.getTextureForMetier(metierId)
+        const textTexture = this.getTextTextureForMetier(metierId)
+        if(!roleTexture || !textTexture)
         {
+            return null
+        }
+
+        return this.screenEntries.map((entry, index) =>
+        {
+            const screenIndex = this.getScreenIndex(entry, index)
+            return screenIndex === SceneDistributionResultDisplayConstants.RESULT_TEXT_SCREEN_INDEX
+                ? textTexture
+                : roleTexture
+        })
+    }
+
+    applyTexturesToScreens(textures = [])
+    {
+        for(const [index, entry] of this.screenEntries.entries())
+        {
+            const texture = textures[index] ?? null
             for(const material of entry.materials)
             {
                 if(!material)
@@ -148,6 +247,62 @@ export default class SceneDistributionResultDisplay
         texture.needsUpdate = true
         this.textureByMetier.set(metierId, texture)
         return texture
+    }
+
+    getTextTextureForMetier(metierId)
+    {
+        if(this.textTextureByMetier.has(metierId))
+        {
+            return this.textTextureByMetier.get(metierId)
+        }
+
+        const imagePath = SceneDistributionResultConstants.RESULT_TEXT_IMAGE_BY_METIER[metierId] ?? null
+        if(!imagePath)
+        {
+            return null
+        }
+
+        const texture = this.loader.load(imagePath)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.flipY = false
+        texture.needsUpdate = true
+        this.textTextureByMetier.set(metierId, texture)
+        return texture
+    }
+
+    resolveScreenOrder(mesh)
+    {
+        const exactScreenIndex = this.getScreenIndexFromName(mesh?.name)
+        if(exactScreenIndex !== null)
+        {
+            return exactScreenIndex
+        }
+
+        return Number.isFinite(mesh?.position?.x) ? mesh.position.x : 0
+    }
+
+    getScreenIndex(entry, fallbackIndex = 0)
+    {
+        const exactScreenIndex = this.getScreenIndexFromName(entry?.mesh?.name)
+        if(exactScreenIndex !== null)
+        {
+            return exactScreenIndex
+        }
+
+        return fallbackIndex + 1
+    }
+
+    getScreenIndexFromName(name)
+    {
+        const normalizedName = String(name || '').toLowerCase().trim()
+        if(!normalizedName.startsWith(SceneDistributionResultDisplayConstants.RESULT_SCREEN_NAME_PREFIX))
+        {
+            return null
+        }
+
+        const suffix = normalizedName.slice(SceneDistributionResultDisplayConstants.RESULT_SCREEN_NAME_PREFIX.length)
+        const parsedIndex = Number.parseInt(suffix, 10)
+        return Number.isFinite(parsedIndex) ? parsedIndex : null
     }
 
     setDebug()
@@ -256,6 +411,12 @@ export default class SceneDistributionResultDisplay
             texture?.dispose?.()
         }
         this.textureByMetier.clear()
+        for(const texture of this.textTextureByMetier.values())
+        {
+            texture?.dispose?.()
+        }
+        this.textTextureByMetier.clear()
+        this.casinoState = null
         this.screenEntries = []
         this.distributionModel = null
     }

@@ -1,4 +1,5 @@
 export const RESULT_SCREEN_TARGET_NAME_PREFIX = 'screen-gris-foncé'
+export const RESULT_SCREEN_NAME_PREFIX = 'screen-gris-foncé_'
 export const RESULT_SCREEN_HIERARCHY_TOKENS = [
     'screen_right',
     'screen_mid',
@@ -10,3 +11,4 @@ export const RESULT_SCREEN_HIERARCHY_TOKENS = [
     'screen_5',
     'screen_7'
 ]
+export const RESULT_TEXT_SCREEN_INDEX = 2
