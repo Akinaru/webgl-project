@@ -39,9 +39,9 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 7.2,
-                y: 0,
-                z: 2.2
+                x: 14.04,
+                y: 1.78,
+                z: -5.08
             }),
             rotation: Object.freeze({
                 x: 0,
@@ -69,9 +69,9 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 6.4,
-                y: 0,
-                z: 2.9
+                x: 11.60,
+                y: 1.82,
+                z: -7.40
             }),
             rotation: Object.freeze({
                 x: 0,
@@ -99,9 +99,9 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 7.0,
-                y: 0,
-                z: 3.25
+                x: 10.87,
+                y: 1.91,
+                z: 7.40
             }),
             rotation: Object.freeze({
                 x: 0,
@@ -129,9 +129,9 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 7.7,
-                y: 0,
-                z: 2.95
+                x: -10.94,
+                y: 1.86,
+                z: -6.40
             }),
             rotation: Object.freeze({
                 x: 0,
@@ -159,9 +159,9 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 6.85,
-                y: 0,
-                z: 3.85
+                x: 4.02,
+                y: 1.92,
+                z: 12.27
             }),
             rotation: Object.freeze({
                 x: 0,
@@ -189,14 +189,14 @@ export const MAP_OBJECT_DEFINITIONS = Object.freeze([
         }),
         transform: Object.freeze({
             position: Object.freeze({
-                x: 8.35,
-                y: 0,
-                z: 3.3
+                x: -8.55,
+                y: 1.85,
+                z: 8.10
             }),
             rotation: Object.freeze({
-                x: 0,
-                y: -0.35,
-                z: 0
+                x: 0.001,
+                y: -1.501,
+                z: 0.000
             }),
             scale: Object.freeze({
                 x: 0.01,
