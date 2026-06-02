@@ -4,6 +4,7 @@ import { applyStandardMaterialPatch } from '../../../../Scenes/Map/World/Shaders
 import { wallShaderChunks } from '../../../../Scenes/SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
 const isWallMeshName = (name) => name === 'cube' || name.startsWith('cube.')
+const BORNE_NAME = 'borne'
 
 const DEFAULTS = {
     wallScale: 0.45,
@@ -57,7 +58,7 @@ export default class SceneRecyclageWalls
             }
 
             const name = String(child.name || '').trim().toLowerCase()
-            if(!isWallMeshName(name))
+            if(!isWallMeshName(name) || this.hasAncestorNamed(child, BORNE_NAME))
             {
                 return
             }
@@ -68,6 +69,22 @@ export default class SceneRecyclageWalls
         })
 
         console.log(`[SceneRecyclageWalls] ${count} mesh(es) patchés`)
+    }
+
+    hasAncestorNamed(object, targetName)
+    {
+        let current = object
+        while(current)
+        {
+            const name = String(current.name || '').trim().toLowerCase()
+            if(name === targetName)
+            {
+                return true
+            }
+            current = current.parent
+        }
+
+        return false
     }
 
     patchMesh(mesh)

@@ -9,11 +9,14 @@ import SceneRecyclageModel from './Model.js'
 import SceneRecyclageWalls from './Walls/Walls.js'
 import SceneRecuperationCascadeTubes from '../../SceneRecuperation/World/Water/CascadeTubes.js'
 import SlopeSplash from '../../SceneRecuperation/World/Water/SlopeSplash.js'
+import NanobotInspector from '../../SceneNanobots/NanobotInspector.js'
+import Borne from './Interactives/Borne.js'
 import { setupSceneRecyclageWorldDebug } from './World.debug.js'
 import * as SceneRecyclageWorldConstants from './World.constants.js'
 import { pickCycledSceneMusic } from '../../../Audio/SceneMusicPicker.js'
 import { SCENE_RECYCLAGE_VARIANTS } from '../SceneRecyclage.config.js'
 import CenterScreenRaycaster from '../../../Utils/CenterScreenRaycaster.js'
+import { sceneSources } from '../../../Source/sources.js'
 
 let recyclageWorldInstanceIndex = 0
 const VALIDATION_BUTTON_NAME_TOKEN = 'button_right'
@@ -31,6 +34,12 @@ export default class SceneRecyclageWorld
         this.isValidationInteractionEnabled = false
         this.hasTriggeredValidationDialogue = false
         this.validationButtonMeshes = []
+        this.isUnifiedNanobotsFlow = this.variantConfig?.sceneKey === SceneEnum.RECYCLAGE
+        this.isLoadingNanobotsRoom = false
+        this.isNanobotsRoomActive = false
+        this.hasUnlockedPrimaryBadge = false
+        this.hasStartedNanobotsDialogue = false
+        this.nanobotsReturnState = null
         this.centerRaycaster = new CenterScreenRaycaster({
             getCamera: () => this.experience.camera?.instance ?? null
         })
@@ -39,6 +48,13 @@ export default class SceneRecyclageWorld
         {
             if(key === this.variantConfig.arrivalDialogueKey)
             {
+                if(this.isUnifiedNanobotsFlow)
+                {
+                    this.unlockPrimaryBadge()
+                    this.enableBorneInteraction()
+                    return
+                }
+
                 if(this.variantConfig.validationDialogueKey)
                 {
                     this.isValidationInteractionEnabled = true
@@ -50,6 +66,18 @@ export default class SceneRecyclageWorld
             }
 
             if(this.variantConfig.validationDialogueKey && key === this.variantConfig.validationDialogueKey)
+            {
+                this.completeScene()
+                return
+            }
+
+            if(this.isUnifiedNanobotsFlow && key === SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey)
+            {
+                this.startEmbeddedNanobotInspection()
+                return
+            }
+
+            if(this.isUnifiedNanobotsFlow && key === SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey)
             {
                 this.completeScene()
             }
@@ -76,6 +104,7 @@ export default class SceneRecyclageWorld
         this.isSetUp = true
 
         this.setDebug()
+        this.setNanobotsDebugFolder()
         this.setWaterDebugFolders()
         this.environment = new MapEnvironment()
         this.recyclageModel = new SceneRecyclageModel({
@@ -117,6 +146,15 @@ export default class SceneRecyclageWorld
             })
         }
 
+        if(this.isUnifiedNanobotsFlow)
+        {
+            this.borne = new Borne({
+                world: this,
+                debugParentFolder: this.nanobotsDebugFolder,
+                onActivate: () => this.openEmbeddedNanobotsRoom()
+            })
+        }
+
         this.startArrivalDialogue()
     }
 
@@ -148,6 +186,19 @@ export default class SceneRecyclageWorld
     setDebug()
     {
         setupSceneRecyclageWorldDebug.call(this)
+    }
+
+    setNanobotsDebugFolder()
+    {
+        if(!this.experience?.debug?.isDebugEnabled || !this.debugFolder || this.nanobotsDebugFolder)
+        {
+            return
+        }
+
+        this.nanobotsDebugFolder = this.experience.debug.addFolder('Scene nano bots', {
+            parent: this.debugFolder,
+            expanded: true
+        })
     }
 
     setWaterDebugFolders()
@@ -259,7 +310,220 @@ export default class SceneRecyclageWorld
             this.handleValidationInteraction()
         }
         this.inputs?.on?.('sceneinteractdown.recyclageWorld', this.onInteractDown)
+        if(this.variantConfig.arrivalDialogueKey === 'recyclage_0')
+        {
+            this.borne?.setScreenAwake?.(true)
+        }
         this.experience.dialogueManager?.startByKey?.(this.variantConfig.arrivalDialogueKey)
+    }
+
+    unlockPrimaryBadge()
+    {
+        if(this.hasUnlockedPrimaryBadge || !this.variantConfig.completionBadgeKey)
+        {
+            return
+        }
+
+        this.hasUnlockedPrimaryBadge = true
+        this.experience.badgeManager?.unlock?.(this.variantConfig.completionBadgeKey)
+    }
+
+    enableBorneInteraction()
+    {
+        this.borne?.setEnabled?.(true)
+    }
+
+    async openEmbeddedNanobotsRoom()
+    {
+        if(!this.isUnifiedNanobotsFlow || this.isLoadingNanobotsRoom || this.isNanobotsRoomActive)
+        {
+            return
+        }
+
+        this.isLoadingNanobotsRoom = true
+        this.borne?.setEnabled?.(false)
+        this.nanobotsReturnState = this.capturePlayerState()
+
+        try
+        {
+            await this.experience.sceneManager?.runTaskTransition?.({
+                label: 'Connexion a la borne',
+                phrase: 'Preparation de la salle nanobots',
+                variant: 'nanobots',
+                task: async ({ setProgress }) =>
+                {
+                    setProgress(12)
+                    await this.loadEmbeddedNanobotsResources(setProgress)
+                    setProgress(74, { label: 'Teleportation vers les nanobots' })
+                    this.activateEmbeddedNanobotsRoom()
+                    setProgress(92, { label: 'Initialisation du nanobot' })
+                }
+            })
+        }
+        finally
+        {
+            this.isLoadingNanobotsRoom = false
+        }
+
+        this.experience.dialogueManager?.startByKey?.(SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].arrivalDialogueKey)
+    }
+
+    capturePlayerState()
+    {
+        if(!this.player)
+        {
+            return null
+        }
+
+        return {
+            position: this.player.position.clone(),
+            yaw: this.player.yaw,
+            pitch: this.player.pitch
+        }
+    }
+
+    async loadEmbeddedNanobotsResources(setProgress)
+    {
+        const nanobotsSources = sceneSources[SceneEnum.NANOBOTS] || []
+        if(nanobotsSources.length > 0)
+        {
+            let loadedItems = 0
+            const totalItems = nanobotsSources.filter((source) => !this.resources.items[source.name]).length
+            const onItemLoaded = () =>
+            {
+                loadedItems++
+                const progress = totalItems > 0 ? loadedItems / totalItems : 1
+                setProgress?.(12 + (progress * 50))
+            }
+
+            this.resources.on('itemLoaded', onItemLoaded)
+            await this.resources.loadGroup(nanobotsSources)
+            this.resources.off('itemLoaded', onItemLoaded)
+        }
+
+        if(this.nanobotsModel)
+        {
+            return
+        }
+
+        const offset = SceneRecyclageWorldConstants.NANOBOTS_EMBEDDED_MODEL_OFFSET
+        this.nanobotsModel = new SceneRecyclageModel({
+            resourceKey: SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].modelResourceKey,
+            position: offset,
+            visible: false,
+            clearExistingRoots: false
+        })
+        this.nanobotsWalls = new SceneRecyclageWalls({
+            recyclageModel: this.nanobotsModel,
+            debugParentFolder: this.debugFolder
+        })
+
+        this.sharedWaterColors = {
+            baseColor: new THREE.Color('#1F9CD2'),
+            deepFoamColor: new THREE.Color('#9AF6FE'),
+            surfaceFoamColor: new THREE.Color('#FDFDF7')
+        }
+        this.nanobotsCascadeTubes = new SceneRecuperationCascadeTubes({
+            recuperationModel: this.nanobotsModel,
+            debugTubeFolder: this.waterTubesDebugFolder,
+            debugSlopeFolder: this.waterSlopesDebugFolder,
+            sharedWaterColors: this.sharedWaterColors,
+            slopeFlowAngleOffsetByMeshName: this.createNanobotsSlopeFlowAngleOffsets()
+        })
+        this.nanobotsSlopeSplash = new SlopeSplash({
+            debugParentFolder: this.waterDebugFolder,
+            emitters: this.createNanobotsSlopeSplashEmitters()
+        })
+        this.nanobotInspector = new NanobotInspector({
+            world: this,
+            model: this.nanobotsModel,
+            closeLabel: 'Valider',
+            interactionGate: () => this.isNanobotsRoomActive === true,
+            completionDialogueKey: SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].validationDialogueKey,
+            onInspectionExit: () => this.handleEmbeddedNanobotInspectionExit()
+        })
+    }
+
+    activateEmbeddedNanobotsRoom()
+    {
+        const nanobotsConfig = SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS]
+        this.isNanobotsRoomActive = true
+        this.recyclageModel?.setVisible?.(false)
+        this.nanobotsModel?.setVisible?.(true)
+
+        this.player?.setRuntimeEnvironment?.({
+            boundaryRadius: this.nanobotsModel?.getBoundaryRadius?.() ?? 48,
+            boundaryBox: this.nanobotsModel?.getBoundaryBox?.() ?? null,
+            collisionBoxes: [],
+            useBoxCollisionResolution: false,
+            useMeshCollisionRaycast: true,
+            collisionMeshes: this.nanobotsModel?.getCollisionMeshes?.() ?? [],
+            groundMeshes: this.nanobotsModel?.getGroundMeshes?.() ?? []
+        })
+        this.player?.teleportTo?.({
+            position: nanobotsConfig.spawnPosition ?? this.nanobotsModel?.getSpawnPosition?.(),
+            yaw: THREE.MathUtils.degToRad(nanobotsConfig.spawnYawDeg ?? 0),
+            pitch: THREE.MathUtils.degToRad(nanobotsConfig.spawnPitchDeg ?? 0)
+        })
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
+                groundMeshes: this.nanobotsModel?.getGroundMeshes?.() ?? [],
+                rails: [],
+                target: this.player
+            })
+        }
+    }
+
+    startEmbeddedNanobotInspection()
+    {
+        if(this.isUnifiedNanobotsFlow !== true || this.hasStartedNanobotsDialogue !== false)
+        {
+            this.nanobotInspector?.open?.()
+            return
+        }
+
+        this.hasStartedNanobotsDialogue = true
+        this.nanobotInspector?.open?.()
+    }
+
+    handleEmbeddedNanobotInspectionExit()
+    {
+        if(!this.isUnifiedNanobotsFlow)
+        {
+            return
+        }
+
+        this.isNanobotsRoomActive = false
+        this.nanobotsModel?.setVisible?.(false)
+        this.recyclageModel?.setVisible?.(true)
+
+        this.player?.setRuntimeEnvironment?.({
+            boundaryRadius: this.recyclageModel?.getBoundaryRadius?.() ?? 48,
+            boundaryBox: this.recyclageModel?.getBoundaryBox?.() ?? null,
+            collisionBoxes: [],
+            useBoxCollisionResolution: false,
+            useMeshCollisionRaycast: true,
+            collisionMeshes: this.recyclageModel?.getCollisionMeshes?.() ?? [],
+            groundMeshes: this.recyclageModel?.getGroundMeshes?.() ?? []
+        })
+
+        if(this.nanobotsReturnState)
+        {
+            this.player?.teleportTo?.(this.nanobotsReturnState)
+        }
+
+        if(this.experience.bloom)
+        {
+            this.experience.bloom.setSceneContext({
+                scene: this.experience.scene,
+                groundMeshes: this.recyclageModel?.getGroundMeshes?.() ?? [],
+                rails: [],
+                target: this.player
+            })
+        }
     }
 
     handleValidationInteraction()
@@ -297,9 +561,13 @@ export default class SceneRecyclageWorld
             return
         }
 
-        if(this.variantConfig.completionBadgeKey)
+        if(this.variantConfig.completionBadgeKey && this.isUnifiedNanobotsFlow !== true)
         {
             this.experience.badgeManager?.unlock?.(this.variantConfig.completionBadgeKey)
+        }
+        if(this.isUnifiedNanobotsFlow)
+        {
+            this.experience.badgeManager?.unlock?.(SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS].completionBadgeKey)
         }
         this.hasCompletedScene = true
         this.completeSceneTimeout = window.setTimeout(() =>
@@ -310,14 +578,18 @@ export default class SceneRecyclageWorld
 
     syncAmbientSound()
     {
-        if(this.experience.sound?.isAnySoundPlaying?.(this.variantConfig.ambientSoundKeys))
+        const activeVariant = this.isUnifiedNanobotsFlow && this.isNanobotsRoomActive
+            ? SCENE_RECYCLAGE_VARIANTS[SceneEnum.NANOBOTS]
+            : this.variantConfig
+
+        if(this.experience.sound?.isAnySoundPlaying?.(activeVariant.ambientSoundKeys))
         {
             return
         }
 
         const musicKey = pickCycledSceneMusic(
-            this.variantConfig.musicStorageKey,
-            this.variantConfig.ambientSoundKeys
+            activeVariant.musicStorageKey,
+            activeVariant.ambientSoundKeys
         )
 
         if(!musicKey)
@@ -336,8 +608,12 @@ export default class SceneRecyclageWorld
         this.syncAmbientSound()
         this.cascadeTubes?.update?.(delta)
         this.slopeSplash?.update?.(delta)
+        this.nanobotsCascadeTubes?.update?.(delta)
+        this.nanobotsSlopeSplash?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
+        this.borne?.update?.(delta)
+        this.nanobotInspector?.update?.(delta)
     }
 
     destroy()
@@ -358,16 +634,33 @@ export default class SceneRecyclageWorld
             this.player = null
         }
 
+        this.nanobotInspector?.destroy?.()
+        this.nanobotInspector = null
+        this.borne?.destroy?.()
+        this.borne = null
+
         if(this.recyclageModel)
         {
             this.recyclageModel.destroy?.()
             this.recyclageModel = null
         }
 
+        if(this.nanobotsModel)
+        {
+            this.nanobotsModel.destroy?.()
+            this.nanobotsModel = null
+        }
+
         if(this.walls)
         {
             this.walls.destroy?.()
             this.walls = null
+        }
+
+        if(this.nanobotsWalls)
+        {
+            this.nanobotsWalls.destroy?.()
+            this.nanobotsWalls = null
         }
 
         if(this.environment)
@@ -388,6 +681,18 @@ export default class SceneRecyclageWorld
             this.slopeSplash = null
         }
 
+        if(this.nanobotsCascadeTubes)
+        {
+            this.nanobotsCascadeTubes.destroy?.()
+            this.nanobotsCascadeTubes = null
+        }
+
+        if(this.nanobotsSlopeSplash)
+        {
+            this.nanobotsSlopeSplash.destroy?.()
+            this.nanobotsSlopeSplash = null
+        }
+
         this.experience.sound?.stopChannel?.(SceneRecyclageWorldConstants.RECYCLAGE_AMBIENT_CHANNEL)
 
         if(this.light)
@@ -398,5 +703,6 @@ export default class SceneRecyclageWorld
 
         this.debugFolder?.dispose?.()
         this.debugFolder = null
+        this.nanobotsDebugFolder = null
     }
 }

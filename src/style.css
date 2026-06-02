@@ -128,6 +128,22 @@ body.is-pointer-locked
     pointer-events: auto;
 }
 
+.scene-transition.scene-transition--nanobots
+{
+    background:
+        radial-gradient(circle at top, rgba(21, 152, 201, 0.32) 0%, rgba(2, 10, 20, 0.78) 48%, rgba(1, 5, 10, 0.96) 100%),
+        linear-gradient(135deg, rgba(15, 60, 88, 0.42) 0%, rgba(8, 20, 34, 0.72) 100%),
+        #02070c;
+}
+
+.scene-transition.scene-transition--nanobots .scene-transition__panel.menu-panel::before
+{
+    background:
+        radial-gradient(56px 20px at 28px 12px, rgba(163, 241, 255, 0.26) 0%, rgba(255, 255, 255, 0) 72%),
+        radial-gradient(56px 20px at 78px 14px, rgba(105, 224, 255, 0.2) 0%, rgba(255, 255, 255, 0) 72%),
+        linear-gradient(180deg, rgba(89, 208, 255, 0.34) 0%, rgba(34, 117, 174, 0.18) 58%, rgba(7, 37, 68, 0.08) 100%);
+}
+
 .scene-transition__home
 {
     width: min(92vw, 620px);

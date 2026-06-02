@@ -1,5 +1,10 @@
 export const RECYCLAGE_AMBIENT_CHANNEL = 'music'
 export const RECYCLAGE_DISTRIBUTION_SWITCH_DELAY_MS = 1200
+export const NANOBOTS_EMBEDDED_MODEL_OFFSET = Object.freeze({
+    x: 0,
+    y: 0,
+    z: 0
+})
 
 export const NANOBOTS_CASCADE_GROUP_NAMES = Object.freeze([
     'cascade_plantes',

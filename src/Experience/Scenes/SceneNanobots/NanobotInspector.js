@@ -13,7 +13,6 @@ const INSPECTION_SCALE_FACTOR = 2
 const ANIMATION_DURATION = 0.65
 const DRAG_SENSITIVITY = 0.007
 const ELEVATION_CLAMP = Math.PI * 0.45
-const COMPLETION_DIALOGUE_KEY = 'recyclage_105'
 const INDICATOR_LABEL = 'Voir le Nanobot'
 const INSPECTION_FOV = 30
 const STAIN_MIN_COUNT = 4
@@ -24,15 +23,31 @@ const STAIN_SURFACE_PADDING = 0.04
 const STAIN_MIN_SPACING = 0.18
 const STAIN_RAY_DISTANCE_MULTIPLIER = 2.4
 const STAIN_PROJECTOR_DEPTH = 0.12
+const DEFAULT_CLOSE_LABEL = 'Valider et fermer'
+const DEFAULT_COMPLETION_DIALOGUE_KEY = 'recyclage_1_validation'
 
 export default class NanobotInspector
 {
-    constructor({ world })
+    constructor({
+        world,
+        model = null,
+        closeLabel = DEFAULT_CLOSE_LABEL,
+        interactionGate = null,
+        onInspectionExit = null,
+        completionDialogueKey = DEFAULT_COMPLETION_DIALOGUE_KEY
+    })
     {
         this.experience = new Experience()
         this.world = world
+        this.model = model
         this.camera = this.experience.camera.instance
         this.inputs = this.experience.inputs
+        this.closeLabel = typeof closeLabel === 'string' && closeLabel.trim() !== ''
+            ? closeLabel
+            : DEFAULT_CLOSE_LABEL
+        this.interactionGate = typeof interactionGate === 'function' ? interactionGate : null
+        this.onInspectionExit = typeof onInspectionExit === 'function' ? onInspectionExit : null
+        this.completionDialogueKey = typeof completionDialogueKey === 'string' ? completionDialogueKey : null
 
         this.isInspecting = false
         this.isInteractionEnabled = false
@@ -120,7 +135,7 @@ export default class NanobotInspector
 
     findNanobotObjects()
     {
-        const model = this.world.recyclageModel?.model
+        const model = this.model?.model ?? this.world?.recyclageModel?.model
         if(!model) return
 
         model.traverse((child) =>
@@ -152,7 +167,7 @@ export default class NanobotInspector
 
         this.closeBtnEl = document.createElement('button')
         this.closeBtnEl.className = 'nanobot-inspector__close'
-        this.closeBtnEl.textContent = 'Valider et fermer'
+        this.closeBtnEl.textContent = this.closeLabel
         this.closeBtnEl.type = 'button'
         this.overlayEl.appendChild(this.closeBtnEl)
 
@@ -634,6 +649,11 @@ export default class NanobotInspector
         this.isInspecting = false
     }
 
+    open()
+    {
+        this.enterInspection()
+    }
+
     exitInspection()
     {
         if(!this.isInspecting && !this.isAnimating) return
@@ -711,7 +731,8 @@ export default class NanobotInspector
 
         document.body.classList.remove('is-nanobot-inspecting')
 
-        this.experience.dialogueManager?.startByKey?.(COMPLETION_DIALOGUE_KEY)
+        this.experience.dialogueManager?.startByKey?.(this.completionDialogueKey)
+        this.onInspectionExit?.()
     }
 
     updateCursor()
@@ -794,7 +815,9 @@ export default class NanobotInspector
 
     updateHoverState()
     {
-        this.isInteractionEnabled = this.world?.isValidationInteractionEnabled === true
+        this.isInteractionEnabled = this.interactionGate
+            ? this.interactionGate() === true
+            : this.world?.isValidationInteractionEnabled === true
 
         if(this.isInspecting || this.isAnimating || !this.isInteractionEnabled || !this.centerRaycaster.hasCamera())
         {
