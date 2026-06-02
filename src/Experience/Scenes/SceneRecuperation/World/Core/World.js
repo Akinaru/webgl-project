@@ -132,6 +132,7 @@ export default class SceneRecuperationWorld
         }
         this.hasTubeFlowPendingAfter015 = false
         this.testCameraFocusState = null
+        this.doorCameraFocusState = null
         this.onTubeRoom015Shown = ({ dialogueKey, nodeId } = {}) =>
         {
             if(dialogueKey !== RECUPERATION_TUBE_ROOM_DIALOGUE_KEY || nodeId !== 'recuperation_015')
@@ -166,6 +167,7 @@ export default class SceneRecuperationWorld
             }
             this.hasPendingDoorOpenAfterDialogue = false
             this.door?.setOpen?.(true)
+            this.startDoorCameraFocus()
         }
         this.experience.dialogueManager?.on?.('start.recuperationMusicDuck', this.onDialogueStart)
         this.experience.dialogueManager?.on?.('end.recuperationMusicDuck', this.onDialogueEndForMusicDuck)
@@ -520,6 +522,7 @@ export default class SceneRecuperationWorld
         this.materiau?.update(delta)
         this.updateMaterialTesting(delta)
         this.updateTestCameraFocus(delta)
+        this.updateDoorCameraFocus(delta)
         this.updateBloomSol1TemporaryMove()
         this.checkPuzzleCompletionReturn()
         this.updateWallCrossTeleportVisual()
@@ -695,6 +698,76 @@ export default class SceneRecuperationWorld
         this.player?.setLookEnabled?.(true)
         this.player?.setMovementEnabled?.(true)
         this.testCameraFocusState = null
+    }
+
+    startDoorCameraFocus()
+    {
+        if(!this.player || !this.door?.object)
+        {
+            return
+        }
+
+        const doorPosition = new THREE.Vector3()
+        this.door.object.getWorldPosition(doorPosition)
+
+        const dir = new THREE.Vector3().subVectors(doorPosition, this.player.position)
+        const horizontalDist = Math.hypot(dir.x, dir.z)
+
+        if(horizontalDist <= 1e-6 && Math.abs(dir.y) <= 1e-6)
+        {
+            return
+        }
+
+        const targetYaw = Math.atan2(-dir.x, -dir.z)
+        const unclampedPitch = -Math.atan2(dir.y, Math.max(horizontalDist, 1e-6))
+        const targetPitch = THREE.MathUtils.clamp(
+            unclampedPitch,
+            this.player.settings?.minPitch ?? unclampedPitch,
+            this.player.settings?.maxPitch ?? unclampedPitch
+        )
+
+        this.player.setLookEnabled?.(false)
+        this.player.setMovementEnabled?.(false)
+        this.doorCameraFocusState = {
+            elapsedMs: 0,
+            startYaw: this.player.yaw ?? 0,
+            startPitch: this.player.pitch ?? 0,
+            targetYaw,
+            targetPitch
+        }
+    }
+
+    updateDoorCameraFocus(delta = this.experience.time.delta)
+    {
+        const focusState = this.doorCameraFocusState
+        if(!focusState || !this.player)
+        {
+            return
+        }
+
+        focusState.elapsedMs += Number.isFinite(delta) ? delta : 0
+
+        const duration = SceneRecuperationWorldConstants.RECUPERATION_DOOR_CAMERA_FOCUS_TRANSITION_MS
+        const progress = Math.min(1, focusState.elapsedMs / duration)
+        const easedProgress = 1 - Math.pow(1 - progress, 3)
+
+        const nextYaw = this.interpolateAngle(focusState.startYaw, focusState.targetYaw, easedProgress)
+        const nextPitch = THREE.MathUtils.lerp(focusState.startPitch, focusState.targetPitch, easedProgress)
+
+        this.player.yaw = nextYaw
+        this.player.pitch = nextPitch
+        this.player.cameraSmoothYaw = nextYaw
+        this.player.cameraSmoothPitch = nextPitch
+        this.player.camera?.rotation?.set?.(nextPitch, nextYaw, this.player.cameraSmoothRoll ?? 0)
+
+        if(progress < 1)
+        {
+            return
+        }
+
+        this.player.setLookEnabled?.(true)
+        this.player.setMovementEnabled?.(true)
+        this.doorCameraFocusState = null
     }
 
     startMaterialTest()
@@ -1237,6 +1310,12 @@ export default class SceneRecuperationWorld
         this.onTubeRoom2EndForFlow = null
         this.hasTubeFlowPendingAfter015 = false
         this.releaseTestCameraFocus()
+        if(this.doorCameraFocusState)
+        {
+            this.player?.setLookEnabled?.(true)
+            this.player?.setMovementEnabled?.(true)
+            this.doorCameraFocusState = null
+        }
         this.onSelectionDialogueEnd = null
         this.hasPendingDoorOpenAfterDialogue = false
         this.resources.off(this.readyEventName)
