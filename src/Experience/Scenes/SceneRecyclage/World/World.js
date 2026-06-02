@@ -938,6 +938,8 @@ export default class SceneRecyclageWorld
         this.slopeSplash?.update?.(delta)
         this.nanobotsCascadeTubes?.update?.(delta)
         this.nanobotsSlopeSplash?.update?.(delta)
+        this.walls?.update?.(delta)
+        this.nanobotsWalls?.update?.(delta)
         this.light?.update?.(delta)
         this.player?.update?.(delta)
         this.updateRecyclageDoor(delta)

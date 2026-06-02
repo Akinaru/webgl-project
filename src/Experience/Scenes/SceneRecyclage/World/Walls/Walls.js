@@ -4,17 +4,31 @@ import { applyStandardMaterialPatch } from '../../../../Scenes/Map/World/Shaders
 import { wallShaderChunks } from '../../../../Scenes/SceneRecuperation/World/Shaders/Walls/wallShaderChunks.js'
 
 const BORNE_NAME = 'borne'
-
+const BASE_DOME_NAME = 'base_dome'
+const PORTE_EXT_NAME = 'porte_ext'
+const POLYGONE_NAME = 'polygone'
+const BOOLEEN_NAME = 'booleen'
+const EPAISSEUR_NAME = 'epaisseur'
 const isWallMeshName = (name) => name === 'cube' || name.startsWith('cube.')
 
+const normalizeName = (value) =>
+{
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+}
+
 const DEFAULTS = {
-    wallScale: 0.45,
-    noiseScale: 0.08,
-    noiseCoverage: 0.65,
+    wallScale: 0.955,
+    noiseScale: 0.370,
+    noiseCoverage: 0.728,
     noiseTransition: 0.36,
     slabMin: 0.38,
     slabMax: 1.20,
-    color: new THREE.Color(1, 1, 1)
+    noiseDriftSpeed: 0.248,
+    color: new THREE.Color('#d3d5eb')
 }
 
 export default class SceneRecyclageWalls
@@ -58,8 +72,8 @@ export default class SceneRecyclageWalls
                 return
             }
 
-            const name = String(child.name || '').trim().toLowerCase()
-            if(!isWallMeshName(name) || this.hasAncestorNamed(child, BORNE_NAME))
+            const name = normalizeName(child.name)
+            if(!this.shouldPatchWallMesh(child, name))
             {
                 return
             }
@@ -77,12 +91,37 @@ export default class SceneRecyclageWalls
         let current = object
         while(current)
         {
-            const name = String(current.name || '').trim().toLowerCase()
+            const name = normalizeName(current.name)
             if(name === targetName)
             {
                 return true
             }
             current = current.parent
+        }
+
+        return false
+    }
+
+    shouldPatchWallMesh(mesh, normalizedName)
+    {
+        if(isWallMeshName(normalizedName))
+        {
+            return !this.hasAncestorNamed(mesh, BORNE_NAME)
+        }
+
+        if(normalizedName === BASE_DOME_NAME || normalizedName === PORTE_EXT_NAME)
+        {
+            return true
+        }
+
+        if(normalizedName !== POLYGONE_NAME)
+        {
+            return false
+        }
+
+        if(this.hasAncestorNamed(mesh, BOOLEEN_NAME) && this.hasAncestorNamed(mesh, EPAISSEUR_NAME))
+        {
+            return true
         }
 
         return false
@@ -99,7 +138,9 @@ export default class SceneRecyclageWalls
             uWallNoiseCoverage: { value: DEFAULTS.noiseCoverage },
             uWallNoiseTransition: { value: DEFAULTS.noiseTransition },
             uWallSlabMin: { value: DEFAULTS.slabMin },
-            uWallSlabMax: { value: DEFAULTS.slabMax }
+            uWallSlabMax: { value: DEFAULTS.slabMax },
+            uWallTime: { value: 0 },
+            uWallNoiseDriftSpeed: { value: DEFAULTS.noiseDriftSpeed }
         }
         this.uniformRefs.push(uniforms)
 
@@ -126,15 +167,10 @@ export default class SceneRecyclageWalls
         const normalizedSide = sourceMaterial?.side
         if(normalizedSide === THREE.BackSide || normalizedSide === THREE.FrontSide || normalizedSide === THREE.DoubleSide)
         {
-            if(normalizedSide === THREE.DoubleSide)
-            {
-                return THREE.BackSide
-            }
-
             return normalizedSide
         }
 
-        return THREE.BackSide
+        return THREE.DoubleSide
     }
 
     ensureWallGeometryNormals(mesh)
@@ -147,6 +183,15 @@ export default class SceneRecyclageWalls
         mesh.geometry.computeVertexNormals()
         mesh.geometry.normalizeNormals()
         mesh.geometry.attributes.normal.needsUpdate = true
+    }
+
+    update()
+    {
+        const elapsedSeconds = (this.experience.time?.elapsed ?? 0) * 0.001
+        for(const uniforms of this.uniformRefs)
+        {
+            uniforms.uWallTime.value = elapsedSeconds
+        }
     }
 
     setDebug(parentFolder)
@@ -165,6 +210,27 @@ export default class SceneRecyclageWalls
                 material.color.set(event.value)
             }
         })
+
+        this.addUniformBinding('Densité dalles', 'uWallScale', DEFAULTS.wallScale, 0.01, 3.0, 0.005)
+        this.addUniformBinding('Fréq. bruit', 'uWallNoiseScale', DEFAULTS.noiseScale, 0.001, 2.0, 0.001)
+        this.addUniformBinding('Couverture', 'uWallNoiseCoverage', DEFAULTS.noiseCoverage, 0.0, 1.0, 0.001)
+        this.addUniformBinding('Transition', 'uWallNoiseTransition', DEFAULTS.noiseTransition, 0.001, 2.0, 0.001)
+        this.addUniformBinding('Vitesse bruit', 'uWallNoiseDriftSpeed', DEFAULTS.noiseDriftSpeed, 0.0, 0.3, 0.001)
+        this.addUniformBinding('Joints (min)', 'uWallSlabMin', DEFAULTS.slabMin, 0.0, 2.0, 0.01)
+        this.addUniformBinding('Faces dalle (max)', 'uWallSlabMax', DEFAULTS.slabMax, 0.0, 3.0, 0.01)
+    }
+
+    addUniformBinding(label, uniformKey, defaultValue, min, max, step)
+    {
+        const state = { value: defaultValue }
+        this.debug.addBinding(this.debugFolder, state, 'value', { label, min, max, step })
+            ?.on?.('change', (event) =>
+            {
+                for(const uniforms of this.uniformRefs)
+                {
+                    uniforms[uniformKey].value = event.value
+                }
+            })
     }
 
     destroy()
