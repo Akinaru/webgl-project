@@ -8,19 +8,34 @@ export default class SceneRecyclageModel
         resourceKey = 'recyclageModel',
         position = null,
         visible = true,
-        clearExistingRoots = true
+        clearExistingRoots = true,
+        debugParentFolder = null
     } = {})
     {
         this.experience = new Experience()
         this.scene = this.experience.scene
         this.resources = this.experience.resources
+        this.debug = this.experience.debug
         this.resourceKey = resourceKey
+        this.debugParentFolder = debugParentFolder
         this.rootPosition = position instanceof THREE.Vector3
             ? position.clone()
             : new THREE.Vector3(position?.x ?? 0, position?.y ?? 0, position?.z ?? 0)
         this.initialVisible = visible !== false
         this.clearExistingRoots = clearExistingRoots !== false
         this.resource = this.resources.items[this.resourceKey]
+        this.glassMaterials = []
+        this.glassPatternTexture = this.createGlassPatternTexture()
+        this.glassPatternOverlayMaterials = []
+        this.glassUvSettings = {
+            repeatX: SceneRecyclageModelConstants.VITRE_PATTERN_REPEAT_X,
+            repeatY: SceneRecyclageModelConstants.VITRE_PATTERN_REPEAT_Y,
+            offsetX: SceneRecyclageModelConstants.VITRE_PATTERN_OFFSET_X,
+            offsetY: SceneRecyclageModelConstants.VITRE_PATTERN_OFFSET_Y,
+            patternOpacity: SceneRecyclageModelConstants.VITRE_PATTERN_OPACITY
+        }
+        this.applyGlassTextureTransform()
+        this.setDebug()
 
         if(this.resource?.scene)
         {
@@ -173,6 +188,18 @@ export default class SceneRecyclageModel
 
         if(normalizedName === SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_MESH_NAME)
         {
+            this.applyGlassMaterial(mesh)
+            return
+        }
+
+        if(normalizedName === SceneRecyclageModelConstants.VITRE_MESH_NAME)
+        {
+            this.applyGlassMaterial(mesh)
+            return
+        }
+
+        if(SceneRecyclageModelConstants.POLYGONE_MATERIAL_MESH_NAMES.includes(normalizedName))
+        {
             const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
             for(const material of materials)
             {
@@ -181,18 +208,10 @@ export default class SceneRecyclageModel
                     continue
                 }
 
-                material.transparent = true
-                material.opacity = SceneRecyclageModelConstants.NANO_BOTS_TRANSPARENT_OPACITY
-                material.depthWrite = false
-                material.side = THREE.DoubleSide
+                material.roughness = SceneRecyclageModelConstants.POLYGONE_MATERIAL_ROUGHNESS
+                material.metalness = SceneRecyclageModelConstants.POLYGONE_MATERIAL_METALNESS
                 material.needsUpdate = true
             }
-            return
-        }
-
-        if(normalizedName === SceneRecyclageModelConstants.VITRE_MESH_NAME)
-        {
-            this.applyGlassMaterial(mesh)
         }
     }
 
@@ -208,20 +227,136 @@ export default class SceneRecyclageModel
             thickness: SceneRecyclageModelConstants.VITRE_THICKNESS,
             ior: SceneRecyclageModelConstants.VITRE_IOR,
             reflectivity: SceneRecyclageModelConstants.VITRE_REFLECTIVITY,
+            clearcoat: 1,
+            clearcoatRoughness: 0.08,
             side: THREE.DoubleSide,
             depthWrite: false,
-            envMapIntensity: 1
+            envMapIntensity: 1.35
         })
 
         const previousMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
         mesh.material = glassMaterial
         mesh.castShadow = false
         mesh.renderOrder = 1
+        this.glassMaterials.push(glassMaterial)
+        this.attachGlassPatternOverlay(mesh)
 
         for(const mat of previousMaterials)
         {
             mat?.dispose?.()
         }
+    }
+
+    createGlassPatternTexture()
+    {
+        const sourceTexture = this.resources.items.recyclageGlassPatternTexture
+        if(!sourceTexture?.clone)
+        {
+            return null
+        }
+
+        const texture = sourceTexture.clone()
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.wrapS = THREE.RepeatWrapping
+        texture.wrapT = THREE.RepeatWrapping
+        texture.needsUpdate = true
+        return texture
+    }
+
+    applyGlassTextureTransform()
+    {
+        if(!this.glassPatternTexture)
+        {
+            this.syncGlassPatternOpacity()
+            return
+        }
+
+        this.glassPatternTexture.repeat.set(
+            this.glassUvSettings.repeatX,
+            this.glassUvSettings.repeatY
+        )
+        this.glassPatternTexture.offset.set(
+            this.glassUvSettings.offsetX,
+            this.glassUvSettings.offsetY
+        )
+        this.glassPatternTexture.needsUpdate = true
+        this.syncGlassPatternOpacity()
+    }
+
+    syncGlassPatternOpacity()
+    {
+        for(const material of this.glassPatternOverlayMaterials)
+        {
+            material.opacity = this.glassUvSettings.patternOpacity
+            material.needsUpdate = true
+        }
+    }
+
+    attachGlassPatternOverlay(mesh)
+    {
+        if(!(mesh instanceof THREE.Mesh) || !this.glassPatternTexture)
+        {
+            return
+        }
+
+        const overlayMaterial = new THREE.MeshBasicMaterial({
+            color: SceneRecyclageModelConstants.VITRE_PATTERN_TINT,
+            map: this.glassPatternTexture,
+            transparent: true,
+            opacity: SceneRecyclageModelConstants.VITRE_PATTERN_OPACITY,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+            toneMapped: false
+        })
+        const overlayMesh = new THREE.Mesh(mesh.geometry, overlayMaterial)
+        overlayMesh.name = `${mesh.name || 'vitre'}_pattern_overlay`
+        overlayMesh.renderOrder = 2
+        overlayMesh.castShadow = false
+        overlayMesh.receiveShadow = false
+        overlayMesh.userData.isGlassPatternOverlay = true
+        mesh.add(overlayMesh)
+        this.glassPatternOverlayMaterials.push(overlayMaterial)
+    }
+
+    setDebug()
+    {
+        if(!this.debug?.isDebugEnabled || !this.debugParentFolder)
+        {
+            return
+        }
+
+        this.debugFolder = this.debug.addFolder(SceneRecyclageModelConstants.VITRE_DEBUG_FOLDER_TITLE, {
+            parent: this.debugParentFolder,
+            expanded: false
+        })
+
+        this.addGlassUvBinding('Repeat X', 'repeatX', 0.01, 12, 0.01)
+        this.addGlassUvBinding('Repeat Y', 'repeatY', 0.01, 12, 0.01)
+        this.addGlassUvBinding('Offset X', 'offsetX', -4, 4, 0.001)
+        this.addGlassUvBinding('Offset Y', 'offsetY', -4, 4, 0.001)
+        this.addGlassUvBinding(
+            'Opacité motif',
+            'patternOpacity',
+            SceneRecyclageModelConstants.VITRE_PATTERN_OPACITY_MIN,
+            SceneRecyclageModelConstants.VITRE_PATTERN_OPACITY_MAX,
+            0.001
+        )
+    }
+
+    addGlassUvBinding(label, key, min, max, step)
+    {
+        this.debug.addBinding(this.debugFolder, this.glassUvSettings, key, {
+            label,
+            min,
+            max,
+            step
+        })?.on?.('change', () =>
+        {
+            this.applyGlassTextureTransform()
+        })
     }
 
     computeBoundsDataFrom(object3D)
@@ -371,6 +506,9 @@ export default class SceneRecyclageModel
 
     destroy()
     {
+        this.debugFolder?.dispose?.()
+        this.debugFolder = null
+
         if(this.model)
         {
             this.scene.remove(this.model)
@@ -388,6 +526,18 @@ export default class SceneRecyclageModel
         this.collisionMeshes = null
         this.collisionBoxes = null
         this.groundMeshes = null
+        for(const material of this.glassMaterials)
+        {
+            material?.dispose?.()
+        }
+        this.glassMaterials = []
+        for(const material of this.glassPatternOverlayMaterials)
+        {
+            material?.dispose?.()
+        }
+        this.glassPatternOverlayMaterials = []
+        this.glassPatternTexture?.dispose?.()
+        this.glassPatternTexture = null
         this.consoleObject = null
         this.spawnPosition = null
         this.worldBounds = null

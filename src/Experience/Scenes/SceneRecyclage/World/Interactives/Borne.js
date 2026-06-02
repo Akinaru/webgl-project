@@ -45,7 +45,7 @@ export default class Borne
             screenName: 'introuvable',
             enabled: false,
             screenAwake: true,
-            forceOverlayVisible: true,
+            forceOverlayVisible: false,
             overlayX: BorneConstants.BORNE_SCREEN_OVERLAY_DEFAULTS.x,
             overlayY: BorneConstants.BORNE_SCREEN_OVERLAY_DEFAULTS.y,
             overlayZ: BorneConstants.BORNE_SCREEN_OVERLAY_DEFAULTS.z,
@@ -162,13 +162,13 @@ export default class Borne
             side: THREE.DoubleSide,
             transparent: true,
             opacity: 0.92,
-            depthTest: false,
+            depthTest: true,
             depthWrite: false,
             toneMapped: false
         })
         this.screenOverlay = new THREE.Mesh(this.screenOverlayGeometry, this.screenOverlayMaterial)
         this.screenOverlay.name = 'BorneScreenDebugOverlay'
-        this.screenOverlay.renderOrder = 999
+        this.screenOverlay.renderOrder = 19
         this.screenMesh.add(this.screenOverlay)
         this.applyOverlayTransform()
     }

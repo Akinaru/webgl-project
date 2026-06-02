@@ -9,6 +9,8 @@ uniform float uWallNoiseCoverage;
 uniform float uWallNoiseTransition;
 uniform float uWallSlabMin;
 uniform float uWallSlabMax;
+uniform float uWallTime;
+uniform float uWallNoiseDriftSpeed;
 
 float wallHash(vec2 p)
 {
@@ -56,7 +58,8 @@ vec3 faceNormal = normalize(cross(dX, dY));
 vec3 slabSample = wallTriplanar(uWallSlabs, vWallWorldPos, faceNormal, uWallScale);
 float slabGray = dot(slabSample, vec3(0.299, 0.587, 0.114));
 
-float noiseRaw = wallFbm(vWallWorldPos.xz * uWallNoiseScale);
+vec2 noiseOffset = vec2(uWallTime * uWallNoiseDriftSpeed, -uWallTime * uWallNoiseDriftSpeed * 0.6);
+float noiseRaw = wallFbm((vWallWorldPos.xz * uWallNoiseScale) + noiseOffset);
 float coverageThreshold = 1.0 - uWallNoiseCoverage;
 float halfT = max(uWallNoiseTransition * 0.5, 0.001);
 float noiseMask = smoothstep(coverageThreshold - halfT, coverageThreshold + halfT, noiseRaw);
