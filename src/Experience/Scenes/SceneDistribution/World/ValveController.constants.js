@@ -1,3 +1,5 @@
+export const VALVE_MAX_INTERACTION_DISTANCE = 2.2
+export const VALVE_HIT_BOX_PADDING = 0
 export const CURSOR_OWNER_CLASS = 'is-distribution-vanne-cursor'
 export const VALVE_DRAGGING_CLASS = 'is-distribution-valve-dragging'
 export const DEFAULT_TURN_SPEED = 0.012

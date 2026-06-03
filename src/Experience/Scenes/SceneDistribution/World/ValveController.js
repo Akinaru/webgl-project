@@ -241,6 +241,8 @@ export default class SceneDistributionValveController
         this.indicatorAnchorCache = null
         this.indicatorLinePoints = [new THREE.Vector3(), new THREE.Vector3()]
         this.previousHoveredValve = null
+        this.valveHitBoxes = []
+        this.valveByHitBoxUuid = new Map()
 
         this.setValves(valveMeshes)
         this.setSceneIndicator()
@@ -281,6 +283,7 @@ export default class SceneDistributionValveController
     setValves(valveMeshes = [])
     {
         this.clearValveLights()
+        this.clearValveHitBoxes()
         this.valves = []
         this.valveByUuid.clear()
 
@@ -307,6 +310,7 @@ export default class SceneDistributionValveController
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
             this.applyValveGlow(mesh)
+            this.createValveHitBox(valve)
         }
 
         const slotMap = SceneDistributionFlowConstants.buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
@@ -356,6 +360,41 @@ export default class SceneDistributionValveController
         light.castShadow = false
         mesh.add(light)
         this.valveLightsByMeshUuid.set(mesh.uuid, light)
+    }
+
+    createValveHitBox(valve)
+    {
+        const bounds = new THREE.Box3().setFromObject(valve.mesh)
+        if(bounds.isEmpty())
+        {
+            return
+        }
+
+        const size = bounds.getSize(new THREE.Vector3())
+        const center = bounds.getCenter(new THREE.Vector3())
+        const padding = SceneDistributionValveControllerConstants.VALVE_HIT_BOX_PADDING
+
+        const hitBox = new THREE.Mesh(
+            new THREE.BoxGeometry(size.x + padding, size.y + padding, size.z + padding),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        hitBox.position.copy(center)
+        hitBox.renderOrder = 0
+        this.experience?.scene?.add(hitBox)
+        this.valveHitBoxes.push(hitBox)
+        this.valveByHitBoxUuid.set(hitBox.uuid, valve)
+    }
+
+    clearValveHitBoxes()
+    {
+        for(const hitBox of this.valveHitBoxes)
+        {
+            this.experience?.scene?.remove(hitBox)
+            hitBox.geometry?.dispose?.()
+            hitBox.material?.dispose?.()
+        }
+        this.valveHitBoxes = []
+        this.valveByHitBoxUuid.clear()
     }
 
     clearValveLights()
@@ -686,13 +725,18 @@ export default class SceneDistributionValveController
         }
 
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
-        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), false)
+        const targets = this.valveHitBoxes.length > 0
+            ? this.valveHitBoxes
+            : this.valves.map((valve) => valve.mesh)
+        const hits = this.raycaster.intersectObjects(targets, false)
         const firstHit = hits[0]
-        const mesh = firstHit?.object ?? null
-        this.hoveredValve = mesh
-            ? (this.valveByUuid.get(mesh.uuid) ?? this.findValveInAncestors(mesh))
+        const maxDist = SceneDistributionValveControllerConstants.VALVE_MAX_INTERACTION_DISTANCE
+        const withinRange = firstHit && Number.isFinite(firstHit.distance) && firstHit.distance <= maxDist
+        const hitObject = withinRange ? (firstHit.object ?? null) : null
+        this.hoveredValve = hitObject
+            ? (this.valveByHitBoxUuid.get(hitObject.uuid) ?? this.valveByUuid.get(hitObject.uuid) ?? this.findValveInAncestors(hitObject))
             : null
-        this.hoveredHitPointWorld = firstHit?.point?.clone?.() ?? null
+        this.hoveredHitPointWorld = withinRange ? (firstHit.point?.clone?.() ?? null) : null
         this.setCursorHover(Boolean(this.hoveredValve))
     }
 
@@ -941,6 +985,7 @@ export default class SceneDistributionValveController
         this.valveByUuid.clear()
         this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()
+        this.clearValveHitBoxes()
         document.body.classList.remove(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
 
         if(this.indicatorGroup)
