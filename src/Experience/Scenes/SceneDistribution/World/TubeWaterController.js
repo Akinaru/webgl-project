@@ -250,7 +250,28 @@ export default class SceneDistributionTubeWaterController
 
         if(hasChanged)
         {
+            this.clampFillToCapacity()
             this.applyFillState()
+        }
+    }
+
+    clampFillToCapacity()
+    {
+        const total = SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.reduce((sum, token) =>
+        {
+            const entries = this.tubeEntriesByValveToken.get(String(token || '').toLowerCase()) ?? []
+            return sum + entries.reduce((s, e) => s + (this.fillProgressByMeshUuid.get(e.mesh.uuid) ?? 0), 0) / Math.max(1, entries.length)
+        }, 0)
+
+        if(total <= SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS)
+        {
+            return
+        }
+
+        const scale = SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS / total
+        for(const [uuid, progress] of this.fillProgressByMeshUuid.entries())
+        {
+            this.fillProgressByMeshUuid.set(uuid, progress * scale)
         }
     }
 
@@ -350,6 +371,29 @@ export default class SceneDistributionTubeWaterController
         return SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.map((token) => this.getFillStateForValveToken(token))
     }
 
+    getPredictedTotalFill()
+    {
+        if(!this.getRightTurnAmountForValve)
+        {
+            return 0
+        }
+
+        const progressPerRadian = 1 / Math.max(0.001, this.settings.radiansPerTubeFill)
+
+        return SceneDistributionFlowConstants.DISTRIBUTION_CHANNEL_ORDER.reduce((sum, token) =>
+        {
+            const entries = this.tubeEntriesByValveToken.get(String(token || '').toLowerCase()) ?? []
+            if(entries.length === 0)
+            {
+                return sum
+            }
+
+            const rightTurn = Math.max(0, Number(this.getRightTurnAmountForValve(token)) || 0)
+            const totalProgress = THREE.MathUtils.clamp(rightTurn * progressPerRadian, 0, entries.length)
+            return sum + (totalProgress / entries.length)
+        }, 0)
+    }
+
     canRotateValveDirection(valveToken, direction = 1)
     {
         const entries = this.tubeEntriesByValveToken.get(String(valveToken || '').toLowerCase())
@@ -381,6 +425,15 @@ export default class SceneDistributionTubeWaterController
         if(direction > 0 && isFullyFull)
         {
             return false
+        }
+
+        if(direction > 0)
+        {
+            const totalPredicted = this.getPredictedTotalFill()
+            if(totalPredicted >= SceneDistributionFlowConstants.TOTAL_CAPACITY_UNITS)
+            {
+                return false
+            }
         }
 
         return true
