@@ -886,6 +886,9 @@ export default class SceneDistributionWorld
         this.hasUnlockedDistributionControls = true
         this.valveController?.setEnabled?.(true)
         this.syncValidationButtonState()
+        this.experience.objectiveManager?.showByKey?.('distribution_balance_network', {
+            source: 'distributionUnlock'
+        })
     }
 
     isDistributionValidationExact(state = null)
