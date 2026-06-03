@@ -218,6 +218,13 @@ export default class SceneRecyclageWorld
             })
         }
 
+        if(this.isUnifiedNanobotsFlow)
+        {
+            this.experience.objectiveManager?.showByKey?.(CHAMPIGNON_PLACE_OBJECTIVE_KEY, {
+                source: 'recyclageArrival'
+            })
+        }
+
         this.startArrivalDialogue()
     }
 
