@@ -32,14 +32,17 @@ function showDesktopRecommendationScreen()
     warning.className = 'device-warning'
     warning.setAttribute('role', 'main')
     warning.innerHTML = `
-        <div class="boot__home">
-            <div class="boot__logo-viewer" style="transform: translateY(-32px); --boot-logo-width: 680px; --boot-logo-height: 295px;">
-                <img class="boot__logo-image" src="/textures/ui/logo.png" alt="Logo Bloom" />
-            </div>
-            <section class="device-warning__panel" aria-label="Compatibilité appareil">
-                <h1 class="device-warning__title">Cette expérience est optimisée pour ordinateur</h1>
-                <p class="device-warning__text">Utilisez un écran plus grand avec clavier et souris pour une meilleure expérience.</p>
-            </section>
+        <div class="device-warning__mobile-layout">
+            <h1 class="device-warning__title">Cette expérience est optimisée pour ordinateur</h1>
+            <p class="device-warning__text">Utilisez un écran plus grand avec clavier et souris pour une meilleure expérience.</p>
+            <video
+                class="device-warning__teaser"
+                src="/teaser.mov"
+                autoplay
+                loop
+                playsinline
+                aria-hidden="true"
+            ></video>
         </div>
     `
     document.body.append(warning)

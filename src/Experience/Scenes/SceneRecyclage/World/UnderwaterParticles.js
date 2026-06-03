@@ -125,9 +125,26 @@ export default class UnderwaterParticles
         this.material.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio || 1, 2)
     }
 
+    rebuildPositions()
+    {
+        const count = this.settings.count
+        for(let i = 0; i < count; i++)
+        {
+            this.positionsArray[i * 3 + 0] = (Math.random() - 0.5) * this.settings.areaHalf * 2
+            this.positionsArray[i * 3 + 1] = this.settings.minY + Math.random() * this.settings.height
+            this.positionsArray[i * 3 + 2] = (Math.random() - 0.5) * this.settings.areaHalf * 2
+        }
+
+        if(this.geometry?.attributes?.position)
+        {
+            this.geometry.attributes.position.needsUpdate = true
+        }
+    }
+
     setDebug(parentFolder)
     {
         const debug = this.debug
+        const rebuild = () => this.rebuildPositions()
         const applySize = () =>
         {
             if(this.material)
@@ -140,6 +157,27 @@ export default class UnderwaterParticles
             parent: parentFolder,
             expanded: false
         })
+
+        debug.addBinding(this.debugFolder, this.settings, 'areaHalf', {
+            label: 'Rayon zone',
+            min: 5,
+            max: 80,
+            step: 1
+        })?.on?.('change', rebuild)
+
+        debug.addBinding(this.debugFolder, this.settings, 'height', {
+            label: 'Hauteur zone',
+            min: 1,
+            max: 20,
+            step: 0.5
+        })?.on?.('change', rebuild)
+
+        debug.addBinding(this.debugFolder, this.settings, 'minY', {
+            label: 'Y minimum',
+            min: -5,
+            max: 5,
+            step: 0.1
+        })?.on?.('change', rebuild)
 
         debug.addBinding(this.debugFolder, this.settings, 'speed', {
             label: 'Vitesse montée',

@@ -441,6 +441,71 @@ body.is-ui-hidden .nanobot-inspector
     border-radius: 4px;
 }
 
+.coming-soon-modal
+{
+    position: fixed;
+    inset: 0;
+    z-index: 160;
+    display: none;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    transition: opacity 300ms ease;
+}
+
+.coming-soon-modal.is-displayed
+{
+    display: grid;
+}
+
+.coming-soon-modal.is-visible
+{
+    opacity: 1;
+}
+
+.coming-soon-modal__content
+{
+    width: min(92vw, 380px);
+    padding: 3rem 2rem;
+    text-align: center;
+    transform: translateY(20px);
+    transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.coming-soon-modal.is-visible .coming-soon-modal__content
+{
+    transform: translateY(0);
+}
+
+.coming-soon-modal__icon
+{
+    margin: 0 0 1rem;
+    font-size: 2.5rem;
+}
+
+.coming-soon-modal__title
+{
+    margin: 0 0 1.2rem;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+}
+
+.coming-soon-modal__text
+{
+    margin: 0 0 2.5rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 1.05rem;
+    line-height: 1.55;
+}
+
+.coming-soon-modal__back
+{
+    width: 220px;
+    max-width: 100%;
+}
+
 @keyframes scene-transition-fill-flow
 {
     from
@@ -2522,12 +2587,38 @@ body.is-device-blocked > :not(.device-warning)
     position: fixed;
     inset: 0;
     z-index: 9999;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
     background:
         linear-gradient(180deg, rgba(3, 14, 18, 0.24) 0%, rgba(1, 7, 9, 0.68) 100%),
         url('/images/menu-home-bg.jpg') center center / cover no-repeat,
         #000;
+}
+
+.device-warning__mobile-layout
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(1.8rem, 6vw, 2.8rem) clamp(1rem, 5vw, 1.5rem) 2rem;
+    width: 100%;
+    min-height: 100%;
+    gap: 0.3rem;
+}
+
+.device-warning__teaser
+{
+    flex: 1 1 0;
+    width: 100%;
+    min-height: 0;
+    max-width: min(100%, calc((100vh - 140px) * 9 / 16));
+    border-radius: clamp(12px, 3vw, 20px);
+    display: block;
+    object-fit: cover;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
 }
 
 .device-warning__panel

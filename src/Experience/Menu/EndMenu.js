@@ -11,6 +11,8 @@ export default class EndMenu extends EventEmitter
         this.root = document.querySelector('#endMenu')
         this.traceButton = document.querySelector('#endMenuTrace')
         this.restartButton = document.querySelector('#endMenuRestart')
+        this.comingSoonModal = document.querySelector('#comingSoonModal')
+        this.comingSoonBackButton = document.querySelector('#comingSoonBack')
 
         this.hasUI = Boolean(this.root && this.traceButton && this.restartButton)
 
@@ -26,7 +28,19 @@ export default class EndMenu extends EventEmitter
         {
             event.preventDefault()
             this.experience.sound?.playMenuClick?.()
-            this.trigger('trace')
+            this.openComingSoon()
+        })
+
+        this.comingSoonBackButton?.addEventListener('click', (event) =>
+        {
+            event.preventDefault()
+            this.experience.sound?.playMenuClick?.()
+            this.closeComingSoon()
+        })
+
+        this.comingSoonBackButton?.addEventListener('mouseenter', () =>
+        {
+            this.experience.sound?.playMenuHover?.()
         })
 
         this.restartButton.addEventListener('click', (event) =>
@@ -44,6 +58,34 @@ export default class EndMenu extends EventEmitter
                 this.experience.sound?.playMenuHover?.()
             })
         }
+    }
+
+    openComingSoon()
+    {
+        if(!this.comingSoonModal)
+        {
+            return
+        }
+
+        this.comingSoonModal.classList.add('is-displayed')
+        window.requestAnimationFrame(() =>
+        {
+            this.comingSoonModal.classList.add('is-visible')
+        })
+    }
+
+    closeComingSoon()
+    {
+        if(!this.comingSoonModal)
+        {
+            return
+        }
+
+        this.comingSoonModal.classList.remove('is-visible')
+        setTimeout(() =>
+        {
+            this.comingSoonModal.classList.remove('is-displayed')
+        }, 300)
     }
 
     open()

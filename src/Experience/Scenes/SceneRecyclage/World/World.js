@@ -497,7 +497,7 @@ export default class SceneRecyclageWorld
         this.light.sunLight.visible = this.light.state.sunIntensity > 0
         if(this.light.sunVisual)
         {
-            this.light.sunVisual.visible = this.light.state.sunIntensity > 0
+            this.light.sunVisual.visible = false
         }
         this.light.updateCoordinates()
         this.light.updateFocusPosition()

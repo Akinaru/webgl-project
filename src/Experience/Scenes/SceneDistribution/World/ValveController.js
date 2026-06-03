@@ -231,7 +231,21 @@ export default class SceneDistributionValveController
             ? canRotateValveDirection
             : null
 
+        this.indicatorGroup = null
+        this.indicatorLineGeometry = null
+        this.indicatorLine = null
+        this.indicatorDot = null
+        this.indicatorLabelSprite = null
+        this.indicatorBounds = new THREE.Box3()
+        this.indicatorCenter = new THREE.Vector3()
+        this.indicatorAnchorCache = null
+        this.indicatorLinePoints = [new THREE.Vector3(), new THREE.Vector3()]
+        this.previousHoveredValve = null
+        this.valveHitBoxes = []
+        this.valveByHitBoxUuid = new Map()
+
         this.setValves(valveMeshes)
+        this.setSceneIndicator()
         this.setEvents()
         this.setDebug()
     }
@@ -249,7 +263,14 @@ export default class SceneDistributionValveController
             return
         }
 
+        if(this.hoveredValve)
+        {
+            this.applyValveHoverState(this.hoveredValve, false)
+        }
+
         this.hoveredValve = null
+        this.previousHoveredValve = null
+        this.indicatorAnchorCache = null
         this.hoveredHitPointWorld = null
         this.activeValve = null
         this.activeHitPointWorld = null
@@ -262,6 +283,7 @@ export default class SceneDistributionValveController
     setValves(valveMeshes = [])
     {
         this.clearValveLights()
+        this.clearValveHitBoxes()
         this.valves = []
         this.valveByUuid.clear()
 
@@ -288,6 +310,7 @@ export default class SceneDistributionValveController
             this.valves.push(valve)
             this.valveByUuid.set(mesh.uuid, valve)
             this.applyValveGlow(mesh)
+            this.createValveHitBox(valve)
         }
 
         const slotMap = SceneDistributionFlowConstants.buildDistributionChannelSlotMap(this.valves.map((valve) => valve.mesh))
@@ -337,6 +360,41 @@ export default class SceneDistributionValveController
         light.castShadow = false
         mesh.add(light)
         this.valveLightsByMeshUuid.set(mesh.uuid, light)
+    }
+
+    createValveHitBox(valve)
+    {
+        const bounds = new THREE.Box3().setFromObject(valve.mesh)
+        if(bounds.isEmpty())
+        {
+            return
+        }
+
+        const size = bounds.getSize(new THREE.Vector3())
+        const center = bounds.getCenter(new THREE.Vector3())
+        const padding = SceneDistributionValveControllerConstants.VALVE_HIT_BOX_PADDING
+
+        const hitBox = new THREE.Mesh(
+            new THREE.BoxGeometry(size.x + padding, size.y + padding, size.z + padding),
+            new THREE.MeshBasicMaterial({ visible: false })
+        )
+        hitBox.position.copy(center)
+        hitBox.renderOrder = 0
+        this.experience?.scene?.add(hitBox)
+        this.valveHitBoxes.push(hitBox)
+        this.valveByHitBoxUuid.set(hitBox.uuid, valve)
+    }
+
+    clearValveHitBoxes()
+    {
+        for(const hitBox of this.valveHitBoxes)
+        {
+            this.experience?.scene?.remove(hitBox)
+            hitBox.geometry?.dispose?.()
+            hitBox.material?.dispose?.()
+        }
+        this.valveHitBoxes = []
+        this.valveByHitBoxUuid.clear()
     }
 
     clearValveLights()
@@ -484,6 +542,164 @@ export default class SceneDistributionValveController
         this.createdCursorElement = true
     }
 
+    setSceneIndicator()
+    {
+        this.indicatorGroup = new THREE.Group()
+        this.indicatorGroup.visible = false
+        this.indicatorGroup.renderOrder = 20
+
+        this.indicatorLineGeometry = new THREE.BufferGeometry().setFromPoints(this.indicatorLinePoints)
+        this.indicatorLine = new THREE.Line(
+            this.indicatorLineGeometry,
+            new THREE.LineBasicMaterial({ color: '#87dbff', transparent: true, opacity: 0.9, depthWrite: false })
+        )
+
+        this.indicatorDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.022, 12, 12),
+            new THREE.MeshBasicMaterial({ color: '#4dc8ff', transparent: true, opacity: 0.95, depthWrite: false })
+        )
+
+        const labelTexture = this.createIndicatorLabelTexture('Tourner la valve')
+        this.indicatorLabelSprite = new THREE.Sprite(
+            new THREE.SpriteMaterial({ map: labelTexture, transparent: true, depthWrite: false })
+        )
+        this.indicatorLabelSprite.scale.set(0.82, 0.2, 1)
+
+        this.indicatorGroup.add(this.indicatorLine)
+        this.indicatorGroup.add(this.indicatorDot)
+        this.indicatorGroup.add(this.indicatorLabelSprite)
+        this.experience?.scene?.add(this.indicatorGroup)
+    }
+
+    createIndicatorLabelTexture(text)
+    {
+        const canvas = document.createElement('canvas')
+        canvas.width = 512
+        canvas.height = 144
+        const ctx = canvas.getContext('2d')
+        if(!ctx) return null
+
+        const w = canvas.width
+        const h = canvas.height
+        const r = 34
+
+        const bg = ctx.createLinearGradient(0, 18, 0, h - 18)
+        bg.addColorStop(0,    'rgba(56, 96, 108, 0.72)')
+        bg.addColorStop(0.24, 'rgba(28, 86, 101, 0.68)')
+        bg.addColorStop(1,    'rgba(0, 116, 141, 0.54)')
+        ctx.fillStyle = bg
+        ctx.shadowColor = 'rgba(0,0,0,0.28)'
+        ctx.shadowBlur = 18
+        ctx.shadowOffsetY = 8
+        ctx.beginPath()
+        ctx.roundRect(18, 18, w - 36, h - 36, r)
+        ctx.fill()
+
+        const hl = ctx.createLinearGradient(0, 22, 0, h * 0.7)
+        hl.addColorStop(0,    'rgba(255,255,255,0.26)')
+        hl.addColorStop(0.32, 'rgba(255,255,255,0.10)')
+        hl.addColorStop(1,    'rgba(255,255,255,0)')
+        ctx.fillStyle = hl
+        ctx.shadowColor = 'transparent'
+        ctx.beginPath()
+        ctx.roundRect(18, 18, w - 36, h - 36, r)
+        ctx.fill()
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.42)'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.roundRect(18, 18, w - 36, h - 36, r)
+        ctx.stroke()
+
+        ctx.fillStyle = '#f2fbff'
+        ctx.font = '700 38px "Nunito", "Segoe UI", sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.shadowColor = 'rgba(7,26,41,0.18)'
+        ctx.shadowBlur = 12
+        ctx.shadowOffsetY = 2
+        ctx.fillText(text, w * 0.5, h * 0.5)
+
+        const texture = new THREE.CanvasTexture(canvas)
+        texture.colorSpace = THREE.SRGBColorSpace
+        texture.needsUpdate = true
+        return texture
+    }
+
+    applyValveHoverState(valve, isHovered)
+    {
+        if(!valve?.mesh)
+        {
+            return
+        }
+
+        const light = this.valveLightsByMeshUuid.get(valve.mesh.uuid)
+        if(light)
+        {
+            light.intensity = isHovered
+                ? SceneDistributionValveControllerConstants.VALVE_LIGHT_INTENSITY_HOVERED
+                : SceneDistributionValveControllerConstants.VALVE_LIGHT_INTENSITY
+        }
+    }
+
+    updateValveIndicator()
+    {
+        if(!this.indicatorGroup)
+        {
+            return
+        }
+
+        // Track hover changes for emissive and anchor cache
+        if(this.hoveredValve !== this.previousHoveredValve)
+        {
+            if(this.previousHoveredValve)
+            {
+                this.applyValveHoverState(this.previousHoveredValve, false)
+            }
+
+            this.indicatorAnchorCache = null
+
+            if(this.hoveredValve?.mesh)
+            {
+                this.applyValveHoverState(this.hoveredValve, true)
+
+                // Cache anchor from initial bounding box — stays fixed regardless of rotation
+                this.indicatorBounds.setFromObject(this.hoveredValve.mesh)
+                if(!this.indicatorBounds.isEmpty())
+                {
+                    const size = this.indicatorBounds.getSize(new THREE.Vector3())
+                    const wp = new THREE.Vector3()
+                    this.hoveredValve.mesh.getWorldPosition(wp)
+                    this.indicatorAnchorCache = {
+                        anchorY: wp.y + (size.y * 0.5) + 0.04,
+                        labelY:  wp.y + (size.y * 0.5) + 0.04 + Math.max(0.2, size.y * 0.28) + 0.08
+                    }
+                }
+            }
+
+            this.previousHoveredValve = this.hoveredValve
+        }
+
+        if(!this.hoveredValve?.mesh || !this.indicatorAnchorCache)
+        {
+            this.indicatorGroup.visible = false
+            return
+        }
+
+        // Use world X/Z from mesh position + cached Y (immune to valve rotation)
+        const wp = new THREE.Vector3()
+        this.hoveredValve.mesh.getWorldPosition(wp)
+        const { anchorY, labelY } = this.indicatorAnchorCache
+
+        this.indicatorLinePoints[0].set(wp.x, anchorY, wp.z)
+        this.indicatorLinePoints[1].set(wp.x, labelY - 0.05, wp.z)
+        this.indicatorLineGeometry.setFromPoints(this.indicatorLinePoints)
+
+        this.indicatorDot.position.copy(this.indicatorLinePoints[0])
+        this.indicatorLabelSprite.position.set(wp.x, labelY, wp.z)
+        this.indicatorGroup.visible = true
+    }
+
     update()
     {
         this.ensureCursorElement()
@@ -496,6 +712,7 @@ export default class SceneDistributionValveController
         }
         this.updateHoveredValveAtCenter()
         this.updateCursorAtCenter()
+        this.updateValveIndicator()
     }
 
     updateHoveredValveAtCenter()
@@ -508,13 +725,18 @@ export default class SceneDistributionValveController
         }
 
         this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera)
-        const hits = this.raycaster.intersectObjects(this.valves.map((valve) => valve.mesh), false)
+        const targets = this.valveHitBoxes.length > 0
+            ? this.valveHitBoxes
+            : this.valves.map((valve) => valve.mesh)
+        const hits = this.raycaster.intersectObjects(targets, false)
         const firstHit = hits[0]
-        const mesh = firstHit?.object ?? null
-        this.hoveredValve = mesh
-            ? (this.valveByUuid.get(mesh.uuid) ?? this.findValveInAncestors(mesh))
+        const maxDist = SceneDistributionValveControllerConstants.VALVE_MAX_INTERACTION_DISTANCE
+        const withinRange = firstHit && Number.isFinite(firstHit.distance) && firstHit.distance <= maxDist
+        const hitObject = withinRange ? (firstHit.object ?? null) : null
+        this.hoveredValve = hitObject
+            ? (this.valveByHitBoxUuid.get(hitObject.uuid) ?? this.valveByUuid.get(hitObject.uuid) ?? this.findValveInAncestors(hitObject))
             : null
-        this.hoveredHitPointWorld = firstHit?.point?.clone?.() ?? null
+        this.hoveredHitPointWorld = withinRange ? (firstHit.point?.clone?.() ?? null) : null
         this.setCursorHover(Boolean(this.hoveredValve))
     }
 
@@ -763,7 +985,20 @@ export default class SceneDistributionValveController
         this.valveByUuid.clear()
         this.accumulatedRightTurnByValveToken.clear()
         this.releaseCursor()
+        this.clearValveHitBoxes()
         document.body.classList.remove(SceneDistributionValveControllerConstants.VALVE_DRAGGING_CLASS)
+
+        if(this.indicatorGroup)
+        {
+            this.experience?.scene?.remove(this.indicatorGroup)
+            this.indicatorLineGeometry?.dispose?.()
+            this.indicatorLine?.material?.dispose?.()
+            this.indicatorDot?.geometry?.dispose?.()
+            this.indicatorDot?.material?.dispose?.()
+            this.indicatorLabelSprite?.material?.map?.dispose?.()
+            this.indicatorLabelSprite?.material?.dispose?.()
+            this.indicatorGroup = null
+        }
 
         if(this.createdCursorElement && this.cursorElement instanceof HTMLElement)
         {

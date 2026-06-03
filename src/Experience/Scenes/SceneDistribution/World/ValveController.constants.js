@@ -1,3 +1,5 @@
+export const VALVE_MAX_INTERACTION_DISTANCE = 2.2
+export const VALVE_HIT_BOX_PADDING = 0
 export const CURSOR_OWNER_CLASS = 'is-distribution-vanne-cursor'
 export const VALVE_DRAGGING_CLASS = 'is-distribution-valve-dragging'
 export const DEFAULT_TURN_SPEED = 0.012
@@ -10,7 +12,9 @@ export const VALVE_TURNING_CHANNEL = 'valveTurning'
 export const VALVE_NAME_TOKENS = ['vanne2', 'vanne1', 'vanne']
 export const VALVE_LIGHT_COLOR = '#ffb36b'
 export const VALVE_LIGHT_INTENSITY = 0.6
+export const VALVE_LIGHT_INTENSITY_HOVERED = 2.2
 export const VALVE_LIGHT_DISTANCE = 1.25
 export const VALVE_LIGHT_HEIGHT_OFFSET = 0.12
 export const VALVE_EMISSIVE_COLOR = '#ff9448'
 export const VALVE_EMISSIVE_INTENSITY = 0.28
+export const VALVE_EMISSIVE_INTENSITY_HOVERED = 0.72
