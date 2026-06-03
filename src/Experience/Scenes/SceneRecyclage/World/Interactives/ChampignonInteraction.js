@@ -520,6 +520,7 @@ export default class ChampignonInteraction
 
     placeChampignon(champignon)
     {
+        this.experience.sound?.play?.('champiPlace')
         champignon.placed = true
         champignon.appearProgress = 0
         champignon.animatedScale = 0
@@ -1049,6 +1050,7 @@ export default class ChampignonInteraction
         if(this.hoveredSlot)
         {
             this.applySlotHover(this.hoveredSlot, true)
+            this.experience.sound?.play?.('champiHover')
         }
     }
 
